@@ -1,27 +1,35 @@
-# Dbolt
+# DBOLT DATABASE MANAGER
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.2.6.
+DBOLT Database Manager is a powerful, free, and open-source tool designed to simplify database management. Initially supporting SAP HANA and PostgreSQL, DBOLT provides a user-friendly interface and essential features for developers and database administrators.
 
-## Development server
+## ⚡ Key Features
+- Simplified database management.
+- Open-source, allowing for modifications and customization.
+- Completely free and available for everyone.
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+## 📋 Supported Databases
 
-## Code scaffolding
+| Database   | Supported Versions | Notes                                             |
+| ---------- | ------------------ | ------------------------------------------------- |
+| SAP HANA   | All major versions | Full support for table management and queries.    |
+| PostgreSQL | 9.6 and later      | Full support for schema, queries, and management. |
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+Additional database support will be added in future updates.
 
-## Build
+## 🛑 Terms of Use
+- Free for personal and educational use.
+- Modifications are allowed.
+- Commercial use is strictly prohibited.
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+For more details, refer to the license included in the repository.
 
-## Running unit tests
+## 🔧 Requirements
+- Windows 10 or higher.
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+## 📖 License
+This project is licensed under a custom license:
+- Commercial use is not allowed.
+- Refer to the LICENSE file for more details.
 
-## Running end-to-end tests
-
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
-
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## 🚀 About the Author
+Created with dedication by Vinícius Macacari. If you have questions or suggestions, feel free to reach out!
