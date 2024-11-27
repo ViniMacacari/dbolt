@@ -9,10 +9,10 @@ DBOLT Database Manager is a powerful, free, and open-source tool designed to sim
 
 ## 📋 Supported Databases
 
-| Database   | Supported Versions | Notes                                             |
-| ---------- | ------------------ | ------------------------------------------------- |
-| SAP HANA   | All major versions | Full support for table management and queries.    |
-| PostgreSQL | 9.6 and later      | Full support for schema, queries, and management. |
+| Database   | Min Version |
+| ---------- |-------------|
+| SAP HANA   | All         |
+| PostgreSQL | 9.6         |
 
 Additional database support will be added in future updates.
 
