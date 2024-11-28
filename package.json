@@ -2,7 +2,7 @@
   "name": "dbolt",
   "version": "0.0.1",
   "description": "DBOLT Database Manager - Manage your databases with ease",
-  "author": "Seu Nome <seuemail@example.com>",
+  "author": "Vinícius Macacari de Almeida",
   "main": "main.js",
   "scripts": {
     "ng": "ng",
