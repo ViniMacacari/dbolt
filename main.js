@@ -14,17 +14,15 @@ function createWindow() {
         height: 600,
         minHeight: 600,
         minWidth: 800,
-        frame: false,
+        // frame: false,
         webPreferences: {
-            nodeIntegration: true
+            nodeIntegration: true,
+            contextIsolation: false
         },
         autoHideMenuBar: true
     })
 
-    win.setMenuBarVisibility(false)
-
     const angularIndexPath = path.join(__dirname, 'dist/dbolt/browser/index.html')
-
     if (fs.existsSync(angularIndexPath)) {
         win.loadFile(angularIndexPath)
     } else {
