@@ -1,7 +1,10 @@
-import { app, BrowserWindow } from 'electron'
+import electron from 'electron'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
+import InternalServer from './api/server.js'
+
+const { app, BrowserWindow } = electron
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -14,7 +17,6 @@ function createWindow() {
         height: 600,
         minHeight: 600,
         minWidth: 800,
-        // frame: false,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false
