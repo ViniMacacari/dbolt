@@ -12,7 +12,16 @@ function createWindow() {
     win = new BrowserWindow({
         width: 800,
         height: 600,
+        minHeight: 600,
+        minWidth: 800,
+        frame: false,
+        webPreferences: {
+            nodeIntegration: true
+        },
+        autoHideMenuBar: true
     })
+
+    win.setMenuBarVisibility(false)
 
     const angularIndexPath = path.join(__dirname, 'dist/dbolt/browser/index.html')
 
