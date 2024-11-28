@@ -1,9 +1,10 @@
-import { Component } from '@angular/core';
+import { Component } from '@angular/core'
+import { NgOptimizedImage } from '@angular/common'
 
 @Component({
   selector: 'app-open-page',
   standalone: true,
-  imports: [],
+  imports: [NgOptimizedImage],
   templateUrl: './open-page.component.html',
   styleUrl: './open-page.component.scss'
 })

@@ -1,1 +1,26 @@
-/* You can add global styles to this file, and also import other style files */
+@font-face {
+    font-family: 'Nunito';
+    src: url('/fonts/nunito/Nunito/Nunito-VariableFont_wght.ttf');
+    font-style: normal;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: 'Nunito';
+}
+
+.title {
+    color: #e8eaed;
+    font-size: 1.5em;
+    font-weight: 700;
+}
+
+.subtitle {
+    color: #b8b8b9;
+    font-size: 1.2em;
+    font-weight: 500;
+}

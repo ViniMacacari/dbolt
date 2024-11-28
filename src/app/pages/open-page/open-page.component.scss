@@ -1,0 +1,35 @@
+.content {
+    display: flex;
+    justify-content: center;
+    padding: 5px;
+
+    flex-direction: column;
+
+    .cards {
+        display: flex;
+        flex-wrap: wrap;
+
+        width: 100%;
+        padding: 5px 25px;
+
+        .card {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 150px;
+            height: 150px;
+
+            border-radius: 30px;
+
+            background-color: #000000;
+            color: #b8b8b9;
+
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+
+            &:hover {
+                transform: scale(1.05);
+            }
+        }
+    }
+}
