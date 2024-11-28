@@ -1,7 +1,7 @@
 import SHanaV1 from "../../services/connections/hana/hana-v1.js"
 
 class CHanaV1 {
-    async connectToHana(req, res) {
+    async testConnection(req, res) {
         const config = req.body
         if (!config || !config.host || !config.port || !config.user || !config.password) {
             return res.status(400).json({ success: false, message: 'Invalid configuration' })
