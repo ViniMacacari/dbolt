@@ -5,12 +5,12 @@
     <div class="my-5"></div>
 
     <div class="cards">
-        <div class="card">
+        <div class="card" (click)="openModal()">
             <div class="subititle">
-                <div class="subtitle">
-                    <img priority src="icons/add.png" height="50px" width="50px">
-                </div>
+                <img priority src="icons/add.png" height="50px" width="50px">
             </div>
         </div>
     </div>
 </div>
+
+<app-connection *ngIf="isModalOpen" (close)="closeModal()"></app-connection>

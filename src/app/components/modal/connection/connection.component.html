@@ -1,1 +1,16 @@
-<p>connection works!</p>
+<div class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="title text-center w-100">Create a new connection</h5>
+            <button class="close-btn" (click)="onClose()">×</button>
+        </div>
+        <div class="modal-body">
+            <h2 class="subtitle">Choose the database type.</h2>
+            <input type="text" class="form-control" placeholder="Digite algo" />
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" (click)="onClose()">Fechar</button>
+            <button class="btn btn-primary">Salvar</button>
+        </div>
+    </div>
+</div>

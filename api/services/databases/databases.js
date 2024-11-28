@@ -4,8 +4,13 @@ class Databases {
             {
                 id: 1,
                 database: 'Hana',
-                service: 'hana-v1',
-                version: 1,
+                versions: [
+                    {
+                        name: 'v1',
+                        service: 'hana-v1',
+                        date: '2024-11-28'
+                    }
+                ],
                 active: true
             }
         ]
