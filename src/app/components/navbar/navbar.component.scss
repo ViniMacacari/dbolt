@@ -1,0 +1,9 @@
+nav {
+    position: fixed;
+
+    display: flex;
+    align-items: center;
+    height: 40px;
+
+    -webkit-app-region: drag;
+}
