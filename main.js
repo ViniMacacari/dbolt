@@ -13,7 +13,7 @@ function createWindow() {
         height: 600,
     })
 
-    const angularIndexPath = path.join(process.resourcesPath, 'static/browser/index.html')
+    const angularIndexPath = path.join(__dirname, 'dist/dbolt/browser/index.html')
     win.loadFile(angularIndexPath)
 
     win.on('closed', () => {
