@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import fs from 'fs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -14,7 +15,12 @@ function createWindow() {
     })
 
     const angularIndexPath = path.join(__dirname, 'dist/dbolt/browser/index.html')
-    win.loadFile(angularIndexPath)
+
+    if (fs.existsSync(angularIndexPath)) {
+        win.loadFile(angularIndexPath)
+    } else {
+        win.loadURL('http://localhost:4200')
+    }
 
     win.on('closed', () => {
         win = null
