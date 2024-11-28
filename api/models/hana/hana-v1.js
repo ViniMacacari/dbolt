@@ -3,7 +3,7 @@ import hana from '@sap/hana-client'
 class HanaV1 {
     constructor(config) {
         if (!config || typeof config !== 'object') {
-            throw new Error('A configuração de conexão é obrigatória e deve ser um objeto')
+            throw new Error('Invalid configuration')
         }
         this.config = config
         this.connection = null
@@ -11,17 +11,17 @@ class HanaV1 {
 
     async connect() {
         if (this.connection) {
-            console.warn('Já existe uma conexão ativa')
+            console.warn('Already connected to HANA')
             return this.connection
         }
 
         try {
             this.connection = hana.createConnection()
             await this.connection.connect(this.config)
-            console.log('Conexão com o SAP HANA estabelecida com sucesso')
+            console.log('Connected to HANA successfully')
             return this.connection
         } catch (error) {
-            console.error('Erro ao conectar ao SAP HANA:', error)
+            console.error('Error connecting to HANA:', error)
             this.connection = null
             throw error
         }
@@ -29,15 +29,15 @@ class HanaV1 {
 
     async disconnect() {
         if (!this.connection) {
-            console.warn('Nenhuma conexão ativa para desconectar')
+            console.warn('Not connected to HANA')
             return
         }
 
         try {
             this.connection.disconnect()
-            console.log('Conexão com o SAP HANA encerrada com sucesso')
+            console.log('Disconnected from HANA successfully')
         } catch (error) {
-            console.error('Erro ao desconectar do SAP HANA:', error)
+            console.error('Error disconnecting from HANA:', error)
             throw error
         } finally {
             this.connection = null
@@ -46,7 +46,7 @@ class HanaV1 {
 
     async executeQuery(query, params = []) {
         if (!this.connection) {
-            throw new Error('Nenhuma conexão ativa. Conecte-se antes de executar uma consulta.')
+            throw new Error('Not connected to HANA.')
         }
 
         try {
@@ -61,7 +61,7 @@ class HanaV1 {
                 })
             })
         } catch (error) {
-            console.error('Erro ao executar a consulta:', error)
+            console.error('Error executing query:', error)
             throw error
         }
     }

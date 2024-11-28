@@ -1,5 +1,6 @@
 import express from 'express'
 
+import databases from './router/databases/databases.js'
 import hanaV1 from './router/hana/hana-v1.js'
 
 const app = express()
@@ -9,6 +10,7 @@ const PORT = 47953
 
 class InternalServer {
     loadServer() {
+        app.use('/api/databases', databases)
         app.use('/api/hana', hanaV1)
 
         app.listen(PORT, () => {
