@@ -148,12 +148,6 @@ export class ConnectionComponent {
         password: this.connectionConfig.password
       })
 
-      console.log('criou')
-
-      const connections: any = await this.IAPI.get('/api/connections/load')
-      this.connections = connections
-      console.log(this.connections)
-
       setTimeout(() => {
         LoadingComponent.hide()
         this.close.emit()
@@ -165,20 +159,6 @@ export class ConnectionComponent {
         LoadingComponent.hide()
         this.toast.showToast(error.message, 'red')
       }, 500)
-    }
-  }
-
-  async loadConnections(): Promise<void> {
-    LoadingComponent.show()
-
-    try {
-      const connections: any = await this.IAPI.get('api/connections/load')
-      this.connections = connections
-      console.log(this.connections)
-
-      LoadingComponent.hide()
-    } catch (error) {
-      LoadingComponent.hide()
     }
   }
 }
