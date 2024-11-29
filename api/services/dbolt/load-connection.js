@@ -31,6 +31,43 @@ class LoadConnections {
             throw new Error('Failed to fetch connections')
         }
     }
+
+    async getConnectionById(id) {
+        try {
+            const connections = await this.getAllConnections()
+            const connection = connections.find((conn) => conn.id === id)
+
+            if (!connection) {
+                console.log(`Connection with ID ${id} not found.`)
+                return null
+            }
+
+            console.log(`Connection with ID "${id}" loaded successfully:`, connection)
+            return connection
+        } catch (error) {
+            console.error(`Error fetching connection with ID "${id}":`, error)
+            throw new Error('Failed to fetch connection by ID')
+        }
+    }
+
+    async deleteConnectionById(id) {
+        try {
+            const connections = await this.getAllConnections()
+            const updatedConnections = connections.filter((conn) => conn.id !== id)
+
+            if (connections.length === updatedConnections.length) {
+                console.log(`Connection with ID ${id} not found. Nothing to delete.`)
+                return false
+            }
+
+            await DbConnections.saveConnectionsFile(updatedConnections)
+            console.log(`Connection with ID ${id} deleted successfully.`)
+            return true
+        } catch (error) {
+            console.error(`Error deleting connection with ID "${id}":`, error)
+            throw new Error('Failed to delete connection by ID')
+        }
+    }
 }
 
 export default new LoadConnections()
