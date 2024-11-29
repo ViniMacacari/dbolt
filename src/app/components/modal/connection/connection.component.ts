@@ -4,18 +4,20 @@ import { FormsModule } from '@angular/forms'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { InputListComponent } from "../../elements/input-list/input-list.component"
 import { LoadingComponent } from '../loading/loading.component'
+import { ToastComponent } from "../../toast/toast.component"
 
 @Component({
   selector: 'app-connection',
   standalone: true,
   templateUrl: './connection.component.html',
   styleUrls: ['./connection.component.scss'],
-  imports: [InputListComponent, CommonModule, FormsModule]
+  imports: [InputListComponent, CommonModule, FormsModule, ToastComponent]
 })
 export class ConnectionComponent {
   @Output() close = new EventEmitter<void>()
   @ViewChild('database') databaseInput!: InputListComponent
   @ViewChild('version') versionInput!: InputListComponent
+  @ViewChild('toast') toast!: ToastComponent
 
   dataList: any = []
   versionList: any = []
@@ -100,10 +102,12 @@ export class ConnectionComponent {
 
       setTimeout(() => {
         LoadingComponent.hide()
+        this.toast.showToast('Connection successfully established!', 'green')
       }, 500)
-    } catch (error) {
+    } catch (error: any) {
       setTimeout(() => {
         LoadingComponent.hide()
+        this.toast.showToast(error.message, 'red')
       }, 500)
     }
   }

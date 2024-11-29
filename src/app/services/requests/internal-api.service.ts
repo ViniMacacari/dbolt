@@ -50,17 +50,23 @@ export class InternalApiService {
     }
   }
 
-  private handleError(error: any): Error {
-    let errorMessage = 'Ocorreu um erro desconhecido'
+  private handleError(error: any): any {
     if (error instanceof HttpErrorResponse) {
-      if (error.error instanceof ErrorEvent) {
-        errorMessage = `Erro no cliente: ${error.error.message}`
-      } else {
-        errorMessage = `Erro no servidor: ${error.status}, mensagem: ${error.message}`
+      if (error.error && typeof error.error === 'object') {
+        return error.error
       }
-    } else {
-      errorMessage = `Erro inesperado: ${error.message || error.toString()}`
+  
+      return {
+        success: false,
+        message: 'Unknown error from API',
+        error: error.message || 'No error detail available'
+      }
     }
-    return new Error(errorMessage)
-  }
+  
+    return {
+      success: false,
+      message: 'Unexpected error',
+      error: error.message || error.toString()
+    }
+  }  
 }

@@ -1,0 +1,14 @@
+<div #toastContainer class="toast-container position-fixed top-0 end-0 p-3">
+    <div *ngFor="let toast of toasts" class="toast show align-items-center text-white border-0 animate-toast">
+        <div class="d-flex toast-pai p-0">
+            <div class="toast-body d-flex justify-content-center align-items-center"
+                [ngStyle]="{'background-color': toast.color}">
+            </div>
+            <p [ngStyle]="{'color': toast.color}" class="w-100 m-0 d-flex mx-2 align-items-center blue-seven">
+                {{ toast.message
+                }}</p>
+            <i class="d-flex align-items-center justify-content-center fa-solid fa-xmark px-2 pointer"
+                [ngStyle]="{'color': toast.color}" (click)="removeToast(toast)"></i>
+        </div>
+    </div>
+</div>
