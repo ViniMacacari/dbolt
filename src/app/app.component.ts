@@ -1,14 +1,14 @@
 import { Component } from '@angular/core'
 import { RouterOutlet } from '@angular/router'
-import { NavbarComponent } from "./components/navbar/navbar.component"
+import { LoadingComponent } from "./components/modal/loading/loading.component"
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, LoadingComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
 export class AppComponent {
-  title = 'dbolt';
+  title = 'dbolt'
 }

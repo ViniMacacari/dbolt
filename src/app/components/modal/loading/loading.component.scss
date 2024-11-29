@@ -1,0 +1,42 @@
+.modal {
+    &-backdrop {
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    &-dialog {
+        max-width: 300px;
+        width: 100%;
+        margin: auto;
+
+        @media (max-width: 570px) {
+            max-width: 60%;
+        }
+
+        &-centered {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    }
+
+    &-content {
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    &-body {
+        padding: 20px;
+        text-align: center;
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            color: #000000;
+        }
+
+        p {
+            margin-top: 15px;
+            color: #000000;
+        }
+    }
+}

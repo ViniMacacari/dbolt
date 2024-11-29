@@ -1,8 +1,9 @@
 import { Component, EventEmitter, Output, ViewChild } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
-import { InputListComponent } from "../../elements/input-list/input-list.component"
 import { InternalApiService } from '../../../services/requests/internal-api.service'
+import { InputListComponent } from "../../elements/input-list/input-list.component"
+import { LoadingComponent } from '../loading/loading.component'
 
 @Component({
   selector: 'app-connection',
@@ -82,5 +83,28 @@ export class ConnectionComponent {
 
   onClose() {
     this.close.emit()
+  }
+
+  async testConnection(): Promise<void> {
+    LoadingComponent.show()
+
+    try {
+      const result: any = await this.IAPI.post(`/api/hana/${this.sgbdVersion}/test-connection`, {
+        host: this.connectionConfig.host,
+        port: this.connectionConfig.port,
+        user: this.connectionConfig.user,
+        password: this.connectionConfig.password
+      })
+
+      console.log(result)
+
+      setTimeout(() => {
+        LoadingComponent.hide()
+      }, 500)
+    } catch (error) {
+      setTimeout(() => {
+        LoadingComponent.hide()
+      }, 500)
+    }
   }
 }

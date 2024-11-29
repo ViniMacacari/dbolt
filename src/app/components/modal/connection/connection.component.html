@@ -33,7 +33,7 @@
                 <div class="d-flex w-100 gap-2">
                     <input [(ngModel)]="connectionConfig.password" type="password" class="input-page"
                         placeholder="Password" />
-                    <button class="btn-page-2 bg-blue">Try</button>
+                    <button class="btn-page-2 bg-blue" (click)="testConnection()">Try</button>
                 </div>
             </div>
         </div>

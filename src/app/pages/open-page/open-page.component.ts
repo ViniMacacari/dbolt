@@ -1,8 +1,7 @@
 import { Component } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { NgOptimizedImage } from '@angular/common'
-import { ConnectionComponent } from "../../components/modal/connection/connection.component"
 import { InternalApiService } from '../../services/requests/internal-api.service'
+import { ConnectionComponent } from "../../components/modal/connection/connection.component"
 
 @Component({
   selector: 'app-open-page',
@@ -26,7 +25,7 @@ export class OpenPageComponent {
   }
 
   async getConfigurations(): Promise<void> {
-    
+
   }
 
   openModal() {
