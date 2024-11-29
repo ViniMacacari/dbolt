@@ -105,7 +105,7 @@ export class ConnectionComponent {
     LoadingComponent.show()
 
     try {
-      const result: any = await this.IAPI.post(`/api/hana/${this.sgbdVersion}/test-connection`, {
+      const result: any = await this.IAPI.post(`/api/${this.sgbd}/${this.sgbdVersion}/test-connection`, {
         host: this.connectionConfig.host,
         port: this.connectionConfig.port,
         user: this.connectionConfig.user,
@@ -130,7 +130,7 @@ export class ConnectionComponent {
     console.log('newconection')
 
     try {
-      await this.IAPI.post(`/api/hana/${this.sgbdVersion}/test-connection`, {
+      await this.IAPI.post(`/api/${this.sgbd}/${this.sgbdVersion}/test-connection`, {
         host: this.connectionConfig.host,
         port: this.connectionConfig.port,
         user: this.connectionConfig.user,

@@ -6,7 +6,11 @@ class PgV1 {
         if (!config || typeof config !== 'object') {
             throw new Error('Invalid configuration')
         }
-        this.config = config
+        this.config = {
+            ...config,
+            database: config.database || 'postgres'
+        }
+
         this.connection = null
     }
 
