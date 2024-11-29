@@ -45,7 +45,14 @@ export class OpenPageComponent {
     console.log(this.connections)
   }
 
-  onCardClick(id: number): void {
-    console.log('Card clicked:', id)
+  async onCardClick(id: number): Promise<void> {
+    console.log(id)
+    const conn = await this.IAPI.get(`/api/connections/${id}`)
+    console.log(conn)
+  }
+
+  async deleteConnection(id: number): Promise<void> {
+    await this.IAPI.delete(`/api/connections/${id}`)
+    await this.loadConnections()
   }
 }

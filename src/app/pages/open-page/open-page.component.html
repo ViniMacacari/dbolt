@@ -7,6 +7,7 @@
     <div class="cards gap-3">
         <div class="card" *ngFor="let connection of connections" (click)="onCardClick(connection.id)">
             <div class="d-flex flex-column align-items-center justify-content-center w-100">
+                <img class="trash" src="icons/delete.png" (click)="deleteConnection(connection.id)">
                 <div class="d-flex w-100 gap-2">
                     <h2 class="subtitle-min">{{ connection.database }}</h2>
                     <p class="text-min">{{ connection.version }}</p>
