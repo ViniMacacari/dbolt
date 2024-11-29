@@ -16,13 +16,14 @@
     background-color: #1b1b1b;
     color: #e8eaed;
     border-radius: 15px;
-    /* Input arredondado */
+
+    font-family: 'Nunito';
+    font-weight: 700;
 }
 
 .dropdown-list {
     position: absolute;
     top: calc(100% + 5px);
-    /* Flutua abaixo do input */
     left: 0;
     right: 0;
     max-height: 200px;
@@ -30,7 +31,6 @@
     border: 1px solid #353535;
     background-color: #1b1b1b;
     z-index: 9999;
-    /* Alta prioridade para aparecer sobre outros elementos */
     list-style: none;
     margin: 0;
     padding: 0;
@@ -39,6 +39,9 @@
 }
 
 .dropdown-item {
+    font-family: 'Nunito';
+    font-weight: 500;
+
     padding: 12px;
     color: #e8eaed;
     cursor: pointer;

@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Output } from '@angular/core'
+import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { InputListComponent } from "../../elements/input-list/input-list.component"
 
@@ -7,13 +8,16 @@ import { InputListComponent } from "../../elements/input-list/input-list.compone
   standalone: true,
   templateUrl: './connection.component.html',
   styleUrls: ['./connection.component.scss'],
-  imports: [InputListComponent]
+  imports: [InputListComponent, CommonModule]
 })
 export class ConnectionComponent {
   @Output() close = new EventEmitter<void>()
 
   dataList: any = []
   versionList: any = []
+
+  sgbd: string = ''
+  sgbdVersion: string = ''
 
   constructor(
     private IAPI: InternalApiService
@@ -32,10 +36,11 @@ export class ConnectionComponent {
 
   onDatabaseSelected(item: { [key: string]: string | number } | null): void {
     if (item === null) {
-      console.log('None selected')
+      this.sgbd = ''
       this.versionList = []
     } else {
-      console.log('Database selected:', item)
+      this.sgbd = item['name'].toString()
+
       const selectedDatabase = this.dataList.find((db: any) => db.name === item['name'])
       this.versionList = selectedDatabase?.versions.map((version: any) => ({
         name: version.name
@@ -48,7 +53,7 @@ export class ConnectionComponent {
     if (item === null) {
       console.log('None selected')
     } else {
-      console.log('Version selected:', item)
+      this.sgbdVersion = item['name'].toString()
     }
   }
 

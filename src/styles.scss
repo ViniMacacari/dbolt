@@ -34,9 +34,15 @@ h6 {
     padding: 10px;
     border-radius: 25px;
 
-    width: 125px;
+    width: 150px;
 
     font-family: 'Nunito';
+
+    transition: all 0.2s ease-in-out;
+
+    &:hover {
+        background-color: #303030;
+    }
 }
 
 .btn-cancel {
@@ -48,7 +54,27 @@ h6 {
     padding: 10px;
     border-radius: 25px;
 
-    width: 125px;
+    width: 150px;
 
     font-family: 'Nunito';
+
+    transition: all 0.2s ease-in-out;
+
+    &:hover {
+        background-color: #b81414;
+    }
+}
+
+.input-page {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #353535;
+    border-radius: 15px;
+    outline: none;
+
+    font-family: 'Nunito';
+    font-weight: 500;
+    font-size: 14px;
+    background-color: #1b1b1b;
+    color: #e8eaed;
 }

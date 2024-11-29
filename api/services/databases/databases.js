@@ -6,7 +6,7 @@ class Databases {
                 database: 'Hana',
                 versions: [
                     {
-                        name: 'v1',
+                        name: 'global-version',
                         service: 'hana-v1',
                         date: '2024-11-28'
                     }
