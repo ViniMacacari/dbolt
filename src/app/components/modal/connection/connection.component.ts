@@ -57,6 +57,12 @@ export class ConnectionComponent {
       this.sgbd = ''
       this.versionList = []
       this.databaseInput.clearInput()
+      this.connectionConfig = {
+        host: '',
+        port: null,
+        user: '',
+        password: ''
+      }
 
       if (this.sgbdVersion) {
         this.versionInput.clearInput()
@@ -64,6 +70,13 @@ export class ConnectionComponent {
     } else {
       if (this.sgbdVersion) {
         this.versionInput.clearInput()
+      }
+
+      this.connectionConfig = {
+        host: '',
+        port: null,
+        user: '',
+        password: ''
       }
 
       this.sgbd = item['name'].toString()
@@ -77,7 +90,7 @@ export class ConnectionComponent {
 
   onVersionSelected(item: { [key: string]: string | number } | null): void {
     if (item === null) {
-      console.log('None selected')
+
     } else {
       this.sgbdVersion = item['name'].toString()
     }
@@ -97,8 +110,6 @@ export class ConnectionComponent {
         user: this.connectionConfig.user,
         password: this.connectionConfig.password
       })
-
-      console.log(result)
 
       setTimeout(() => {
         LoadingComponent.hide()
