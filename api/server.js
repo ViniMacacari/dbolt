@@ -1,7 +1,9 @@
 import express from 'express'
 import cors from 'cors'
 
-import databases from './router/databases/databases.js'
+import databases from './router/dbolt/databases.js'
+import connections from './router/dbolt/connections.js'
+
 import hanaV1 from './router/hana/hana-v1.js'
 
 const app = express()
@@ -14,6 +16,7 @@ const PORT = 47953
 class InternalServer {
     loadServer() {
         app.use('/api/databases', databases)
+        app.use('/api/connections', connections)
         app.use('/api/hana', hanaV1)
 
         app.listen(PORT, () => {

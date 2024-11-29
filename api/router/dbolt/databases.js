@@ -1,5 +1,5 @@
 import express from 'express'
-import Databases from '../../services/databases/databases.js'
+import Databases from '../../services/dbolt/databases.js'
 
 const router = express.Router()
 
