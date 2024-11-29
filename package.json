@@ -15,7 +15,7 @@
     "build-angular": "ng build",
     "electron-pack": "electron-packager . dbolt --platform=win32 --arch=x64 --out=dist --overwrite --asar",
     "build-installer": "electron-builder",
-    "dbolt": "npm run build-angular && npm run electron-pack && npm run build-installer"
+    "dbolt": "npm run build-angular && npm run build-installer"
   },
   "build": {
     "appId": "com.dbolt.app",
@@ -26,6 +26,7 @@
     "files": [
       "main.js",
       "dist/**/*",
+      "api/**/*",
       "node_modules/**/*"
     ],
     "win": {
