@@ -48,11 +48,12 @@ export class InputListComponent implements OnChanges {
 
   @HostListener('document:click', ['$event.target'])
   closeDropdown(target: HTMLElement): void {
-    const dropdownElement = document.querySelector('.dropdown-container')
-    if (this.isDropdownOpen && dropdownElement && !dropdownElement.contains(target)) {
+    const dropdownElement = target.closest('.dropdown-container')
+    if (!dropdownElement) {
       this.isDropdownOpen = false
     }
   }
+
 
   private updateFilteredList(): void {
     const query = this.searchValue.toLowerCase().trim()

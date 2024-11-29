@@ -6,7 +6,15 @@
         </div>
         <div class="modal-body">
             <h2 class="subtitle">Choose the database type.</h2>
-            <app-input-list [list]="dataList" [displayKey]="'name'" [width]="'400px'" (itemSelected)="onItemSelected($event)"></app-input-list>
+            <app-input-list [list]="dataList" [displayKey]="'name'" [width]="'400px'"
+                (itemSelected)="onDatabaseSelected($event)"></app-input-list>
+
+            <div class="my-4"></div>
+
+            <h2 class="subtitle">Choose a class connection version</h2>
+            <app-input-list [list]="versionList" [displayKey]="'name'" [width]="'400px'"
+                (itemSelected)="onVersionSelected($event)">
+            </app-input-list>
         </div>
         <div class="modal-footer">
             <button class="btn-cancel" (click)="onClose()">Cancel</button>
