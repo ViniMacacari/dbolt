@@ -15,6 +15,7 @@ import { ConnectionComponent } from "../../components/modal/connection/connectio
 })
 export class OpenPageComponent {
   isModalOpen = false
+  connections: any[] = []
 
   constructor(
     private IAPI: InternalApiService
@@ -22,6 +23,7 @@ export class OpenPageComponent {
 
   async ngAfterViewInit(): Promise<void> {
     this.getConfigurations()
+    await this.loadConnections()
   }
 
   async getConfigurations(): Promise<void> {
@@ -33,8 +35,17 @@ export class OpenPageComponent {
     this.isModalOpen = true
   }
 
-  closeModal() {
-    console.log('Fechando modal')
+  async closeModal() {
+    await this.loadConnections()
     this.isModalOpen = false
+  }
+
+  async loadConnections(): Promise<void> {
+    this.connections = await this.IAPI.get('/api/connections/load')
+    console.log(this.connections)
+  }
+
+  onCardClick(id: number): void {
+    console.log('Card clicked:', id)
   }
 }
