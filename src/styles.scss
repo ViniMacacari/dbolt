@@ -24,3 +24,31 @@ h6 {
     font-size: 1.2em;
     font-weight: 500;
 }
+
+.btn-page {
+    background-color: #1b1b1b;
+    color: #e8eaed;
+
+    border: none;
+    outline: none;
+    padding: 10px;
+    border-radius: 25px;
+
+    width: 125px;
+
+    font-family: 'Nunito';
+}
+
+.btn-cancel {
+    background-color: #8d0000;
+    color: #e8eaed;
+
+    border: none;
+    outline: none;
+    padding: 10px;
+    border-radius: 25px;
+
+    width: 125px;
+
+    font-family: 'Nunito';
+}

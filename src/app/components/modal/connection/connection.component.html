@@ -1,5 +1,5 @@
 <div class="modal-overlay">
-    <div class="modal-content">
+    <div class="modal-content p-3">
         <div class="modal-header">
             <h5 class="title text-center w-100">Create a new connection</h5>
             <button class="close-btn" (click)="onClose()">×</button>
@@ -9,8 +9,8 @@
             <app-input-list [list]="dataList" [displayKey]="'name'" [width]="'400px'" (itemSelected)="onItemSelected($event)"></app-input-list>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" (click)="onClose()">Fechar</button>
-            <button class="btn btn-primary">Salvar</button>
+            <button class="btn-cancel" (click)="onClose()">Cancel</button>
+            <button class="btn-page">Try</button>
         </div>
     </div>
 </div>
