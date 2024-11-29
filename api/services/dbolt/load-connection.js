@@ -52,15 +52,11 @@ class LoadConnections {
 
     async deleteConnectionById(id) {
         try {
-            const connections = await this.getAllConnections()
-            const updatedConnections = connections.filter((conn) => conn.id !== id)
-
-            if (connections.length === updatedConnections.length) {
+            const result = await DbConnections.deleteConnectionById(id)
+            if (!result) {
                 console.log(`Connection with ID ${id} not found. Nothing to delete.`)
                 return false
             }
-
-            await DbConnections.saveConnectionsFile(updatedConnections)
             console.log(`Connection with ID ${id} deleted successfully.`)
             return true
         } catch (error) {
