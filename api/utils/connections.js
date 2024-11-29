@@ -25,12 +25,22 @@ class DbConnections {
 
             try {
                 const data = await fs.readFile(filePath, 'utf8')
-                existingConnections = JSON.parse(data)
+                existingConnections = data ? JSON.parse(data) : []
             } catch (error) {
                 if (error.code !== 'ENOENT') throw error
             }
 
-            const updatedConnections = [...existingConnections, ...newConnections]
+            const lastId = existingConnections.length > 0
+                ? Math.max(...existingConnections.map(conn => conn.id || 0))
+                : -1
+
+            const updatedConnections = [
+                ...existingConnections,
+                ...newConnections.map((conn, index) => ({
+                    id: lastId + index + 1,
+                    ...conn
+                }))
+            ]
 
             await fs.writeFile(filePath, JSON.stringify(updatedConnections, null, 2), 'utf8')
         } catch (error) {
@@ -44,7 +54,7 @@ class DbConnections {
 
         try {
             const data = await fs.readFile(filePath, 'utf8')
-            return JSON.parse(data)
+            return data ? JSON.parse(data) : []
         } catch (error) {
             if (error.code === 'ENOENT') {
                 console.error('Connections file does not exist.')

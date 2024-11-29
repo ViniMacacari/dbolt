@@ -28,6 +28,7 @@ export class ConnectionComponent {
     user: '',
     password: ''
   }
+  connections: any = []
 
   private _sgbd: string = ''
 
@@ -120,6 +121,64 @@ export class ConnectionComponent {
         LoadingComponent.hide()
         this.toast.showToast(error.message, 'red')
       }, 500)
+    }
+  }
+
+  async newConnection(): Promise<any> {
+    LoadingComponent.show()
+
+    console.log('newconection')
+
+    try {
+      await this.IAPI.post(`/api/hana/${this.sgbdVersion}/test-connection`, {
+        host: this.connectionConfig.host,
+        port: this.connectionConfig.port,
+        user: this.connectionConfig.user,
+        password: this.connectionConfig.password
+      })
+
+      console.log('conectou')
+
+      await this.IAPI.post('/api/connections/new', {
+        database: this.sgbd,
+        version: this.sgbdVersion,
+        host: this.connectionConfig.host,
+        port: this.connectionConfig.port,
+        user: this.connectionConfig.user,
+        password: this.connectionConfig.password
+      })
+
+      console.log('criou')
+
+      const connections: any = await this.IAPI.get('/api/connections/load')
+      this.connections = connections
+      console.log(this.connections)
+
+      setTimeout(() => {
+        LoadingComponent.hide()
+        this.close.emit()
+        this.toast.showToast('New connection successfully created!', 'green')
+      }, 500)
+    } catch (error: any) {
+      console.error(error)
+      setTimeout(() => {
+        LoadingComponent.hide()
+        this.toast.showToast(error.message, 'red')
+      }, 500)
+    }
+  }
+
+  async loadConnections(): Promise<void> {
+    LoadingComponent.show()
+
+    try {
+      const connections: any = await this.IAPI.get('api/connections/load')
+      this.connections = connections
+      console.log(this.connections)
+
+      LoadingComponent.hide()
+    } catch (error) {
+      LoadingComponent.hide()
     }
   }
 }
