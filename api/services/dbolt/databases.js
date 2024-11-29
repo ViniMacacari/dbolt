@@ -21,12 +21,7 @@ class Databases {
                         name: 'v9',
                         service: 'v9',
                         date: '2024-11-28'
-                    },
-                    {
-                        name: 'v8',
-                        service: 'pg-v8',
-                        date: '2024-11-28'
-                    },
+                    }
                 ],
                 active: true
             }
