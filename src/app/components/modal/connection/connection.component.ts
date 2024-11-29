@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Output, ViewChild } from '@angular/core'
 import { CommonModule } from '@angular/common'
+import { FormsModule } from '@angular/forms'
 import { InputListComponent } from "../../elements/input-list/input-list.component"
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 
@@ -8,7 +9,7 @@ import { InternalApiService } from '../../../services/requests/internal-api.serv
   standalone: true,
   templateUrl: './connection.component.html',
   styleUrls: ['./connection.component.scss'],
-  imports: [InputListComponent, CommonModule]
+  imports: [InputListComponent, CommonModule, FormsModule]
 })
 export class ConnectionComponent {
   @Output() close = new EventEmitter<void>()
@@ -17,9 +18,15 @@ export class ConnectionComponent {
 
   dataList: any = []
   versionList: any = []
+  sgbdVersion: string = ''
+  connectionConfig: any = {
+    host: '',
+    port: null,
+    user: '',
+    password: ''
+  }
 
   private _sgbd: string = ''
-  sgbdVersion: string = ''
 
   constructor(private IAPI: InternalApiService) { }
 
@@ -55,7 +62,7 @@ export class ConnectionComponent {
       if (this.sgbdVersion) {
         this.versionInput.clearInput()
       }
-      
+
       this.sgbd = item['name'].toString()
 
       const selectedDatabase = this.dataList.find((db: any) => db.name === item['name'])

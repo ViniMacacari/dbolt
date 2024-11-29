@@ -24,10 +24,17 @@
                 </div>
             </div>
             <div *ngIf="sgbd && sgbdVersion" class="d-flex flex-column w-100 gap-2">
-                <input type="text" class="input-page" placeholder="Host" />
-                <input type="text" class="input-page" placeholder="Port" />
-                <input type="text" class="input-page" placeholder="User" />
-                <input type="password" class="input-page" placeholder="Password" />
+                <div class="d-flex w-100 gap-2">
+                    <input [(ngModel)]="connectionConfig.host" type="text" class="input-page" placeholder="Host" />
+                    <input [(ngModel)]="connectionConfig.port" type="number" class="input-page input-min"
+                        placeholder="Port" />
+                </div>
+                <input [(ngModel)]="connectionConfig.user" type="text" class="input-page" placeholder="User" />
+                <div class="d-flex w-100 gap-2">
+                    <input [(ngModel)]="connectionConfig.password" type="password" class="input-page"
+                        placeholder="Password" />
+                    <button class="btn-page-2 bg-blue">Try</button>
+                </div>
             </div>
         </div>
         <div class="modal-footer">

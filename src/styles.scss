@@ -45,6 +45,26 @@ h6 {
     }
 }
 
+.btn-page-2 {
+    min-width: 100px;
+
+    background-color: #1b1b1b;
+    color: #e8eaed;
+
+    border: none;
+    outline: none;
+    padding: 10px;
+    border-radius: 15px;
+
+    font-family: 'Nunito';
+
+    transition: all 0.2s ease-in-out;
+
+    &:hover {
+        background-color: #303030;
+    }
+}
+
 .btn-cancel {
     background-color: #8d0000;
     color: #e8eaed;
@@ -77,4 +97,29 @@ h6 {
     font-size: 14px;
     background-color: #1b1b1b;
     color: #e8eaed;
+
+    -moz-appearance: textfield;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.input-page::-webkit-inner-spin-button,
+.input-page::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.input-min {
+    width: 100px;
+}
+
+// Background Color
+
+.bg-blue {
+    background-color: #1c2041;
+    color: #e8eaed;
+
+    &:hover {
+        background-color: #1f2775;
+    }
 }
