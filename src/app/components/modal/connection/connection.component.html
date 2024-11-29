@@ -6,7 +6,7 @@
         </div>
         <div class="modal-body">
             <h2 class="subtitle">Choose the database type.</h2>
-            <input type="text" class="form-control" placeholder="Digite algo" />
+            <app-input-list [list]="dataList" [displayKey]="'name'" [width]="'400px'" (itemSelected)="onItemSelected($event)"></app-input-list>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" (click)="onClose()">Fechar</button>

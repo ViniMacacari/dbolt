@@ -26,11 +26,7 @@ export class OpenPageComponent {
   }
 
   async getConfigurations(): Promise<void> {
-    setTimeout(async () => {
-      const result = await this.IAPI.get('/api/databases/avaliables')
-
-      console.log(result)
-    }, 100)
+    
   }
 
   openModal() {
