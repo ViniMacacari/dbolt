@@ -5,6 +5,7 @@ import databases from './router/dbolt/databases.js'
 import connections from './router/dbolt/connections.js'
 
 import hanaV1 from './router/hana/hana-v1.js'
+import pgV9 from './router/postgres/v9.js'
 
 const app = express()
 
@@ -17,7 +18,9 @@ class InternalServer {
     loadServer() {
         app.use('/api/databases', databases)
         app.use('/api/connections', connections)
+
         app.use('/api/hana', hanaV1)
+        app.use('/api/pg', pgV9)
 
         app.listen(PORT, () => {
             console.log(`App listening on port ${PORT}`)
