@@ -54,6 +54,12 @@ export class InputListComponent implements OnChanges {
     }
   }
 
+  clearInput(): void {
+    this.searchValue = ''
+    this.selectedItem = null
+    this.itemSelected.emit(null)
+    this.updateFilteredList()
+  }
 
   private updateFilteredList(): void {
     const query = this.searchValue.toLowerCase().trim()

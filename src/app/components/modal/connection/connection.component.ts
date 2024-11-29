@@ -1,7 +1,7 @@
-import { Component, EventEmitter, Output } from '@angular/core'
+import { Component, EventEmitter, Output, ViewChild } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { InputListComponent } from "../../elements/input-list/input-list.component"
+import { InternalApiService } from '../../../services/requests/internal-api.service'
 
 @Component({
   selector: 'app-connection',
@@ -12,19 +12,18 @@ import { InputListComponent } from "../../elements/input-list/input-list.compone
 })
 export class ConnectionComponent {
   @Output() close = new EventEmitter<void>()
+  @ViewChild('database') databaseInput!: InputListComponent
+  @ViewChild('version') versionInput!: InputListComponent
 
   dataList: any = []
   versionList: any = []
 
-  sgbd: string = ''
+  private _sgbd: string = ''
   sgbdVersion: string = ''
 
-  constructor(
-    private IAPI: InternalApiService
-  ) { }
+  constructor(private IAPI: InternalApiService) { }
 
   async ngAfterViewInit(): Promise<void> {
-    console.log('/api/databases/avaliable')
     const result: any = await this.IAPI.get('/api/databases/avaliable')
 
     this.dataList = result.map((item: { id: number, database: string, versions: any[] }) => ({
@@ -34,18 +33,35 @@ export class ConnectionComponent {
     }))
   }
 
+  get sgbd(): string {
+    return this._sgbd
+  }
+
+  set sgbd(value: string) {
+    this._sgbd = value
+    this.sgbdVersion = ''
+  }
+
   onDatabaseSelected(item: { [key: string]: string | number } | null): void {
     if (item === null) {
       this.sgbd = ''
       this.versionList = []
+      this.databaseInput.clearInput()
+
+      if (this.sgbdVersion) {
+        this.versionInput.clearInput()
+      }
     } else {
+      if (this.sgbdVersion) {
+        this.versionInput.clearInput()
+      }
+      
       this.sgbd = item['name'].toString()
 
       const selectedDatabase = this.dataList.find((db: any) => db.name === item['name'])
       this.versionList = selectedDatabase?.versions.map((version: any) => ({
         name: version.name
       })) || []
-      console.log('Filtered versions:', this.versionList)
     }
   }
 

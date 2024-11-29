@@ -15,7 +15,7 @@ class Databases {
             },
             {
                 id: 2,
-                database: 'Postgres SQL',
+                database: 'Postgres',
                 versions: [
                     {
                         name: 'v9+',

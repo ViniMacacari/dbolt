@@ -5,13 +5,13 @@
         </div>
         <div class="modal-body">
             <h2 class="subtitle">Choose the database type.</h2>
-            <app-input-list [list]="dataList" [displayKey]="'name'" [width]="'400px'"
+            <app-input-list #database [list]="dataList" [displayKey]="'name'" [width]="'400px'"
                 (itemSelected)="onDatabaseSelected($event)"></app-input-list>
 
             <div class="my-4"></div>
 
             <h2 *ngIf="sgbd" class="subtitle">Choose a class connection version</h2>
-            <app-input-list *ngIf="sgbd" [list]="versionList" [displayKey]="'name'" [width]="'400px'"
+            <app-input-list #version *ngIf="sgbd" [list]="versionList" [displayKey]="'name'" [width]="'400px'"
                 (itemSelected)="onVersionSelected($event)">
             </app-input-list>
 
@@ -20,7 +20,7 @@
             <div *ngIf="sgbd && sgbdVersion" class="d-flex align-items-center w-100">
                 <h2 class="subtitle w-100">Connection details</h2>
                 <div class="img-test">
-                    <img src="icons/test-connection.png" height="20px" width="20px">
+                    <img src="db-logo/{{ sgbd }}.png" height="20px" width="20px">
                 </div>
             </div>
             <div *ngIf="sgbd && sgbdVersion" class="d-flex flex-column w-100 gap-2">
