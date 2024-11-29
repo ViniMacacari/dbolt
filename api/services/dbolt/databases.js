@@ -18,8 +18,8 @@ class Databases {
                 database: 'Postgres',
                 versions: [
                     {
-                        name: 'v9+',
-                        service: 'pg-v9',
+                        name: 'v9',
+                        service: 'v9',
                         date: '2024-11-28'
                     },
                     {
