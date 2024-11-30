@@ -1,5 +1,6 @@
 import { Component } from '@angular/core'
 import { CommonModule } from '@angular/common'
+import { Router } from '@angular/router'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { ConnectionComponent } from "../../components/modal/connection/connection.component"
 
@@ -18,7 +19,8 @@ export class OpenPageComponent {
   connections: any[] = []
 
   constructor(
-    private IAPI: InternalApiService
+    private IAPI: InternalApiService,
+    private router: Router
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
@@ -46,9 +48,7 @@ export class OpenPageComponent {
   }
 
   async onCardClick(id: number): Promise<void> {
-    console.log(id)
-    const conn = await this.IAPI.get(`/api/connections/${id}`)
-    console.log(conn)
+    this.router.navigate([`/database-management/${id}`])
   }
 
   async deleteConnection(id: number): Promise<void> {

@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { UserPageComponent } from './user-page.component';
+import { DatabaseManagerComponent } from './database-manager.component';
 
-describe('UserPageComponent', () => {
-  let component: UserPageComponent;
-  let fixture: ComponentFixture<UserPageComponent>;
+describe('DatabaseManagerComponent', () => {
+  let component: DatabaseManagerComponent;
+  let fixture: ComponentFixture<DatabaseManagerComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [UserPageComponent]
+      imports: [DatabaseManagerComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(UserPageComponent);
+    fixture = TestBed.createComponent(DatabaseManagerComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
