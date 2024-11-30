@@ -1,0 +1,32 @@
+.content {
+    padding: 5px 35px;
+}
+
+.tab {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background-color: #1b1b1b;
+    border-radius: 15px;
+
+    height: 30px;
+    max-width: 240px;
+    width: 240px;
+    min-width: 50px;
+    padding: 5px 15px;
+
+    cursor: pointer;
+
+    .text {
+        width: 100%;
+
+        p {
+            margin: 0;
+
+            text-wrap: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
+}
