@@ -1,0 +1,46 @@
+.sidebar {
+    width: 320px;
+    height: 100vh;
+    background: #131313;
+    transition: width 0.3s ease;
+    overflow: hidden;
+    padding: 10px;
+
+    &.open {
+        width: 100px;
+    }
+
+    button {
+        width: 100%;
+        margin-bottom: 20px;
+    }
+
+    ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+
+        li {
+            margin: 10px 0;
+
+            a {
+                display: block;
+                padding: 10px;
+                text-decoration: none;
+                color: #b8b8b9;
+                transition: color 0.3s;
+
+                &:hover {
+                    color: #007bff;
+                }
+            }
+        }
+    }
+
+    .toogle-div {
+        cursor: pointer;
+
+        background-color: #232020;
+        border-radius: 15px;
+    }
+}
