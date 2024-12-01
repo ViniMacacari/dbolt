@@ -1,4 +1,4 @@
-<div class="content">
+<div class="content pt-4">
     <h1 class="title text-center">DBolt Database Manager</h1>
     <h2 class="subtitle text-center">Choose your database</h2>
 
@@ -26,3 +26,4 @@
 </div>
 
 <app-connection *ngIf="isModalOpen" (close)="closeModal()"></app-connection>
+<app-toast #toast></app-toast>

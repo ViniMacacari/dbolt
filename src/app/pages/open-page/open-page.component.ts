@@ -1,15 +1,18 @@
-import { Component } from '@angular/core'
+import { Component, ViewChild } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { Router } from '@angular/router'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { ConnectionComponent } from "../../components/modal/connection/connection.component"
+import { ToastComponent } from '../../components/toast/toast.component'
+import { LoadingComponent } from '../../components/modal/loading/loading.component'
 
 @Component({
   selector: 'app-open-page',
   standalone: true,
   imports: [
     CommonModule,
-    ConnectionComponent
+    ConnectionComponent,
+    ToastComponent
   ],
   templateUrl: './open-page.component.html',
   styleUrl: './open-page.component.scss'
@@ -17,6 +20,8 @@ import { ConnectionComponent } from "../../components/modal/connection/connectio
 export class OpenPageComponent {
   isModalOpen = false
   connections: any[] = []
+
+  @ViewChild('toast') toast!: ToastComponent
 
   constructor(
     private IAPI: InternalApiService,
@@ -33,7 +38,6 @@ export class OpenPageComponent {
   }
 
   openModal() {
-    console.log('Abrindo modal')
     this.isModalOpen = true
   }
 
@@ -44,11 +48,21 @@ export class OpenPageComponent {
 
   async loadConnections(): Promise<void> {
     this.connections = await this.IAPI.get('/api/connections/load')
-    console.log(this.connections)
   }
 
   async onCardClick(id: number): Promise<void> {
-    this.router.navigate([`/database-management/${id}`])
+    LoadingComponent.show()
+    try {
+      const result: any = await this.IAPI.get(`/api/connections/${id}`)
+      console.log(result)
+      await this.IAPI.post(`/api/${result.database}/${result.version}/connect`, result)
+      LoadingComponent.hide()
+      this.router.navigate([`/database-management/${id}`])
+    } catch (error) {
+      console.error(error)
+      LoadingComponent.hide()
+      this.toast.showToast('Connection failed', 'red')
+    }
   }
 
   async deleteConnection(id: number): Promise<void> {
