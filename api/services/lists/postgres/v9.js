@@ -47,4 +47,4 @@ class LSPg1 {
     }
 }
 
-export default new LSPg1()
+export default LSPg1

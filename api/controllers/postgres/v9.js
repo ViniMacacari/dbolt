@@ -24,14 +24,14 @@ class CPostgresV1 {
 
     async listDatabasesAndSchemas(req, res) {
         try {
-            const result = await LSPg1.listDatabasesAndSchemas()
+            const lspg1 = new LSPg1()
+            const result = await lspg1.listDatabasesAndSchemas()
             if (result.success) {
                 return res.status(200).json(result)
             } else {
                 return res.status(500).json(result)
             }
         } catch (error) {
-            console.error('Controller error:', error)
             return res.status(500).json({ success: false, message: 'Server error', error: error.message })
         }
     }

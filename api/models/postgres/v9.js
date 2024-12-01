@@ -2,26 +2,29 @@ import pkg from 'pg'
 const { Client } = pkg
 
 class PgV1 {
-    constructor(config) {
-        if (!config || typeof config !== 'object') {
-            throw new Error('Invalid configuration')
+    constructor() {
+        if (!PgV1.instance) {
+            this.connection = null
+            PgV1.instance = this
         }
-        this.config = {
-            ...config,
-            database: config.database || 'postgres'
-        }
-
-        this.connection = null
+        return PgV1.instance
     }
 
-    async connect() {
+    async connect(config) {
         if (this.connection) {
             console.warn('Already connected to PostgreSQL')
             return this.connection
         }
 
+        if (!config || typeof config !== 'object') {
+            throw new Error('Invalid configuration')
+        }
+
         try {
-            this.connection = new Client(this.config)
+            this.connection = new Client({
+                ...config,
+                database: config.database || 'postgres'
+            })
             await this.connection.connect()
             console.log('Connected to PostgreSQL successfully')
             return this.connection

@@ -2,9 +2,9 @@ import PgV1 from "../../../models/postgres/v9.js"
 
 class SPgV1 {
     async testConnection(config) {
-        const db = new PgV1(config)
+        const db = new PgV1()
         try {
-            await db.connect()
+            await db.connect(config)
             await db.disconnect()
             return { success: true, message: 'Connection successfully established!' }
         } catch (error) {
@@ -14,9 +14,9 @@ class SPgV1 {
     }
 
     async connection(config) {
-        const db = new PgV1(config)
+        const db = new PgV1()
         try {
-            await db.connect()
+            await db.connect(config)
             return { success: true, message: 'Connection successfully established!' }
         } catch (error) {
             console.error('Error to connect:', error)
