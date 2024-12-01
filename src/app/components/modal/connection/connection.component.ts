@@ -127,8 +127,6 @@ export class ConnectionComponent {
   async newConnection(): Promise<any> {
     LoadingComponent.show()
 
-    console.log('newconection')
-
     try {
       await this.IAPI.post(`/api/${this.sgbd}/${this.sgbdVersion}/test-connection`, {
         host: this.connectionConfig.host,
@@ -136,8 +134,6 @@ export class ConnectionComponent {
         user: this.connectionConfig.user,
         password: this.connectionConfig.password
       })
-
-      console.log('conectou')
 
       await this.IAPI.post('/api/connections/new', {
         database: this.sgbd,
