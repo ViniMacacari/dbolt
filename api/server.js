@@ -20,7 +20,7 @@ class InternalServer {
         app.use('/api/connections', connections)
 
         app.use('/api/Hana', hanaV1)
-        app.use('/api/Postgres', pgV9)
+        app.use('/api/Postgres/v9', pgV9)
 
         app.listen(PORT, () => {
             console.log(`App listening on port ${PORT}`)

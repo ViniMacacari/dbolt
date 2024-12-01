@@ -62,6 +62,10 @@ class PgV1 {
             throw error
         }
     }
+
+    getStatus() {
+        return this.connection ? 'connected' : 'disconnected'
+    }
 }
 
 export default PgV1
