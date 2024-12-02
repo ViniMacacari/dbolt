@@ -45,6 +45,17 @@ export class DatabaseManagerComponent {
   }
 
   async pageConnectionConfig(): Promise<void> {
+    if (!this.databasesSchemasActiveConnections) {
+      this.databasesSchemasActiveConnections = { info: [], data: [] }
+    }
+
+    if (!this.databasesSchemasActiveConnections.info) {
+      this.databasesSchemasActiveConnections.info = []
+    }
+    if (!this.databasesSchemasActiveConnections.data) {
+      this.databasesSchemasActiveConnections.data = []
+    }
+
     try {
       this.connections = await this.IAPI.get('/api/connections/load')
       console.log('Conexões carregadas:', this.connections)
@@ -54,15 +65,45 @@ export class DatabaseManagerComponent {
         return
       }
 
-      const result: any = await this.IAPI.get(
-        `/api/${this.activeConnection[0].database}/${this.activeConnection[0].version}/list-databases-and-schemas`
+      const activeConn = this.activeConnection[0]
+
+      const existingConnection = this.databasesSchemasActiveConnections.info.find(
+        (info: any) => info.host === activeConn.host && info.port === activeConn.port
       )
 
-      if (result.success) {
-        this.databasesSchemasActiveConnections = Object.assign(
-          { info: this.activeConnection },
-          { data: result.data }
-        )
+      if (!existingConnection) {
+        this.databasesSchemasActiveConnections.info.push({
+          host: activeConn.host,
+          port: activeConn.port,
+          database: activeConn.database,
+          name: activeConn.name,
+          version: activeConn.version,
+        })
+      }
+
+      const result: any = await this.IAPI.get(
+        `/api/${activeConn.database}/${activeConn.version}/list-databases-and-schemas`
+      )
+
+      if (result.success && result.data) {
+        result.data.forEach((db: any) => {
+          const exists = this.databasesSchemasActiveConnections.data.find(
+            (item: any) =>
+              item.database === db.database &&
+              item.host === activeConn.host &&
+              item.port === activeConn.port
+          )
+
+          if (!exists) {
+            this.databasesSchemasActiveConnections.data.push({
+              host: activeConn.host,
+              port: activeConn.port,
+              database: db.database,
+              schemas: db.schemas,
+            })
+          }
+        })
+
         console.log('Schemas carregados:', this.databasesSchemasActiveConnections)
       } else {
         console.error('Erro ao carregar os schemas:', result.message)

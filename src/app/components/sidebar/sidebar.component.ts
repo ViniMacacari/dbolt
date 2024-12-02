@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core'
+import { Component, Input, ChangeDetectorRef } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { LoadingComponent } from '../modal/loading/loading.component'
@@ -19,7 +19,10 @@ export class SidebarComponent {
   expandedConnections: Set<string> = new Set()
   expandedDatabases: Set<string> = new Set()
 
-  constructor(private IAPI: InternalApiService) { }
+  constructor(
+    private IAPI: InternalApiService,
+    private cdr: ChangeDetectorRef
+  ) { }
 
   toggle() {
     this.isOpen = !this.isOpen
@@ -47,42 +50,66 @@ export class SidebarComponent {
     )
   }
 
+  getSchemasByConnection(connection: any): any[] {
+    if (!this.dbSchemas || !this.dbSchemas.data) return []
+    return this.dbSchemas.data.filter(
+      (item: any) =>
+        item.host === connection.host && item.port === connection.port
+    )
+  }
+
   async connectDatabase(connection: any): Promise<void> {
+    if (!this.dbSchemas || !this.dbSchemas.info || !this.dbSchemas.data) {
+      this.dbSchemas = { info: [], data: [] }
+    }
+
+    const existingConnection = this.dbSchemas.info.find(
+      (info: any) => info.host === connection.host && info.port === connection.port
+    )
+
+    if (existingConnection) return
+
     try {
-      const dbConnection = this.dbSchemas.find(
-        (dbConn: any) =>
-          dbConn.connection.host === connection.host &&
-          dbConn.connection.port === connection.port
-      )
+      this.dbSchemas.info.push({
+        host: connection.host,
+        port: connection.port,
+        database: connection.database,
+        name: connection.name,
+      })
 
-      if (dbConnection && dbConnection.schemas?.length) {
-        console.log(`Schemas already loaded for ${connection.name}`)
-        return
-      }
+      await this.IAPI.post(`/api/${connection.database}/${connection.version}/connect`, {
+        host: connection.host,
+        port: connection.port,
+        user: connection.user,
+        password: connection.password,
+      })
 
-      LoadingComponent.show()
-
-      const result: any = await this.IAPI.get(
+      const response: any = await this.IAPI.get(
         `/api/${connection.database}/${connection.version}/list-databases-and-schemas`
       )
 
-      if (result.success) {
-        if (dbConnection) {
-          dbConnection.schemas = result.data
-        } else {
-          this.dbSchemas.push({
-            connection,
-            schemas: result.data
-          })
-        }
-        console.log(`Schemas loaded for ${connection.name}`, result.data)
-      } else {
-        console.error(`Failed to load schemas for ${connection.name}:`, result.message)
+      if (response && response.data) {
+        response.data.forEach((db: any) => {
+          const exists = this.dbSchemas.data.find(
+            (item: any) =>
+              item.database === db.database &&
+              item.host === connection.host &&
+              item.port === connection.port
+          )
+
+          if (!exists) {
+            this.dbSchemas.data.push({
+              host: connection.host,
+              port: connection.port,
+              database: db.database,
+              schemas: db.schemas,
+            })
+          }
+        })
       }
+      console.log('dbSchemas atualizado:', this.dbSchemas)
     } catch (error) {
-      console.error(`Error connecting to ${connection.name}:`, error)
-    } finally {
-      LoadingComponent.hide()
+      console.error(error)
     }
   }
 }
