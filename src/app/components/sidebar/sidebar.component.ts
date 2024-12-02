@@ -69,6 +69,8 @@ export class SidebarComponent {
 
     if (existingConnection) return
 
+    LoadingComponent.show()
+
     try {
       this.dbSchemas.info.push({
         host: connection.host,
@@ -108,6 +110,8 @@ export class SidebarComponent {
         })
       }
       console.log('dbSchemas atualizado:', this.dbSchemas)
+
+      LoadingComponent.hide()
     } catch (error) {
       console.error(error)
     }
