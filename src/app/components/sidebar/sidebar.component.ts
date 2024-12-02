@@ -1,12 +1,13 @@
-import { Component, Input, ChangeDetectorRef } from '@angular/core'
+import { Component, Input, ChangeDetectorRef, ViewChild } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { LoadingComponent } from '../modal/loading/loading.component'
+import { ToastComponent } from '../toast/toast.component'
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ToastComponent],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss'
 })
@@ -14,6 +15,8 @@ export class SidebarComponent {
   @Input() connections: any[] = []
   @Input() activeConnection: any = { info: {}, data: [] }
   @Input() dbSchemas: any = []
+
+  @ViewChild('toast') toast!: ToastComponent
 
   isOpen = true
   expandedConnections: Set<string> = new Set()
@@ -112,8 +115,10 @@ export class SidebarComponent {
       console.log('dbSchemas atualizado:', this.dbSchemas)
 
       LoadingComponent.hide()
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
+      LoadingComponent.hide()
+      this.toast.showToast(error.message, 'red')
     }
   }
 

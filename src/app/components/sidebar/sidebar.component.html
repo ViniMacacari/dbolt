@@ -4,6 +4,9 @@
     </div>
     <div class="py-2"></div>
     <div class="connections">
+        <div class="schema">
+            <img src="icons/schema.png" height="20px" width="20px">
+        </div>
         <div *ngFor="let connection of connections" class="connection d-flex w-100 my-3 mt-0">
             <div (click)="toggleConnection(connection.host); connectDatabase(connection)"
                 class="d-flex align-items-center gap-2 mb-1">
@@ -31,3 +34,5 @@
         </div>
     </div>
 </div>
+
+<app-toast #toast></app-toast>

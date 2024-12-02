@@ -13,6 +13,14 @@
         padding: 0px 5px;
         overflow-y: auto;
         max-height: calc(100% - 80px);
+
+        .schemas {
+            display: flex;
+            justify-content: center;
+
+            padding: 5px;
+            background-color: #232020;
+        }
     }
 
     .connection {
