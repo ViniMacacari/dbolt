@@ -14,10 +14,11 @@ export class SidebarComponent {
   @Input() dbSchemas: any = []
 
   isOpen = true
+  expandedConnections: Set<string> = new Set()
+  expandedDatabases: Set<string> = new Set()
 
   constructor() { }
 
-  //identificar quando dbSchema mudar
   ngOnChanges(changes: any) {
     if (changes['dbSchemas']) {
       console.log('mudou>: ', this.dbSchemas)
@@ -26,5 +27,21 @@ export class SidebarComponent {
 
   toggle() {
     this.isOpen = !this.isOpen
+  }
+
+  toggleConnection(connection: string) {
+    if (this.expandedConnections.has(connection)) {
+      this.expandedConnections.delete(connection)
+    } else {
+      this.expandedConnections.add(connection)
+    }
+  }
+
+  toggleDatabase(database: string) {
+    if (this.expandedDatabases.has(database)) {
+      this.expandedDatabases.delete(database)
+    } else {
+      this.expandedDatabases.add(database)
+    }
   }
 }

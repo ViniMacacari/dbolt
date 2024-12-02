@@ -160,7 +160,7 @@ export class ConnectionComponent {
       console.error(error)
       setTimeout(() => {
         LoadingComponent.hide()
-        this.toast.showToast(error.message, 'red')
+        this.toast.showToast(error.error, 'red')
       }, 500)
     }
   }

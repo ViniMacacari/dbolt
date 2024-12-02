@@ -5,15 +5,10 @@
 .toast {
     animation: slideIn 0.25s ease-out, fadeOut 0.25s ease-in 2.5s forwards;
 
-    .toast-pai {
-        height: 30px;
-    }
-
     .toast-body {
         display: flex;
         align-items: center;
 
-        height: 30px !important;
         width: 30px !important;
 
         border: none;

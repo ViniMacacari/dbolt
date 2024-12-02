@@ -5,16 +5,26 @@
     <div class="py-2"></div>
     <div class="connections">
         <div *ngFor="let connection of connections" class="connection d-flex w-100 my-3 mt-0">
-            <h2 class="subtitle-min">{{ connection.name }}</h2>
+            <div (click)="toggleConnection(connection.host)" class="d-flex align-items-center gap-2 mb-1">
+                <img src="db-logo/{{ connection.database }}.png" height="20px" width="20px">
+                <h2 class="subtitle-min">{{ connection.name }}</h2>
+            </div>
             <p class="text-min-gray m-0">{{ connection.host }}:{{ connection.port }}</p>
 
-            <div *ngIf="dbSchemas?.data && connection.host === activeConnection?.host && connection.port === activeConnection?.port"
+            <div *ngIf="dbSchemas?.data && expandedConnections.has(connection.host) && connection.host === activeConnection?.host && connection.port === activeConnection?.port"
                 class="connection-info">
                 <div *ngFor="let database of dbSchemas.data" class="d-flex flex-column">
                     <div class="separator"></div>
-                    <h2 class="database-name">{{ database.database }}</h2>
-                    <div *ngFor="let schema of database.schemas">
-                        <p class="text-min-gray">{{ schema }}</p>
+                    <div (click)="toggleDatabase(database.database)" class="d-flex align-items-center gap-2">
+                        <img src="icons/database.png" height="15px" width="15px">
+                        <h2 class="database-name">{{ database.database }}</h2>
+                    </div>
+
+                    <div class="schemas" *ngIf="expandedDatabases.has(database.database)">
+                        <div *ngFor="let schema of database.schemas" class="d-flex align-items-center gap-2">
+                            <img src="icons/schema.png" height="10px" width="10px">
+                            <p class="text-min-gray">{{ schema }}</p>
+                        </div>
                     </div>
                 </div>
             </div>

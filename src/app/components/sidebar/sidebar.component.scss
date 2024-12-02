@@ -6,7 +6,7 @@
     padding: 10px;
 
     &.open {
-        width: 150px;
+        width: 180px;
     }
 
     .connections {
@@ -48,6 +48,15 @@
 
                 color: #969696;
                 font-size: .8em;
+            }
+
+            .schemas {
+                display: flex;
+                justify-content: center;
+                flex-direction: column;
+
+                margin-top: 5px;
+                padding-left: 20px;
             }
         }
     }
