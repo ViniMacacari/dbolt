@@ -7,5 +7,6 @@ const router = express.Router()
 router.post('/test-connection', (req, res) => CPostgresV1.testConnection(req, res))
 router.post('/connect', (req, res) => CPostgresV1.connection(req, res))
 router.get('/list-databases-and-schemas', (req, res) => CPostgresV1.listDatabasesAndSchemas(req, res))
+router.get('/get-selected-schema', (req, res) => CPostgresV1.getSelectedSchema(req, res))
 
 export default router

@@ -1,5 +1,6 @@
 import SHanaV1 from "../../services/connections/hana/hana-v1.js"
 import LSHanaV1 from "../../services/lists/hana/hana-v1.js"
+import SSchemaHanaV1 from "../../services/schemas/hana/hana-v1.js"
 
 class CHanaV1 {
     async testConnection(req, res) {
@@ -49,6 +50,16 @@ class CHanaV1 {
             } else {
                 return res.status(500).json(result)
             }
+        } catch (error) {
+            return res.status(500).json({ success: false, message: 'Server error', error: error.message })
+        }
+    }
+
+    async getSelectedSchema(req, res) {
+        try {
+            const result = await SSchemaHanaV1.getSelectedSchema()
+            
+            return res.status(200).json(result)
         } catch (error) {
             return res.status(500).json({ success: false, message: 'Server error', error: error.message })
         }

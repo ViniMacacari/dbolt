@@ -1,6 +1,6 @@
 import SPgV1 from "../../services/connections/postgres/v9.js"
 import LSPg1 from "../../services/lists/postgres/v9.js"
-
+import SSPgV1 from "../../services/schemas/postgres/v9.js"
 
 class CPostgresV1 {
     async testConnection(req, res) {
@@ -52,6 +52,16 @@ class CPostgresV1 {
             }
         } catch (error) {
             console.error('Controller error:', error)
+            return res.status(500).json({ success: false, message: 'Server error', error: error.message })
+        }
+    }
+
+    async getSelectedSchema(req, res) {
+        try {
+            const result = await SSPgV1.getSelectedSchema()
+
+            return res.status(200).json(result)
+        } catch (error) {
             return res.status(500).json({ success: false, message: 'Server error', error: error.message })
         }
     }
