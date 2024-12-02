@@ -4,6 +4,12 @@
             <h5 class="title text-center w-100">Create a new connection</h5>
         </div>
         <div class="modal-body">
+            <h2 class="subtitle">Connection name</h2>
+            <input [(ngModel)]="connectionName" type="text" maxlength="14" class="input-page"
+                placeholder="Name your connection" (ngModelChange)="validateConnectionName($event)" />
+
+            <div class="my-4"></div>
+
             <h2 class="subtitle">Choose the database type.</h2>
             <app-input-list #database [list]="dataList" [displayKey]="'name'" [width]="'400px'"
                 (itemSelected)="onDatabaseSelected($event)"></app-input-list>

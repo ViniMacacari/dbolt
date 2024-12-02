@@ -65,7 +65,8 @@ export class OpenPageComponent {
     }
   }
 
-  async deleteConnection(id: number): Promise<void> {
+  async deleteConnection(id: number, event: MouseEvent): Promise<void> {
+    event.stopPropagation()
     await this.IAPI.delete(`/api/connections/${id}`)
     await this.loadConnections()
   }

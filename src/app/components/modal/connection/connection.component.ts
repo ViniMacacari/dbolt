@@ -22,6 +22,7 @@ export class ConnectionComponent {
   dataList: any = []
   versionList: any = []
   sgbdVersion: string = ''
+  connectionName: string = ''
   connectionConfig: any = {
     host: '',
     port: null,
@@ -125,6 +126,11 @@ export class ConnectionComponent {
   }
 
   async newConnection(): Promise<any> {
+    if (this.connectionName.length === 0) {
+      this.toast.showToast('Connection name cannot be empty', 'red')
+      return
+    }
+
     LoadingComponent.show()
 
     try {
@@ -136,6 +142,7 @@ export class ConnectionComponent {
       })
 
       await this.IAPI.post('/api/connections/new', {
+        name: this.connectionName,
         database: this.sgbd,
         version: this.sgbdVersion,
         host: this.connectionConfig.host,
@@ -155,6 +162,14 @@ export class ConnectionComponent {
         LoadingComponent.hide()
         this.toast.showToast(error.message, 'red')
       }, 500)
+    }
+  }
+
+  validateConnectionName(value: string): void {
+    if (value.length > 14) {
+      this.connectionName = value.substring(0, 14)
+    } else {
+      this.connectionName = value
     }
   }
 }
