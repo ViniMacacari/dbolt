@@ -29,6 +29,7 @@ class LSPg1 {
                 SELECT datname AS database_name 
                 FROM pg_database 
                 WHERE datistemplate = false
+                ORDER BY 1
             `
             const databases = await this.db.executeQuery(databasesQuery)
 
@@ -49,6 +50,7 @@ class LSPg1 {
                 const schemaQuery = `
                     SELECT schema_name 
                     FROM information_schema.schemata 
+                    ORDER BY 1
                 `
                 const schemas = await tempDb.executeQuery(schemaQuery)
 

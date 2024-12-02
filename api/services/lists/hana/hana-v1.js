@@ -22,6 +22,7 @@ class LSHanaV1 {
                   AND SCHEMA_NAME NOT IN (
                       'SYS', 'SYSTEM', 'HANACLEANER', 'RSP', 'HANA_XS_BASE'
                   )
+                ORDER BY 1
             `
             const schemas = await this.db.executeQuery(schemaQuery)
 
