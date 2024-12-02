@@ -2,9 +2,10 @@
     <div (click)="toggle()" class="d-flex justify-content-center align-items-center w-100 my-2 py-1 toogle-div">
         <img src="icons/menu.png" height="30px" class="toogle-img">
     </div>
-    <ul class="list-unstyled mt-3">
-        <li><a href="#" class="text-decoration-none">Option 1</a></li>
-        <li><a href="#" class="text-decoration-none">Option 2</a></li>
-        <li><a href="#" class="text-decoration-none">Option 3</a></li>
-    </ul>
+    <div class="py-2"></div>
+    <div class="connections">
+        <div *ngFor="let connection of connections" class="connection d-flex w-100 my-3 mt-0">
+            <h2 class="subtitle-min">{{connection.name}}</h2>
+        </div>
+    </div>
 </div>

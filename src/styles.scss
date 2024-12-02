@@ -147,3 +147,18 @@ h6 {
         background-color: #1f2775;
     }
 }
+
+// Scroll
+
+::-webkit-scrollbar {
+    width: 7px;
+}
+
+::-webkit-scrollbar-track {
+    background-color: #1b1b1b;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #353535;
+    border-radius: 15px;
+}

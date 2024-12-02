@@ -1,39 +1,32 @@
 .sidebar {
     width: 320px;
-    height: 100vh;
+    height: 100%;
     background: #131313;
     transition: width 0.3s ease;
-    overflow: hidden;
     padding: 10px;
 
     &.open {
-        width: 100px;
+        width: 150px;
     }
 
-    button {
-        width: 100%;
-        margin-bottom: 20px;
+    .connections {
+        padding: 0px 5px;
+        overflow-y: auto;
+        max-height: calc(100% - 80px);
     }
 
-    ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
+    .connection {
+        background-color: #232020;
+        border-radius: 15px;
+        padding: 10px;
 
-        li {
-            margin: 10px 0;
+        cursor: pointer;
 
-            a {
-                display: block;
-                padding: 10px;
-                text-decoration: none;
-                color: #b8b8b9;
-                transition: color 0.3s;
-
-                &:hover {
-                    color: #007bff;
-                }
-            }
+        h2 {
+            margin: 0;
+            text-wrap: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
     }
 

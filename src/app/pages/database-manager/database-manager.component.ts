@@ -27,6 +27,7 @@ export class DatabaseManagerComponent {
     LoadingComponent.show()
     await this.firstConnectionConfig()
     await this.pageConnectionConfig()
+    LoadingComponent.hide()
   }
 
   getPageId() {
@@ -38,7 +39,6 @@ export class DatabaseManagerComponent {
   async firstConnectionConfig(): Promise<void> {
     try {
       this.activeConnection = await this.IAPI.get('/api/connections/' + this.getPageId())
-      console.log(this.activeConnection)
     } catch (error) {
       console.error(error)
     }
@@ -47,8 +47,8 @@ export class DatabaseManagerComponent {
   async pageConnectionConfig(): Promise<void> {
     try {
       this.connections = await this.IAPI.get('/api/connections/load')
-      this.databasesSchemasActiveConnections = await this.IAPI.get(`/api/${this.activeConnection.database}/${this.activeConnection.version}/list-databases-and-schemas`)
-      console.log(this.connections, this.databasesSchemasActiveConnections)
+      console.log(this.connections)
+      // this.databasesSchemasActiveConnections = await this.IAPI.get(`/api/${this.activeConnection.database}/${this.activeConnection.version}/list-databases-and-schemas`)
     } catch (error) {
       console.error(error)
     }
