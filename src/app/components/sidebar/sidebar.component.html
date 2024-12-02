@@ -20,7 +20,8 @@
                         <h2 class="database-name">{{ database.database }}</h2>
                     </div>
                     <div class="schemas" *ngIf="expandedDatabases.has(database.database)">
-                        <div *ngFor="let schema of database.schemas" class="d-flex align-items-center gap-2">
+                        <div *ngFor="let schema of database.schemas" (click)="selectSchema(connection, schema)"
+                            class="d-flex align-items-center gap-2">
                             <img src="icons/schema.png" height="10px" width="10px">
                             <p class="text-min-gray">{{ schema }}</p>
                         </div>

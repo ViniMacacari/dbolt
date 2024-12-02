@@ -116,4 +116,8 @@ export class SidebarComponent {
       console.error(error)
     }
   }
+
+  async selectSchema(connection: any, schema: any): Promise<any> {
+    console.log(connection, schema)
+  }
 }
