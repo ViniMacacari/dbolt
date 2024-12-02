@@ -47,15 +47,28 @@ export class DatabaseManagerComponent {
   async pageConnectionConfig(): Promise<void> {
     try {
       this.connections = await this.IAPI.get('/api/connections/load')
-      console.log(this.connections)
-      const result: any = await this.IAPI.get(`/api/${this.activeConnection[0].database}/${this.activeConnection[0].version}/list-databases-and-schemas`)
+      console.log('Conexões carregadas:', this.connections)
 
-      this.databasesSchemasActiveConnections = Object.assign(
-        { info: this.activeConnection },
-        { data: result.data }
+      if (!this.activeConnection || !this.activeConnection[0]) {
+        console.warn('Conexão ativa não definida ou inválida.')
+        return
+      }
+
+      const result: any = await this.IAPI.get(
+        `/api/${this.activeConnection[0].database}/${this.activeConnection[0].version}/list-databases-and-schemas`
       )
+
+      if (result.success) {
+        this.databasesSchemasActiveConnections = Object.assign(
+          { info: this.activeConnection },
+          { data: result.data }
+        )
+        console.log('Schemas carregados:', this.databasesSchemasActiveConnections)
+      } else {
+        console.error('Erro ao carregar os schemas:', result.message)
+      }
     } catch (error) {
-      console.error(error)
+      console.error('Erro ao configurar conexão e carregar schemas:', error)
     }
   }
 }
