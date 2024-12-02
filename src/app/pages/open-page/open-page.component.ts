@@ -55,7 +55,12 @@ export class OpenPageComponent {
     try {
       const result: any = await this.IAPI.get(`/api/connections/${id}`)
       console.log(result)
-      await this.IAPI.post(`/api/${result.database}/${result.version}/connect`, result)
+      await this.IAPI.post(`/api/${result.database}/${result.version}/connect`, {
+        host: result.host,
+        port: result.port,
+        user: result.user,
+        password: result.password
+      })
       LoadingComponent.hide()
       this.router.navigate([`/database-management/${id}`])
     } catch (error) {
