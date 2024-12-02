@@ -11,7 +11,7 @@
             </div>
             <p class="text-min-gray m-0">{{ connection.host }}:{{ connection.port }}</p>
 
-            <div *ngIf="dbSchemas?.data && expandedConnections.has(connection.host) && connection.host === activeConnection?.host && connection.port === activeConnection?.port"
+            <div *ngIf="dbSchemas?.data && expandedConnections.has(connection.host) && isActiveConnection(connection)"
                 class="connection-info">
                 <div *ngFor="let database of dbSchemas.data" class="d-flex flex-column">
                     <div class="separator"></div>

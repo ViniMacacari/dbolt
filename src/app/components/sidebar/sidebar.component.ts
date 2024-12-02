@@ -39,4 +39,10 @@ export class SidebarComponent {
       this.expandedDatabases.add(database)
     }
   }
+
+  isActiveConnection(connection: any): boolean {
+    return this.activeConnection.some(
+      (conn: any) => conn.host === connection.host && conn.port === connection.port
+    )
+  }
 }
