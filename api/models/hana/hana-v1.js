@@ -1,23 +1,29 @@
 import hana from '@sap/hana-client'
 
 class HanaV1 {
-    constructor(config) {
-        if (!config || typeof config !== 'object') {
-            throw new Error('Invalid configuration')
+    constructor() {
+        if (!HanaV1.instance) {
+            this.connection = null
+            this.config = null
+            HanaV1.instance = this
         }
-        this.config = config
-        this.connection = null
+        return HanaV1.instance
     }
 
-    async connect() {
+    async connect(config) {
         if (this.connection) {
             console.warn('Already connected to HANA')
             return this.connection
         }
 
+        if (!config || typeof config !== 'object') {
+            throw new Error('Invalid configuration')
+        }
+
         try {
+            this.config = config
             this.connection = hana.createConnection()
-            await this.connection.connect(this.config)
+            await this.connection.connect(config)
             console.log('Connected to HANA successfully')
             return this.connection
         } catch (error) {
@@ -41,6 +47,7 @@ class HanaV1 {
             throw error
         } finally {
             this.connection = null
+            this.config = null
         }
     }
 
@@ -64,6 +71,10 @@ class HanaV1 {
             console.error('Error executing query:', error)
             throw error
         }
+    }
+
+    getStatus() {
+        return this.connection ? 'connected' : 'disconnected'
     }
 }
 
