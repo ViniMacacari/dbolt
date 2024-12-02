@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core'
 import { CommonModule } from '@angular/common'
+import { LoadingComponent } from '../modal/loading/loading.component'
 
 @Component({
   selector: 'app-sidebar',
@@ -18,12 +19,6 @@ export class SidebarComponent {
   expandedDatabases: Set<string> = new Set()
 
   constructor() { }
-
-  ngOnChanges(changes: any) {
-    if (changes['dbSchemas']) {
-      console.log('mudou>: ', this.dbSchemas)
-    }
-  }
 
   toggle() {
     this.isOpen = !this.isOpen

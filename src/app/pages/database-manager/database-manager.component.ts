@@ -39,7 +39,6 @@ export class DatabaseManagerComponent {
   async firstConnectionConfig(): Promise<void> {
     try {
       this.activeConnection = await this.IAPI.get('/api/connections/' + this.getPageId())
-      console.log(this.activeConnection)
     } catch (error) {
       console.error(error)
     }
@@ -50,14 +49,11 @@ export class DatabaseManagerComponent {
       this.connections = await this.IAPI.get('/api/connections/load')
       console.log(this.connections)
       const result: any = await this.IAPI.get(`/api/${this.activeConnection.database}/${this.activeConnection.version}/list-databases-and-schemas`)
-      console.log(this.databasesSchemasActiveConnections)
 
       this.databasesSchemasActiveConnections = Object.assign(
         { info: this.activeConnection },
         { data: result.data }
       )
-
-      console.log(this.databasesSchemasActiveConnections)
     } catch (error) {
       console.error(error)
     }
