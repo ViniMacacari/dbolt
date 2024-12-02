@@ -10,10 +10,19 @@ import { CommonModule } from '@angular/common'
 })
 export class SidebarComponent {
   @Input() connections: any[] = []
+  @Input() activeConnection: any = { info: {}, data: [] }
+  @Input() dbSchemas: any = []
 
   isOpen = true
 
   constructor() { }
+
+  //identificar quando dbSchema mudar
+  ngOnChanges(changes: any) {
+    if (changes['dbSchemas']) {
+      console.log('mudou>: ', this.dbSchemas)
+    }
+  }
 
   toggle() {
     this.isOpen = !this.isOpen

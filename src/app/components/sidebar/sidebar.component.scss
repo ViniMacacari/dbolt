@@ -20,6 +20,9 @@
         border-radius: 15px;
         padding: 10px;
 
+        display: flex;
+        flex-direction: column;
+
         cursor: pointer;
 
         h2 {
@@ -27,6 +30,25 @@
             text-wrap: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        p {
+            margin: 0;
+            text-wrap: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .connection-info {
+            .database-name {
+                margin: 0;
+                text-wrap: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+
+                color: #969696;
+                font-size: .8em;
+            }
         }
     }
 

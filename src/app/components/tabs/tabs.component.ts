@@ -6,7 +6,7 @@ import { InternalApiService } from '../../services/requests/internal-api.service
 @Component({
   selector: 'app-tabs',
   standalone: true,
-  imports: [InputListComponent],
+  imports: [],
   templateUrl: './tabs.component.html',
   styleUrl: './tabs.component.scss'
 })
@@ -22,6 +22,5 @@ export class TabsComponent {
     const routeParams = this.route.snapshot.paramMap
     const routeParamId = Number(routeParams.get('id'))
     const database = await this.IAPI.get(`/api/connections/${routeParamId}`)
-    
   }
 }

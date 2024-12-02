@@ -5,7 +5,19 @@
     <div class="py-2"></div>
     <div class="connections">
         <div *ngFor="let connection of connections" class="connection d-flex w-100 my-3 mt-0">
-            <h2 class="subtitle-min">{{connection.name}}</h2>
+            <h2 class="subtitle-min">{{ connection.name }}</h2>
+            <p class="text-min-gray m-0">{{ connection.host }}:{{ connection.port }}</p>
+
+            <div *ngIf="dbSchemas?.data && connection.host === activeConnection?.host && connection.port === activeConnection?.port"
+                class="connection-info">
+                <div *ngFor="let database of dbSchemas.data" class="d-flex flex-column">
+                    <div class="separator"></div>
+                    <h2 class="database-name">{{ database.database }}</h2>
+                    <div *ngFor="let schema of database.schemas">
+                        <p class="text-min-gray">{{ schema }}</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
