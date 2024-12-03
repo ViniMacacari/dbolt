@@ -1,31 +1,49 @@
 .content {
     padding: 5px 0px;
-}
 
-.tab {
-    display: flex;
-    align-items: center;
+    .add {
+        display: flex;
+        align-items: center;
 
-    background-color: #1b1b1b;
-    border-radius: 15px;
+        background-color: #1b1b1b;
+        border-radius: 15px;
 
-    height: 35px;
-    max-width: 240px;
-    width: 240px;
-    min-width: 50px;
-    padding: 5px 15px;
+        height: 35px;
+        max-width: 50px;
+        width: 35px;
+        min-width: 50px;
+        padding: 5px 15px;
 
-    cursor: pointer;
+        cursor: pointer;
+    }
 
-    .text {
-        width: 100%;
+    .tabs {
+        .tab {
+            display: flex;
+            align-items: center;
 
-        p {
-            margin: 0;
+            background-color: #1b1b1b;
+            border-radius: 15px;
 
-            text-wrap: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            height: 35px;
+            max-width: 240px;
+            width: 240px;
+            min-width: 50px;
+            padding: 5px 15px;
+
+            cursor: pointer;
+
+            .text {
+                width: 100%;
+
+                p {
+                    margin: 0;
+
+                    text-wrap: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+            }
         }
     }
 }
