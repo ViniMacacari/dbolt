@@ -14,15 +14,18 @@ let win
 function createWindow() {
     win = new BrowserWindow({
         width: 800,
-        height: 670,
-        minHeight: 670,
+        height: 700,
+        minHeight: 700,
         minWidth: 800,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false
         },
-        autoHideMenuBar: true
+        autoHideMenuBar: true,
+        resizable: true
     })
+
+    win.setMinimumSize(800, 700)
 
     const angularIndexPath = path.join(__dirname, 'dist/dbolt/browser/index.html')
     if (fs.existsSync(angularIndexPath)) {

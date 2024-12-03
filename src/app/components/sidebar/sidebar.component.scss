@@ -14,12 +14,27 @@
         overflow-y: auto;
         max-height: calc(100% - 80px);
 
-        .schemas {
+        .schema,
+        .database {
             display: flex;
-            justify-content: center;
+            align-items: center;
 
-            padding: 5px;
+            gap: 10px;
+            padding: 10px;
+            margin-bottom: 16px;
+            border-radius: 15px;
+
             background-color: #232020;
+
+            cursor: pointer;
+
+            p {
+                margin: 0;
+
+                text-wrap: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
         }
     }
 
