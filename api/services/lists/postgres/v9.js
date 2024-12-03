@@ -25,6 +25,8 @@ class LSPg1 {
                 }
             }
 
+            const currentDatabase = this.mainConfig.database
+
             const databasesQuery = `
                 SELECT datname AS database_name 
                 FROM pg_database 
@@ -38,12 +40,9 @@ class LSPg1 {
             for (const dbInfo of databases) {
                 const { database_name } = dbInfo
 
-                const tempDb = new PgV1()
-                await tempDb.connect({
-                    host: this.mainConfig.host,
-                    port: this.mainConfig.port,
-                    user: this.mainConfig.user,
-                    password: this.mainConfig.password,
+                await this.db.disconnect()
+                await this.db.connect({
+                    ...this.mainConfig,
                     database: database_name
                 })
 
@@ -53,17 +52,16 @@ class LSPg1 {
                     WHERE schema_name NOT LIKE 'pg_%' AND schema_name NOT LIKE 'information_schema'
                     ORDER BY 1
                 `
-                const schemas = await tempDb.executeQuery(schemaQuery)
+                const schemas = await this.db.executeQuery(schemaQuery)
 
                 results.push({
                     database: database_name,
                     schemas: schemas.map(schema => schema.schema_name)
                 })
-
-                await tempDb.disconnect()
             }
 
-            await this.db.connect(this.mainConfig)
+            await this.db.disconnect()
+            await this.db.connect({ ...this.mainConfig, database: currentDatabase })
 
             return { success: true, data: results }
         } catch (error) {

@@ -125,8 +125,8 @@ export class SidebarComponent {
     }
   }
 
-  async selectSchema(connection: any, schema: any): Promise<any> {
-    console.log(connection, schema)
+  async selectSchema(connection: any): Promise<any> {
+    console.log(connection)
   }
 
   openModal() {
