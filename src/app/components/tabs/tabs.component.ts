@@ -35,7 +35,7 @@ export class TabsComponent {
   newQuery(): void {
     const newTab = {
       id: Date.now(),
-      name: `New Query ${this.tabs.length + 1}`
+      name: `Query ${this.tabs.length + 1}`
     }
     
     this.tabs.push(newTab)
