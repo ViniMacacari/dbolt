@@ -14,6 +14,8 @@ import { InternalApiService } from '../../services/requests/internal-api.service
 export class TabsComponent {
   dataList: any = []
   dropdownVisible: boolean = false
+  tabs: { id: number, name: string }[] = []
+  activeTab: number | null = null
 
   constructor(
     private route: ActivatedRoute,
@@ -31,13 +33,39 @@ export class TabsComponent {
   }
 
   newQuery(): void {
-    console.log('Opção 1 selecionada')
-    this.dropdownVisible = false
+    const newTab = {
+      id: Date.now(),
+      name: `New Query ${this.tabs.length + 1}`
+    }
+    
+    this.tabs.push(newTab)
+    this.activeTab = this.tabs.length - 1
+    setTimeout(() => {
+      this.dropdownVisible = false
+    }, 100)
   }
 
   loadQuery(): void {
     console.log('Opção 2 selecionada')
-    this.dropdownVisible = false
+    setTimeout(() => {
+      this.dropdownVisible = false
+    }, 100)
+  }
+
+  closeTab(index: number, event: MouseEvent): void {
+    event.stopPropagation()
+    this.tabs.splice(index, 1)
+
+    if (this.activeTab === index) {
+      this.activeTab = this.tabs.length > 0 ? Math.max(0, index - 1) : null
+    } else if (this.activeTab !== null && this.activeTab > index) {
+      this.activeTab -= 1
+    }
+  }
+
+  selectTab(index: number): void {
+    this.activeTab = index
+    console.log(`Aba ${index} selecionada:`, this.tabs[index])
   }
 
   @HostListener('document:click', ['$event'])

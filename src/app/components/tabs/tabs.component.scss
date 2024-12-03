@@ -1,5 +1,7 @@
 .content {
     padding: 5px 0px;
+    width: 100%;
+    max-width: 100%;
 
     .add {
         position: relative;
@@ -64,6 +66,13 @@
     }
 
     .tabs {
+        display: flex;
+        align-items: center;
+        overflow: auto;
+
+        width: 100%;
+        gap: .5rem;
+
         .tab {
             display: flex;
             align-items: center;

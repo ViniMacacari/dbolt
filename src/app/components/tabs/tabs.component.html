@@ -15,13 +15,14 @@
             </ul>
         </div>
     </div>
-    <div class="tabs">
-        <div class="tab gap-3">
+    <div class="tabs w-100">
+        <div class="tab gap-3" *ngFor="let tab of tabs; let i = index" [class.active]="i === activeTab"
+            (click)="selectTab(i)">
             <img src="icons/code.png" height="15px">
             <div class="text">
-                <p class="text-min">SQL Name</p>
+                <p class="text-min">{{ tab.name }}</p>
             </div>
-            <img src="icons/close.png" height="15px">
+            <img src="icons/close.png" height="15px" (click)="closeTab(i, $event)">
         </div>
     </div>
 </div>
