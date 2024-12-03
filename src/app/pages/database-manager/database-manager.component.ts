@@ -4,11 +4,12 @@ import { Router, ActivatedRoute } from '@angular/router'
 import { SidebarComponent } from "../../components/sidebar/sidebar.component"
 import { TabsComponent } from "../../components/tabs/tabs.component"
 import { LoadingComponent } from '../../components/modal/loading/loading.component'
+import { CodeEditorComponent } from "../../components/elements/code-editor/code-editor.component"
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent],
+  imports: [SidebarComponent, TabsComponent, CodeEditorComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
