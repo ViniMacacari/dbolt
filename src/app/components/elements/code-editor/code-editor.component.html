@@ -1,13 +1,16 @@
-<div class="code-editor-container d-flex h-100 gap-2">
+<div class="code-editor-container d-flex h-100 gap-3">
     <div class="editor-toolbar d-flex align-items-center flex-column">
         <button class="btn">
-            <img src="icons/run.png" height="15px">
+            <img src="icons/run.png" title="Run selected code" height="15px">
         </button>
         <button class="btn">
-            <img src="icons/run.png" height="15px">
+            <img src="icons/execute-all.png" title="Run all code" height="15px">
+        </button>
+        <button class="btn">
+            <img src="icons/star.png" title="Indent code" height="15px">
         </button>
     </div>
-    <div class="code-editor">
-        <textarea class="h-100 w-100"></textarea>
+    <div class="code-editor py-2">
+        <textarea class="h-100 w-100" spellcheck="false" (keydown)="handleTab($event)"></textarea>
     </div>
 </div>
