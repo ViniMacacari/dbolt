@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { LoadingComponent } from '../modal/loading/loading.component'
 import { ToastComponent } from '../toast/toast.component'
+import { EditConnectionComponent } from "../modal/edit-connection/edit-connection.component"
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, ToastComponent],
+  imports: [CommonModule, ToastComponent, EditConnectionComponent],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss'
 })
@@ -18,6 +19,7 @@ export class SidebarComponent {
 
   @ViewChild('toast') toast!: ToastComponent
 
+  isModalOpen: boolean = false
   isOpen = true
   expandedConnections: Set<string> = new Set()
   expandedDatabases: Set<string> = new Set()
@@ -124,5 +126,13 @@ export class SidebarComponent {
 
   async selectSchema(connection: any, schema: any): Promise<any> {
     console.log(connection, schema)
+  }
+
+  openModal() {
+    this.isModalOpen = true
+  }
+
+  async closeModal() {
+    this.isModalOpen = false
   }
 }

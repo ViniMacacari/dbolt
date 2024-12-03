@@ -44,4 +44,5 @@
     </div>
 </div>
 
+<app-edit-connection *ngIf="isModalOpen" (close)="closeModal()"></app-edit-connection>
 <app-toast #toast></app-toast>
