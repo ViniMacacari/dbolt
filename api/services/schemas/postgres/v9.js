@@ -17,13 +17,22 @@ class SSPgV1 {
 
     async setDatabaseAndSchema(schemaName, databaseName) {
         try {
-            if (!schemaName) {
-                throw new Error('Schema name is required')
+            if (!schemaName && !databaseName) {
+                throw new Error('Either schema name or database name is required')
             }
 
             if (databaseName) {
                 await this.db.disconnect()
                 await this.db.connect({ ...this.db.getConfig(), database: databaseName })
+
+                if (!schemaName) {
+                    const currentSchema = await this.getSelectedSchema()
+                    return {
+                        success: true,
+                        message: `Connected to database "${databaseName}" without setting a schema`,
+                        currentSchema
+                    }
+                }
 
                 const schemaExistsInNewDb = await this.db.executeQuery(`
                     SELECT schema_name 
