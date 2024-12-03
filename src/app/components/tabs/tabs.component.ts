@@ -16,6 +16,7 @@ export class TabsComponent {
   dropdownVisible: boolean = false
   tabs: { id: number, name: string }[] = []
   activeTab: number | null = null
+  idTabs: number = 0
 
   constructor(
     private route: ActivatedRoute,
@@ -35,10 +36,12 @@ export class TabsComponent {
   newTab(type: string, info: any): void {
     const newTab = {
       id: Date.now(),
-      name: `Tab ${this.tabs.length + 1}`,
+      name: `Tab ${this.idTabs + 1}`,
       type: type,
       info: info
     }
+
+    this.idTabs += 1
 
     this.tabs.push(newTab)
     this.activeTab = this.tabs.length - 1
