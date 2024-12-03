@@ -33,7 +33,7 @@ class PgV1 {
         } catch (error) {
             console.error('Error connecting to PostgreSQL:', error)
             this.connection = null
-            throw new Error(error)
+            throw error
         }
     }
 
@@ -48,7 +48,7 @@ class PgV1 {
             console.log('Disconnected from PostgreSQL successfully')
         } catch (error) {
             console.error('Error disconnecting from PostgreSQL:', error)
-            throw new Error(error)
+            throw new error
         } finally {
             this.connection = null
         }
@@ -64,7 +64,7 @@ class PgV1 {
             return result.rows
         } catch (error) {
             console.error('Error executing query:', error)
-            throw new Error(error)
+            throw new error
         }
     }
 

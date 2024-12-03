@@ -9,6 +9,7 @@ class SPgV1 {
             return { success: true, message: 'Connection successfully established!' }
         } catch (error) {
             console.error('Error to connect:', error)
+            await db.disconnect()
             return { success: false, message: 'Failed to connect to PostgreSQL', error: error.message }
         }
     }
