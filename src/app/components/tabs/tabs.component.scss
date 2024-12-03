@@ -1,7 +1,7 @@
 .content {
     padding: 5px 0px;
     width: 100%;
-    max-width: 100%;
+    box-sizing: border-box;
 
     .add {
         position: relative;
@@ -66,10 +66,13 @@
     }
 
     .tabs {
+        position: relative;
         display: flex;
         align-items: center;
         overflow: auto;
 
+        max-width: calc(100% - 100px);
+        box-sizing: border-box;
         width: 100%;
         gap: .5rem;
 
@@ -77,13 +80,17 @@
             display: flex;
             align-items: center;
 
+            flex: 0 0 auto;
+
             background-color: #1b1b1b;
             border-radius: 15px;
 
             height: 35px;
+            width: auto;
             max-width: 240px;
-            width: 240px;
             min-width: 50px;
+
+            white-space: nowrap;
             padding: 5px 15px;
 
             cursor: pointer;
@@ -101,4 +108,13 @@
             }
         }
     }
+}
+
+.wrap-tables {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 auto;
 }
