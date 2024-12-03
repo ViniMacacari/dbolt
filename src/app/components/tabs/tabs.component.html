@@ -4,11 +4,11 @@
 
         <div class="dropdown" *ngIf="dropdownVisible">
             <ul>
-                <li class="text-min" (click)="newQuery()">
+                <li class="text-min" (click)="newTab('sql', { sql: '' })">
                     <img src="icons/code.png" height="10px">
                     New query
                 </li>
-                <li class="text-min" (click)="loadQuery()">
+                <li class="text-min" (click)="loadTab()">
                     <img src="icons/folder-code.png" height="10px">
                     Load query
                 </li>

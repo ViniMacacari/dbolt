@@ -32,12 +32,14 @@ export class TabsComponent {
     this.dropdownVisible = !this.dropdownVisible
   }
 
-  newQuery(): void {
+  newTab(type: string, info: any): void {
     const newTab = {
       id: Date.now(),
-      name: `Query ${this.tabs.length + 1}`
+      name: `Tab ${this.tabs.length + 1}`,
+      type: type,
+      info: info
     }
-    
+
     this.tabs.push(newTab)
     this.activeTab = this.tabs.length - 1
     setTimeout(() => {
@@ -45,7 +47,7 @@ export class TabsComponent {
     }, 100)
   }
 
-  loadQuery(): void {
+  loadTab(): void {
     console.log('Opção 2 selecionada')
     setTimeout(() => {
       this.dropdownVisible = false
