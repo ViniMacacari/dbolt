@@ -14,6 +14,21 @@ class SSPgV1 {
             throw new Error('Not connected to PostgreSQL')
         }
     }
+
+    async setSchema(schemaName) {
+        try {
+            if (!schemaName) {
+                throw new Error('Schema name is required')
+            }
+
+            await this.db.executeQuery(`SET search_path TO ${schemaName}`)
+
+            const currentSchema = await this.getSelectedSchema()
+            return { success: true, message: `Schema changed to ${schemaName}`, currentSchema }
+        } catch (error) {
+            throw new Error(`Failed to set schema: ${error.message}`)
+        }
+    }
 }
 
 export default new SSPgV1()

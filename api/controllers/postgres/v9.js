@@ -65,6 +65,16 @@ class CPostgresV1 {
             return res.status(500).json({ success: false, message: 'Server error', error: error.message })
         }
     }
+
+    async setSchema(req, res) {
+        try {
+            const result = await SSPgV1.setSchema(req.body.schema)
+
+            return res.status(200).json(result)
+        } catch (error) {
+            return res.status(500).json({ success: false, message: 'Server error', error: error.message })
+        }
+    }
 }
 
 export default new CPostgresV1()

@@ -7,11 +7,25 @@ class SSchemaHanaV1 {
 
     async getSelectedSchema() {
         try {
-            const result = await this.db.executeQuery(`SELECT SESSION_CONTEXT('CURRENT_SCHEMA') as "schema" FROM DUMMY`)
+            const result = await this.db.executeQuery(`SELECT CURRENT_SCHEMA AS "schema" FROM DUMMY`)
 
             return { success: true, database: 'Hana', schema: result[0].schema }
         } catch {
             throw new Error('Not connected to HANA')
+        }
+    }
+
+    async setSchema(schemaName) {
+        try {
+            if (!schemaName) {
+                throw new Error('Schema name is required')
+            }
+
+            await this.db.executeQuery(`SET SCHEMA ${schemaName}`)
+
+            return { success: true, message: `Schema changed to ${schemaName}` }
+        } catch (error) {
+            throw new Error(`Failed to set schema: ${error.message}`)
         }
     }
 }
