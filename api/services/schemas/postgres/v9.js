@@ -15,18 +15,54 @@ class SSPgV1 {
         }
     }
 
-    async setSchema(schemaName) {
+    async setDatabaseAndSchema(schemaName, databaseName) {
         try {
             if (!schemaName) {
                 throw new Error('Schema name is required')
             }
 
-            await this.db.executeQuery(`SET search_path TO ${schemaName}`)
+            if (databaseName) {
+                await this.db.disconnect()
+                await this.db.connect({ ...this.db.getConfig(), database: databaseName })
 
-            const currentSchema = await this.getSelectedSchema()
-            return { success: true, message: `Schema changed to ${schemaName}`, currentSchema }
+                const schemaExistsInNewDb = await this.db.executeQuery(`
+                    SELECT schema_name 
+                    FROM information_schema.schemata 
+                    WHERE schema_name = $1
+                `, [schemaName])
+
+                if (schemaExistsInNewDb.length === 0) {
+                    throw new Error(`Schema "${schemaName}" does not exist in the specified database "${databaseName}"`)
+                }
+
+                await this.db.executeQuery(`SET search_path TO ${schemaName}`)
+                const currentSchema = await this.getSelectedSchema()
+                return {
+                    success: true,
+                    message: `Connected to database "${databaseName}" and schema "${schemaName}" set successfully`,
+                    currentSchema
+                }
+            } else {
+                const schemaExists = await this.db.executeQuery(`
+                    SELECT schema_name 
+                    FROM information_schema.schemata 
+                    WHERE schema_name = $1
+                `, [schemaName])
+
+                if (schemaExists.length === 0) {
+                    throw new Error(`Schema "${schemaName}" does not exist in the current database`)
+                }
+
+                await this.db.executeQuery(`SET search_path TO ${schemaName}`)
+                const currentSchema = await this.getSelectedSchema()
+                return {
+                    success: true,
+                    message: `Schema "${schemaName}" set in the current database`,
+                    currentSchema
+                }
+            }
         } catch (error) {
-            throw new Error(`Failed to set schema: ${error.message}`)
+            throw new Error(`Failed to set schema and database: ${error.message}`)
         }
     }
 }

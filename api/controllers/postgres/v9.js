@@ -66,9 +66,9 @@ class CPostgresV1 {
         }
     }
 
-    async setSchema(req, res) {
+    async setDatabaseAndSchema(req, res) {
         try {
-            const result = await SSPgV1.setSchema(req.body.schema)
+            const result = await SSPgV1.setDatabaseAndSchema(req.body.schema, req.body.database)
 
             return res.status(200).json(result)
         } catch (error) {

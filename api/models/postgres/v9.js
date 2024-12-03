@@ -5,6 +5,7 @@ class PgV1 {
     constructor() {
         if (!PgV1.instance) {
             this.connection = null
+            this.config = null
             PgV1.instance = this
         }
         return PgV1.instance
@@ -21,6 +22,7 @@ class PgV1 {
         }
 
         try {
+            this.config = { ...config }
             this.connection = new Client({
                 ...config,
                 database: config.database || 'postgres'
@@ -68,6 +70,13 @@ class PgV1 {
 
     getStatus() {
         return this.connection ? 'connected' : 'disconnected'
+    }
+
+    getConfig() {
+        if (!this.config) {
+            throw new Error('No configuration available')
+        }
+        return this.config
     }
 }
 
