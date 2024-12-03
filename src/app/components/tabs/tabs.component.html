@@ -1,6 +1,19 @@
 <div class="content d-flex gap-2">
-    <div class="add">
+    <div class="add" (click)="toggleDropdown()">
         <img src="icons/add.png" height="20px">
+
+        <div class="dropdown" *ngIf="dropdownVisible">
+            <ul>
+                <li class="text-min" (click)="newQuery()">
+                    <img src="icons/code.png" height="10px">
+                    New query
+                </li>
+                <li class="text-min" (click)="loadQuery()">
+                    <img src="icons/folder-code.png" height="10px">
+                    Load query
+                </li>
+            </ul>
+        </div>
     </div>
     <div class="tabs">
         <div class="tab gap-3">

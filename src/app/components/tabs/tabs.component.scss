@@ -2,6 +2,8 @@
     padding: 5px 0px;
 
     .add {
+        position: relative;
+
         display: flex;
         align-items: center;
 
@@ -15,6 +17,50 @@
         padding: 5px 15px;
 
         cursor: pointer;
+
+        .dropdown {
+            position: absolute;
+            top: 40px;
+            left: 0;
+            background-color: #1b1b1b;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            z-index: 1000;
+            width: 150px;
+        }
+
+        .dropdown ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .dropdown li {
+            display: flex;
+            align-items: center;
+
+            gap: 5px;
+            padding: 10px;
+
+            transition: background-color 0.2s ease;
+            border-radius: 0;
+
+            cursor: pointer;
+        }
+
+        .dropdown li:first-child {
+            border-radius: 15px 15px 0 0;
+        }
+
+        .dropdown li:last-child {
+            border-radius: 0 0 15px 15px;
+        }
+
+        .dropdown li:hover {
+            background-color: #2d2c2c;
+        }
     }
 
     .tabs {

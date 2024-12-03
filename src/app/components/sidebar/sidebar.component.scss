@@ -33,9 +33,10 @@
     }
 
     .connections {
-        padding: 0px 5px;
         overflow-y: auto;
-        max-height: calc(100% - 198px);
+        max-height: calc(100% - 203px);
+    
+        border-radius: 15px;
     }
 
     .connection {
