@@ -32,10 +32,20 @@
                         <h2 class="database-name">{{ database.database }}</h2>
                     </div>
                     <div class="schemas" *ngIf="expandedDatabases.has(database.database)">
-                        <div *ngFor="let schema of database.schemas" (click)="selectSchema({
+                        <div *ngFor="let schema of database.schemas" (dblclick)="selectSchema({
                             schema: schema,
                             database: database.database,
                             sgbd: connection.database,
+                            version: connection.version,
+                            connectionId: connection.id,
+                            connectionName: connection.name,
+                            connectionHost: connection.host,
+                            connectionPort: connection.port
+                        })" (click)="openSchemaDBInfo({
+                            schema: schema,
+                            database: database.database,
+                            sgbd: connection.database,
+                            version: connection.version,
                             connectionId: connection.id,
                             connectionName: connection.name,
                             connectionHost: connection.host,

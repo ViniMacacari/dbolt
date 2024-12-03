@@ -24,6 +24,7 @@ export class SidebarComponent {
   isOpen = true
   expandedConnections: Set<string> = new Set()
   expandedDatabases: Set<string> = new Set()
+  clickTimeout: any = null
 
   constructor(
     private IAPI: InternalApiService,
@@ -126,7 +127,41 @@ export class SidebarComponent {
   }
 
   async selectSchema(connection: any): Promise<any> {
-    console.log(connection)
+    if (this.clickTimeout) {
+      clearTimeout(this.clickTimeout)
+      this.clickTimeout = null
+    }
+
+    LoadingComponent.show()
+
+    try {
+      await this.IAPI.post(`/api/${connection.sgbd}/${connection.version}/set-schema`, {
+        database: connection.database || '',
+        schema: connection.schema || ''
+      })
+
+      const result: any = await this.IAPI.get(`/api/${connection.sgbd}/${connection.version}/get-selected-schema`)
+
+      this.selectedSchemaDB = {
+        database: result.database,
+        schema: result.schema
+      }
+    } catch (error: any) {
+      console.error(error)
+      this.toast.showToast(error.message, 'red')
+    } finally {
+      LoadingComponent.hide()
+    }
+  }
+
+  async openSchemaDBInfo(connection: any): Promise<any> {
+    if (this.clickTimeout) {
+      clearTimeout(this.clickTimeout)
+    }
+
+    this.clickTimeout = setTimeout(() => {
+      console.log('Clique simples:', connection)
+    }, 300)
   }
 
   openModal() {
