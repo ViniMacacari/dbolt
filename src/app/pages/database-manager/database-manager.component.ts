@@ -16,6 +16,7 @@ export class DatabaseManagerComponent {
   activeConnection: any = {}
   databasesSchemasActiveConnections: any = []
   connections: any[] = []
+  selectedSchemaDB: any
 
   constructor(
     private IAPI: InternalApiService,
@@ -67,6 +68,8 @@ export class DatabaseManagerComponent {
 
       const activeConn = this.activeConnection[0]
 
+      console.log('ativo: ', activeConn)
+
       const existingConnection = this.databasesSchemasActiveConnections.info.find(
         (info: any) => info.host === activeConn.host && info.port === activeConn.port
       )
@@ -98,6 +101,7 @@ export class DatabaseManagerComponent {
             this.databasesSchemasActiveConnections.data.push({
               host: activeConn.host,
               port: activeConn.port,
+              version: activeConn.version,
               database: db.database,
               schemas: db.schemas,
             })
@@ -105,11 +109,24 @@ export class DatabaseManagerComponent {
         })
 
         console.log('Schemas carregados:', this.databasesSchemasActiveConnections)
+
+        await this.loadInitSelectedSchemaAndDB()
       } else {
         console.error('Erro ao carregar os schemas:', result.message)
       }
     } catch (error) {
       console.error('Erro ao configurar conexão e carregar schemas:', error)
+    }
+  }
+
+  async loadInitSelectedSchemaAndDB(): Promise<void> {
+    const database = this.activeConnection[0].database
+    const version = this.databasesSchemasActiveConnections.data[0].version
+    const result: any = await this.IAPI.get(`/api/${database}/${version}/get-selected-schema`)
+
+    this.selectedSchemaDB = {
+      database: result.database,
+      schema: result.schema
     }
   }
 }

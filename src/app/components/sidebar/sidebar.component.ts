@@ -16,6 +16,7 @@ export class SidebarComponent {
   @Input() connections: any[] = []
   @Input() activeConnection: any = { info: {}, data: [] }
   @Input() dbSchemas: any = []
+  @Input() selectedSchemaDB: any
 
   @ViewChild('toast') toast!: ToastComponent
 
