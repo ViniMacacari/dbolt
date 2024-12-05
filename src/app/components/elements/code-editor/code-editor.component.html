@@ -11,7 +11,8 @@
         </button>
     </div>
     <div class="code-editor py-2">
-        <textarea class="h-100 w-100" spellcheck="false" (keydown)="handleKeyDown($event)" [(ngModel)]="sqlContent"
-            (input)="onInput($event)"></textarea>
+        <div contenteditable="true" contenteditableModel class="editable-div h-100 w-100" spellcheck="false"
+            (keydown)="handleKeyDown($event)" (input)="onInput($event)">
+        </div>
     </div>
 </div>

@@ -1,11 +1,12 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
+import { ContenteditableModelDirective } from './contenteditable-model.directive'
 
 @Component({
   selector: 'app-code-editor',
   standalone: true,
-  imports: [FormsModule, CommonModule],
+  imports: [FormsModule, CommonModule, ContenteditableModelDirective],
   templateUrl: './code-editor.component.html',
   styleUrl: './code-editor.component.scss'
 })
@@ -14,33 +15,82 @@ export class CodeEditorComponent {
   @Output() sqlContentChange = new EventEmitter<string>()
 
   handleKeyDown(event: KeyboardEvent): void {
-    const textarea = event.target as HTMLTextAreaElement
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
+    const div = event.target as HTMLDivElement
+    const selection = window.getSelection()
+    const range = selection?.getRangeAt(0)
 
     if ((event.ctrlKey && event.key === 'Enter') || event.key === 'F5') {
       event.preventDefault()
-      const selectedText = start !== end
-        ? textarea.value.substring(start, end)
-        : this.getCurrentLineContent(textarea.value, start)
+      const selectedText = range && !range.collapsed
+        ? selection?.toString() || ''
+        : this.getCurrentLineContent(div.innerText, range?.startOffset || 0)
       this.runSql(selectedText)
       return
     }
 
     if (event.key === 'Tab') {
       event.preventDefault()
-      const tab = '\t'
-      textarea.value = textarea.value.substring(0, start) + tab + textarea.value.substring(end)
-      textarea.selectionStart = textarea.selectionEnd = start + tab.length
-    } else if (event.key === 'Enter') {
-      event.preventDefault()
-      const currentLine = this.getCurrentLine(textarea.value, start)
-      const indentation = currentLine.match(/^\s*/)?.[0] || ''
-      const newPosition = start + indentation.length + 1
-      textarea.value =
-        textarea.value.substring(0, start) + '\n' + indentation + textarea.value.substring(end)
-      textarea.selectionStart = textarea.selectionEnd = newPosition
+      this.insertTextAtCursor(div, '\t')
+      return
     }
+
+    if (event.key === 'Enter') {
+      if (!div.innerText.trim()) {
+        // Permite que o navegador processe o Enter no editor vazio
+        return
+      }
+      event.preventDefault() // Previne o comportamento padrão
+      this.insertLineBreak(div) // Insere uma nova linha
+    }
+  }
+
+  onInput(event: Event): void {
+    const div = event.target as HTMLDivElement
+    const currentContent = div.innerText
+
+    if (this.sqlContent !== currentContent) {
+      this.sqlContent = currentContent
+      this.sqlContentChange.emit(this.sqlContent)
+    }
+  }
+
+  private insertTextAtCursor(element: HTMLDivElement, text: string): void {
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+
+    const range = selection.getRangeAt(0)
+    range.deleteContents()
+
+    const textNode = document.createTextNode(text)
+    range.insertNode(textNode)
+
+    range.setStartAfter(textNode)
+    range.setEndAfter(textNode)
+    selection.removeAllRanges()
+    selection.addRange(range)
+  }
+
+  private insertLineBreak(element: HTMLDivElement): void {
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+
+    const range = selection.getRangeAt(0)
+
+    const br = document.createElement('br') // Cria uma nova linha
+    range.deleteContents()
+    range.insertNode(br)
+
+    // Garante que o <br> seja visível como uma nova linha
+    if (!br.nextSibling) {
+      const extraBr = document.createElement('br')
+      element.appendChild(extraBr)
+    }
+
+    // Move o cursor após o <br>
+    range.setStartAfter(br)
+    range.collapse(true)
+    selection.removeAllRanges()
+    selection.addRange(range)
   }
 
   private getCurrentLineContent(text: string, position: number): string {
@@ -74,12 +124,6 @@ export class CodeEditorComponent {
   private getCurrentLine(text: string, position: number): string {
     const lines = text.substring(0, position).split('\n')
     return lines[lines.length - 1]
-  }
-
-  onInput(event: Event): void {
-    const textarea = event.target as HTMLTextAreaElement
-    this.sqlContent = textarea.value
-    this.sqlContentChange.emit(this.sqlContent)
   }
 
   runSql(sql: string): void {
