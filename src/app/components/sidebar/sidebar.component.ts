@@ -9,6 +9,7 @@ import { connect } from 'rxjs'
 @Component({
   selector: 'app-sidebar',
   standalone: true,
+  providers: [SidebarComponent],
   imports: [CommonModule, ToastComponent, EditConnectionComponent],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss'
