@@ -23,7 +23,7 @@ export class SidebarComponent {
 
   isModalOpen: boolean = false
   isOpen = true
-  expandedConnections: Set<string> = new Set()
+  expandedConnections: Set<number> = new Set()
   expandedDatabases: Set<string> = new Set()
   clickTimeout: any = null
 
@@ -36,11 +36,12 @@ export class SidebarComponent {
     this.isOpen = !this.isOpen
   }
 
-  toggleConnection(connection: string) {
-    if (this.expandedConnections.has(connection)) {
-      this.expandedConnections.delete(connection)
+  toggleConnection(connectionId: number) {
+    console.log('Conexão clicada:', connectionId)
+    if (this.expandedConnections.has(connectionId)) {
+      this.expandedConnections.delete(connectionId)
     } else {
-      this.expandedConnections.add(connection)
+      this.expandedConnections.add(connectionId)
     }
   }
 
@@ -86,7 +87,6 @@ export class SidebarComponent {
   }
 
   async connectDatabase(connection: any): Promise<void> {
-    console.log(connection)
     LoadingComponent.show()
     try {
       await this.IAPI.post(`/api/${connection.database}/${connection.version}/connect`, {
@@ -95,11 +95,50 @@ export class SidebarComponent {
         user: connection.user,
         password: connection.password
       })
+
+      this.expandedConnections.add(connection.id)
+
+      await this.disconnectDatabases(connection)
+      await this.addDatabase(connection)
     } catch (error: any) {
       this.toast.showToast(error.message, 'red')
     } finally {
       LoadingComponent.hide()
     }
+  }
+
+  async disconnectDatabases(connection: any): Promise<void> {
+    console.log('Conexão para desconectar:', connection)
+
+    this.dbSchemas.data = this.dbSchemas.data.map((db: any) => {
+      if (db.sgbd === connection.database) {
+        return { ...db, connected: false }
+      }
+      return db
+    })
+  }
+
+  async addDatabase(connection: any): Promise<void> {
+    console.log(connection)
+    console.log('aqui: ', this.dbSchemas.data)
+
+    const schemasDb: any = await this.IAPI.get(`/api/${connection.database}/${connection.version}/list-databases-and-schemas`)
+
+    console.log('schemas', schemasDb)
+
+    schemasDb.data.forEach((schema: any, index: number) => {
+      this.dbSchemas.data.push({
+        sgbd: connection.database,
+        host: connection.host,
+        port: connection.port,
+        version: connection.version,
+        database: schema.database,
+        schemas: schema.schemas,
+        connected: index === 0
+      })
+    })
+
+    console.log('atualizado: ', this.dbSchemas)
   }
 
   async selectSchema(connection: any): Promise<any> {

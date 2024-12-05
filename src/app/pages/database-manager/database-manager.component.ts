@@ -68,6 +68,7 @@ export class DatabaseManagerComponent {
       }
 
       const activeConn = this.activeConnection[0]
+      console.log('ativos', activeConn)
 
       const existingConnection = this.databasesSchemasActiveConnections.info.find(
         (info: any) => info.host === activeConn.host && info.port === activeConn.port
@@ -75,6 +76,7 @@ export class DatabaseManagerComponent {
 
       if (!existingConnection) {
         this.databasesSchemasActiveConnections.info.push({
+          id: activeConn.id,
           host: activeConn.host,
           port: activeConn.port,
           database: activeConn.database,
