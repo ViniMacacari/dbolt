@@ -167,7 +167,7 @@ export class SidebarComponent {
         console.log('A conexão está ativa.')
       } else {
         try {
-
+          console.log('Realizando conexão...')
           try {
             await this.IAPI.post(`/api/${connection.sgbd}/${connection.version}/connect`, {
               host: connection.host,
@@ -181,14 +181,18 @@ export class SidebarComponent {
             await this.disconnectDatabases(connection)
 
             this.dbSchemas.data = this.dbSchemas.data.map((db: any) => {
-              if (
-                db.database === connection.database &&
-                db.host === connection.host &&
-                db.port === connection.port &&
-                db.sgbd === connection.sgbd &&
-                db.version === connection.version
-              ) {
-                return { ...db, connected: true }
+              if (db.sgbd === connection.sgbd) {
+                if (
+                  db.database === connection.database &&
+                  db.host === connection.host &&
+                  db.port === connection.port &&
+                  db.version === connection.version
+                ) {
+                  return { ...db, connected: true }
+                } else {
+                  this.disconnectDatabases(db)
+                  return { ...db, connected: false }
+                }
               }
               return db
             })
