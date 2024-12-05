@@ -37,7 +37,6 @@ export class SidebarComponent {
   }
 
   toggleConnection(connectionId: number) {
-    console.log('Conexão clicada:', connectionId)
     if (this.expandedConnections.has(connectionId)) {
       this.expandedConnections.delete(connectionId)
     } else {
@@ -45,11 +44,11 @@ export class SidebarComponent {
     }
   }
 
-  toggleDatabase(database: string) {
-    if (this.expandedDatabases.has(database)) {
-      this.expandedDatabases.delete(database)
+  toggleDatabase(databaseId: string) {
+    if (this.expandedDatabases.has(databaseId)) {
+      this.expandedDatabases.delete(databaseId)
     } else {
-      this.expandedDatabases.add(database)
+      this.expandedDatabases.add(databaseId)
     }
   }
 
@@ -100,6 +99,8 @@ export class SidebarComponent {
 
       await this.disconnectDatabases(connection)
       await this.addDatabase(connection)
+
+      console.log('status:' + this.dbSchemas)
     } catch (error: any) {
       this.toast.showToast(error.message, 'red')
     } finally {
@@ -108,8 +109,6 @@ export class SidebarComponent {
   }
 
   async disconnectDatabases(connection: any): Promise<void> {
-    console.log('Conexão para desconectar:', connection)
-
     this.dbSchemas.data = this.dbSchemas.data.map((db: any) => {
       if (db.sgbd === connection.database) {
         return { ...db, connected: false }
@@ -119,12 +118,7 @@ export class SidebarComponent {
   }
 
   async addDatabase(connection: any): Promise<void> {
-    console.log(connection)
-    console.log('aqui: ', this.dbSchemas.data)
-
     const schemasDb: any = await this.IAPI.get(`/api/${connection.database}/${connection.version}/list-databases-and-schemas`)
-
-    console.log('schemas', schemasDb)
 
     schemasDb.data.forEach((schema: any, index: number) => {
       this.dbSchemas.data.push({

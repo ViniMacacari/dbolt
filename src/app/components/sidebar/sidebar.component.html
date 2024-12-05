@@ -29,11 +29,12 @@
             <div *ngIf="expandedConnections.has(connection.id)" class="connection-info">
                 <div *ngFor="let database of getSchemasByConnection(connection)" class="d-flex flex-column">
                     <div class="separator"></div>
-                    <div (click)="toggleDatabase(database.database)" class="d-flex align-items-center gap-2">
+                    <div (click)="toggleDatabase(connection.id + '-' + database.database)"
+                        class="d-flex align-items-center gap-2">
                         <img src="icons/database.png" height="15px" width="15px">
                         <h2 class="database-name">{{ database.database }}</h2>
                     </div>
-                    <div class="schemas" *ngIf="expandedDatabases.has(database.database)">
+                    <div class="schemas" *ngIf="expandedDatabases.has(connection.id + '-' + database.database)">
                         <div *ngFor="let schema of database.schemas" (dblclick)="selectSchema({
                             schema: schema,
                             database: database.database,
