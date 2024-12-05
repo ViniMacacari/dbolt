@@ -164,7 +164,17 @@ export class SidebarComponent {
     if (matchedConnection) {
       console.log('Conexão encontrada:', matchedConnection)
       if (matchedConnection.connected) {
-        console.log('A conexão está ativa.')
+        const schemaDb: any = await this.connectToSchemaDb(matchedConnection)
+
+        this.selectedSchemaDB = {
+          database: schemaDb.currentSchema.database,
+          schema: schemaDb.currentSchema.schema,
+          sgbd: connection.sgbd
+        }
+
+        console.log(this.selectedSchemaDB)
+
+        console.log(this.dbSchemas)
       } else {
         try {
           console.log('Realizando conexão...')
@@ -204,7 +214,14 @@ export class SidebarComponent {
 
           const schemaDb: any = await this.connectToSchemaDb(connection)
 
-          console.log(schemaDb)
+          this.selectedSchemaDB = {
+            database: schemaDb.currentSchema.database,
+            schema: schemaDb.currentSchema.schema,
+            sgbd: connection.sgbd
+          }
+
+          console.log(this.selectedSchemaDB)
+
           console.log(this.dbSchemas)
         } catch (error: any) {
           this.toast.showToast(error.message, 'red')

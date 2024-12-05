@@ -128,7 +128,8 @@ export class DatabaseManagerComponent {
 
     this.selectedSchemaDB = {
       database: result.database,
-      schema: result.schema
+      schema: result.schema,
+      sgbd: this.databasesSchemasActiveConnections.data[0].sgbd
     }
   }
 }
