@@ -93,7 +93,16 @@ export class SidebarComponent {
         name: connection.name
       })
 
-      await this.IAPI.post(`/api/${connection.sgbd}/${connection.version}/connect`, {
+      console.log(connection, {
+        host: connection.host,
+        port: connection.port,
+        sgbd: connection.sgbd,
+        name: connection.name
+      })
+
+      console.log('connection>', connection)
+
+      await this.IAPI.post(`/api/${connection.database}/${connection.version}/connect`, {
         host: connection.host,
         port: connection.port,
         user: connection.user,
@@ -154,22 +163,11 @@ export class SidebarComponent {
     LoadingComponent.show()
 
     try {
-      console.log('Verificando conexão...')
-      console.log('connection:', connection)
-      console.log('dbSchemas.data:', this.dbSchemas.data)
-
-      console.log('Comparando:')
-      console.log('Connection Host:', connection.host, '| Data Host:', this.dbSchemas.data.map((d: any) => d.host))
-      console.log('Connection Port:', connection.port, '| Data Port:', this.dbSchemas.data.map((d: any) => d.port))
-      console.log('Connection Database:', connection.database, '| Data Database:', this.dbSchemas.data.map((d: any) => d.database))
-      console.log('Connection Version:', connection.version, '| Data Version:', this.dbSchemas.data.map((d: any) => d.version))
-      console.log('Connection Connected:', this.dbSchemas.data.map((d: any) => d.connected))
-
       const existingConnection = this.dbSchemas.data.find(
         (item: any) =>
           item.database === connection.database &&
-          item.host === connection.connectionHost && // Ajuste: connection.connectionHost
-          item.port === connection.connectionPort && // Ajuste: connection.connectionPort
+          item.host === connection.connectionHost &&
+          item.port === connection.connectionPort &&
           item.version === connection.version &&
           item.connected === true
       )
