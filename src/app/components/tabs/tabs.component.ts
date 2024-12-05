@@ -17,7 +17,7 @@ export class TabsComponent {
 
   dataList: any = []
   dropdownVisible: boolean = false
-  tabs: { id: number, name: string }[] = []
+  tabs: { id: number, name: string, info: { sql: string } }[] = []
   activeTab: number | null = null
   idTabs: number = 0
 
