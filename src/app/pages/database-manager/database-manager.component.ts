@@ -19,6 +19,8 @@ export class DatabaseManagerComponent {
   connections: any[] = []
   selectedSchemaDB: any
 
+  sqlContent: string = ''
+
   constructor(
     private IAPI: InternalApiService,
     private route: ActivatedRoute,
@@ -129,5 +131,9 @@ export class DatabaseManagerComponent {
       schema: result.schema,
       sgbd: this.databasesSchemasActiveConnections.data[0].sgbd
     }
+  }
+
+  onTabCreated(tab: any): void {
+    console.log(tab)
   }
 }

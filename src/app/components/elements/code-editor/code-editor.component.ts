@@ -1,13 +1,17 @@
-import { Component } from '@angular/core'
+import { Component, Input } from '@angular/core'
+import { CommonModule } from '@angular/common'
+import { FormsModule } from '@angular/forms'
 
 @Component({
   selector: 'app-code-editor',
   standalone: true,
-  imports: [],
+  imports: [FormsModule, CommonModule],
   templateUrl: './code-editor.component.html',
   styleUrl: './code-editor.component.scss'
 })
 export class CodeEditorComponent {
+  @Input() sqlContent: string = ''
+
   handleKeyDown(event: KeyboardEvent): void {
     const textarea = event.target as HTMLTextAreaElement
     const start = textarea.selectionStart
@@ -18,7 +22,7 @@ export class CodeEditorComponent {
       const selectedText = start !== end
         ? textarea.value.substring(start, end)
         : this.getCurrentLineContent(textarea.value, start)
-      console.log(selectedText)
+      this.runSql(selectedText)
       return
     }
 
@@ -69,5 +73,9 @@ export class CodeEditorComponent {
   private getCurrentLine(text: string, position: number): string {
     const lines = text.substring(0, position).split('\n')
     return lines[lines.length - 1]
+  }
+
+  runSql(sql: string): void {
+    console.log(sql, 'ADWD')
   }
 }

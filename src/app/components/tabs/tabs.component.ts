@@ -1,4 +1,4 @@
-import { Component, HostListener } from '@angular/core'
+import { Component, HostListener, Output, EventEmitter } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { Router, ActivatedRoute } from '@angular/router'
 import { InputListComponent } from "../elements/input-list/input-list.component"
@@ -12,6 +12,8 @@ import { InternalApiService } from '../../services/requests/internal-api.service
   styleUrl: './tabs.component.scss'
 })
 export class TabsComponent {
+  @Output() tabCreated = new EventEmitter<any>()
+
   dataList: any = []
   dropdownVisible: boolean = false
   tabs: { id: number, name: string }[] = []
@@ -34,9 +36,9 @@ export class TabsComponent {
   }
 
   newTab(type: string, info: any): void {
-    const newTab = {
+    const newTab: any = {
       id: Date.now(),
-      name: `Tab ${this.idTabs + 1}`,
+      name: Date.now(),
       type: type,
       info: info
     }
@@ -44,7 +46,9 @@ export class TabsComponent {
     this.idTabs += 1
 
     this.tabs.push(newTab)
-    this.activeTab = this.tabs.length - 1
+    this.selectTab(this.tabs.length - 1)
+    this.tabCreated.emit(newTab)
+
     setTimeout(() => {
       this.dropdownVisible = false
     }, 100)

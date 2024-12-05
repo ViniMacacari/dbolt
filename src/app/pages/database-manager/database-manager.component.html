@@ -3,11 +3,11 @@
         [dbSchemas]="databasesSchemasActiveConnections" [selectedSchemaDB]="selectedSchemaDB"></app-sidebar>
     <div class="d-flex flex-column w-100 h-100">
         <div class="tabs pt-3 px-3">
-            <app-tabs></app-tabs>
+            <app-tabs (tabCreated)="onTabCreated($event)"></app-tabs>
         </div>
         <div class="p-3 w-100 h-100">
             <div class="d-flex flex-column w-100 h-100 user-content">
-                <app-code-editor></app-code-editor>
+                <app-code-editor [sqlContent]="sqlContent"></app-code-editor>
             </div>
         </div>
     </div>

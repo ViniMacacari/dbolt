@@ -11,6 +11,7 @@
         </button>
     </div>
     <div class="code-editor py-2">
-        <textarea class="h-100 w-100" spellcheck="false" (keydown)="handleKeyDown($event)"></textarea>
+        <textarea class="h-100 w-100" spellcheck="false" (keydown)="handleKeyDown($event)"
+            [(ngModel)]="sqlContent"></textarea>
     </div>
 </div>
