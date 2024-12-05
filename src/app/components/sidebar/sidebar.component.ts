@@ -99,8 +99,6 @@ export class SidebarComponent {
 
       await this.disconnectDatabases(connection)
       await this.addDatabase(connection)
-
-      console.log('status:' + this.dbSchemas)
     } catch (error: any) {
       this.toast.showToast(error.message, 'red')
     } finally {
@@ -111,7 +109,6 @@ export class SidebarComponent {
   async disconnectDatabases(connection: any): Promise<void> {
     this.dbSchemas.data = this.dbSchemas.data.map((db: any) => {
       if (db.sgbd === connection.database) {
-        console.log('desconectando', db)
         return { ...db, connected: false }
       }
       return db
@@ -132,8 +129,6 @@ export class SidebarComponent {
         connected: index === 0
       })
     })
-
-    console.log('atualizado: ', this.dbSchemas)
   }
 
   async selectSchema(connection: any): Promise<any> {
@@ -142,7 +137,6 @@ export class SidebarComponent {
     }
 
     this.clickTimeout = setTimeout(() => {
-      console.log('setando schema:', connection)
       this.setSchema(connection)
     }, 300)
   }
@@ -162,22 +156,25 @@ export class SidebarComponent {
     )
 
     if (matchedConnection) {
-      console.log('Conexão encontrada:', matchedConnection)
       if (matchedConnection.connected) {
-        const schemaDb: any = await this.connectToSchemaDb(matchedConnection)
+        let schemaDb: any
+
+        try {
+          schemaDb = await this.connectToSchemaDb(matchedConnection, connection)
+        } catch (error: any) {
+          console.error(error)
+          this.toast.showToast(error.message, 'red')
+          return
+        }
 
         this.selectedSchemaDB = {
-          database: schemaDb.currentSchema.database,
-          schema: schemaDb.currentSchema.schema,
+          database: schemaDb?.currentSchema?.database || connection.database,
+          schema: schemaDb?.currentSchema?.schema || connection.schema,
           sgbd: connection.sgbd
         }
 
-        console.log(this.selectedSchemaDB)
-
-        console.log(this.dbSchemas)
       } else {
         try {
-          console.log('Realizando conexão...')
           try {
             await this.IAPI.post(`/api/${connection.sgbd}/${connection.version}/connect`, {
               host: connection.host,
@@ -207,7 +204,6 @@ export class SidebarComponent {
               return db
             })
 
-            console.log('status:' + this.dbSchemas)
           } catch (error: any) {
             this.toast.showToast(error.message, 'red')
           }
@@ -215,16 +211,12 @@ export class SidebarComponent {
           const schemaDb: any = await this.connectToSchemaDb(connection)
 
           this.selectedSchemaDB = {
-            database: schemaDb.currentSchema.database,
-            schema: schemaDb.currentSchema.schema,
+            database: schemaDb?.currentSchema?.database || connection.database,
+            schema: schemaDb?.currentSchema?.schema || connection.schema,
             sgbd: connection.sgbd
           }
-
-          console.log(this.selectedSchemaDB)
-
-          console.log(this.dbSchemas)
         } catch (error: any) {
-          this.toast.showToast(error.message, 'red')
+          this.toast.showToast(error.message + ' aqui', 'red')
         }
       }
     } else {
@@ -232,16 +224,21 @@ export class SidebarComponent {
     }
   }
 
-  async connectToSchemaDb(connection: any): Promise<void> {
+  async connectToSchemaDb(connection: any, data: any | null = null): Promise<any> {
     try {
       const result: any = await this.IAPI.post(`/api/${connection.sgbd}/${connection.version}/set-schema`, {
-        database: connection.database,
-        schema: connection.schema
+        database: connection.database || data.database,
+        schema: connection.schema || data.schema
       })
 
-      return result
+      return {
+        database: connection?.database || data?.database,
+        schema: connection?.schema || data?.schema
+      }
     } catch (error: any) {
       this.toast.showToast(error.message, 'red')
+
+      return null
     }
   }
 
