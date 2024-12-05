@@ -35,7 +35,7 @@
                         <h2 class="database-name">{{ database.database }}</h2>
                     </div>
                     <div class="schemas" *ngIf="expandedDatabases.has(connection.id + '-' + database.database)">
-                        <div *ngFor="let schema of database.schemas" (dblclick)="selectSchema({
+                        <div *ngFor="let schema of database.schemas" (dblclick)="openSchemaDBInfo({
                             schema: schema,
                             database: database.database,
                             sgbd: connection.database,
@@ -44,7 +44,7 @@
                             name: connection.name,
                             host: connection.host,
                             port: connection.port
-                        })" (click)="openSchemaDBInfo({
+                        })" (click)="selectSchema({
                             schema: schema,
                             database: database.database,
                             sgbd: connection.database,
@@ -52,7 +52,9 @@
                             connectionId: connection.id,
                             name: connection.name,
                             host: connection.host,
-                            port: connection.port
+                            port: connection.port,
+                            password: connection.password,
+                            user: connection.user
                         })" class="d-flex align-items-center gap-2 mb-2">
                             <img src="icons/schema.png" height="10px" width="10px">
                             <p class="text-min-gray">{{ schema }}</p>

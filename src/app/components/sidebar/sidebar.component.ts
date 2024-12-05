@@ -111,6 +111,7 @@ export class SidebarComponent {
   async disconnectDatabases(connection: any): Promise<void> {
     this.dbSchemas.data = this.dbSchemas.data.map((db: any) => {
       if (db.sgbd === connection.database) {
+        console.log('desconectando', db)
         return { ...db, connected: false }
       }
       return db
@@ -136,22 +137,100 @@ export class SidebarComponent {
   }
 
   async selectSchema(connection: any): Promise<any> {
-    console.log('setando para receber: ', connection)
-
-    if (this.clickTimeout) {
-      clearTimeout(this.clickTimeout)
-      this.clickTimeout = null
-    }
-  }
-
-  async openSchemaDBInfo(connection: any): Promise<any> {
     if (this.clickTimeout) {
       clearTimeout(this.clickTimeout)
     }
 
     this.clickTimeout = setTimeout(() => {
-      console.log('Clique simples:', connection)
+      console.log('setando schema:', connection)
+      this.setSchema(connection)
     }, 300)
+  }
+
+  async setSchema(connection: any): Promise<void> {
+    if (!this.dbSchemas || !this.dbSchemas.data) {
+      console.error('dbSchemas não está inicializado.')
+      return
+    }
+
+    const matchedConnection = this.dbSchemas.data.find((db: any) =>
+      db.database === connection.database &&
+      db.host === connection.host &&
+      db.port === connection.port &&
+      db.sgbd === connection.sgbd &&
+      db.version === connection.version
+    )
+
+    if (matchedConnection) {
+      console.log('Conexão encontrada:', matchedConnection)
+      if (matchedConnection.connected) {
+        console.log('A conexão está ativa.')
+      } else {
+        try {
+
+          try {
+            await this.IAPI.post(`/api/${connection.sgbd}/${connection.version}/connect`, {
+              host: connection.host,
+              port: connection.port,
+              user: connection.user,
+              password: connection.password
+            })
+
+            this.expandedConnections.add(connection.id)
+
+            await this.disconnectDatabases(connection)
+
+            this.dbSchemas.data = this.dbSchemas.data.map((db: any) => {
+              if (
+                db.database === connection.database &&
+                db.host === connection.host &&
+                db.port === connection.port &&
+                db.sgbd === connection.sgbd &&
+                db.version === connection.version
+              ) {
+                return { ...db, connected: true }
+              }
+              return db
+            })
+
+            console.log('status:' + this.dbSchemas)
+          } catch (error: any) {
+            this.toast.showToast(error.message, 'red')
+          }
+
+          const schemaDb: any = await this.connectToSchemaDb(connection)
+
+          console.log(schemaDb)
+          console.log(this.dbSchemas)
+        } catch (error: any) {
+          this.toast.showToast(error.message, 'red')
+        }
+      }
+    } else {
+      this.toast.showToast('No connection found', 'red')
+    }
+  }
+
+  async connectToSchemaDb(connection: any): Promise<void> {
+    try {
+      const result: any = await this.IAPI.post(`/api/${connection.sgbd}/${connection.version}/set-schema`, {
+        database: connection.database,
+        schema: connection.schema
+      })
+
+      return result
+    } catch (error: any) {
+      this.toast.showToast(error.message, 'red')
+    }
+  }
+
+  async openSchemaDBInfo(connection: any): Promise<any> {
+    console.log('Clique duplo: ', connection)
+
+    if (this.clickTimeout) {
+      clearTimeout(this.clickTimeout)
+      this.clickTimeout = null
+    }
   }
 
   openModal() {
