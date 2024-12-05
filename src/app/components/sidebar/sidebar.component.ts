@@ -106,6 +106,8 @@ export class SidebarComponent {
               item.port === connection.port
           )
 
+          console.log(this.dbSchemas.data)
+
           if (!exists) {
             this.dbSchemas.data.push({
               host: connection.host,

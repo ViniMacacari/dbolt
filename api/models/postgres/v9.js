@@ -13,8 +13,7 @@ class PgV1 {
 
     async connect(config) {
         if (this.connection) {
-            console.warn('Already connected to PostgreSQL')
-            return this.connection
+            await this.disconnect()
         }
 
         if (!config || typeof config !== 'object') {

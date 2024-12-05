@@ -105,6 +105,7 @@ export class DatabaseManagerComponent {
               version: activeConn.version,
               database: db.database,
               schemas: db.schemas,
+              connected: true
             })
           }
         })
