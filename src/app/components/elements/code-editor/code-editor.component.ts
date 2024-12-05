@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core'
+import { Component, Input, Output, EventEmitter } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 
@@ -11,6 +11,7 @@ import { FormsModule } from '@angular/forms'
 })
 export class CodeEditorComponent {
   @Input() sqlContent: string = ''
+  @Output() sqlContentChange = new EventEmitter<string>()
 
   handleKeyDown(event: KeyboardEvent): void {
     const textarea = event.target as HTMLTextAreaElement
@@ -73,6 +74,12 @@ export class CodeEditorComponent {
   private getCurrentLine(text: string, position: number): string {
     const lines = text.substring(0, position).split('\n')
     return lines[lines.length - 1]
+  }
+
+  onInput(event: Event): void {
+    const textarea = event.target as HTMLTextAreaElement
+    this.sqlContent = textarea.value
+    this.sqlContentChange.emit(this.sqlContent)
   }
 
   runSql(sql: string): void {

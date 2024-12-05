@@ -1,4 +1,5 @@
 import { Component } from '@angular/core'
+import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { Router, ActivatedRoute } from '@angular/router'
 import { SidebarComponent } from "../../components/sidebar/sidebar.component"
@@ -9,7 +10,7 @@ import { CodeEditorComponent } from "../../components/elements/code-editor/code-
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, CodeEditorComponent],
+  imports: [SidebarComponent, TabsComponent, CodeEditorComponent, CommonModule],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
@@ -19,6 +20,7 @@ export class DatabaseManagerComponent {
   connections: any[] = []
   selectedSchemaDB: any
 
+  editorOpen: boolean = false
   sqlContent: string = ''
 
   constructor(
@@ -135,9 +137,17 @@ export class DatabaseManagerComponent {
 
   onTabSelected(tab: any): void {
     console.log(tab)
+    this.editorOpen = true
+    this.sqlContent = tab.info.sql
   }
 
   onTabClosed(): void {
     console.log('tab closed')
+    this.editorOpen = false
+  }
+
+  onSqlContentChange(content: string): void {
+    this.sqlContent = content
+    console.log('Conteúdo SQL atualizado:', content)
   }
 }

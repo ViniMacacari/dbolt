@@ -7,7 +7,8 @@
         </div>
         <div class="p-3 w-100 h-100">
             <div class="d-flex flex-column w-100 h-100 user-content">
-                <app-code-editor [sqlContent]="sqlContent"></app-code-editor>
+                <app-code-editor *ngIf="editorOpen" [(sqlContent)]="sqlContent"
+                    (sqlContentChange)="onSqlContentChange($event)"></app-code-editor>
             </div>
         </div>
     </div>
