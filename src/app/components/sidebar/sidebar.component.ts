@@ -71,10 +71,17 @@ export class SidebarComponent {
     }
 
     const existingConnection = this.dbSchemas.info.find(
-      (info: any) => info.host === connection.host && info.port === connection.port
+      (info: any) =>
+        info.host === connection.host &&
+        info.port === connection.port &&
+        info.sgbd === connection.sgbd
     )
 
     if (existingConnection) return
+
+    this.dbSchemas.data.forEach((item: any) => {
+      item.connected = false
+    })
 
     LoadingComponent.show()
 
@@ -82,31 +89,30 @@ export class SidebarComponent {
       this.dbSchemas.info.push({
         host: connection.host,
         port: connection.port,
-        database: connection.database,
-        name: connection.name,
+        sgbd: connection.sgbd,
+        name: connection.name
       })
 
-      await this.IAPI.post(`/api/${connection.database}/${connection.version}/connect`, {
+      await this.IAPI.post(`/api/${connection.sgbd}/${connection.version}/connect`, {
         host: connection.host,
         port: connection.port,
         user: connection.user,
-        password: connection.password,
+        password: connection.password
       })
 
       const response: any = await this.IAPI.get(
-        `/api/${connection.database}/${connection.version}/list-databases-and-schemas`
+        `/api/${connection.sgbd}/${connection.version}/list-databases-and-schemas`
       )
 
       if (response && response.data) {
-        response.data.forEach((db: any) => {
+        response.data.forEach((db: any, index: number) => {
           const exists = this.dbSchemas.data.find(
             (item: any) =>
               item.database === db.database &&
               item.host === connection.host &&
-              item.port === connection.port
+              item.port === connection.port &&
+              item.sgbd === connection.sgbd
           )
-
-          console.log(this.dbSchemas.data)
 
           if (!exists) {
             this.dbSchemas.data.push({
@@ -114,17 +120,28 @@ export class SidebarComponent {
               port: connection.port,
               database: db.database,
               schemas: db.schemas,
+              sgbd: connection.sgbd,
+              connected: index === 0
             })
           }
         })
-      }
-      console.log('dbSchemas atualizado:', this.dbSchemas)
 
-      LoadingComponent.hide()
+        const firstDB = this.dbSchemas.data.find((db: any) => db.connected)
+
+        if (firstDB) {
+          await this.selectSchema({
+            database: firstDB.database,
+            schema: firstDB.schemas[0],
+            sgbd: firstDB.sgbd,
+            version: connection.version
+          })
+        }
+      }
     } catch (error: any) {
       console.error(error)
-      LoadingComponent.hide()
       this.toast.showToast(error.message, 'red')
+    } finally {
+      LoadingComponent.hide()
     }
   }
 
@@ -137,10 +154,71 @@ export class SidebarComponent {
     LoadingComponent.show()
 
     try {
-      await this.IAPI.post(`/api/${connection.sgbd}/${connection.version}/set-schema`, {
+      console.log('Verificando conexão...')
+      console.log('connection:', connection)
+      console.log('dbSchemas.data:', this.dbSchemas.data)
+
+      console.log('Comparando:')
+      console.log('Connection Host:', connection.host, '| Data Host:', this.dbSchemas.data.map((d: any) => d.host))
+      console.log('Connection Port:', connection.port, '| Data Port:', this.dbSchemas.data.map((d: any) => d.port))
+      console.log('Connection Database:', connection.database, '| Data Database:', this.dbSchemas.data.map((d: any) => d.database))
+      console.log('Connection Version:', connection.version, '| Data Version:', this.dbSchemas.data.map((d: any) => d.version))
+      console.log('Connection Connected:', this.dbSchemas.data.map((d: any) => d.connected))
+
+      const existingConnection = this.dbSchemas.data.find(
+        (item: any) =>
+          item.database === connection.database &&
+          item.host === connection.connectionHost && // Ajuste: connection.connectionHost
+          item.port === connection.connectionPort && // Ajuste: connection.connectionPort
+          item.version === connection.version &&
+          item.connected === true
+      )
+
+      console.log('Existing Connection:', existingConnection)
+
+      if (existingConnection) {
+        console.log('Conexão já ativa. Pulando nova conexão.')
+      } else {
+        console.log('Conexão não encontrada ou inativa. Tentando conectar...')
+        const payload = {
+          host: connection.host,
+          port: connection.port,
+          user: connection.user || '',
+          password: connection.password || ''
+        }
+        console.log('Payload para conexão:', payload)
+
+        const response: any = await this.IAPI.post(`/api/${connection.sgbd}/${connection.version}/connect`, payload)
+
+        if (!response || !response.success) {
+          console.error('Erro na tentativa de conexão:', response)
+          throw new Error('Falha ao conectar com a configuração fornecida')
+        }
+
+        console.log('Conexão bem-sucedida. Atualizando estado...')
+        this.dbSchemas.data.forEach((item: any) => item.connected = false)
+
+        const updatedConnection = this.dbSchemas.data.find(
+          (item: any) =>
+            item.database === connection.database &&
+            item.host === connection.host &&
+            item.port === connection.port &&
+            item.version === connection.version &&
+            item.sgbd === connection.sgbd
+        )
+
+        if (updatedConnection) updatedConnection.connected = true
+        console.log('Estado atualizado:', this.dbSchemas.data)
+      }
+
+      console.log('Selecionando schema...')
+      const schemaPayload = {
         database: connection.database || '',
         schema: connection.schema || ''
-      })
+      }
+      console.log('Payload para schema:', schemaPayload)
+
+      await this.IAPI.post(`/api/${connection.sgbd}/${connection.version}/set-schema`, schemaPayload)
 
       const result: any = await this.IAPI.get(`/api/${connection.sgbd}/${connection.version}/get-selected-schema`)
 
@@ -148,8 +226,10 @@ export class SidebarComponent {
         database: result.database,
         schema: result.schema
       }
+
+      console.log('Schema selecionado com sucesso:', this.selectedSchemaDB)
     } catch (error: any) {
-      console.error(error)
+      console.error('Erro ao selecionar schema:', error)
       this.toast.showToast(error.message, 'red')
     } finally {
       LoadingComponent.hide()
