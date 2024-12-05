@@ -4,6 +4,7 @@ import { InternalApiService } from '../../services/requests/internal-api.service
 import { LoadingComponent } from '../modal/loading/loading.component'
 import { ToastComponent } from '../toast/toast.component'
 import { EditConnectionComponent } from "../modal/edit-connection/edit-connection.component"
+import { connect } from 'rxjs'
 
 @Component({
   selector: 'app-sidebar',
@@ -65,8 +66,40 @@ export class SidebarComponent {
     )
   }
 
-  async connectDatabase(connection: any): Promise<void> {
+  async canConnect(connection: any): Promise<void> {
+    if (!this.dbSchemas || !this.dbSchemas.info || !this.dbSchemas.data) {
+      this.dbSchemas = { info: [], data: [] }
+    }
 
+    const existsConnection = this.dbSchemas.data.find(
+      (db: any) =>
+        db.sgbd === connection.database &&
+        db.host === connection.host &&
+        db.port === connection.port
+    )
+
+    if (existsConnection) {
+      return
+    } else {
+      this.connectDatabase(connection)
+    }
+  }
+
+  async connectDatabase(connection: any): Promise<void> {
+    console.log(connection)
+    LoadingComponent.show()
+    try {
+      await this.IAPI.post(`/api/${connection.database}/${connection.version}/connect`, {
+        host: connection.host,
+        port: connection.port,
+        user: connection.user,
+        password: connection.password
+      })
+    } catch (error: any) {
+      this.toast.showToast(error.message, 'red')
+    } finally {
+      LoadingComponent.hide()
+    }
   }
 
   async selectSchema(connection: any): Promise<any> {
@@ -76,7 +109,6 @@ export class SidebarComponent {
       clearTimeout(this.clickTimeout)
       this.clickTimeout = null
     }
-
   }
 
   async openSchemaDBInfo(connection: any): Promise<any> {

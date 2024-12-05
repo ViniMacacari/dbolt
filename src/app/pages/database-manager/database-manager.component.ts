@@ -69,8 +69,6 @@ export class DatabaseManagerComponent {
 
       const activeConn = this.activeConnection[0]
 
-      console.log('ativo: ', activeConn)
-
       const existingConnection = this.databasesSchemasActiveConnections.info.find(
         (info: any) => info.host === activeConn.host && info.port === activeConn.port
       )
@@ -82,6 +80,7 @@ export class DatabaseManagerComponent {
           database: activeConn.database,
           name: activeConn.name,
           version: activeConn.version,
+          sgbd: activeConn.database
         })
       }
 
@@ -103,14 +102,13 @@ export class DatabaseManagerComponent {
               host: activeConn.host,
               port: activeConn.port,
               version: activeConn.version,
+              sgbd: activeConn.database,
               database: db.database,
               schemas: db.schemas,
               connected: true
             })
           }
         })
-
-        console.log('Schemas carregados:', this.databasesSchemasActiveConnections)
 
         await this.loadInitSelectedSchemaAndDB()
       } else {
