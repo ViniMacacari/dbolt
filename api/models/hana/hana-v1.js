@@ -12,8 +12,7 @@ class HanaV1 {
 
     async connect(config) {
         if (this.connection) {
-            console.warn('Already connected to HANA')
-            return this.connection
+            await this.disconnect()
         }
 
         if (!config || typeof config !== 'object') {
