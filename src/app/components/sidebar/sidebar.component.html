@@ -40,18 +40,18 @@
                             sgbd: connection.database,
                             version: connection.version,
                             connectionId: connection.id,
-                            connectionName: connection.name,
-                            connectionHost: connection.host,
-                            connectionPort: connection.port
+                            name: connection.name,
+                            host: connection.host,
+                            port: connection.port
                         })" (click)="openSchemaDBInfo({
                             schema: schema,
                             database: database.database,
                             sgbd: connection.database,
                             version: connection.version,
                             connectionId: connection.id,
-                            connectionName: connection.name,
-                            connectionHost: connection.host,
-                            connectionPort: connection.port
+                            name: connection.name,
+                            host: connection.host,
+                            port: connection.port
                         })" class="d-flex align-items-center gap-2 mb-2">
                             <img src="icons/schema.png" height="10px" width="10px">
                             <p class="text-min-gray">{{ schema }}</p>
