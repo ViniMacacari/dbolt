@@ -60,7 +60,6 @@ export class DatabaseManagerComponent {
 
     try {
       this.connections = await this.IAPI.get('/api/connections/load')
-      console.log('Conexões carregadas:', this.connections)
 
       if (!this.activeConnection || !this.activeConnection[0]) {
         console.warn('Conexão ativa não definida ou inválida.')
@@ -68,7 +67,6 @@ export class DatabaseManagerComponent {
       }
 
       const activeConn = this.activeConnection[0]
-      console.log('ativos', activeConn)
 
       const existingConnection = this.databasesSchemasActiveConnections.info.find(
         (info: any) => info.host === activeConn.host && info.port === activeConn.port
