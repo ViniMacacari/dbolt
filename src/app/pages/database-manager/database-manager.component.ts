@@ -133,7 +133,11 @@ export class DatabaseManagerComponent {
     }
   }
 
-  onTabCreated(tab: any): void {
+  onTabSelected(tab: any): void {
     console.log(tab)
+  }
+
+  onTabClosed(): void {
+    console.log('tab closed')
   }
 }

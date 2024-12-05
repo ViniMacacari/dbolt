@@ -12,7 +12,8 @@ import { InternalApiService } from '../../services/requests/internal-api.service
   styleUrl: './tabs.component.scss'
 })
 export class TabsComponent {
-  @Output() tabCreated = new EventEmitter<any>()
+  @Output() tabSelected = new EventEmitter<any>()
+  @Output() tabClosed = new EventEmitter<void>()
 
   dataList: any = []
   dropdownVisible: boolean = false
@@ -47,7 +48,6 @@ export class TabsComponent {
 
     this.tabs.push(newTab)
     this.selectTab(this.tabs.length - 1)
-    this.tabCreated.emit(newTab)
 
     setTimeout(() => {
       this.dropdownVisible = false
@@ -63,18 +63,21 @@ export class TabsComponent {
 
   closeTab(index: number, event: MouseEvent): void {
     event.stopPropagation()
+
     this.tabs.splice(index, 1)
 
-    if (this.activeTab === index) {
-      this.activeTab = this.tabs.length > 0 ? Math.max(0, index - 1) : null
-    } else if (this.activeTab !== null && this.activeTab > index) {
-      this.activeTab -= 1
+    if (this.tabs.length === 0) {
+      this.activeTab = null
+      this.tabClosed.emit()
+    } else {
+      const newActiveTab = Math.min(index, this.tabs.length - 1)
+      this.selectTab(newActiveTab)
     }
   }
 
   selectTab(index: number): void {
     this.activeTab = index
-    console.log(`Aba ${index} selecionada:`, this.tabs[index])
+    this.tabSelected.emit(this.tabs[index])
   }
 
   @HostListener('document:click', ['$event'])

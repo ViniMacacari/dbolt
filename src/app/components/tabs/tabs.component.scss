@@ -106,6 +106,11 @@
                     text-overflow: ellipsis;
                 }
             }
+
+            &.active {
+                background-color: #2d2c2c;
+                border: 2px solid #1d162e;
+            }
         }
     }
 }
