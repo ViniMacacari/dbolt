@@ -20,6 +20,18 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
       this.initialized = true
       this.initializeEditor()
     }
+
+    (window as any).MonacoEnvironment = {
+      getWorker: () => {
+        return new Worker(URL.createObjectURL(new Blob([''])))
+      }
+    }
+  }
+
+  ngOnChanges(): void {
+    if (this.editor && this.sqlContent !== this.editor.getValue()) {
+      this.editor.setValue(this.sqlContent || '')
+    }
   }
 
   ngOnDestroy(): void {
