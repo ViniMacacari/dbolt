@@ -64,7 +64,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
     })
 
     this.editor = monaco.editor.create(this.editorContainer.nativeElement, {
-      value: this.sqlContent || 'SELECT MAX(NS."DocNum"), * FROM OINV NS WHERE 1 = 1 AND "A" = "A"',
+      value: this.sqlContent || '',
       language: 'sql',
       theme: 'custom-dark',
       automaticLayout: true,
@@ -82,7 +82,12 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
       renderWhitespace: 'none',
       stickyScroll: { enabled: false },
       folding: false,
-      fontFamily: 'Nunito'
+      fontFamily: 'Nunito',
+      selectionHighlight: false,
+      quickSuggestions: false,
+      suggestOnTriggerCharacters: false,
+      wordBasedSuggestions: 'off',
+      contextmenu: false
     })
 
     this.editor.onDidChangeModelContent(() => {
