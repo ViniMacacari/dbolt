@@ -3,7 +3,7 @@ import { GetDbschemaService } from '../../../services/db-info/get-dbschema.servi
 import { RunQueryService } from '../../../services/db-query/run-query.service'
 import * as monaco from 'monaco-editor'
 import { LoadingComponent } from '../../modal/loading/loading.component'
-import { TableQueryComponent } from "../table-query/table-query.component";
+import { TableQueryComponent } from "../table-query/table-query.component"
 
 @Component({
   selector: 'app-code-editor',

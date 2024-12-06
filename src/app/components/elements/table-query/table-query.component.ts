@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, Output, EventEmitter, Input } from '@angular/core'
 
 @Component({
   selector: 'app-table-query',
@@ -8,5 +8,7 @@ import { Component } from '@angular/core';
   styleUrl: './table-query.component.scss'
 })
 export class TableQueryComponent {
+  @Input() query: any
 
+  
 }
