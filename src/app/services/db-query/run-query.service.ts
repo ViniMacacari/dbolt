@@ -8,12 +8,17 @@ import { InternalApiService } from '../requests/internal-api.service'
 export class RunQueryService {
 
   constructor(
-    private dbSchemas: GetDbschemaService
+    private dbSchemas: GetDbschemaService,
+    private IAPI: InternalApiService
   ) { }
 
-  runSQL(sql: string) {
+  async runSQL(sql: string) {
     const db = this.dbSchemas.getSelectedSchemaDB()
 
-    console.log(sql, db)
+    console.log(db)
+
+    const result = await this.IAPI.post(`/api/${db.sgbd}/${db.version}/query`, { sql })
+
+    console.log(result)
   }
 }

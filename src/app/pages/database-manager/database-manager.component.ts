@@ -136,6 +136,7 @@ export class DatabaseManagerComponent {
       database: result.database,
       schema: result.schema,
       sgbd: this.databasesSchemasActiveConnections.data[0].sgbd,
+      version: this.activeConnection[0].version,
       name: this.activeConnection[0].name,
       host: this.activeConnection[0].host,
       port: this.activeConnection[0].port,
