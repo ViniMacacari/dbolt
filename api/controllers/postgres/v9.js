@@ -1,6 +1,7 @@
 import SPgV1 from "../../services/connections/postgres/v9.js"
 import LSPg1 from "../../services/lists/postgres/v9.js"
 import SSPgV1 from "../../services/schemas/postgres/v9.js"
+import SQueryPgV1 from "../../services/queries/postgres/v9.js"
 
 class CPostgresV1 {
     async testConnection(req, res) {
@@ -69,6 +70,16 @@ class CPostgresV1 {
     async setDatabaseAndSchema(req, res) {
         try {
             const result = await SSPgV1.setDatabaseAndSchema(req.body.schema, req.body.database)
+
+            return res.status(200).json(result)
+        } catch (error) {
+            return res.status(500).json({ success: false, message: 'Server error', error: error.message })
+        }
+    }
+
+    async query(req, res) {
+        try {
+            const result = await SQueryPgV1.query(req.body.sql)
 
             return res.status(200).json(result)
         } catch (error) {
