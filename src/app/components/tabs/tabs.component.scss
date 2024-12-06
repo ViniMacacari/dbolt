@@ -70,7 +70,9 @@
         align-items: center;
         overflow: auto;
 
-        flex-wrap: wrap;
+        width: calc(100vw - 300px);
+
+        flex-wrap: nowrap;
         flex: 1 1 auto;
         overflow-x: auto;
         box-sizing: border-box;
@@ -120,4 +122,19 @@
     overflow-x: auto;
     overflow-y: hidden;
     flex: 1 1 auto;
+}
+
+// Scroll
+
+::-webkit-scrollbar {
+    height: 5px !important;
+}
+
+::-webkit-scrollbar-track {
+    background-color: #1b1b1b;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #353535;
+    border-radius: 15px;
 }

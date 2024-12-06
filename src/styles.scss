@@ -5,8 +5,8 @@
 }
 
 html, body {
-    height: 100% !important;
-    max-height: 100% !important;
+    height: 100vh !important;
+    max-height: 100vw !important;
 }
 
 * {
@@ -164,7 +164,7 @@ h6 {
 // Scroll
 
 ::-webkit-scrollbar {
-    width: 7px;
+    width: 5px !important;
 }
 
 ::-webkit-scrollbar-track {
