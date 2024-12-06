@@ -5,10 +5,12 @@
         <div class="tabs pt-3 px-3">
             <app-tabs (tabSelected)="onTabSelected($event)" (tabClosed)="onTabClosed()"></app-tabs>
         </div>
-        <div class="p-3 w-100 h-100">
-            <div class="d-flex flex-column w-100 h-100 user-content">
-                <app-code-editor *ngIf="editorOpen" [(sqlContent)]="sqlContent"
-                    (sqlContentChange)="onSqlContentChange($event)"></app-code-editor>
+        <div class="py-2 organize-content">
+            <div class="p-3 w-100 h-100">
+                <div class="d-flex flex-column w-100 h-100 user-content">
+                    <app-code-editor *ngIf="editorOpen" [(sqlContent)]="sqlContent"
+                        (sqlContentChange)="onSqlContentChange($event)"></app-code-editor>
+                </div>
             </div>
         </div>
     </div>
