@@ -85,6 +85,57 @@ export class CodeEditorComponent {
     range.collapse(true)
     selection.removeAllRanges()
     selection.addRange(range)
+
+    setTimeout(() => {
+      this.applyPreviousIndentation(element)
+    }, 1)
+  }
+
+  private applyPreviousIndentation(element: HTMLDivElement): void {
+
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) {
+      return
+    }
+
+    const range = selection.getRangeAt(0)
+
+    const fullText = element.innerText
+    const cursorOffset = range.startOffset
+
+    const lines = fullText.split('\n')
+
+    let currentLineIndex = 0
+    let accumulatedLength = 0
+
+    for (let i = 0; i < lines.length; i++) {
+      accumulatedLength += lines[i].length + 1
+      if (accumulatedLength > cursorOffset) {
+        currentLineIndex = i
+        break
+      }
+    }
+
+
+    if (currentLineIndex === 0) {
+      return
+    }
+
+    const previousLine = lines[currentLineIndex - 1]
+
+    const indentationMatch = previousLine.match(/^\s*/)
+    const indentation = indentationMatch ? indentationMatch[0] : ''
+
+
+    if (indentation) {
+      const textNode = document.createTextNode(indentation)
+      range.insertNode(textNode)
+
+      range.setStartAfter(textNode)
+      range.collapse(true)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
   }
 
   private getCurrentLineContent(text: string, position: number): string {
