@@ -9,23 +9,31 @@ import { CommonModule } from '@angular/common';
   styleUrls: ['./table-query.component.scss']
 })
 export class TableQueryComponent implements AfterViewInit {
-  @Input() query: any[] = [];
-  @ViewChild('tableWrapper') tableWrapper!: ElementRef<HTMLDivElement>;
+  @Input() query: any[] = []
+  @ViewChild('tableWrapper') tableWrapper!: ElementRef<HTMLDivElement>
+
+  private resizeTimeout: any
 
   @HostListener('window:resize')
   onResize() {
-    this.adjustTableWrapperSize()
+    clearTimeout(this.resizeTimeout)
+    this.resizeTimeout = setTimeout(() => this.adjustTableWrapperSize(), 100)
   }
 
   ngAfterViewInit(): void {
     this.adjustTableWrapperSize()
   }
 
-  adjustTableWrapperSize(): void {
+  adjustTableWrapperSize() {
     if (this.tableWrapper) {
-      const parent = this.tableWrapper.nativeElement.parentElement;
+      const parent = this.tableWrapper.nativeElement.parentElement
+
       if (parent) {
-        this.tableWrapper.nativeElement.style.maxWidth = `${parent.clientWidth}px`
+        const parentWidth = parent.offsetWidth
+        const parentHeight = parent.offsetHeight
+
+        this.tableWrapper.nativeElement.style.maxWidth = `${parentWidth}px`
+        this.tableWrapper.nativeElement.style.maxHeight = `${parentHeight}px`
         this.tableWrapper.nativeElement.style.overflow = 'auto'
       }
     }
