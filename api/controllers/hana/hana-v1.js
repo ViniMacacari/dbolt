@@ -1,6 +1,7 @@
 import SHanaV1 from "../../services/connections/hana/hana-v1.js"
 import LSHanaV1 from "../../services/lists/hana/hana-v1.js"
 import SSchemaHanaV1 from "../../services/schemas/hana/hana-v1.js"
+import SQuerysHana from "../../services/queries/hana/hana-v1.js"
 
 class CHanaV1 {
     async testConnection(req, res) {
@@ -68,6 +69,16 @@ class CHanaV1 {
     async setSchema(req, res) {
         try {
             const result = await SSchemaHanaV1.setSchema(req.body.schema)
+
+            return res.status(200).json(result)
+        } catch (error) {
+            return res.status(500).json({ success: false, message: 'Server error', error: error.message })
+        }
+    }
+
+    async query(req, res) {
+        try {
+            const result = await SQuerysHana.query(req.body.sql)
 
             return res.status(200).json(result)
         } catch (error) {
