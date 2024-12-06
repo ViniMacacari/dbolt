@@ -2,12 +2,15 @@ import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterVie
 import { GetDbschemaService } from '../../../services/db-info/get-dbschema.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
 import * as monaco from 'monaco-editor'
+import { LoadingComponent } from '../../modal/loading/loading.component'
+import { TableQueryComponent } from "../table-query/table-query.component";
 
 @Component({
   selector: 'app-code-editor',
   standalone: true,
   templateUrl: './code-editor.component.html',
-  styleUrls: ['./code-editor.component.scss']
+  styleUrls: ['./code-editor.component.scss'],
+  imports: [TableQueryComponent]
 })
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   @Input() sqlContent: string = ''
@@ -167,7 +170,11 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
     })
   }
 
-  runSql(sql: string): void {
-    this.runQuery.runSQL(sql)
+  async runSql(sql: string): Promise<void> {
+    LoadingComponent.show()
+
+    await this.runQuery.runSQL(sql)
+
+    LoadingComponent.hide()
   }
 }

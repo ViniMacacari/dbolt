@@ -19,6 +19,6 @@ export class RunQueryService {
 
     const result = await this.IAPI.post(`/api/${db.sgbd}/${db.version}/query`, { sql })
 
-    console.log(result)
+    return result
   }
 }
