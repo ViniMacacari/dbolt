@@ -4,12 +4,12 @@ import { InternalApiService } from '../../services/requests/internal-api.service
 import { LoadingComponent } from '../modal/loading/loading.component'
 import { ToastComponent } from '../toast/toast.component'
 import { EditConnectionComponent } from "../modal/edit-connection/edit-connection.component"
+import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
 import { connect } from 'rxjs'
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  providers: [SidebarComponent],
   imports: [CommonModule, ToastComponent, EditConnectionComponent],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss'
@@ -30,7 +30,8 @@ export class SidebarComponent {
 
   constructor(
     private IAPI: InternalApiService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private dbSchemaService: GetDbschemaService
   ) { }
 
   toggle() {
@@ -178,6 +179,8 @@ export class SidebarComponent {
           connId: connection.id
         }
 
+        this.dbSchemaService.setSelectedSchemaDB(this.selectedSchemaDB)
+
       } else {
         try {
           try {
@@ -224,8 +227,11 @@ export class SidebarComponent {
             port: connection.port,
             connId: connection.id
           }
+
+          this.dbSchemaService.setSelectedSchemaDB(this.selectedSchemaDB)
+
         } catch (error: any) {
-          this.toast.showToast(error.message + ' aqui', 'red')
+          this.toast.showToast(error.message, 'red')
         }
       }
     } else {

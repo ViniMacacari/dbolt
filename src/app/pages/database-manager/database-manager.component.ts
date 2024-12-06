@@ -6,6 +6,7 @@ import { SidebarComponent } from "../../components/sidebar/sidebar.component"
 import { TabsComponent } from "../../components/tabs/tabs.component"
 import { LoadingComponent } from '../../components/modal/loading/loading.component'
 import { CodeEditorComponent } from "../../components/elements/code-editor/code-editor.component"
+import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
 
 @Component({
   selector: 'app-database-manager',
@@ -28,7 +29,8 @@ export class DatabaseManagerComponent {
   constructor(
     private IAPI: InternalApiService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private dbSchemaService: GetDbschemaService
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
@@ -139,6 +141,8 @@ export class DatabaseManagerComponent {
       port: this.activeConnection[0].port,
       connId: this.activeConnection[0].id
     }
+
+    this.dbSchemaService.setSelectedSchemaDB(this.selectedSchemaDB)
   }
 
   onTabSelected(tab: any): void {
