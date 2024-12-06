@@ -171,7 +171,11 @@ export class SidebarComponent {
         this.selectedSchemaDB = {
           database: schemaDb?.currentSchema?.database || connection.database,
           schema: schemaDb?.currentSchema?.schema || connection.schema,
-          sgbd: connection.sgbd
+          sgbd: connection.sgbd,
+          name: connection.name,
+          host: connection.host,
+          port: connection.port,
+          connId: connection.id
         }
 
       } else {
@@ -214,7 +218,11 @@ export class SidebarComponent {
           this.selectedSchemaDB = {
             database: schemaDb?.currentSchema?.database || connection.database,
             schema: schemaDb?.currentSchema?.schema || connection.schema,
-            sgbd: connection.sgbd
+            sgbd: connection.sgbd,
+            name: connection.name,
+            host: connection.host,
+            port: connection.port,
+            connId: connection.id
           }
         } catch (error: any) {
           this.toast.showToast(error.message + ' aqui', 'red')

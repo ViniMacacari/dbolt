@@ -133,8 +133,14 @@ export class DatabaseManagerComponent {
     this.selectedSchemaDB = {
       database: result.database,
       schema: result.schema,
-      sgbd: this.databasesSchemasActiveConnections.data[0].sgbd
+      sgbd: this.databasesSchemasActiveConnections.data[0].sgbd,
+      name: this.activeConnection[0].name,
+      host: this.activeConnection[0].host,
+      port: this.activeConnection[0].port,
+      connId: this.activeConnection[0].id
     }
+
+    console.log(this.activeConnection[0])
   }
 
   onTabSelected(tab: any): void {
