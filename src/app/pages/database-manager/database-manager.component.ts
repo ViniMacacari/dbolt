@@ -128,6 +128,8 @@ export class DatabaseManagerComponent {
   }
 
   async loadInitSelectedSchemaAndDB(): Promise<void> {
+    LoadingComponent.show()
+
     const database = this.activeConnection[0].database
     const version = this.databasesSchemasActiveConnections.data[0].version
     const result: any = await this.IAPI.get(`/api/${database}/${version}/get-selected-schema`)
@@ -144,6 +146,8 @@ export class DatabaseManagerComponent {
     }
 
     this.dbSchemaService.setSelectedSchemaDB(this.selectedSchemaDB)
+
+    LoadingComponent.hide()
   }
 
   onTabSelected(tab: any): void {
