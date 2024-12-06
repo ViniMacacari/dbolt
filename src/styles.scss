@@ -182,3 +182,43 @@ h6 {
 
     background-color: #353535;
 }
+
+// Code editor
+
+.mtk23 {
+    // JOIN, IS, NOT, IN, OR, AND, LIKE, ILIKE, BETWEEN, NOT BETWEEN, IS NULL, IS NOT NULL
+    color: #739eca !important;
+    font-weight: bold !important;
+}
+
+.mtk24 {
+    color: #e8e4a4 !important;
+}
+
+.monaco-editor .margin {
+    width: 30px !important;
+    background-color: transparent !important;
+}
+
+.monaco-editor {
+    background-color: transparent !important;
+    border: none !important;
+}
+
+.monaco-editor .margin-view-overlays {
+    background-color: transparent !important;
+    border-right: none !important;
+}
+
+.monaco-editor .lines-content {
+    background-color: transparent !important;
+}
+
+.monaco-editor .sticky-scroll {
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+.monaco-editor .scroll-decoration {
+    display: none !important;
+}

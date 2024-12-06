@@ -1,177 +1,112 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core'
-import { CommonModule } from '@angular/common'
-import { FormsModule } from '@angular/forms'
-import { ContenteditableModelDirective } from './contenteditable-model.directive'
+import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewChecked, OnDestroy } from '@angular/core'
+import * as monaco from 'monaco-editor'
 
 @Component({
   selector: 'app-code-editor',
   standalone: true,
-  imports: [FormsModule, CommonModule, ContenteditableModelDirective],
   templateUrl: './code-editor.component.html',
-  styleUrl: './code-editor.component.scss'
+  styleUrls: ['./code-editor.component.scss']
 })
-export class CodeEditorComponent {
+export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   @Input() sqlContent: string = ''
   @Output() sqlContentChange = new EventEmitter<string>()
 
+  @ViewChild('editorContainer') editorContainer!: ElementRef
+  private editor: monaco.editor.IStandaloneCodeEditor | null = null
+  private initialized = false
+
+  ngAfterViewChecked(): void {
+    if (!this.initialized && this.editorContainer?.nativeElement) {
+      this.initialized = true
+      this.initializeEditor()
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.editor) {
+      this.editor.dispose()
+    }
+  }
+
+  private initializeEditor(): void {
+    // Define o tema ANTES de criar o editor
+    monaco.editor.defineTheme('custom-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'keyword', foreground: '739eca', fontStyle: 'bold' },
+        { token: 'keyword.sql', foreground: '739eca', fontStyle: 'bold' },
+        { token: 'keyword.operator', foreground: '739eca', fontStyle: 'bold' },
+        { token: 'string', foreground: 'e5e887' },
+        { token: 'string.escape', foreground: 'ff79c6' },
+        { token: 'keyword.operator', foreground: 'badedc' },
+        { token: 'string.sql', foreground: 'cac580' },
+        { token: 'number', foreground: 'd996ff' },
+        { token: 'identifier', foreground: 'e8e7e6' },
+        { token: 'function.sql', foreground: 'f1e02d' },
+        { token: 'variable', foreground: 'c7859c' },
+        { token: 'type', foreground: 'c7859c' },
+        { token: 'entity.name.function', foreground: 'f1e02d' },
+        { token: 'support.function', foreground: 'f1e02d' },
+        { token: 'string.invalid', foreground: 'e5e887', fontStyle: 'underline' }
+      ],
+      colors: {
+        'editor.background': '#00000000',
+        'editor.foreground': '#f8f8f2',
+        'editorLineNumber.foreground': '#6272a4',
+        'editorLineNumber.activeForeground': '#ffffff',
+        'editorCursor.foreground': '#ffffff',
+        'editorGutter.background': '#00000000',
+        'editorLineHighlightBorder': '#00000000',
+        'editorLineHighlightBackground': '#00000000',
+        'editorWidget.border': '#00000000',
+        'focusBorder': '#00000000'
+      }
+    })
+
+    this.editor = monaco.editor.create(this.editorContainer.nativeElement, {
+      value: this.sqlContent || 'SELECT MAX(NS."DocNum"), * FROM OINV NS WHERE 1 = 1 AND "A" = "A"',
+      language: 'sql',
+      theme: 'custom-dark',
+      automaticLayout: true,
+      minimap: { enabled: false },
+      lineNumbers: 'on',
+      glyphMargin: false,
+      lineDecorationsWidth: 30,
+      lineNumbersMinChars: 2,
+      scrollbar: {
+        vertical: 'auto',
+        horizontal: 'auto'
+      },
+      renderLineHighlight: 'none',
+      overviewRulerLanes: 0,
+      renderWhitespace: 'none',
+      stickyScroll: { enabled: false },
+      folding: false,
+      fontFamily: 'Nunito'
+    })
+
+    this.editor.onDidChangeModelContent(() => {
+      const value = this.editor?.getValue() || ''
+      if (value !== this.sqlContent) {
+        this.sqlContent = value
+        console.log(this.sqlContent)
+        this.sqlContentChange.emit(value)
+      }
+    })
+  }
+
   handleKeyDown(event: KeyboardEvent): void {
-    const div = event.target as HTMLDivElement
-    const selection = window.getSelection()
-    const range = selection?.getRangeAt(0)
+    if (!this.editor) return
 
     if ((event.ctrlKey && event.key === 'Enter') || event.key === 'F5') {
       event.preventDefault()
-      const selectedText = range && !range.collapsed
-        ? selection?.toString() || ''
-        : this.getCurrentLineContent(div.innerText, range?.startOffset || 0)
-      this.runSql(selectedText)
-      return
+      const selectedText = this.editor.getModel()?.getValueInRange(this.editor.getSelection()!) || ''
+      this.runSql(selectedText || this.editor.getValue())
     }
-
-    if (event.key === 'Tab') {
-      event.preventDefault()
-      this.insertTabAtCursor(div)
-      return
-    }
-
-    if (event.key === 'Enter') {
-      if (!div.innerText.trim()) {
-        return
-      }
-      event.preventDefault()
-      this.forceInsertLineBreak(div)
-    }
-  }
-
-  onInput(event: Event): void {
-    const div = event.target as HTMLDivElement
-    const currentContent = div.innerHTML
-
-    if (this.sqlContent !== currentContent) {
-      this.sqlContent = currentContent
-      this.sqlContentChange.emit(this.sqlContent)
-    }
-  }
-
-  private insertTabAtCursor(element: HTMLDivElement): void {
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-
-    const range = selection.getRangeAt(0)
-    const tab = document.createTextNode('\u00A0\u00A0\u00A0\u00A0')
-    range.deleteContents()
-    range.insertNode(tab)
-
-    range.setStartAfter(tab)
-    range.collapse(true)
-    selection.removeAllRanges()
-    selection.addRange(range)
-  }
-
-  private forceInsertLineBreak(element: HTMLDivElement): void {
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-
-    const range = selection.getRangeAt(0)
-
-    const br = document.createElement('br')
-    range.deleteContents()
-    range.insertNode(br)
-
-    const extraBr = document.createElement('br')
-    element.appendChild(extraBr)
-
-    range.setStartAfter(br)
-    range.collapse(true)
-    selection.removeAllRanges()
-    selection.addRange(range)
-
-    setTimeout(() => {
-      this.applyPreviousIndentation(element)
-    }, 1)
-  }
-
-  private applyPreviousIndentation(element: HTMLDivElement): void {
-
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) {
-      return
-    }
-
-    const range = selection.getRangeAt(0)
-
-    const fullText = element.innerText
-    const cursorOffset = range.startOffset
-
-    const lines = fullText.split('\n')
-
-    let currentLineIndex = 0
-    let accumulatedLength = 0
-
-    for (let i = 0; i < lines.length; i++) {
-      accumulatedLength += lines[i].length + 1
-      if (accumulatedLength > cursorOffset) {
-        currentLineIndex = i
-        break
-      }
-    }
-
-
-    if (currentLineIndex === 0) {
-      return
-    }
-
-    const previousLine = lines[currentLineIndex - 1]
-
-    const indentationMatch = previousLine.match(/^\s*/)
-    const indentation = indentationMatch ? indentationMatch[0] : ''
-
-
-    if (indentation) {
-      const textNode = document.createTextNode(indentation)
-      range.insertNode(textNode)
-
-      range.setStartAfter(textNode)
-      range.collapse(true)
-      selection.removeAllRanges()
-      selection.addRange(range)
-    }
-  }
-
-  private getCurrentLineContent(text: string, position: number): string {
-    const lines = text.split('\n')
-    let currentLineIndex = 0
-    let cursorPosition = 0
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      if (cursorPosition <= position && cursorPosition + line.length >= position) {
-        currentLineIndex = i
-        break
-      }
-      cursorPosition += line.length + 1
-    }
-
-    let startLine = currentLineIndex
-    let endLine = currentLineIndex
-
-    while (startLine > 0 && lines[startLine - 1].trim() !== '' && !lines[startLine - 1].trim().endsWith(';')) {
-      startLine--
-    }
-
-    while (endLine < lines.length - 1 && lines[endLine + 1].trim() !== '' && !lines[endLine].trim().endsWith(';')) {
-      endLine++
-    }
-
-    return lines.slice(startLine, endLine + 1).join('\n').trim()
-  }
-
-  private getCurrentLine(text: string, position: number): string {
-    const lines = text.substring(0, position).split('\n')
-    return lines[lines.length - 1]
   }
 
   runSql(sql: string): void {
-    console.log(sql, 'ADWD')
+    console.log('Executing SQL:', sql)
   }
 }

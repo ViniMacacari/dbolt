@@ -53,3 +53,34 @@
 
     caret-color: white;
 }
+
+// Monaco editor
+
+.editor {
+    max-width: 99%;
+    max-height: 99%;
+}
+
+.monaco-editor .margin {
+    width: 30px !important;
+    background-color: transparent !important;
+}
+
+.monaco-editor {
+    background-color: transparent !important;
+    border: none !important;
+}
+
+.monaco-editor .margin-view-overlays {
+    background-color: transparent !important;
+    border-right: none !important;
+}
+
+.monaco-editor .lines-content {
+    background-color: transparent !important;
+}
+
+.monaco-editor .sticky-scroll {
+    box-shadow: none !important;
+    background: transparent !important;
+}

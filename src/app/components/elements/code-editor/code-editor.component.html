@@ -1,4 +1,4 @@
-<div class="code-editor-container d-flex h-100 gap-3">
+<div class="code-editor-container d-flex h-100 gap-2">
     <div class="editor-toolbar d-flex align-items-center flex-column">
         <button class="btn">
             <img src="icons/run.png" title="Run selected code" height="15px">
@@ -11,8 +11,8 @@
         </button>
     </div>
     <div class="code-editor py-2">
-        <div contenteditable="true" contenteditableModel class="editable-div h-100 w-100" spellcheck="false"
-            (keydown)="handleKeyDown($event)" (input)="onInput($event)">
+        <div class="code-editor py-2">
+            <div #editorContainer class="editor h-100 w-100"></div>
         </div>
     </div>
 </div>
