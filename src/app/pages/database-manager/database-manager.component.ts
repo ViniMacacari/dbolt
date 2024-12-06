@@ -139,8 +139,6 @@ export class DatabaseManagerComponent {
       port: this.activeConnection[0].port,
       connId: this.activeConnection[0].id
     }
-
-    console.log(this.activeConnection[0])
   }
 
   onTabSelected(tab: any): void {

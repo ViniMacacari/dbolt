@@ -29,7 +29,6 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   }
 
   private initializeEditor(): void {
-    // Define o tema ANTES de criar o editor
     monaco.editor.defineTheme('custom-dark', {
       base: 'vs-dark',
       inherit: true,
@@ -90,20 +89,58 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
       const value = this.editor?.getValue() || ''
       if (value !== this.sqlContent) {
         this.sqlContent = value
-        console.log(this.sqlContent)
         this.sqlContentChange.emit(value)
       }
     })
+
+    this.initializeEditorEvents()
   }
 
-  handleKeyDown(event: KeyboardEvent): void {
-    if (!this.editor) return
+  private initializeEditorEvents(): void {
+    this.editor?.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+      const model = this.editor?.getModel()
+      const selection = this.editor?.getSelection()
 
-    if ((event.ctrlKey && event.key === 'Enter') || event.key === 'F5') {
-      event.preventDefault()
-      const selectedText = this.editor.getModel()?.getValueInRange(this.editor.getSelection()!) || ''
-      this.runSql(selectedText || this.editor.getValue())
-    }
+      if (model && selection) {
+        const content = model.getValue()
+        const cursorLine = selection.startLineNumber
+
+        const blocks = content
+          .split(/(?:\n\s*\n|;)/gm)
+          .map(block => block.trim())
+          .filter(block => block.length > 0)
+
+        let currentLine = 1
+
+        for (const block of blocks) {
+          const blockLines = block.split('\n').filter(line => line.trim().length > 0)
+          const blockStartLine = currentLine
+          const blockEndLine = currentLine + blockLines.length - 1
+
+          if (cursorLine >= blockStartLine && cursorLine <= blockEndLine) {
+            this.runSql(block)
+            return
+          }
+
+          currentLine = blockEndLine + 1
+        }
+
+        if (selection.startLineNumber === selection.endLineNumber && content.trim()) {
+          const currentLineContent = model.getLineContent(cursorLine).trim()
+          this.runSql(currentLineContent)
+          return
+        }
+
+      }
+    })
+
+    this.editor?.onDidChangeModelContent(() => {
+      const value = this.editor?.getValue() || ''
+      if (value !== this.sqlContent) {
+        this.sqlContent = value
+        this.sqlContentChange.emit(value)
+      }
+    })
   }
 
   runSql(sql: string): void {
