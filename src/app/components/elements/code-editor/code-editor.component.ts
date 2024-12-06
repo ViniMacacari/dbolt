@@ -30,23 +30,22 @@ export class CodeEditorComponent {
 
     if (event.key === 'Tab') {
       event.preventDefault()
-      this.insertTextAtCursor(div, '\t')
+      this.insertTabAtCursor(div)
       return
     }
 
     if (event.key === 'Enter') {
       if (!div.innerText.trim()) {
-        // Permite que o navegador processe o Enter no editor vazio
         return
       }
-      event.preventDefault() // Previne o comportamento padrão
-      this.insertLineBreak(div) // Insere uma nova linha
+      event.preventDefault()
+      this.forceInsertLineBreak(div)
     }
   }
 
   onInput(event: Event): void {
     const div = event.target as HTMLDivElement
-    const currentContent = div.innerText
+    const currentContent = div.innerHTML
 
     if (this.sqlContent !== currentContent) {
       this.sqlContent = currentContent
@@ -54,39 +53,34 @@ export class CodeEditorComponent {
     }
   }
 
-  private insertTextAtCursor(element: HTMLDivElement, text: string): void {
+  private insertTabAtCursor(element: HTMLDivElement): void {
     const selection = window.getSelection()
     if (!selection || selection.rangeCount === 0) return
 
     const range = selection.getRangeAt(0)
+    const tab = document.createTextNode('\u00A0\u00A0\u00A0\u00A0')
     range.deleteContents()
+    range.insertNode(tab)
 
-    const textNode = document.createTextNode(text)
-    range.insertNode(textNode)
-
-    range.setStartAfter(textNode)
-    range.setEndAfter(textNode)
+    range.setStartAfter(tab)
+    range.collapse(true)
     selection.removeAllRanges()
     selection.addRange(range)
   }
 
-  private insertLineBreak(element: HTMLDivElement): void {
+  private forceInsertLineBreak(element: HTMLDivElement): void {
     const selection = window.getSelection()
     if (!selection || selection.rangeCount === 0) return
 
     const range = selection.getRangeAt(0)
 
-    const br = document.createElement('br') // Cria uma nova linha
+    const br = document.createElement('br')
     range.deleteContents()
     range.insertNode(br)
 
-    // Garante que o <br> seja visível como uma nova linha
-    if (!br.nextSibling) {
-      const extraBr = document.createElement('br')
-      element.appendChild(extraBr)
-    }
+    const extraBr = document.createElement('br')
+    element.appendChild(extraBr)
 
-    // Move o cursor após o <br>
     range.setStartAfter(br)
     range.collapse(true)
     selection.removeAllRanges()
