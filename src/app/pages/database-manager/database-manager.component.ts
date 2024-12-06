@@ -151,7 +151,6 @@ export class DatabaseManagerComponent {
   }
 
   onTabSelected(tab: any): void {
-    console.log(tab)
     this.editorOpen = true
     this.sqlContent = tab.info.sql
   }

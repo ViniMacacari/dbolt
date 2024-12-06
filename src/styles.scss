@@ -4,7 +4,8 @@
     font-style: normal;
 }
 
-html, body {
+html,
+body {
     height: 100vh !important;
     max-height: 100vw !important;
 }
@@ -196,7 +197,8 @@ h6 {
     font-weight: bold !important;
 }
 
-.mtk24, .mtk10 {
+.mtk24,
+.mtk10 {
     color: #e8e4a4 !important;
 }
 
@@ -226,4 +228,8 @@ h6 {
 
 .monaco-editor .scroll-decoration {
     display: none !important;
+}
+
+.overflow-guard {
+    width: 100% !important;
 }

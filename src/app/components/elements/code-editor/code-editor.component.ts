@@ -20,6 +20,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   private editor: monaco.editor.IStandaloneCodeEditor | null = null
   private initialized = false
 
+  queryReponse: any[] = []
+
   constructor(
     private dbSchema: GetDbschemaService,
     private runQuery: RunQueryService
@@ -86,7 +88,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
     })
 
     this.editor = monaco.editor.create(this.editorContainer.nativeElement, {
-      value: this.sqlContent || '',
+      value: this.sqlContent || 'select * from OINV where "DocNum" = 1231',
       language: 'sql',
       theme: 'custom-dark',
       automaticLayout: true,
@@ -173,7 +175,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   async runSql(sql: string): Promise<void> {
     LoadingComponent.show()
 
-    await this.runQuery.runSQL(sql)
+    const result: any = await this.runQuery.runSQL(sql)
+    this.queryReponse = result
 
     LoadingComponent.hide()
   }

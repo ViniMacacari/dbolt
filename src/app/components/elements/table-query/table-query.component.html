@@ -1,7 +1,14 @@
-<p>table-query works!</p>
-<p>table-query works!</p>
-<p>table-query works!</p>
-<p>table-query works!</p>
-<p>table-query works!</p>
-<p>table-query works!</p>
-<p>table-query works!</p>
+<div #tableWrapper class="table-wrapper">
+    <table class="query-table">
+        <thead>
+            <tr>
+                <th *ngFor="let key of getKeys(query[0])">{{ key }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let row of query">
+                <td *ngFor="let value of getValues(row)">{{ value }}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>

@@ -17,8 +17,14 @@ export class RunQueryService {
 
     console.log(db)
 
-    const result = await this.IAPI.post(`/api/${db.sgbd}/${db.version}/query`, { sql })
+    const response: any = await this.IAPI.post(`/api/${db.sgbd}/${db.version}/query`, { sql })
 
-    return result
+    console.log(response)
+
+    if (response?.result && Array.isArray(response.result)) {
+      return response.result
+    } else {
+      throw new Error('Invalid data response.')
+    }
   }
 }

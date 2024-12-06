@@ -140,11 +140,11 @@ export class SidebarComponent {
 
     LoadingComponent.show()
 
-    this.clickTimeout = setTimeout(() => {
-      this.setSchema(connection)
-    }, 300)
+    this.clickTimeout = setTimeout(async () => {
+      await this.setSchema(connection)
 
-    LoadingComponent.hide()
+      LoadingComponent.hide()
+    }, 300)
   }
 
   async setSchema(connection: any): Promise<void> {
