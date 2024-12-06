@@ -1,5 +1,6 @@
 import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewChecked, OnDestroy } from '@angular/core'
 import { GetDbschemaService } from '../../../services/db-info/get-dbschema.service'
+import { RunQueryService } from '../../../services/db-query/run-query.service'
 import * as monaco from 'monaco-editor'
 
 @Component({
@@ -17,7 +18,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   private initialized = false
 
   constructor(
-    private dbSchema: GetDbschemaService
+    private dbSchema: GetDbschemaService,
+    private runQuery: RunQueryService
   ) { }
 
   ngAfterViewChecked(): void {
@@ -166,6 +168,6 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   }
 
   runSql(sql: string): void {
-    console.log(this.dbSchema.getSelectedSchemaDB(), sql)
+    this.runQuery.runSQL(sql)
   }
 }
