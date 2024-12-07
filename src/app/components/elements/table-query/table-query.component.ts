@@ -1,4 +1,4 @@
-import { Component, Input, AfterViewInit, ViewChild, ElementRef, HostListener } from '@angular/core'
+import { Component, Input, AfterViewInit, ViewChild, ElementRef, HostListener, ViewEncapsulation } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { NgZone } from '@angular/core'
 
@@ -7,7 +7,8 @@ import { NgZone } from '@angular/core'
   standalone: true,
   imports: [CommonModule],
   templateUrl: './table-query.component.html',
-  styleUrls: ['./table-query.component.scss']
+  styleUrls: ['./table-query.component.scss'],
+  encapsulation: ViewEncapsulation.None
 })
 export class TableQueryComponent implements AfterViewInit {
   @Input() query: any[] = []
@@ -76,14 +77,14 @@ export class TableQueryComponent implements AfterViewInit {
 
   resize = (event: MouseEvent) => {
     if (!this.isResizing) return
-  
+
     const wrapper = this.tableWrapper.nativeElement
     const deltaY = this.initialMouseY - event.clientY
-  
+
     const newHeight = Math.max(this.initialHeight + deltaY, 100)
-  
+
     wrapper.style.height = `${newHeight}px`
-  }  
+  }
 
   stopResize = () => {
     this.isResizing = false
