@@ -6,6 +6,7 @@ import connections from './router/dbolt/connections.js'
 
 import hanaV1 from './router/hana/hana-v1.js'
 import pgV9 from './router/postgres/v9.js'
+import mysql5 from './router/mysql/mysql5.js'
 
 const app = express()
 
@@ -21,6 +22,7 @@ class InternalServer {
 
         app.use('/api/Hana', hanaV1)
         app.use('/api/Postgres/v9', pgV9)
+        app.use('/api/MySQL/v5', mysql5)
 
         app.listen(PORT, () => {
             console.log(`App listening on port ${PORT}`)

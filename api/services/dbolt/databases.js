@@ -24,6 +24,18 @@ class Databases {
                     }
                 ],
                 active: true
+            },
+            {
+                id: 3,
+                database: 'MySQL',
+                versions: [
+                    {
+                        name: 'v5',
+                        service: 'mysql5',
+                        date: '2024-12-07'
+                    }
+                ],
+                active: true
             }
         ]
     }
