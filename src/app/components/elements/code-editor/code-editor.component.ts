@@ -16,6 +16,7 @@ import { TableQueryComponent } from "../table-query/table-query.component"
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   @Input() sqlContent: string = ''
   @Output() sqlContentChange = new EventEmitter<string>()
+  @Input() widthTable: number = 300
 
   @ViewChild('editorContainer') editorContainer!: ElementRef
   private editor: monaco.editor.IStandaloneCodeEditor | null = null

@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectorRef, ViewChild } from '@angular/core'
+import { Component, Input, ChangeDetectorRef, ViewChild, EventEmitter, Output } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { LoadingComponent } from '../modal/loading/loading.component'
@@ -19,6 +19,7 @@ export class SidebarComponent {
   @Input() activeConnection: any = { info: {}, data: [] }
   @Input() dbSchemas: any = []
   @Input() selectedSchemaDB: any
+  @Output() sidebarStatusChange = new EventEmitter<boolean>()
 
   @ViewChild('toast') toast!: ToastComponent
 
@@ -36,6 +37,7 @@ export class SidebarComponent {
 
   toggle() {
     this.isOpen = !this.isOpen
+    this.sidebarStatusChange.emit(this.isOpen)
   }
 
   toggleConnection(connectionId: number) {

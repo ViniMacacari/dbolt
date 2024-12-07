@@ -26,6 +26,8 @@ export class DatabaseManagerComponent {
   editorOpen: boolean = false
   sqlContent: string = ''
 
+  widthTable: number = 0
+
   constructor(
     private IAPI: InternalApiService,
     private route: ActivatedRoute,
@@ -164,6 +166,15 @@ export class DatabaseManagerComponent {
 
     if (this.tabsComponent.activeTab !== null) {
       this.tabsComponent.tabs[this.tabsComponent.activeTab].info.sql = content
+    }
+  }
+
+  onSidebarStatusChange(event: boolean): void {
+    console.log('event', event)
+    if (!event) {
+      this.widthTable = 440
+    } else {
+      this.widthTable = 300
     }
   }
 }

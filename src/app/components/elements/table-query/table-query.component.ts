@@ -1,4 +1,4 @@
-import { Component, Input, AfterViewInit, ViewChild, ElementRef, HostListener, ViewEncapsulation } from '@angular/core'
+import { Component, Input, AfterViewInit, ViewChild, ElementRef, HostListener, ViewEncapsulation, SimpleChanges } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { NgZone } from '@angular/core'
 
@@ -12,6 +12,7 @@ import { NgZone } from '@angular/core'
 })
 export class TableQueryComponent implements AfterViewInit {
   @Input() query: any[] = []
+  @Input() calcWidth: number = 300
   @ViewChild('tableWrapper') tableWrapper!: ElementRef<HTMLDivElement>
 
   private resizeTimeout: any
@@ -33,15 +34,22 @@ export class TableQueryComponent implements AfterViewInit {
     this.adjustTableWrapperSize()
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['calcWidth']) {
+      setTimeout(() => this.adjustTableWrapperSize(), 100)
+    }
+  }
+
   adjustTableWrapperSize() {
     const wrapper = this.tableWrapper.nativeElement
 
     const screenWidth = window.innerWidth
 
-    const adjustedWidth = screenWidth - 300
+    if (this.calcWidth === 0) {
+      this.calcWidth = 300
+    }
 
-    console.log('Screen dimensions:', screenWidth)
-    console.log('Adjusted dimensions:', adjustedWidth)
+    const adjustedWidth = screenWidth - this.calcWidth
 
     if (adjustedWidth > 0) {
       wrapper.style.width = `${adjustedWidth}px`
@@ -51,14 +59,6 @@ export class TableQueryComponent implements AfterViewInit {
       wrapper.style.overflowX = 'auto'
       wrapper.style.overflowY = 'auto'
       wrapper.style.resize = 'vertical'
-
-      console.log('Applied styles to wrapper:', {
-        width: wrapper.style.width,
-        height: wrapper.style.height,
-        overflowX: wrapper.style.overflowX,
-        overflowY: wrapper.style.overflowY,
-        resize: wrapper.style.resize,
-      })
     } else {
       console.warn('Invalid adjusted dimensions:', { adjustedWidth })
     }
