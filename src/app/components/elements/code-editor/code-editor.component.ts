@@ -88,7 +88,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
     })
 
     this.editor = monaco.editor.create(this.editorContainer.nativeElement, {
-      value: this.sqlContent || 'select * from OINV where "DocNum" = 1231',
+      value: this.sqlContent || 'select * from funcionarios',
       language: 'sql',
       theme: 'custom-dark',
       automaticLayout: true,
