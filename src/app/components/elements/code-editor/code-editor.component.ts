@@ -11,7 +11,7 @@ import { TableQueryComponent } from "../table-query/table-query.component"
   standalone: true,
   templateUrl: './code-editor.component.html',
   styleUrls: ['./code-editor.component.scss'],
-  imports: [TableQueryComponent, CommonModule]
+  imports: [TableQueryComponent, CommonModule],
 })
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   @Input() sqlContent: string = ''
