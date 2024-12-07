@@ -60,7 +60,7 @@ class MySQLV1 {
             return rows
         } catch (error) {
             console.error('Error executing query:', error)
-            throw new error
+            throw error
         }
     }
 

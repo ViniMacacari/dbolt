@@ -4,6 +4,7 @@ import { GetDbschemaService } from '../../../services/db-info/get-dbschema.servi
 import { RunQueryService } from '../../../services/db-query/run-query.service'
 import * as monaco from 'monaco-editor'
 import { LoadingComponent } from '../../modal/loading/loading.component'
+import { ToastComponent } from '../../toast/toast.component'
 import { TableQueryComponent } from "../table-query/table-query.component"
 
 @Component({
@@ -11,7 +12,7 @@ import { TableQueryComponent } from "../table-query/table-query.component"
   standalone: true,
   templateUrl: './code-editor.component.html',
   styleUrls: ['./code-editor.component.scss'],
-  imports: [TableQueryComponent, CommonModule],
+  imports: [TableQueryComponent, CommonModule, ToastComponent],
 })
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   @Input() sqlContent: string = ''
@@ -19,6 +20,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   @Input() widthTable: number = 300
 
   @ViewChild('editorContainer') editorContainer!: ElementRef
+  @ViewChild(ToastComponent) toast!: ToastComponent
+
   private editor: monaco.editor.IStandaloneCodeEditor | null = null
   private initialized = false
 
@@ -216,8 +219,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   async runSql(sql: string): Promise<void> {
     LoadingComponent.show()
 
-    const result: any = await this.runQuery.runSQL(sql)
-    this.queryReponse = result
+    try {
+      const result: any = await this.runQuery.runSQL(sql)
+      this.queryReponse = result
+    } catch (error: any) {
+      console.log(error)
+      this.toast.showToast(error.error, 'red')
+    }
 
     LoadingComponent.hide()
   }

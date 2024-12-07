@@ -23,6 +23,10 @@ export class RunQueryService {
 
     if (response?.result && Array.isArray(response.result)) {
       return response.result
+    } else if (response.success) {
+      return [{
+        sucess: true
+      }]
     } else {
       throw new Error('Invalid data response.')
     }
