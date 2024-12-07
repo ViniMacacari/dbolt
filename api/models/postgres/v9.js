@@ -63,7 +63,7 @@ class PgV1 {
             return result.rows
         } catch (error) {
             console.error('Error executing query:', error)
-            throw new error
+            throw error
         }
     }
 
