@@ -76,14 +76,14 @@ export class TableQueryComponent implements AfterViewInit {
 
   resize = (event: MouseEvent) => {
     if (!this.isResizing) return
-
+  
     const wrapper = this.tableWrapper.nativeElement
     const deltaY = this.initialMouseY - event.clientY
-
+  
     const newHeight = Math.max(this.initialHeight + deltaY, 100)
-
+  
     wrapper.style.height = `${newHeight}px`
-  }
+  }  
 
   stopResize = () => {
     this.isResizing = false
