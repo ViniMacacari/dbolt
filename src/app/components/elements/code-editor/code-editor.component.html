@@ -1,10 +1,10 @@
 <div class="code-editor-container d-flex h-100 gap-2">
     <div class="editor-toolbar d-flex align-items-center flex-column">
         <button class="btn">
-            <img src="icons/run.png" title="Run selected code" height="15px">
+            <img (click)="runSelected()" src="icons/run.png" title="Run selected code" height="15px">
         </button>
         <button class="btn">
-            <img src="icons/execute-all.png" title="Run all code" height="15px">
+            <img (click)="runAll()" src="icons/execute-all.png" title="Run all code" height="15px">
         </button>
         <button class="btn">
             <img src="icons/star.png" title="Indent code" height="15px">
