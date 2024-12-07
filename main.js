@@ -34,6 +34,10 @@ function createWindow() {
         win.loadURL('http://localhost:4200')
     }
 
+    win.webContents.on('did-finish-load', () => {
+        win.webContents.setZoomFactor(1.0)
+    })
+
     win.on('closed', () => {
         win = null
     })

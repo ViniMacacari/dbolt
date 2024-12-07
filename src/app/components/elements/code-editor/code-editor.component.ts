@@ -1,4 +1,5 @@
 import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewChecked, OnDestroy } from '@angular/core'
+import { CommonModule } from '@angular/common'
 import { GetDbschemaService } from '../../../services/db-info/get-dbschema.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
 import * as monaco from 'monaco-editor'
@@ -10,7 +11,7 @@ import { TableQueryComponent } from "../table-query/table-query.component"
   standalone: true,
   templateUrl: './code-editor.component.html',
   styleUrls: ['./code-editor.component.scss'],
-  imports: [TableQueryComponent]
+  imports: [TableQueryComponent, CommonModule]
 })
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   @Input() sqlContent: string = ''
