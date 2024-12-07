@@ -1,4 +1,4 @@
-import { Component, Input, AfterViewInit, ViewChild, ElementRef, HostListener, ViewEncapsulation, SimpleChanges } from '@angular/core'
+import { Component, Input, AfterViewInit, ViewChild, ElementRef, HostListener, ViewEncapsulation, SimpleChanges, ChangeDetectorRef } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { NgZone } from '@angular/core'
 
@@ -15,14 +15,19 @@ export class TableQueryComponent implements AfterViewInit {
   @Input() calcWidth: number = 300
   @ViewChild('tableWrapper') tableWrapper!: ElementRef<HTMLDivElement>
 
+  isElementVisible = false
   private resizeTimeout: any
   private isResizing = false
   private initialMouseY = 0
   private initialHeight = 0
   private initialTop = 0
   private initialBottom = 0
+  private lastScrollTop = 0
 
-  constructor(private zone: NgZone) { }
+  constructor(
+    private zone: NgZone,
+    private cdr: ChangeDetectorRef
+  ) { }
 
   @HostListener('window:resize')
   onResize() {
@@ -31,7 +36,9 @@ export class TableQueryComponent implements AfterViewInit {
   }
 
   ngAfterViewInit(): void {
+    this.isElementVisible = true
     this.adjustTableWrapperSize()
+    this.cdr.detectChanges()
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -62,6 +69,30 @@ export class TableQueryComponent implements AfterViewInit {
     } else {
       console.warn('Invalid adjusted dimensions:', { adjustedWidth })
     }
+  }
+
+  @HostListener('scroll', ['$event'])
+  onScroll(event: Event) {
+    console.log(event)
+    if (!this.isElementVisible) return
+
+    const wrapper = this.tableWrapper.nativeElement
+    const scrollTop = wrapper.scrollTop
+    const scrollHeight = wrapper.scrollHeight
+    const clientHeight = wrapper.clientHeight
+
+    const isAtTop = scrollTop === 0
+    const isAtBottom = scrollTop + clientHeight === scrollHeight
+
+    if (isAtTop) {
+      console.log('Scrolled to the top')
+    }
+
+    if (isAtBottom) {
+      console.log('Scrolled to the bottom')
+    }
+
+    this.lastScrollTop = scrollTop
   }
 
   startResize(event: MouseEvent) {
