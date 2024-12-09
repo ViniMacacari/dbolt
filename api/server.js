@@ -20,6 +20,7 @@ class InternalServer {
     loadServer() {
         app.use('/api/databases', databases)
         app.use('/api/connections', connections)
+        app.use('/api/query', query)
 
         app.use('/api/Hana', hanaV1)
         app.use('/api/Postgres/v9', pgV9)
