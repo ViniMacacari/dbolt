@@ -78,18 +78,24 @@ export class TableQueryComponent implements AfterViewInit {
   onScroll(event: Event) {
     const wrapper = this.tableWrapper.nativeElement
 
-    const scrollTop = Math.floor(wrapper.scrollTop)
+    const currentScrollTop = Math.floor(wrapper.scrollTop)
+    const currentScrollLeft = Math.floor(wrapper.scrollLeft)
+
+    if (currentScrollTop === this.lastScrollTop) {
+      return
+    }
+
     const scrollHeight = Math.ceil(wrapper.scrollHeight)
     const clientHeight = Math.ceil(wrapper.clientHeight)
 
     const buffer = 10
-    const isScrollingDown = scrollTop > this.lastScrollTop
+    const isScrollingDown = currentScrollTop > this.lastScrollTop
 
     clearTimeout(this.scrollTimeout)
 
     this.scrollTimeout = setTimeout(() => {
-      const isAtTop = scrollTop <= buffer
-      const isAtBottom = scrollTop + clientHeight >= scrollHeight - buffer
+      const isAtTop = currentScrollTop <= buffer
+      const isAtBottom = currentScrollTop + clientHeight >= scrollHeight - buffer
 
       if (isAtTop) {
         console.log('Scrolled to the top')
@@ -100,7 +106,7 @@ export class TableQueryComponent implements AfterViewInit {
         this.newValues()
       }
 
-      this.lastScrollTop = scrollTop
+      this.lastScrollTop = currentScrollTop
     }, 100)
   }
 
