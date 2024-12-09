@@ -5,14 +5,25 @@ class SQuerysHana {
         this.db = new HanaV1()
     }
 
-    async query(sql) {
+    async query(sql, maxLines = null) {
+        if (maxLines && !this.hasLimitClause(sql)) {
+            sql = `${sql.trim()} LIMIT ${maxLines}`
+        }
         try {
             const result = await this.db.executeQuery(sql)
-
             return { success: true, database: 'Hana', result: result }
         } catch (error) {
-            throw new Error(error.message)
+            throw {
+                success: false,
+                message: error.message || 'Error executing query',
+                code: error.code || null
+            }
         }
+    }
+
+    hasLimitClause(sql) {
+        const lowerSql = sql.toLowerCase()
+        return lowerSql.includes(' limit ') || lowerSql.includes(' offset ')
     }
 }
 

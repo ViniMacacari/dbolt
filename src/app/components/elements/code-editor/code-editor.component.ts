@@ -25,7 +25,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   private editor: monaco.editor.IStandaloneCodeEditor | null = null
   private initialized = false
 
+  cacheSql: string = ''
   queryReponse: any[] = []
+  queryLines: number = 300
 
   constructor(
     private dbSchema: GetDbschemaService,
@@ -220,7 +222,25 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
     LoadingComponent.show()
 
     try {
-      const result: any = await this.runQuery.runSQL(sql)
+      this.queryLines = 300
+      this.cacheSql = sql
+      
+      const result: any = await this.runQuery.runSQL(sql, this.queryLines)
+      this.queryReponse = result
+    } catch (error: any) {
+      console.log(error)
+      this.toast.showToast(error.error, 'red')
+    }
+
+    LoadingComponent.hide()
+  }
+
+  async newValues(): Promise<void> {
+    LoadingComponent.show()
+
+    try {
+      this.queryLines += 300
+      const result: any = await this.runQuery.runSQL(this.cacheSql, this.queryLines)
       this.queryReponse = result
     } catch (error: any) {
       console.log(error)

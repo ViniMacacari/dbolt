@@ -12,14 +12,13 @@ export class RunQueryService {
     private IAPI: InternalApiService
   ) { }
 
-  async runSQL(sql: string) {
+  async runSQL(sql: string, lines: number | null = null): Promise<any> {
     const db = this.dbSchemas.getSelectedSchemaDB()
 
-    console.log(db)
-
-    const response: any = await this.IAPI.post(`/api/${db.sgbd}/${db.version}/query`, { sql })
-
-    console.log(response)
+    const response: any = await this.IAPI.post(`/api/${db.sgbd}/${db.version}/query`, {
+      sql,
+      maxLines: lines
+    })
 
     if (response?.result && Array.isArray(response.result)) {
       return response.result

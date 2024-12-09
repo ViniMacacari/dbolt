@@ -1,6 +1,5 @@
-import { Component, Input, AfterViewInit, ViewChild, ElementRef, HostListener, ViewEncapsulation, SimpleChanges, ChangeDetectorRef } from '@angular/core'
+import { Component, Input, AfterViewInit, ViewChild, ElementRef, HostListener, ViewEncapsulation, SimpleChanges, ChangeDetectorRef, EventEmitter, Output, NgZone } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { NgZone } from '@angular/core'
 
 @Component({
   selector: 'app-table-query',
@@ -13,6 +12,9 @@ import { NgZone } from '@angular/core'
 export class TableQueryComponent implements AfterViewInit {
   @Input() query: any[] = []
   @Input() calcWidth: number = 300
+
+  @Output() newValuesQuery = new EventEmitter<void>()
+
   @ViewChild('tableWrapper') tableWrapper!: ElementRef<HTMLDivElement>
 
   isElementVisible = false
@@ -23,6 +25,8 @@ export class TableQueryComponent implements AfterViewInit {
   private initialTop = 0
   private initialBottom = 0
   private lastScrollTop = 0
+
+  scrollTimeout: any
 
   constructor(
     private zone: NgZone,
@@ -71,28 +75,33 @@ export class TableQueryComponent implements AfterViewInit {
     }
   }
 
-  @HostListener('scroll', ['$event'])
   onScroll(event: Event) {
-    console.log(event)
-    if (!this.isElementVisible) return
-
     const wrapper = this.tableWrapper.nativeElement
-    const scrollTop = wrapper.scrollTop
-    const scrollHeight = wrapper.scrollHeight
-    const clientHeight = wrapper.clientHeight
 
-    const isAtTop = scrollTop === 0
-    const isAtBottom = scrollTop + clientHeight === scrollHeight
+    const scrollTop = Math.floor(wrapper.scrollTop)
+    const scrollHeight = Math.ceil(wrapper.scrollHeight)
+    const clientHeight = Math.ceil(wrapper.clientHeight)
 
-    if (isAtTop) {
-      console.log('Scrolled to the top')
-    }
+    const buffer = 10
+    const isScrollingDown = scrollTop > this.lastScrollTop
 
-    if (isAtBottom) {
-      console.log('Scrolled to the bottom')
-    }
+    clearTimeout(this.scrollTimeout)
 
-    this.lastScrollTop = scrollTop
+    this.scrollTimeout = setTimeout(() => {
+      const isAtTop = scrollTop <= buffer
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - buffer
+
+      if (isAtTop) {
+        console.log('Scrolled to the top')
+      }
+
+      if (isAtBottom && isScrollingDown) {
+        console.log('Scrolled to the bottom')
+        this.newValues()
+      }
+
+      this.lastScrollTop = scrollTop
+    }, 100)
   }
 
   startResize(event: MouseEvent) {
@@ -130,5 +139,9 @@ export class TableQueryComponent implements AfterViewInit {
 
   getValues(row: any): any[] {
     return row ? Object.values(row) : []
+  }
+
+  newValues() {
+    this.newValuesQuery.emit()
   }
 }

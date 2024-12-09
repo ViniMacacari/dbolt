@@ -1,4 +1,4 @@
-<div #tableWrapper class="table-wrapper">
+<div #tableWrapper class="table-wrapper" (scroll)="onScroll($event)">
     <div class="resize-handle" (mousedown)="startResize($event)"></div>
     <table #queryTable class="query-table">
         <thead>

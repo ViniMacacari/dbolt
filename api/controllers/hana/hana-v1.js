@@ -78,7 +78,7 @@ class CHanaV1 {
 
     async query(req, res) {
         try {
-            const result = await SQuerysHana.query(req.body.sql)
+            const result = await SQuerysHana.query(req.body.sql, req.body.maxLines)
 
             return res.status(200).json(result)
         } catch (error) {

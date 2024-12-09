@@ -77,7 +77,7 @@ class CMySQLV1 {
 
     async query(req, res) {
         try {
-            const result = await SQueryMySQLV1.query(req.body.sql)
+            const result = await SQueryMySQLV1.query(req.body.sql, req.body.maxLines)
             return res.status(200).json(result)
         } catch (error) {
             return res.status(500).json({ success: false, message: 'Server error', error: error.message })

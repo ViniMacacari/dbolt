@@ -79,7 +79,7 @@ class CPostgresV1 {
 
     async query(req, res) {
         try {
-            const result = await SQueryPgV1.query(req.body.sql)
+            const result = await SQueryPgV1.query(req.body.sql, req.body.maxLines)
 
             return res.status(200).json(result)
         } catch (error) {
