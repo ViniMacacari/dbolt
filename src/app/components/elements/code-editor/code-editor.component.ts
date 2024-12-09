@@ -6,13 +6,14 @@ import * as monaco from 'monaco-editor'
 import { LoadingComponent } from '../../modal/loading/loading.component'
 import { ToastComponent } from '../../toast/toast.component'
 import { TableQueryComponent } from "../table-query/table-query.component"
+import { SaveConnectionComponent } from "../../modal/save-connection/save-connection.component"
 
 @Component({
   selector: 'app-code-editor',
   standalone: true,
   templateUrl: './code-editor.component.html',
   styleUrls: ['./code-editor.component.scss'],
-  imports: [TableQueryComponent, CommonModule, ToastComponent],
+  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveConnectionComponent],
 })
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   @Input() sqlContent: string = ''
@@ -21,10 +22,12 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
 
   @ViewChild('editorContainer') editorContainer!: ElementRef
   @ViewChild(ToastComponent) toast!: ToastComponent
+  @ViewChild(SaveConnectionComponent) saveConnection!: SaveConnectionComponent
 
   private editor: monaco.editor.IStandaloneCodeEditor | null = null
   private initialized = false
 
+  isSaveAsOpen: boolean = true
   cacheSql: string = ''
   queryReponse: any[] = []
   queryLines: number = 300
@@ -224,7 +227,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
     try {
       this.queryLines = 300
       this.cacheSql = sql
-      
+
       const result: any = await this.runQuery.runSQL(sql, this.queryLines)
       this.queryReponse = result
     } catch (error: any) {
@@ -248,5 +251,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
     }
 
     LoadingComponent.hide()
+  }
+
+  async saveAs(): Promise<void> {
+    this.isSaveAsOpen = true
+  }
+
+  async closeSaveAs(): Promise<void> {
+    this.isSaveAsOpen = false
   }
 }

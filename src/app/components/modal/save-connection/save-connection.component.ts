@@ -8,7 +8,7 @@ import { LoadingComponent } from '../loading/loading.component'
 @Component({
   selector: 'app-save-connection',
   standalone: true,
-  imports: [InputListComponent, CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './save-connection.component.html',
   styleUrl: './save-connection.component.scss'
 })

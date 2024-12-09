@@ -77,6 +77,7 @@ export class TabsComponent {
 
   selectTab(index: number): void {
     this.activeTab = index
+    console.log(this.tabs[index])
     this.tabSelected.emit(this.tabs[index])
   }
 

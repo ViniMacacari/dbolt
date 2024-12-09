@@ -12,7 +12,7 @@
         <button class="btn">
             <img src="icons/save.png" title="Indent code" height="15px">
         </button>
-        <button class="btn">
+        <button class="btn" (click)="saveAs()">
             <img src="icons/save_as.png" title="Indent code" height="15px">
         </button>
     </div>
@@ -26,3 +26,4 @@
 </div>
 
 <app-toast></app-toast>
+<app-save-connection *ngIf="isSaveAsOpen" (close)="closeSaveAs()"></app-save-connection>
