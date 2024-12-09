@@ -177,4 +177,12 @@ export class DatabaseManagerComponent {
       this.widthTable = 300
     }
   }
+
+  onSavedQuery(name: string): void {
+    this.tabsComponent.newSavedTab('sql', {
+      id: Date.now(),
+      info: { sql: this.sqlContent },
+      name: name
+    })
+  }
 }

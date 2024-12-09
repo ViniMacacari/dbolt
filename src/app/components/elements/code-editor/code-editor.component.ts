@@ -19,6 +19,7 @@ import { InternalApiService } from '../../../services/requests/internal-api.serv
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   @Input() sqlContent: string = ''
   @Output() sqlContentChange = new EventEmitter<string>()
+  @Output() savedName = new EventEmitter<string>()
   @Input() widthTable: number = 300
 
   @ViewChild('editorContainer') editorContainer!: ElementRef
@@ -266,6 +267,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
       sql: this.editor?.getValue() || '',
       dataDbSchema: dbSchemas
     }
+  }
+
+  async savedSaveAs(name: any): Promise<void> {
+    this.savedName.emit(name)
   }
 
   async closeSaveAs(): Promise<void> {

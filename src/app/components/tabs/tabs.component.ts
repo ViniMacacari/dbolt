@@ -54,6 +54,26 @@ export class TabsComponent {
     }, 100)
   }
 
+  newSavedTab(type: string, info: any): void {
+    const newTab: any = {
+      id: Date.now(),
+      name: info.name.name,
+      type: type,
+      info: {
+        sql: info.info.sql
+      }
+    }
+
+    this.idTabs += 1
+
+    this.tabs.push(newTab)
+
+    setTimeout(() => {
+      this.selectTab(this.tabs.length - 1)
+      this.dropdownVisible = false
+    }, 0)
+  }
+
   loadTab(): void {
     console.log('Opção 2 selecionada')
     setTimeout(() => {
