@@ -30,7 +30,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   isSaveAsOpen: boolean = true
   cacheSql: string = ''
   queryReponse: any[] = []
-  queryLines: number = 300
+  queryLines: number = 100
 
   constructor(
     private dbSchema: GetDbschemaService,
@@ -242,7 +242,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
     LoadingComponent.show()
 
     try {
-      this.queryLines += 300
+      this.queryLines += 100
       const result: any = await this.runQuery.runSQL(this.cacheSql, this.queryLines)
       this.queryReponse = result
     } catch (error: any) {
