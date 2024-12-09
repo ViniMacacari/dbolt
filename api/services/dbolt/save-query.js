@@ -12,8 +12,6 @@ class SaveQuery {
 
             const hasDuplicateDetails = existingQueries.some(
                 (q) =>
-                    q.database.toLowerCase() === query.database.toLowerCase() &&
-                    q.version.toLowerCase() === query.version.toLowerCase() &&
                     q.sql.trim() === query.sql.trim()
             )
 

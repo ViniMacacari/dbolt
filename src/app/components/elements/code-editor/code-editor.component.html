@@ -26,4 +26,4 @@
 </div>
 
 <app-toast></app-toast>
-<app-save-connection *ngIf="isSaveAsOpen" (close)="closeSaveAs()"></app-save-connection>
+<app-save-query [data]="dataSave" *ngIf="isSaveAsOpen" (close)="closeSaveAs()"></app-save-query>

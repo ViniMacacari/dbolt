@@ -5,12 +5,14 @@
         </div>
         <div class="modal-body">
             <h2 class="subtitle">Query name</h2>
-            <input [(ngModel)]="connectionName" type="text" maxlength="20" class="input-page"
-                placeholder="Name your query" (ngModelChange)="validateConnectionName($event)" />
+            <input [(ngModel)]="queryName" type="text" maxlength="20" class="input-page"
+                placeholder="Name your query" (ngModelChange)="validateQueryName($event)" />
         </div>
         <div class="modal-footer">
             <button class="btn-cancel" (click)="onClose()">Cancel</button>
-            <button class="btn-page" (click)="newConnection()">Save</button>
+            <button class="btn-page" (click)="saveQuery()">Save</button>
         </div>
     </div>
 </div>
+
+<app-toast></app-toast>

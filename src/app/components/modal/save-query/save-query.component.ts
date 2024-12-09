@@ -1,26 +1,29 @@
-import { Component, EventEmitter, Output, ViewChild } from '@angular/core'
+import { Component, EventEmitter, Output, Input, ViewChild } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { InputListComponent } from "../../elements/input-list/input-list.component"
 import { LoadingComponent } from '../loading/loading.component'
+import { ToastComponent } from "../../toast/toast.component"
 
 @Component({
-  selector: 'app-save-connection',
+  selector: 'app-save-query',
   standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './save-connection.component.html',
-  styleUrl: './save-connection.component.scss'
+  imports: [CommonModule, FormsModule, ToastComponent],
+  templateUrl: './save-query.component.html',
+  styleUrl: './save-query.component.scss'
 })
-export class SaveConnectionComponent {
+export class SaveQueryComponent {
   @Output() close = new EventEmitter<void>()
+  @Input() data: any = {}
   @ViewChild('database') databaseInput!: InputListComponent
   @ViewChild('version') versionInput!: InputListComponent
+  @ViewChild(ToastComponent) toast!: ToastComponent
 
   dataList: any = []
   versionList: any = []
   sgbdVersion: string = ''
-  connectionName: string = ''
+  queryName: string = ''
   connectionConfig: any = {
     host: '',
     port: null,
@@ -100,48 +103,27 @@ export class SaveConnectionComponent {
     this.close.emit()
   }
 
-  async newConnection(): Promise<any> {
-    if (this.connectionName.length === 0) {
-      return
-    }
-
-    LoadingComponent.show()
-
-    try {
-      await this.IAPI.post(`/api/${this.sgbd}/${this.sgbdVersion}/test-connection`, {
-        host: this.connectionConfig.host,
-        port: this.connectionConfig.port,
-        user: this.connectionConfig.user,
-        password: this.connectionConfig.password
-      })
-
-      await this.IAPI.post('/api/connections/new', {
-        name: this.connectionName,
-        database: this.sgbd,
-        version: this.sgbdVersion,
-        host: this.connectionConfig.host,
-        port: this.connectionConfig.port,
-        user: this.connectionConfig.user,
-        password: this.connectionConfig.password
-      })
-
-      setTimeout(() => {
-        LoadingComponent.hide()
-        this.close.emit()
-      }, 500)
-    } catch (error: any) {
-      console.error(error)
-      setTimeout(() => {
-        LoadingComponent.hide()
-      }, 500)
+  validateQueryName(value: string): void {
+    if (value.length > 20) {
+      this.queryName = value.substring(0, 20)
+    } else {
+      this.queryName = value
     }
   }
 
-  validateConnectionName(value: string): void {
-    if (value.length > 14) {
-      this.connectionName = value.substring(0, 14)
-    } else {
-      this.connectionName = value
+  async saveQuery(): Promise<void> {
+    try {
+      const result = await this.IAPI.post('/api/query/new', {
+        name: this.queryName,
+        type: "sql",
+        sql: this.data.sql,
+        dbSchema: this.data.dataDbSchema
+      })
+
+      this.close.emit()
+    } catch (error: any) {
+      console.error(error)
+      this.toast.showToast(error.message, 'red')
     }
   }
 }

@@ -1,19 +1,20 @@
 import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewChecked, OnDestroy } from '@angular/core'
 import { CommonModule } from '@angular/common'
+import * as monaco from 'monaco-editor'
 import { GetDbschemaService } from '../../../services/db-info/get-dbschema.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
-import * as monaco from 'monaco-editor'
 import { LoadingComponent } from '../../modal/loading/loading.component'
 import { ToastComponent } from '../../toast/toast.component'
 import { TableQueryComponent } from "../table-query/table-query.component"
-import { SaveConnectionComponent } from "../../modal/save-connection/save-connection.component"
+import { SaveQueryComponent } from "../../modal/save-query/save-query.component"
+import { InternalApiService } from '../../../services/requests/internal-api.service'
 
 @Component({
   selector: 'app-code-editor',
   standalone: true,
   templateUrl: './code-editor.component.html',
   styleUrls: ['./code-editor.component.scss'],
-  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveConnectionComponent],
+  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveQueryComponent],
 })
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   @Input() sqlContent: string = ''
@@ -22,19 +23,22 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
 
   @ViewChild('editorContainer') editorContainer!: ElementRef
   @ViewChild(ToastComponent) toast!: ToastComponent
-  @ViewChild(SaveConnectionComponent) saveConnection!: SaveConnectionComponent
+  @ViewChild(SaveQueryComponent) saveConnection!: SaveQueryComponent
 
   private editor: monaco.editor.IStandaloneCodeEditor | null = null
   private initialized = false
 
-  isSaveAsOpen: boolean = true
+  isSaveAsOpen: boolean = false
   cacheSql: string = ''
   queryReponse: any[] = []
   queryLines: number = 50
 
+  dataSave: any = {}
+
   constructor(
-    private dbSchema: GetDbschemaService,
-    private runQuery: RunQueryService
+    private dbSchemas: GetDbschemaService,
+    private runQuery: RunQueryService,
+    private IAPI: InternalApiService
   ) { }
 
   ngAfterViewChecked(): void {
@@ -255,6 +259,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
 
   async saveAs(): Promise<void> {
     this.isSaveAsOpen = true
+
+    const dbSchemas = await this.dbSchemas.getSelectedSchemaDB()
+
+    this.dataSave = {
+      sql: this.editor?.getValue() || '',
+      dataDbSchema: dbSchemas
+    }
   }
 
   async closeSaveAs(): Promise<void> {
