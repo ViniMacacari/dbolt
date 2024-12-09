@@ -225,7 +225,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
     LoadingComponent.show()
 
     try {
-      this.queryLines = 300
+      this.queryLines = 100
       this.cacheSql = sql
 
       const result: any = await this.runQuery.runSQL(sql, this.queryLines)
