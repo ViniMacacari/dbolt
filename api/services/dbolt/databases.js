@@ -36,6 +36,23 @@ class Databases {
                     }
                 ],
                 active: true
+            },
+            {
+                id: 4,
+                database: 'SqlServer',
+                versions: [
+                    {
+                        name: 'default-version',
+                        service: 'v2019',
+                        date: '2024-12-07'
+                    },
+                    {
+                        name: '2008',
+                        service: 'v2008',
+                        date: '2024-12-07'
+                    }
+                ],
+                active: true
             }
         ]
     }
