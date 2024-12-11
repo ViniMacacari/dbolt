@@ -16,7 +16,7 @@ import { InternalApiService } from '../../../services/requests/internal-api.serv
   styleUrl: './db-info.component.scss'
 })
 export class DbInfoComponent {
-  @Input() sqlContent: string = ''
+  @Input() data: any
   @Output() sqlContentChange = new EventEmitter<string>()
   @Output() savedName = new EventEmitter<string>()
   @Input() widthTable: number = 300
@@ -26,9 +26,6 @@ export class DbInfoComponent {
   @ViewChild(ToastComponent) toast!: ToastComponent
   @ViewChild(SaveQueryComponent) saveConnection!: SaveQueryComponent
 
-  private editor: monaco.editor.IStandaloneCodeEditor | null = null
-  private initialized = false
-
   isSaveAsOpen: boolean = false
   cacheSql: string = ''
   queryReponse: any[] = []
@@ -36,25 +33,16 @@ export class DbInfoComponent {
 
   dataSave: any = {}
 
+  showTables: boolean = false
+
   constructor(
     private dbSchemas: GetDbschemaService,
     private runQuery: RunQueryService,
     private IAPI: InternalApiService
   ) { }
 
-  ngOnInit(): void {
-    
-  }
-
-  ngOnChanges(): void {
-    if (this.editor && this.sqlContent !== this.editor.getValue()) {
-      this.editor.setValue(this.sqlContent || '')
-    }
-  }
-
-  ngOnDestroy(): void {
-    if (this.editor) {
-      this.editor.dispose()
-    }
+  async filterTables(): Promise<void> {
+    console.log('data: ', this.data)
+    this.showTables = true
   }
 }

@@ -26,6 +26,8 @@ export class DatabaseManagerComponent {
   connections: any[] = []
   selectedSchemaDB: any
 
+  dbSchemasData: any
+
   dbInfoOpen: boolean = false
   editorOpen: boolean = false
   sqlContent: string = ''
@@ -228,8 +230,7 @@ export class DatabaseManagerComponent {
         else if (item.type === 'index') result.indexes.push(item)
       })
 
-
-      console.log('final: ', result)
+      this.dbSchemasData = result
     } catch (error: any) {
       console.error(error)
       this.toast.showToast(error.error, 'red')
