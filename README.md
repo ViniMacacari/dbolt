@@ -10,7 +10,7 @@ DBOLT Database Manager is a powerful, free, and open-source tool designed to sim
 ## 📋 Supported Databases
 
 | Database   | Min DB Version |
-| ---------- |----------------|
+| ---------- | -------------- |
 | SAP HANA   | All            |
 | PostgreSQL | 9.6            |
 | MySQL      | 5.6            |
@@ -25,8 +25,18 @@ Additional database support will be added in future updates.
 
 For more details, refer to the license included in the repository.
 
-## 🔧 Requirements
-- Windows 10 or higher.
+## 🔧 Minimum Requirements
+- OS: Windows 7 (64-bit recommended)
+- Processor: 64-bit processor (x64) with SSE2 support
+- Memory: 2 GB
+- Disk Space: 1 GB
+
+## 🔧 Recommended Requirements
+
+- OS: Windows 11
+- Processor: Intel Core i5-5200U (5th generation) / AMD Ryzen 5 2500U, or equivalent
+- Memory: 16 GB
+- Disk Space: 2 GB
 
 ## 📖 License
 This project is licensed under a custom license:
