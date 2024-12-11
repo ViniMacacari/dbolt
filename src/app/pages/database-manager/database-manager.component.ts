@@ -7,11 +7,12 @@ import { TabsComponent } from "../../components/tabs/tabs.component"
 import { LoadingComponent } from '../../components/modal/loading/loading.component'
 import { CodeEditorComponent } from "../../components/elements/code-editor/code-editor.component"
 import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
+import { DbInfoComponent } from "../../components/elements/db-info/db-info.component"
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, CodeEditorComponent, CommonModule],
+  imports: [SidebarComponent, TabsComponent, CodeEditorComponent, CommonModule, DbInfoComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
