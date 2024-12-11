@@ -21,6 +21,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   @Output() sqlContentChange = new EventEmitter<string>()
   @Output() savedName = new EventEmitter<string>()
   @Input() widthTable: number = 300
+  @Input() tabInfo: any
 
   @ViewChild('editorContainer') editorContainer!: ElementRef
   @ViewChild(ToastComponent) toast!: ToastComponent
@@ -271,6 +272,23 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
 
   async savedSaveAs(name: any): Promise<void> {
     this.savedName.emit(name)
+  }
+
+  async saveQuery(): Promise<void> {
+    try {
+      const dbSchemas = await this.dbSchemas.getSelectedSchemaDB()
+
+      this.dataSave = {
+        name: this.tabInfo?.name,
+        type: 'sql',
+        sql: this.editor?.getValue() || '',
+        dbSchema: dbSchemas
+      }
+
+      await this.IAPI.put('/api/query/' + this.tabInfo.id, this.dataSave)
+    } catch (error: any) {
+      this.toast.showToast(error.error, 'red')
+    }
   }
 
   async closeSaveAs(): Promise<void> {

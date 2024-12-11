@@ -25,6 +25,7 @@ export class DatabaseManagerComponent {
 
   editorOpen: boolean = false
   sqlContent: string = ''
+  tabInfo: any
 
   widthTable: number = 0
 
@@ -154,6 +155,7 @@ export class DatabaseManagerComponent {
 
   onTabSelected(tab: any): void {
     this.editorOpen = true
+    this.tabInfo = tab
     this.sqlContent = tab.info.sql
   }
 
