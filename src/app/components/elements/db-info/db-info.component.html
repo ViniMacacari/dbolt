@@ -7,21 +7,21 @@
 
         <div class="separator"></div>
 
-        <button class="btn">
+        <button class="btn" [ngClass]="{ 'active': showViews }" (click)="filterViews()">
             <img src="icons/view.png" title="Run all code" height="15px">
             Views
         </button>
 
         <div class="separator"></div>
 
-        <button class="btn">
+        <button class="btn" [ngClass]="{ 'active': showProcedures }" (click)="filterProcedures()">
             <img src="icons/procedure.png" title="Indent code" height="15px">
             Procedures
         </button>
 
         <div class="separator"></div>
 
-        <button class="btn">
+        <button class="btn" [ngClass]="{ 'active': showIndexes }" (click)="filterIndexes()">
             <img src="icons/index.png" title="Save code" height="15px">
             Indexes
         </button>
@@ -29,7 +29,22 @@
     <div class="info py-2">
         <div *ngIf="showTables">
             <div class="table" *ngFor="let table of data.tables">
-                <h2 class="subtitle-min">{{ table.NAME }}</h2>
+                <h2 class="subtitle-min">{{ table.NAME || table.name }}</h2>
+            </div>
+        </div>
+        <div *ngIf="showViews">
+            <div class="table" *ngFor="let table of data.views">
+                <h2 class="subtitle-min">{{ table.NAME || table.name }}</h2>
+            </div>
+        </div>
+        <div *ngIf="showProcedures">
+            <div class="table" *ngFor="let table of data.procedures">
+                <h2 class=" subtitle-min">{{ table.NAME || table.name }}</h2>
+            </div>
+        </div>
+        <div *ngIf="showIndexes">
+            <div class="table" *ngFor="let table of data.indexes">
+                <h2 class=" subtitle-min">{{ table.NAME || table.name }}</h2>
             </div>
         </div>
     </div>

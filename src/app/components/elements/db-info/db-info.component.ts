@@ -34,6 +34,9 @@ export class DbInfoComponent {
   dataSave: any = {}
 
   showTables: boolean = false
+  showViews: boolean = false
+  showProcedures: boolean = false
+  showIndexes: boolean = false
 
   constructor(
     private dbSchemas: GetDbschemaService,
@@ -42,7 +45,30 @@ export class DbInfoComponent {
   ) { }
 
   async filterTables(): Promise<void> {
-    console.log('data: ', this.data)
     this.showTables = true
+    this.showViews = false
+    this.showProcedures = false
+    this.showIndexes = false
+  }
+
+  async filterViews(): Promise<void> {
+    this.showTables = false
+    this.showViews = true
+    this.showProcedures = false
+    this.showIndexes = false
+  }
+
+  async filterProcedures(): Promise<void> {
+    this.showTables = false
+    this.showViews = false
+    this.showProcedures = true
+    this.showIndexes = false
+  }
+
+  async filterIndexes(): Promise<void> {
+    this.showTables = false
+    this.showViews = false
+    this.showProcedures = false
+    this.showIndexes = true
   }
 }
