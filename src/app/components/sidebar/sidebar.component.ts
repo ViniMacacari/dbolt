@@ -143,8 +143,6 @@ export class SidebarComponent {
       return
     }
 
-    console.log('teste')
-
     this.clickTimeout = setTimeout(async () => {
       LoadingComponent.show()
 
@@ -162,8 +160,6 @@ export class SidebarComponent {
       return
     }
 
-    console.log('->', connection)
-
     const matchedConnection = this.dbSchemas.data.find((db: any) =>
       db.database === connection.database &&
       db.host === connection.host &&
@@ -173,7 +169,7 @@ export class SidebarComponent {
     )
 
     if (matchedConnection) {
-      if (matchedConnection.connected) {
+      if (matchedConnection) {
         let schemaDb: any
 
         try {
@@ -227,8 +223,6 @@ export class SidebarComponent {
         database: connection.database || data.database,
         schema: connection.schema || data.schema
       })
-
-      console.log('conectado a', result)
 
       return {
         database: connection?.database || data?.database,
