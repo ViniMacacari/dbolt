@@ -32,7 +32,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "icon.ico"
+      "icon": "./public/favicon.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -53,13 +53,16 @@
     "@electron/remote": "^2.1.2",
     "@monaco-editor/loader": "^1.4.0",
     "cors": "^2.8.5",
+    "express": "^4.21.2",
     "monaco-editor": "^0.52.0",
     "mysql2": "^3.11.5",
     "ng-monaco-editor": "^5.1.1",
     "pg": "^8.13.1",
+    "@sap/hana-client": "^2.22.32",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
-    "zone.js": "~0.14.10"
+    "zone.js": "~0.14.10",
+    "bootstrap": "5.3"
   },
   "devDependencies": {
     "@angular-builders/custom-webpack": "^18.0.0",
