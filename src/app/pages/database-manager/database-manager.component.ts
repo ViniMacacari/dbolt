@@ -24,6 +24,7 @@ export class DatabaseManagerComponent {
   connections: any[] = []
   selectedSchemaDB: any
 
+  dbInfoOpen: boolean = false
   editorOpen: boolean = false
   sqlContent: string = ''
   tabInfo: any

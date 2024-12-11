@@ -8,7 +8,9 @@
         </div>
         <div class="p-3 organize">
             <div class="d-flex flex-column w-100 h-100 user-content">
-                <app-db-info></app-db-info>
+                <h3 *ngIf="!dbInfoOpen && !editorOpen" class="subtitle-min text-center py-4">Create a new SQL query or open
+                    database information</h3>
+                <app-db-info *ngIf="dbInfoOpen"></app-db-info>
                 <app-code-editor *ngIf="editorOpen" [(sqlContent)]="sqlContent" [widthTable]="widthTable"
                     [tabInfo]="tabInfo" (sqlContentChange)="onSqlContentChange($event)"
                     (savedName)="onSavedQuery($event)"></app-code-editor>
