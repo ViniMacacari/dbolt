@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { InputListComponent } from "../../elements/input-list/input-list.component"
-import { LoadingComponent } from '../loading/loading.component'
 import { ToastComponent } from "../../toast/toast.component"
 
 @Component({
@@ -25,7 +24,6 @@ export class LoadQueryComponent {
   queryName: string = ''
   queries: any[] = []
   originalQueries: any[] = []
-
   private _sgbd: string = ''
 
   constructor(private IAPI: InternalApiService) { }
@@ -35,10 +33,7 @@ export class LoadQueryComponent {
       this.originalQueries = await this.IAPI.get('/api/query/load')
       this.queries = this.originalQueries
 
-      console.log(this.queries)
-
       const result: any = await this.IAPI.get('/api/databases/avaliable')
-
       this.dataList = result.map((item: { id: number, database: string, versions: any[] }) => ({
         id: item.id,
         name: item.database,
@@ -59,10 +54,31 @@ export class LoadQueryComponent {
     } else {
       this.queryName = value
     }
+    this.applyFilters()
   }
 
   onDatabaseSelected(item: { [key: string]: string | number } | null): void {
-    console.log(item)
+    this._sgbd = item ? item?.['name'] as string : ''
+    this.applyFilters()
+  }
+
+  applyFilters(): void {
+    if (this._sgbd && this.queryName) {
+      this.queries = this.originalQueries.filter(query =>
+        query.dbSchema.sgbd.toLowerCase().includes(this._sgbd.toLowerCase()) &&
+        query.name.toLowerCase().includes(this.queryName.toLowerCase())
+      )
+    } else if (this._sgbd) {
+      this.queries = this.originalQueries.filter(query =>
+        query.dbSchema.sgbd.toLowerCase().includes(this._sgbd.toLowerCase())
+      )
+    } else if (this.queryName) {
+      this.queries = this.originalQueries.filter(query =>
+        query.name.toLowerCase().includes(this.queryName.toLowerCase())
+      )
+    } else {
+      this.queries = this.originalQueries
+    }
   }
 
   async loadQuery(query: any): Promise<void> {
