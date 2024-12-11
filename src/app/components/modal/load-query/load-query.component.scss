@@ -81,6 +81,31 @@
     width: 50px;
 }
 
+.queries {
+    width: 100%;
+    max-height: 400px;
+
+    margin: 30px 0px;
+
+    .query-item {
+        gap: 10px;
+        padding: 5px;
+
+        border-top: 1px solid #2d2d2d;
+
+        display: flex;
+        align-items: center;
+
+        h2 {
+            text-wrap: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            
+            margin: 0;
+        }
+    }
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;

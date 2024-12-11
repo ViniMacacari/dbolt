@@ -3,17 +3,20 @@ import { CommonModule } from '@angular/common'
 import { Router, ActivatedRoute } from '@angular/router'
 import { InputListComponent } from "../elements/input-list/input-list.component"
 import { InternalApiService } from '../../services/requests/internal-api.service'
+import { LoadQueryComponent } from "../modal/load-query/load-query.component"
 
 @Component({
   selector: 'app-tabs',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, LoadQueryComponent],
   templateUrl: './tabs.component.html',
   styleUrl: './tabs.component.scss'
 })
 export class TabsComponent {
   @Output() tabSelected = new EventEmitter<any>()
   @Output() tabClosed = new EventEmitter<void>()
+
+  showLoadQuery: boolean = false
 
   dataList: any = []
   dropdownVisible: boolean = false
@@ -75,7 +78,7 @@ export class TabsComponent {
   }
 
   loadTab(): void {
-    console.log('Opção 2 selecionada')
+    this.showLoadQuery = true
     setTimeout(() => {
       this.dropdownVisible = false
     }, 100)
@@ -107,5 +110,9 @@ export class TabsComponent {
     if (!targetElement.closest('.add')) {
       this.dropdownVisible = false
     }
+  }
+
+  onCloseLoadQuery(event: any): void {
+    this.showLoadQuery = false
   }
 }

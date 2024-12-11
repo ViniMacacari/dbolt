@@ -23,10 +23,19 @@ export class LoadQueryComponent {
 
   dataList: any = []
   queryName: string = ''
+  queries: any[] = []
 
   private _sgbd: string = ''
 
   constructor(private IAPI: InternalApiService) { }
+
+  async ngOnInit(): Promise<void> {
+    try {
+      this.queries = await this.IAPI.get('/api/query/load')
+    } catch (error: any) {
+      this.toast.showToast(error.error, 'red')
+    }
+  }
 
   onClose() {
     this.close.emit()
@@ -40,25 +49,7 @@ export class LoadQueryComponent {
     }
   }
 
-  async saveQuery(): Promise<void> {
-    try {
-      await this.IAPI.post('/api/query/new', {
-        name: this.queryName,
-        type: "sql",
-        sql: this.data.sql,
-        dbSchema: this.data.dataDbSchema
-      })
-
-      this.saved.emit({
-        name: this.queryName,
-        type: "sql",
-        sql: this.data.sql,
-        dbSchema: this.data.dataDbSchema
-      })
-      this.close.emit()
-    } catch (error: any) {
-      console.error(error)
-      this.toast.showToast(error.error, 'red')
-    }
+  async loadQuery(query: any): Promise<void> {
+    console.log(query)
   }
 }
