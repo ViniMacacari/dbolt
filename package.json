@@ -27,7 +27,8 @@
       "main.js",
       "dist/**/*",
       "api/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "public/**/*"
     ],
     "win": {
       "target": "nsis",
