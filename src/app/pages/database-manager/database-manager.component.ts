@@ -189,4 +189,15 @@ export class DatabaseManagerComponent {
       name: name
     })
   }
+
+  async onDbInfoRequested(event: any): Promise<void> {
+    const schemaDb: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/get-selected-schema`)
+
+    console.log(schemaDb)
+
+    this.tabsComponent.newTab('schema', {
+      id: Date.now(),
+      info: {}
+    }, schemaDb.schema)
+  }
 }

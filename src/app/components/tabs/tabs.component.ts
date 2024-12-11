@@ -39,10 +39,10 @@ export class TabsComponent {
     this.dropdownVisible = !this.dropdownVisible
   }
 
-  newTab(type: string, info: any): void {
+  newTab(type: string, info: any, name: string | null = null): void {
     const newTab: any = {
       id: Date.now(),
-      name: Date.now(),
+      name: name || Date.now(),
       type: type,
       info: info
     }

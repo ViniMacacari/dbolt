@@ -20,6 +20,7 @@ export class SidebarComponent {
   @Input() dbSchemas: any = []
   @Input() selectedSchemaDB: any
   @Output() sidebarStatusChange = new EventEmitter<boolean>()
+  @Output() dbInfoRequested = new EventEmitter<any>()
 
   @ViewChild('toast') toast!: ToastComponent
 
@@ -138,11 +139,13 @@ export class SidebarComponent {
   async selectSchema(connection: any): Promise<any> {
     if (this.clickTimeout) {
       clearTimeout(this.clickTimeout)
+      this.clickTimeout = null
+      return
     }
 
-    LoadingComponent.show()
-
     this.clickTimeout = setTimeout(async () => {
+      LoadingComponent.show()
+
       await this.setSchema(connection)
 
       LoadingComponent.hide()
@@ -187,64 +190,30 @@ export class SidebarComponent {
         }
 
         this.dbSchemaService.setSelectedSchemaDB(this.selectedSchemaDB)
-
-      } else {
-        try {
-          try {
-            await this.IAPI.post(`/api/${connection.sgbd}/${connection.version}/connect`, {
-              host: connection.host,
-              port: connection.port,
-              user: connection.user,
-              password: connection.password
-            })
-
-            this.expandedConnections.add(connection.id)
-
-            await this.disconnectDatabases(connection)
-
-            this.dbSchemas.data = this.dbSchemas.data.map((db: any) => {
-              if (db.sgbd === connection.sgbd) {
-                if (
-                  db.database === connection.database &&
-                  db.host === connection.host &&
-                  db.port === connection.port &&
-                  db.version === connection.version
-                ) {
-                  return { ...db, connected: true }
-                } else {
-                  this.disconnectDatabases(db)
-                  return { ...db, connected: false }
-                }
-              }
-              return db
-            })
-
-          } catch (error: any) {
-            this.toast.showToast(error.message, 'red')
-          }
-
-          const schemaDb: any = await this.connectToSchemaDb(connection)
-
-          this.selectedSchemaDB = {
-            database: schemaDb?.currentSchema?.database || connection.database,
-            schema: schemaDb?.currentSchema?.schema || connection.schema,
-            sgbd: connection.sgbd,
-            version: connection.version,
-            name: connection.name,
-            host: connection.host,
-            port: connection.port,
-            connId: connection.id
-          }
-
-          this.dbSchemaService.setSelectedSchemaDB(this.selectedSchemaDB)
-
-        } catch (error: any) {
-          this.toast.showToast(error.message, 'red')
-        }
       }
-    } else {
-      this.toast.showToast('No connection found', 'red')
     }
+  }
+
+  async openSchemaDBInfo(connection: any): Promise<any> {
+    if (this.clickTimeout) {
+      clearTimeout(this.clickTimeout)
+      this.clickTimeout = null
+
+      return
+    }
+
+    LoadingComponent.show()
+
+    await this.setSchema(connection)
+    this.dbInfoRequested.emit(connection)
+    console.log(connection)
+
+    LoadingComponent.hide()
+
+    this.clickTimeout = setTimeout(() => {
+      this.connectToSchemaDb(connection, null)
+      this.clickTimeout = null
+    }, 300)
   }
 
   async connectToSchemaDb(connection: any, data: any | null = null): Promise<any> {
@@ -262,15 +231,6 @@ export class SidebarComponent {
       this.toast.showToast(error.message, 'red')
 
       return null
-    }
-  }
-
-  async openSchemaDBInfo(connection: any): Promise<any> {
-    console.log('Clique duplo: ', connection)
-
-    if (this.clickTimeout) {
-      clearTimeout(this.clickTimeout)
-      this.clickTimeout = null
     }
   }
 
