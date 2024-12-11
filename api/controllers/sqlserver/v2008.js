@@ -2,6 +2,7 @@ import SSQLServerV1 from "../../services/connections/sqlserver/v2008.js"
 import LSSQLServer1 from "../../services/lists/sqlserver/v2008.js"
 import SSSQLServerV1 from "../../services/schemas/sqlserver/v2008.js"
 import SQuerySQLServerV1 from "../../services/queries/sqlserver/v2008.js"
+import ListObjectsSQLServerV1 from '../../services/database-info/sqlserver/v2008.js'
 
 class CSQLServerV1 {
     async testConnection(req, res) {
@@ -83,6 +84,20 @@ class CSQLServerV1 {
 
             return res.status(200).json(result)
         } catch (error) {
+            return res.status(500).json({ success: false, message: 'Server error', error: error.message })
+        }
+    }
+
+    async listObjects(req, res) {
+        try {
+            const result = await ListObjectsSQLServerV1.listDatabaseObjects()
+            if (result.success) {
+                return res.status(200).json(result)
+            } else {
+                return res.status(500).json(result)
+            }
+        } catch (error) {
+            console.error('Error in listObjects controller:', error)
             return res.status(500).json({ success: false, message: 'Server error', error: error.message })
         }
     }
