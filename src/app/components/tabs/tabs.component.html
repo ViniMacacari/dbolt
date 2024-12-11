@@ -29,4 +29,4 @@
     </div>
 </div>
 
-<app-load-query *ngIf="showLoadQuery" (close)="onCloseLoadQuery($event)"></app-load-query>
+<app-load-query *ngIf="showLoadQuery" (open)="onOpenLoadQuery($event)" (close)="onCloseLoadQuery($event)"></app-load-query>

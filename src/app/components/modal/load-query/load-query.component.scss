@@ -83,7 +83,9 @@
 
 .queries {
     width: 100%;
-    max-height: 400px;
+    max-height: 250px;
+
+    overflow-y: auto;
 
     margin: 30px 0px;
 

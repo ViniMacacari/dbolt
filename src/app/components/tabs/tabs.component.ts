@@ -112,6 +112,30 @@ export class TabsComponent {
     }
   }
 
+  onOpenLoadQuery(event: any): void {
+    console.log(event)
+
+    this.showLoadQuery = false
+
+    const newTab: any = {
+      id: event.id,
+      name: event.name,
+      type: event.type,
+      info: {
+        sql: event.sql
+      }
+    }
+
+    this.idTabs += 1
+
+    this.tabs.push(newTab)
+
+    setTimeout(() => {
+      this.selectTab(this.tabs.length - 1)
+      this.dropdownVisible = false
+    }, 0)
+  }
+
   onCloseLoadQuery(event: any): void {
     this.showLoadQuery = false
   }

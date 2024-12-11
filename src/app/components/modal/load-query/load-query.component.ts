@@ -14,7 +14,7 @@ import { ToastComponent } from "../../toast/toast.component"
 })
 export class LoadQueryComponent {
   @Output() close = new EventEmitter<void>()
-  @Output() saved = new EventEmitter<any>()
+  @Output() open = new EventEmitter<any>()
   @Input() data: any = {}
   @ViewChild('database') databaseInput!: InputListComponent
   @ViewChild('version') versionInput!: InputListComponent
@@ -82,6 +82,6 @@ export class LoadQueryComponent {
   }
 
   async loadQuery(query: any): Promise<void> {
-    console.log(query)
+    this.open.emit(query)
   }
 }
