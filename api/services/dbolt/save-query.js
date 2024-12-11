@@ -30,6 +30,16 @@ class SaveQuery {
             throw error
         }
     }
+
+    async updateExistingQuery(id, updatedData) {
+        try {
+            const updatedQuery = await QueryStorage.updateQueryById(id, updatedData)
+            return { success: true, message: 'Query updated successfully', data: updatedQuery }
+        } catch (error) {
+            console.error('Error updating query:', error)
+            throw new Error(`Error updating query: ${error.message}`)
+        }
+    }
 }
 
 export default new SaveQuery()

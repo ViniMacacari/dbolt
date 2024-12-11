@@ -83,6 +83,30 @@ class QueryStorage {
             throw error
         }
     }
+
+    async updateQueryById(id, updatedData) {
+        const queries = await this.readQueriesFile()
+        const queryIndex = queries.findIndex(q => q.id === Number(id))
+
+        if (queryIndex === -1) {
+            throw new Error(`Query with id ${id} not found`)
+        }
+
+        const updatedQuery = {
+            id: Number(id),
+            ...updatedData
+        }
+
+        queries[queryIndex] = updatedQuery
+
+        try {
+            const filePath = join(this.basePath, 'queries.json')
+            await fs.writeFile(filePath, JSON.stringify(queries, null, 2), 'utf8')
+            return updatedQuery
+        } catch (error) {
+            throw error
+        }
+    }
 }
 
 export default new QueryStorage()

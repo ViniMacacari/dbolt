@@ -62,4 +62,18 @@ router.delete('/:id', async (req, res) => {
     }
 })
 
+router.put('/:id', async (req, res) => {
+    try {
+        const { id } = req.params
+        const data = req.body
+
+        await SaveQuery.updateExistingQuery(parseInt(id, 10), data)
+
+        res.status(200).json({ success: true, message: `Query with ID ${id} updated successfully` })
+    } catch (error) {
+        console.error(`Error updating query with ID ${req.params.id}:`, error)
+        res.status(500).json({ success: false, message: 'Failed to delete query', error: error.message })
+    }
+})
+
 export default router
