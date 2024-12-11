@@ -158,6 +158,8 @@ export class SidebarComponent {
       return
     }
 
+    console.log('->', connection)
+
     const matchedConnection = this.dbSchemas.data.find((db: any) =>
       db.database === connection.database &&
       db.host === connection.host &&
@@ -194,7 +196,7 @@ export class SidebarComponent {
     }
   }
 
-  async openSchemaDBInfo(connection: any): Promise<any> {
+  async openSchemaDBInfo(connection: any, data2: any): Promise<any> {
     if (this.clickTimeout) {
       clearTimeout(this.clickTimeout)
       this.clickTimeout = null
@@ -204,7 +206,7 @@ export class SidebarComponent {
 
     LoadingComponent.show()
 
-    await this.setSchema(connection)
+    await this.setSchema(data2)
     this.dbInfoRequested.emit(connection)
     console.log(connection)
 
@@ -222,6 +224,8 @@ export class SidebarComponent {
         database: connection.database || data.database,
         schema: connection.schema || data.schema
       })
+
+      console.log(result)
 
       return {
         database: connection?.database || data?.database,

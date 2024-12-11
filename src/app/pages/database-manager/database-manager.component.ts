@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core'
+import { Component, ViewChild, Output, EventEmitter } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { Router, ActivatedRoute } from '@angular/router'
@@ -20,6 +20,7 @@ import { ToastComponent } from "../../components/toast/toast.component"
 export class DatabaseManagerComponent {
   @ViewChild(TabsComponent) tabsComponent!: TabsComponent
   @ViewChild(ToastComponent) toast!: ToastComponent
+  @Output() dbInfo = new EventEmitter<any>()
 
   activeConnection: any = {}
   databasesSchemasActiveConnections: any = []

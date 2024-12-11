@@ -48,6 +48,17 @@
                             name: connection.name,
                             host: connection.host,
                             port: connection.port
+                        }, {
+                            schema: schema,
+                            database: database.database,
+                            sgbd: connection.database,
+                            version: connection.version,
+                            connectionId: connection.id,
+                            name: connection.name,
+                            host: connection.host,
+                            port: connection.port,
+                            password: connection.password,
+                            user: connection.user
                         })" (click)="selectSchema({
                             schema: schema,
                             database: database.database,
