@@ -8,16 +8,18 @@ import { LoadingComponent } from '../../components/modal/loading/loading.compone
 import { CodeEditorComponent } from "../../components/elements/code-editor/code-editor.component"
 import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
 import { DbInfoComponent } from "../../components/elements/db-info/db-info.component"
+import { ToastComponent } from "../../components/toast/toast.component"
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, CodeEditorComponent, CommonModule, DbInfoComponent],
+  imports: [SidebarComponent, TabsComponent, CodeEditorComponent, CommonModule, DbInfoComponent, ToastComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
 export class DatabaseManagerComponent {
   @ViewChild(TabsComponent) tabsComponent!: TabsComponent
+  @ViewChild(ToastComponent) toast!: ToastComponent
 
   activeConnection: any = {}
   databasesSchemasActiveConnections: any = []
@@ -156,13 +158,20 @@ export class DatabaseManagerComponent {
   }
 
   onTabSelected(tab: any): void {
-    this.editorOpen = true
+    if (tab.type === 'sql') {
+      this.editorOpen = true
+      this.dbInfoOpen = false
+    } else if (tab.type === 'schema') {
+      this.dbInfoOpen = true
+      this.editorOpen = false
+    }
     this.tabInfo = tab
     this.sqlContent = tab.info.sql
   }
 
   onTabClosed(): void {
     this.editorOpen = false
+    this.dbInfoOpen = false
   }
 
   onSqlContentChange(content: string): void {
@@ -191,13 +200,41 @@ export class DatabaseManagerComponent {
   }
 
   async onDbInfoRequested(event: any): Promise<void> {
-    const schemaDb: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/get-selected-schema`)
+    LoadingComponent.show()
 
-    console.log(schemaDb)
+    try {
+      const schemaDb: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/get-selected-schema`)
 
-    this.tabsComponent.newTab('schema', {
-      id: Date.now(),
-      info: {}
-    }, schemaDb.schema)
+      console.log(schemaDb)
+
+      this.tabsComponent.newTab('schema', {
+        id: Date.now(),
+        info: {}
+      }, schemaDb.schema)
+
+      const response: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/list-objects`)
+
+      const result: any = {
+        tables: [],
+        views: [],
+        procedures: [],
+        indexes: []
+      }
+
+      await response.data.forEach((item: any) => {
+        if (item.type === 'table') result.tables.push(item)
+        else if (item.type === 'view') result.views.push(item)
+        else if (item.type === 'procedure') result.procedures.push(item)
+        else if (item.type === 'index') result.indexes.push(item)
+      })
+
+
+      console.log('final: ', result)
+    } catch (error: any) {
+      console.error(error)
+      this.toast.showToast(error.error, 'red')
+    }
+
+    LoadingComponent.hide()
   }
 }
