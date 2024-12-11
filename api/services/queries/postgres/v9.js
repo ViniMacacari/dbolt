@@ -23,8 +23,17 @@ class SQueryPgV1 {
     }
 
     isSelectQuery(sql) {
-        const lowerSql = sql.trim().toLowerCase()
-        return lowerSql.startsWith('select ')
+        const trimmedSql = sql.trim().toLowerCase()
+
+        const sqlWithoutComments = trimmedSql
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => !line.startsWith('--'))
+            .join(' ')
+
+        const nonSelectKeywords = /^(insert|update|delete|alter|drop|create|truncate|merge|grant|revoke|exec|set|use|describe|explain|show|call|backup|restore|analyze|optimize|begin|commit|rollback)\b/
+
+        return !nonSelectKeywords.test(sqlWithoutComments) && sqlWithoutComments.startsWith('select ')
     }
 }
 
