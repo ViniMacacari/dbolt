@@ -6,9 +6,15 @@ class SQuerySQLServerV1 {
     }
 
     async query(sql, maxLines = null) {
-        if (maxLines && !this.hasLimitClause(sql) && this.isSelectQuery(sql)) {
+        const cleanedSql = this.removeComments(sql)
+
+        if (maxLines && this.isSelectQuery(cleanedSql)) {
+            if (!this.hasOrderByClause(cleanedSql)) {
+                sql = `${sql.trim()} ORDER BY (SELECT NULL)`
+            }
             sql = `${sql.trim()} OFFSET 0 ROWS FETCH NEXT ${maxLines} ROWS ONLY`
         }
+
         try {
             const result = await this.db.executeQuery(sql)
             return { success: true, result: result }
@@ -18,22 +24,30 @@ class SQuerySQLServerV1 {
     }
 
     hasLimitClause(sql) {
-        const lowerSql = sql.toLowerCase()
+        const cleanedSql = this.removeComments(sql)
+        const lowerSql = cleanedSql.toLowerCase()
         return lowerSql.includes(' fetch next ') || lowerSql.includes(' offset ')
     }
 
-    isSelectQuery(sql) {
-        const trimmedSql = sql.trim().toLowerCase()
+    hasOrderByClause(sql) {
+        const cleanedSql = this.removeComments(sql)
+        const lowerSql = cleanedSql.toLowerCase()
+        return lowerSql.includes(' order by ')
+    }
 
-        const sqlWithoutComments = trimmedSql
-            .split('\n')
-            .map(line => line.trim())
-            .filter(line => !line.startsWith('--'))
-            .join(' ')
+    isSelectQuery(sql) {
+        const cleanedSql = this.removeComments(sql).trim().toLowerCase()
 
         const nonSelectKeywords = /^(insert|update|delete|alter|drop|create|truncate|merge|grant|revoke|exec|set|use|describe|explain|show|call|backup|restore|analyze|optimize|begin|commit|rollback)\b/
 
-        return !nonSelectKeywords.test(sqlWithoutComments) && sqlWithoutComments.startsWith('select ')
+        return !nonSelectKeywords.test(cleanedSql) && cleanedSql.startsWith('select ')
+    }
+
+    removeComments(sql) {
+        return sql
+            .replace(/--.*$/gm, '')
+            .replace(/\/\*[\s\S]*?\*\//g, '')
+            .trim()
     }
 }
 

@@ -1,4 +1,5 @@
 import SQLServerV1 from '../../../models/sqlserver/v2008.js'
+import sql from 'mssql'
 
 class SSSQLServerV1 {
     constructor() {
@@ -9,13 +10,18 @@ class SSSQLServerV1 {
         try {
             const result = await this.db.executeQuery(`
                 SELECT 
-                    DB_NAME() AS database,
-                    SCHEMA_NAME() AS schema
+                    DB_NAME() AS current_database,
+                    SCHEMA_NAME() AS current_schema
             `)
 
-            return { success: true, database: result[0].database, schema: result[0].schema }
-        } catch {
-            throw new Error('Not connected to SQL Server')
+            return {
+                success: true,
+                database: result[0].current_database,
+                schema: result[0].current_schema
+            }
+        } catch (error) {
+            console.error('Error getting selected schema:', error)
+            throw new Error('Failed to retrieve schema information from SQL Server')
         }
     }
 
@@ -38,13 +44,13 @@ class SSSQLServerV1 {
                     }
                 }
 
-                const schemaExistsInNewDb = await this.db.executeQuery(`
+                const schemaExists = await this.db.executeQuery(`
                     SELECT name AS schema_name
                     FROM sys.schemas
                     WHERE name = @schemaName
-                `, [{ name: 'schemaName', type: 'nvarchar', value: schemaName }])
+                `, [{ name: 'schemaName', type: sql.NVarChar, value: schemaName }])
 
-                if (schemaExistsInNewDb.length === 0) {
+                if (schemaExists.length === 0) {
                     throw new Error(`Schema "${schemaName}" does not exist in the specified database "${databaseName}"`)
                 }
 
@@ -59,7 +65,7 @@ class SSSQLServerV1 {
                     SELECT name AS schema_name
                     FROM sys.schemas
                     WHERE name = @schemaName
-                `, [{ name: 'schemaName', type: 'nvarchar', value: schemaName }])
+                `, [{ name: 'schemaName', type: sql.NVarChar, value: schemaName }])
 
                 if (schemaExists.length === 0) {
                     throw new Error(`Schema "${schemaName}" does not exist in the current database`)
@@ -73,6 +79,7 @@ class SSSQLServerV1 {
                 }
             }
         } catch (error) {
+            console.error('Error in setDatabaseAndSchema:', error)
             throw new Error(`Failed to set schema and database: ${error.message}`)
         }
     }

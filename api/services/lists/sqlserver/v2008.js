@@ -20,16 +20,14 @@ class LSSQLServer1 {
                 this.mainConfig = {
                     user: config.user,
                     password: config.password,
-                    server: config.server,
+                    server: config.server || config.host,
                     options: {
-                        port: config.options.port || 1433,
-                        encrypt: config.options.encrypt || false,
-                        trustServerCertificate: config.options.trustServerCertificate || true
+                        port: parseInt(config.options?.port || 1433),
+                        encrypt: config.options?.encrypt || false,
+                        trustServerCertificate: config.options?.trustServerCertificate || true
                     }
                 }
             }
-
-            const currentDatabase = this.mainConfig.database
 
             const databasesQuery = `
                 SELECT name AS database_name
@@ -64,9 +62,6 @@ class LSSQLServer1 {
                 })
             }
 
-            await this.db.disconnect()
-            await this.db.connect({ ...this.mainConfig, database: currentDatabase })
-
             return { success: true, data: results }
         } catch (error) {
             console.error('Error in listDatabasesAndSchemas:', error)
@@ -74,6 +69,11 @@ class LSSQLServer1 {
                 success: false,
                 message: 'Error occurred while listing databases and schemas.',
                 error: error.message
+            }
+        } finally {
+            if (this.mainConfig) {
+                await this.db.disconnect()
+                await this.db.connect({ ...this.mainConfig })
             }
         }
     }
