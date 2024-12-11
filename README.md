@@ -14,6 +14,7 @@ DBOLT Database Manager is a powerful, free, and open-source tool designed to sim
 | SAP HANA   | All            |
 | PostgreSQL | 9.6            |
 | MySQL      | 5.6            |
+| SQL Server | 2008           |
 
 
 Additional database support will be added in future updates.
