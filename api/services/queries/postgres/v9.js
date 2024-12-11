@@ -6,7 +6,7 @@ class SQueryPgV1 {
     }
 
     async query(sql, maxLines = null) {
-        if (maxLines && !this.hasLimitClause(sql)) {
+        if (maxLines && !this.hasLimitClause(sql) && this.isSelectQuery(sql)) {
             sql = `${sql.trim()} LIMIT ${maxLines}`
         }
         try {
@@ -20,6 +20,11 @@ class SQueryPgV1 {
     hasLimitClause(sql) {
         const lowerSql = sql.toLowerCase()
         return lowerSql.includes(' limit ') || lowerSql.includes(' offset ')
+    }
+
+    isSelectQuery(sql) {
+        const lowerSql = sql.trim().toLowerCase()
+        return lowerSql.startsWith('select ')
     }
 }
 
