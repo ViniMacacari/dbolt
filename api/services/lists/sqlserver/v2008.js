@@ -14,6 +14,10 @@ class LSSQLServer1 {
             }
         }
 
+        const results = []
+        let successfulConnections = 0
+        let totalConnections = 0
+
         try {
             if (!this.mainConfig) {
                 const config = this.db.getConfig()
@@ -37,29 +41,41 @@ class LSSQLServer1 {
             `
             const databases = await this.db.executeQuery(databasesQuery)
 
-            const results = []
-
             for (const dbInfo of databases) {
                 const { database_name } = dbInfo
+                totalConnections++
 
-                await this.db.disconnect()
-                await this.db.connect({
-                    ...this.mainConfig,
-                    database: database_name
-                })
+                try {
+                    await this.db.disconnect()
+                    await this.db.connect({
+                        ...this.mainConfig,
+                        database: database_name
+                    })
 
-                const schemaQuery = `
-                    SELECT name AS schema_name
-                    FROM sys.schemas
-                    WHERE name NOT LIKE 'db_%' AND name NOT LIKE 'guest'
-                    ORDER BY name
-                `
-                const schemas = await this.db.executeQuery(schemaQuery)
+                    const schemaQuery = `
+                        SELECT name AS schema_name
+                        FROM sys.schemas
+                        WHERE name NOT LIKE 'db_%' AND name NOT LIKE 'guest'
+                        ORDER BY name
+                    `
+                    const schemas = await this.db.executeQuery(schemaQuery)
 
-                results.push({
-                    database: database_name,
-                    schemas: schemas.map(schema => schema.schema_name)
-                })
+                    results.push({
+                        database: database_name,
+                        schemas: schemas.map(schema => schema.schema_name)
+                    })
+
+                    successfulConnections++
+                } catch (error) {
+                    console.warn(`Failed to connect or query database: ${database_name}`, error.message)
+                }
+            }
+
+            if (successfulConnections === 0) {
+                return {
+                    success: false,
+                    message: `No databases could be accessed successfully. Tried ${totalConnections} databases.`
+                }
             }
 
             return { success: true, data: results }
@@ -67,13 +83,17 @@ class LSSQLServer1 {
             console.error('Error in listDatabasesAndSchemas:', error)
             return {
                 success: false,
-                message: 'Error occurred while listing databases and schemas.',
+                message: 'An error occurred while listing databases and schemas.',
                 error: error.message
             }
         } finally {
             if (this.mainConfig) {
-                await this.db.disconnect()
-                await this.db.connect({ ...this.mainConfig })
+                try {
+                    await this.db.disconnect()
+                    await this.db.connect({ ...this.mainConfig })
+                } catch (finalError) {
+                    console.error('Failed to reconnect to the main database:', finalError.message)
+                }
             }
         }
     }
