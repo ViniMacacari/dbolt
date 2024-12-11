@@ -1,5 +1,4 @@
 import SQLServerV1 from '../../../models/sqlserver/v2008.js'
-import sql from 'mssql'
 
 class ListObjectsSQLServerV1 {
     constructor() {
@@ -28,16 +27,35 @@ class ListObjectsSQLServerV1 {
                 ORDER BY ROUTINE_NAME
             `
 
+            const indexesQuery = `
+                SELECT
+                    i.name AS index_name,
+                    t.name AS table_name,
+                    i.type_desc AS index_type,
+                    'index' AS type
+                FROM sys.indexes i
+                INNER JOIN sys.tables t ON i.object_id = t.object_id
+                WHERE i.is_primary_key = 0 AND i.is_unique_constraint = 0
+                ORDER BY t.name, i.name
+            `
+
             const tables = await this.db.executeQuery(tablesQuery)
             const views = await this.db.executeQuery(viewsQuery)
             const procedures = await this.db.executeQuery(proceduresQuery)
+            const indexes = await this.db.executeQuery(indexesQuery)
 
             return {
                 success: true,
                 data: [
                     ...tables.map(obj => ({ ...obj, type: 'table' })),
                     ...views.map(obj => ({ ...obj, type: 'view' })),
-                    ...procedures.map(obj => ({ ...obj, type: 'procedure' }))
+                    ...procedures.map(obj => ({ ...obj, type: 'procedure' })),
+                    ...indexes.map(obj => ({
+                        name: obj.index_name,
+                        table: obj.table_name,
+                        index_type: obj.index_type,
+                        type: 'index'
+                    }))
                 ]
             }
         } catch (error) {
