@@ -59,7 +59,8 @@ export class DatabaseManagerComponent {
   async firstConnectionConfig(): Promise<void> {
     try {
       this.activeConnection = [await this.IAPI.get('/api/connections/' + this.getPageId())]
-    } catch (error) {
+    } catch (error: any) {
+      this.toast.showToast(error.message, 'danger')
       console.error(error)
     }
   }
@@ -132,8 +133,9 @@ export class DatabaseManagerComponent {
       } else {
         console.error('Erro ao carregar os schemas:', result.message)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao configurar conexão e carregar schemas:', error)
+      this.toast.showToast(error.error, 'red')
     }
   }
 
@@ -186,7 +188,6 @@ export class DatabaseManagerComponent {
   }
 
   onSidebarStatusChange(event: boolean): void {
-    console.log('event', event)
     if (!event) {
       this.widthTable = 440
     } else {

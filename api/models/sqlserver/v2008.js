@@ -21,6 +21,16 @@ class SQLServerV1 {
 
         try {
             this.config = { ...config }
+            console.log({
+                server: config.host,
+                ...config,
+                options: {
+                    encrypt: false,
+                    trustServerCertificate: true,
+                    port: parseInt(config.port, 10),
+                    ...(config.options || {})
+                }
+            })
             this.pool = await sql.connect({
                 server: config.host,
                 ...config,
@@ -35,9 +45,12 @@ class SQLServerV1 {
             console.log('Connected to SQL Server successfully')
             return this.pool
         } catch (error) {
-            console.error('Error connecting to SQL Server:', error)
-            this.pool = null
-            throw error
+            if (error.code === 'ETIMEOUT' || error.code === 'ELOGIN') {
+                console.warn('SQL Server is inactive or unreachable')
+            } else {
+                console.error('Error connecting to SQL Server:', error)
+                throw error
+            }
         }
     }
 

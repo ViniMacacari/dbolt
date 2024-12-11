@@ -143,12 +143,16 @@ export class SidebarComponent {
       return
     }
 
+    console.log('teste')
+
     this.clickTimeout = setTimeout(async () => {
       LoadingComponent.show()
 
       await this.setSchema(connection)
 
       LoadingComponent.hide()
+
+      this.clickTimeout = null
     }, 300)
   }
 
@@ -208,7 +212,6 @@ export class SidebarComponent {
 
     await this.setSchema(data2)
     this.dbInfoRequested.emit(connection)
-    console.log(connection)
 
     LoadingComponent.hide()
 
@@ -225,7 +228,7 @@ export class SidebarComponent {
         schema: connection.schema || data.schema
       })
 
-      console.log(result)
+      console.log('conectado a', result)
 
       return {
         database: connection?.database || data?.database,
