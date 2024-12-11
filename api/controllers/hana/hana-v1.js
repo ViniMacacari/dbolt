@@ -2,6 +2,7 @@ import SHanaV1 from "../../services/connections/hana/hana-v1.js"
 import LSHanaV1 from "../../services/lists/hana/hana-v1.js"
 import SSchemaHanaV1 from "../../services/schemas/hana/hana-v1.js"
 import SQuerysHana from "../../services/queries/hana/hana-v1.js"
+import ListObjectsHanaV1 from "../../services/database-info/hana/hana-v1.js"
 
 class CHanaV1 {
     async testConnection(req, res) {
@@ -81,6 +82,20 @@ class CHanaV1 {
             const result = await SQuerysHana.query(req.body.sql, req.body.maxLines)
 
             return res.status(200).json(result)
+        } catch (error) {
+            return res.status(500).json({ success: false, message: 'Server error', error: error.message })
+        }
+    }
+
+    async listDatabaseObjects(req, res) {
+        try {
+            const result = await ListObjectsHanaV1.listDatabaseObjects()
+
+            if (result.success) {
+                return res.status(200).json(result)
+            } else {
+                return res.status(500).json(result)
+            }
         } catch (error) {
             return res.status(500).json({ success: false, message: 'Server error', error: error.message })
         }
