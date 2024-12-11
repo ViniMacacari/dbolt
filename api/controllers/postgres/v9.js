@@ -2,6 +2,7 @@ import SPgV1 from "../../services/connections/postgres/v9.js"
 import LSPg1 from "../../services/lists/postgres/v9.js"
 import SSPgV1 from "../../services/schemas/postgres/v9.js"
 import SQueryPgV1 from "../../services/queries/postgres/v9.js"
+import ListObjectsPgV1 from "../../services/database-info/postgres/v9.js"
 
 class CPostgresV1 {
     async testConnection(req, res) {
@@ -82,6 +83,20 @@ class CPostgresV1 {
             const result = await SQueryPgV1.query(req.body.sql, req.body.maxLines)
 
             return res.status(200).json(result)
+        } catch (error) {
+            return res.status(500).json({ success: false, message: 'Server error', error: error.message })
+        }
+    }
+
+    async listDatabaseObjects(req, res) {
+        try {
+            const result = await ListObjectsPgV1.listDatabaseObjects()
+
+            if (result.success) {
+                return res.status(200).json(result)
+            } else {
+                return res.status(500).json(result)
+            }
         } catch (error) {
             return res.status(500).json({ success: false, message: 'Server error', error: error.message })
         }

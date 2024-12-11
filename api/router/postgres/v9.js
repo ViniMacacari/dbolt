@@ -9,5 +9,6 @@ router.get('/list-databases-and-schemas', (req, res) => CPostgresV1.listDatabase
 router.get('/get-selected-schema', (req, res) => CPostgresV1.getSelectedSchema(req, res))
 router.post('/set-schema', (req, res) => CPostgresV1.setDatabaseAndSchema(req, res))
 router.post('/query', (req, res) => CPostgresV1.query(req, res))
+router.get('/list-objects', (req, res) => CPostgresV1.listDatabaseObjects(req, res))
 
 export default router
