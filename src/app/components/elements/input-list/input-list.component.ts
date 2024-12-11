@@ -14,6 +14,7 @@ export class InputListComponent implements OnChanges {
   @Input() list: { [key: string]: string | number }[] = []
   @Input() displayKey: string = 'name'
   @Input() width: string = '300px'
+  @Input() placeholder: string = ''
 
   searchValue: string = ''
   filteredList: { [key: string]: string | number }[] = []

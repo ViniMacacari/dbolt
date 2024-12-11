@@ -4,13 +4,17 @@
             <h5 class="title text-center w-100">Load a query file</h5>
         </div>
         <div class="modal-body">
-            <h2 class="subtitle">Search</h2>
-            <input [(ngModel)]="queryName" type="text" maxlength="20" class="input-page" placeholder="Your query name"
-                (ngModelChange)="validateQueryName($event)" />
+            <div class="d-flex w-100 gap-3">
+                <input [(ngModel)]="queryName" type="text" maxlength="20" class="input-page"
+                    placeholder="Search your query" (ngModelChange)="validateQueryName($event)" />
+                <app-input-list #database [list]="dataList" [displayKey]="'name'" [width]="'211.2px'"
+                    (itemSelected)="onDatabaseSelected($event)"
+                    [placeholder]="'Choose the database type'"></app-input-list>
+            </div>
 
             <div class="queries">
                 <div class="query-item" *ngFor="let query of queries" (click)="loadQuery(query)">
-                    <img src="icons/code-block.png" height="15px">
+                    <img src="db-logo/{{ query.dbSchema.sgbd }}.png" height="15px">
                     <h2 class="subtitle">{{ query.name }}</h2>
                 </div>
             </div>

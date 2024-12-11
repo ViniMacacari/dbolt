@@ -9,7 +9,7 @@ import { ToastComponent } from "../../toast/toast.component"
 @Component({
   selector: 'app-load-query',
   standalone: true,
-  imports: [CommonModule, FormsModule, ToastComponent],
+  imports: [CommonModule, FormsModule, ToastComponent, InputListComponent],
   templateUrl: './load-query.component.html',
   styleUrl: './load-query.component.scss'
 })
@@ -24,6 +24,7 @@ export class LoadQueryComponent {
   dataList: any = []
   queryName: string = ''
   queries: any[] = []
+  originalQueries: any[] = []
 
   private _sgbd: string = ''
 
@@ -31,7 +32,18 @@ export class LoadQueryComponent {
 
   async ngOnInit(): Promise<void> {
     try {
-      this.queries = await this.IAPI.get('/api/query/load')
+      this.originalQueries = await this.IAPI.get('/api/query/load')
+      this.queries = this.originalQueries
+
+      console.log(this.queries)
+
+      const result: any = await this.IAPI.get('/api/databases/avaliable')
+
+      this.dataList = result.map((item: { id: number, database: string, versions: any[] }) => ({
+        id: item.id,
+        name: item.database,
+        versions: item.versions
+      }))
     } catch (error: any) {
       this.toast.showToast(error.error, 'red')
     }
@@ -47,6 +59,10 @@ export class LoadQueryComponent {
     } else {
       this.queryName = value
     }
+  }
+
+  onDatabaseSelected(item: { [key: string]: string | number } | null): void {
+    console.log(item)
   }
 
   async loadQuery(query: any): Promise<void> {
