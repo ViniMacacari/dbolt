@@ -8,11 +8,8 @@ class SQuerySQLServerV1 {
     async query(sql, maxLines = null) {
         const cleanedSql = this.removeComments(sql)
 
-        if (maxLines && this.isSelectQuery(cleanedSql)) {
-            if (!this.hasOrderByClause(cleanedSql)) {
-                sql = `${sql.trim()} ORDER BY (SELECT NULL)`
-            }
-            sql = `${sql.trim()} OFFSET 0 ROWS FETCH NEXT ${maxLines} ROWS ONLY`
+        if (maxLines && this.isSelectQuery(cleanedSql) && !this.hasLimitClause(cleanedSql)) {
+            sql = this.addPaginationToQuery(sql, maxLines)
         }
 
         try {
@@ -48,6 +45,25 @@ class SQuerySQLServerV1 {
             .replace(/--.*$/gm, '')
             .replace(/\/\*[\s\S]*?\*\//g, '')
             .trim()
+    }
+
+    addPaginationToQuery(sql, maxLines) {
+        const trimmedSql = sql.trim()
+
+        if (!this.hasOrderByClause(trimmedSql)) {
+            sql = `${trimmedSql} ORDER BY (SELECT NULL)`
+        }
+
+        if (trimmedSql.toLowerCase().startsWith('with ')) {
+            const lastSelectIndex = trimmedSql.lastIndexOf('select ')
+            if (lastSelectIndex !== -1) {
+                const beforeSelect = trimmedSql.slice(0, lastSelectIndex)
+                const afterSelect = trimmedSql.slice(lastSelectIndex)
+                return `${beforeSelect}${afterSelect.trim()} OFFSET 0 ROWS FETCH NEXT ${maxLines} ROWS ONLY`
+            }
+        }
+
+        return `${sql} OFFSET 0 ROWS FETCH NEXT ${maxLines} ROWS ONLY`
     }
 }
 
