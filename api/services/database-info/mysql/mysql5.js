@@ -6,6 +6,13 @@ class ListObjectsMySQLV1 {
     }
 
     async listDatabaseObjects() {
+        if (this.db.getStatus() !== 'connected') {
+            return {
+                success: false,
+                message: 'No active connection. Ensure the database is connected before querying.'
+            }
+        }
+
         try {
             const tablesQuery = `
                 SELECT TABLE_NAME AS name, 'table' AS type

@@ -25,8 +25,6 @@ class LSMySQL1 {
                 }
             }
 
-            const currentDatabase = this.mainConfig.database
-
             const databasesQuery = `SHOW DATABASES`
             const databases = await this.db.executeQuery(databasesQuery)
 
@@ -35,7 +33,7 @@ class LSMySQL1 {
             for (const dbInfo of databases) {
                 const { Database: database_name } = dbInfo
 
-                if (['information_schema', 'mysql', 'performance_schema', 'sys'].includes(database_name)) {
+                if (['information_schema', 'mysql', 'performance_schema'].includes(database_name)) {
                     continue
                 }
 
@@ -45,9 +43,14 @@ class LSMySQL1 {
                 })
             }
 
-            await this.db.disconnect()
-            await this.db.connect({ ...this.mainConfig, database: currentDatabase })
+            if (results.length > 0) {
+                const firstDatabase = results[0].database
+                await this.db.connect({ ...this.mainConfig, database: firstDatabase })
+            } else {
+                await this.db.connect(this.mainConfig)
+            }
 
+            console.log('selected database', this.db.getConfig().database)
             return { success: true, data: results }
         } catch (error) {
             console.error('Error in listDatabasesAndSchemas:', error)
