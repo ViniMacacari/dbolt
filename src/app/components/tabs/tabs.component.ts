@@ -43,7 +43,6 @@ export class TabsComponent {
         const movedTab = this.tabs.splice(event.oldIndex!, 1)[0]
         this.tabs.splice(event.newIndex!, 0, movedTab)
         this.updateActiveTab(event.oldIndex!, event.newIndex!)
-        console.log('Tabs depois de mover:', JSON.stringify(this.tabs))
       }
     })
   }
@@ -126,8 +125,6 @@ export class TabsComponent {
   }
 
   onOpenLoadQuery(event: any): void {
-    console.log(event)
-
     this.showLoadQuery = false
 
     const newTab: any = {
@@ -165,7 +162,6 @@ export class TabsComponent {
     ) {
       this.activeTab++
     }
-    console.log('Índice da aba ativa:', this.activeTab)
   }
 
   onCloseLoadQuery(event: any): void {
