@@ -12,6 +12,8 @@ export class RunQueryService {
     private IAPI: InternalApiService
   ) { }
 
+  queryLines: number | null = null
+
   async runSQL(sql: string, lines: number | null = null): Promise<any> {
     const db = this.dbSchemas.getSelectedSchemaDB()
 
@@ -19,6 +21,8 @@ export class RunQueryService {
       sql,
       maxLines: lines
     })
+
+    this.queryLines = response.totalRows
 
     if (response?.result && Array.isArray(response.result)) {
       return response.result
@@ -29,5 +33,9 @@ export class RunQueryService {
     } else {
       throw new Error('Invalid data response.')
     }
+  }
+
+  getQueryLines(): number | null {
+    return this.queryLines
   }
 }

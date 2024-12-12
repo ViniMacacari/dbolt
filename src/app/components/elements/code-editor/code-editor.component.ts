@@ -34,6 +34,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   cacheSql: string = ''
   queryReponse: any[] = []
   queryLines: number = 50
+  maxResultLines: number | null = 0
 
   dataSave: any = {}
 
@@ -210,6 +211,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
 
       const result: any = await this.runQuery.runSQL(sql, this.queryLines)
       this.queryReponse = result
+      this.maxResultLines = this.runQuery.getQueryLines()
 
       console.log(result)
     } catch (error: any) {
@@ -221,6 +223,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   }
 
   async newValues(): Promise<void> {
+    if (this.queryReponse.length >= (this.maxResultLines || 0)) return
+
     LoadingComponent.show()
 
     try {
