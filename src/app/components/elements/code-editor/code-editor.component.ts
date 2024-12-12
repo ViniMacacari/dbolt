@@ -143,40 +143,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
 
   private initializeEditorEvents(): void {
     this.editor?.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-      const model = this.editor?.getModel()
-      const selection = this.editor?.getSelection()
-
-      if (model && selection) {
-        const content = model.getValue()
-        const cursorLine = selection.startLineNumber
-
-        const blocks = content
-          .split(/(?:\n\s*\n|;)/gm)
-          .map(block => block.trim())
-          .filter(block => block.length > 0)
-
-        let currentLine = 1
-
-        for (const block of blocks) {
-          const blockLines = block.split('\n').filter(line => line.trim().length > 0)
-          const blockStartLine = currentLine
-          const blockEndLine = currentLine + blockLines.length - 1
-
-          if (cursorLine >= blockStartLine && cursorLine <= blockEndLine) {
-            this.runSql(block)
-            return
-          }
-
-          currentLine = blockEndLine + 1
-        }
-
-        if (selection.startLineNumber === selection.endLineNumber && content.trim()) {
-          const currentLineContent = model.getLineContent(cursorLine).trim()
-          this.runSql(currentLineContent)
-          return
-        }
-
-      }
+      this.runSelected()
     })
 
     this.editor?.onDidChangeModelContent(() => {
@@ -193,6 +160,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
     const selection = this.editor?.getSelection()
 
     if (model && selection) {
+      const selectedText = model.getValueInRange(selection).trim()
+
+      if (selectedText) {
+        this.runSql(selectedText)
+        return
+      }
+
       const content = model.getValue()
       const cursorLine = selection.startLineNumber
 
