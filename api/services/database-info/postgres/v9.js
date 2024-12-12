@@ -32,10 +32,13 @@ class ListObjectsPgV1 {
                 ORDER BY table_name
             `
 
-            const proceduresQuery = `
+            const routinesQuery = `
                 SELECT 
                     routine_name AS name, 
-                    'procedure' AS type
+                    CASE 
+                        WHEN routine_type = 'FUNCTION' THEN 'function'
+                        ELSE 'procedure'
+                    END AS type
                 FROM information_schema.routines
                 WHERE specific_schema = $1
                 ORDER BY routine_name
@@ -58,7 +61,7 @@ class ListObjectsPgV1 {
 
             const tables = await this.db.executeQuery(tablesQuery, [currentSchema])
             const views = await this.db.executeQuery(viewsQuery, [currentSchema])
-            const procedures = await this.db.executeQuery(proceduresQuery, [currentSchema])
+            const routines = await this.db.executeQuery(routinesQuery, [currentSchema])
             const indexes = await this.db.executeQuery(indexesQuery, [currentSchema])
 
             return {
@@ -66,7 +69,7 @@ class ListObjectsPgV1 {
                 data: [
                     ...tables.map(obj => ({ ...obj, type: 'table' })),
                     ...views.map(obj => ({ ...obj, type: 'view' })),
-                    ...procedures.map(obj => ({ ...obj, type: 'procedure' })),
+                    ...routines.map(obj => ({ ...obj, type: obj.type })),
                     ...indexes.map(obj => ({
                         name: obj.index_name,
                         table: obj.table_name,
