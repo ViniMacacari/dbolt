@@ -217,15 +217,14 @@ export class DatabaseManagerComponent {
     try {
       const schemaDb: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/get-selected-schema`)
 
-      console.log(schemaDb)
-
       const response: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/list-objects`)
 
       const result: any = {
         tables: [],
         views: [],
         procedures: [],
-        indexes: []
+        indexes: [],
+        connection: {}
       }
 
       await response.data.forEach((item: any) => {
@@ -235,7 +234,18 @@ export class DatabaseManagerComponent {
         else if (item.type === 'index') result.indexes.push(item)
       })
 
+      result.connection = {
+        host: event.host,
+        port: event.port,
+        database: event.database,
+        sgbd: event.sgbd,
+        version: event.version,
+        user: event.user
+      }
+
       this.dbSchemasData = result
+
+      console.log(this.dbSchemasData)
 
       this.tabsComponent.newTab('schema', { dbInfo: this.dbSchemasData }, schemaDb.schema)
     } catch (error: any) {
