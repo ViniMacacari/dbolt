@@ -9,11 +9,12 @@ import { CodeEditorComponent } from "../../components/elements/code-editor/code-
 import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
 import { DbInfoComponent } from "../../components/elements/db-info/db-info.component"
 import { ToastComponent } from "../../components/toast/toast.component"
+import { TableInfoComponent } from "../../components/elements/table-info/table-info.component"
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, CodeEditorComponent, CommonModule, DbInfoComponent, ToastComponent],
+  imports: [SidebarComponent, TabsComponent, CodeEditorComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
@@ -28,9 +29,12 @@ export class DatabaseManagerComponent {
   selectedSchemaDB: any
 
   dbSchemasData: any
+  tableInfoData: any
 
   dbInfoOpen: boolean = false
+  tableInfoOpen: boolean = false
   editorOpen: boolean = false
+
   sqlContent: string = ''
   tabInfo: any
 
@@ -166,9 +170,11 @@ export class DatabaseManagerComponent {
     if (tab.type === 'sql') {
       this.editorOpen = true
       this.dbInfoOpen = false
+      this.tableInfoOpen = false
     } else if (tab.type === 'schema') {
       this.dbInfoOpen = true
       this.editorOpen = false
+      this.tableInfoOpen = false
       this.dbSchemasData = tab.info.dbInfo
     }
     this.tabInfo = tab
@@ -178,6 +184,7 @@ export class DatabaseManagerComponent {
   onTabClosed(): void {
     this.editorOpen = false
     this.dbInfoOpen = false
+    this.tableInfoOpen = false
   }
 
   onSqlContentChange(content: string): void {
@@ -237,5 +244,9 @@ export class DatabaseManagerComponent {
     }
 
     LoadingComponent.hide()
+  }
+
+  openMoreInfo(event: any): void {
+    console.log(event)
   }
 }

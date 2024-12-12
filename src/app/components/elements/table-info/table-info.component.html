@@ -28,22 +28,22 @@
     </div>
     <div class="info py-2">
         <div *ngIf="showTables">
-            <div class="table" *ngFor="let table of data.tables" (click)="tableInfo(table)">
+            <div class="table" *ngFor="let table of data.tables">
                 <h2 class="subtitle-min">{{ table.NAME || table.name }}</h2>
             </div>
         </div>
         <div *ngIf="showViews">
-            <div class="table" *ngFor="let table of data.views" (click)="tableInfo(table)">
+            <div class="table" *ngFor="let table of data.views">
                 <h2 class="subtitle-min">{{ table.NAME || table.name }}</h2>
             </div>
         </div>
         <div *ngIf="showProcedures">
-            <div class="table" *ngFor="let table of data.procedures" (click)="tableInfo(table)">
+            <div class="table" *ngFor="let table of data.procedures">
                 <h2 class=" subtitle-min">{{ table.NAME || table.name }}</h2>
             </div>
         </div>
         <div *ngIf="showIndexes">
-            <div class="table" *ngFor="let table of data.indexes" (click)="tableInfo(table)">
+            <div class="table" *ngFor="let table of data.indexes">
                 <h2 class=" subtitle-min">{{ table.NAME || table.name }}</h2>
             </div>
         </div>

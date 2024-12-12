@@ -9,17 +9,16 @@ import { SaveQueryComponent } from "../../modal/save-query/save-query.component"
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 
 @Component({
-  selector: 'app-db-info',
+  selector: 'app-table-info',
   standalone: true,
   imports: [CommonModule, ToastComponent],
-  templateUrl: './db-info.component.html',
-  styleUrl: './db-info.component.scss'
+  templateUrl: './table-info.component.html',
+  styleUrl: './table-info.component.scss'
 })
-export class DbInfoComponent {
+export class TableInfoComponent {
   @Input() data: any
   @Output() sqlContentChange = new EventEmitter<string>()
   @Output() savedName = new EventEmitter<string>()
-  @Output() moreInfo = new EventEmitter<any>()
   @Input() widthTable: number = 300
   @Input() tabInfo: any
 
@@ -71,9 +70,5 @@ export class DbInfoComponent {
     this.showViews = false
     this.showProcedures = false
     this.showIndexes = true
-  }
-
-  tableInfo(tabInfo: any): void {
-    this.moreInfo.emit(tabInfo)
   }
 }
