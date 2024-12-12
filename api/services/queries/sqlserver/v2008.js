@@ -6,7 +6,22 @@ class SQuerySQLServerV1 {
     }
 
     async query(sql, maxLines = null) {
+        let totalRows = null
         const cleanedSql = this.removeComments(sql)
+
+        if (this.isSelectQuery(cleanedSql)) {
+            const countSql = this.addTotalRowCountQuery(sql)
+            try {
+                const resultWithCount = await this.db.executeQuery(countSql)
+                totalRows = resultWithCount[0]?.total_rows || 0
+            } catch (error) {
+                throw {
+                    success: false,
+                    message: `Error fetching total rows: ${error.message || 'Unknown error'}`,
+                    code: error.code || null
+                }
+            }
+        }
 
         if (maxLines && this.isSelectQuery(cleanedSql) && !this.hasLimitClause(cleanedSql)) {
             sql = this.addPaginationToQuery(sql, maxLines)
@@ -14,9 +29,18 @@ class SQuerySQLServerV1 {
 
         try {
             const result = await this.db.executeQuery(sql)
-            return { success: true, result: result }
+            return {
+                success: true,
+                result: result,
+                totalRows: totalRows
+            }
         } catch (error) {
-            throw new Error(error.message || 'Error executing query')
+            throw {
+                success: false,
+                message: error.message || 'Error executing query',
+                code: error.code || null,
+                sql: error.sql || null
+            }
         }
     }
 
@@ -64,6 +88,11 @@ class SQuerySQLServerV1 {
         }
 
         return `${sql} OFFSET 0 ROWS FETCH NEXT ${maxLines} ROWS ONLY`
+    }
+
+    addTotalRowCountQuery(sql) {
+        const trimmedSql = this.removeComments(sql).trim()
+        return `SELECT COUNT(*) OVER() AS total_rows, * FROM (${trimmedSql}) AS query_with_count`
     }
 }
 

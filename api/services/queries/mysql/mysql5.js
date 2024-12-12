@@ -6,12 +6,34 @@ class SQueryMySQLV1 {
     }
 
     async query(sql, maxLines = null) {
+        let totalRows = null
+
+        if (this.isSelectQuery(sql)) {
+            const countSql = this.getCountQuery(sql)
+            try {
+                const countResult = await this.db.executeQuery(countSql)
+                totalRows = countResult[0]?.TOTAL_ROWS || null
+            } catch (error) {
+                console.error('Error fetching total rows:', error)
+                throw {
+                    success: false,
+                    message: `Error fetching total rows: ${error.message || 'Unknown error'}`,
+                    code: error.code || null
+                }
+            }
+        }
+
         if (maxLines && !this.hasLimitClause(sql) && this.isSelectQuery(sql)) {
             sql = this.addLimitToQuery(sql, maxLines)
         }
+
         try {
             const result = await this.db.executeQuery(sql)
-            return { success: true, result: result }
+            return {
+                success: true,
+                result: result,
+                totalRows: totalRows
+            }
         } catch (error) {
             console.error('Error executing query:', error)
             throw {
@@ -55,6 +77,15 @@ class SQueryMySQLV1 {
             }
         }
         return `${trimmedSql} LIMIT ${maxLines}`
+    }
+
+    getCountQuery(sql) {
+        const trimmedSql = sql.trim().toLowerCase()
+        if (trimmedSql.startsWith('select')) {
+            const withoutOrderBy = sql.replace(/order\s+by\s+[^)]+$/gi, '')
+            return `SELECT COUNT(*) AS TOTAL_ROWS FROM (${withoutOrderBy}) AS count_query`
+        }
+        throw new Error('Not a SELECT query for count calculation')
     }
 }
 

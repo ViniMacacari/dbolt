@@ -6,19 +6,40 @@ class SQueryPgV1 {
     }
 
     async query(sql, maxLines = null) {
+        let totalRows = null
+
+        if (this.isSelectQuery(sql)) {
+            const countSql = this.getCountQuery(sql)
+            try {
+                const countResult = await this.db.executeQuery(countSql)
+                totalRows = countResult[0]?.total_rows || 0
+            } catch (error) {
+                throw {
+                    success: false,
+                    message: `Error fetching total rows: ${error.message || 'Unknown error'}`,
+                    code: error.code || null
+                }
+            }
+        }
+
         if (maxLines && !this.hasLimitClause(sql) && this.isSelectQuery(sql)) {
             sql = this.addLimitToQuery(sql, maxLines)
         }
+
         try {
             const result = await this.db.executeQuery(sql)
-            return { success: true, result: result }
+            return {
+                success: true,
+                result: result,
+                totalRows: totalRows
+            }
         } catch (error) {
-            throw new Error({
+            throw {
                 success: false,
                 message: error.message || 'Error executing query',
                 code: error.code || null,
                 sql: error.sql || null
-            })
+            }
         }
     }
 
@@ -52,6 +73,15 @@ class SQueryPgV1 {
             }
         }
         return `${trimmedSql} LIMIT ${maxLines}`
+    }
+
+    getCountQuery(sql) {
+        const trimmedSql = sql.trim().toLowerCase()
+        if (trimmedSql.startsWith('select')) {
+            const withoutOrderBy = sql.replace(/order\s+by\s+[^)]+$/gi, '')
+            return `SELECT COUNT(*) AS total_rows FROM (${withoutOrderBy}) AS count_query`
+        }
+        throw new Error('Not a SELECT query for count calculation')
     }
 }
 
