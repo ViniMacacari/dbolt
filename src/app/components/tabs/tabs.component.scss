@@ -78,6 +78,17 @@
         box-sizing: border-box;
         gap: .5rem;
 
+        .cdk-drag-placeholder {
+            background-color: #f0f0f0;
+            border: 2px dashed #cccccc;
+        }
+
+        .cdk-drag-preview {
+            background-color: #cccccc;
+            opacity: 0.8;
+            border-radius: 8px;
+        }
+
         .tab {
             display: flex;
             align-items: center;

@@ -1,7 +1,7 @@
-import { Component, HostListener, Output, EventEmitter } from '@angular/core'
+import { Component, HostListener, Output, EventEmitter, ElementRef, AfterViewInit, ViewChild } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { Router, ActivatedRoute } from '@angular/router'
-import { InputListComponent } from "../elements/input-list/input-list.component"
+import Sortable from 'sortablejs'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { LoadQueryComponent } from "../modal/load-query/load-query.component"
 
@@ -24,6 +24,8 @@ export class TabsComponent {
   activeTab: number | null = null
   idTabs: number = 0
 
+  @ViewChild('tabsContainer') tabsContainer!: ElementRef
+
   constructor(
     private route: ActivatedRoute,
     private IAPI: InternalApiService
@@ -33,6 +35,17 @@ export class TabsComponent {
     const routeParams = this.route.snapshot.paramMap
     const routeParamId = Number(routeParams.get('id'))
     const database = await this.IAPI.get(`/api/connections/${routeParamId}`)
+
+    // Configuração do SortableJS
+    Sortable.create(this.tabsContainer.nativeElement, {
+      animation: 150,
+      onEnd: (event) => {
+        const movedTab = this.tabs.splice(event.oldIndex!, 1)[0]
+        this.tabs.splice(event.newIndex!, 0, movedTab)
+        this.updateActiveTab(event.oldIndex!, event.newIndex!)
+        console.log('Tabs depois de mover:', JSON.stringify(this.tabs))
+      }
+    })
   }
 
   toggleDropdown(): void {
@@ -134,6 +147,25 @@ export class TabsComponent {
       this.selectTab(this.tabs.length - 1)
       this.dropdownVisible = false
     }, 0)
+  }
+
+  private updateActiveTab(oldIndex: number, newIndex: number): void {
+    if (this.activeTab === oldIndex) {
+      this.activeTab = newIndex
+    } else if (
+      this.activeTab !== null &&
+      oldIndex < this.activeTab &&
+      newIndex >= this.activeTab
+    ) {
+      this.activeTab--
+    } else if (
+      this.activeTab !== null &&
+      oldIndex > this.activeTab &&
+      newIndex <= this.activeTab
+    ) {
+      this.activeTab++
+    }
+    console.log('Índice da aba ativa:', this.activeTab)
   }
 
   onCloseLoadQuery(event: any): void {

@@ -16,17 +16,18 @@
         </div>
     </div>
     <div class="wrap-tables">
-        <div class="tabs">
+        <div class="tabs" #tabsContainer>
             <div class="tab gap-3" *ngFor="let tab of tabs; let i = index" [class.active]="i === activeTab"
                 (click)="selectTab(i)">
-                <img src="icons/code.png" height="15px">
+                <img src="icons/code.png" height="15px" />
                 <div class="text">
                     <p class="text-min">{{ tab.name }}</p>
                 </div>
-                <img src="icons/close.png" height="15px" (click)="closeTab(i, $event)">
+                <img src="icons/close.png" height="15px" (click)="closeTab(i, $event)" />
             </div>
         </div>
     </div>
 </div>
 
-<app-load-query *ngIf="showLoadQuery" (open)="onOpenLoadQuery($event)" (close)="onCloseLoadQuery($event)"></app-load-query>
+<app-load-query *ngIf="showLoadQuery" (open)="onOpenLoadQuery($event)"
+    (close)="onCloseLoadQuery($event)"></app-load-query>
