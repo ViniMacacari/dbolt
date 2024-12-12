@@ -204,6 +204,17 @@ export class SidebarComponent {
       return
     }
 
+    // console.log(connection)
+
+    // await this.connectDatabase({
+    //   host: connection.host,
+    //   port: connection.port,
+    //   user: connection.user,
+    //   password: connection.password,
+    //   database: connection.sgbd,
+    //   version: connection.version
+    // })
+
     LoadingComponent.show()
 
     await this.setSchema(data2)
