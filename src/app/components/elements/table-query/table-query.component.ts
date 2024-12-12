@@ -16,7 +16,6 @@ import { CommonModule } from '@angular/common'
 import { AgGridAngular } from 'ag-grid-angular'
 import { ColDef, ModuleRegistry, AllCommunityModule, GridOptions } from 'ag-grid-community'
 
-// Registrar módulos do AG Grid
 ModuleRegistry.registerModules([AllCommunityModule])
 
 @Component({
@@ -43,17 +42,17 @@ export class TableQueryComponent implements AfterViewInit {
   private initialTop = 0
   private initialBottom = 0
   private lastScrollTop = 0
+  private scrollTop = 0
 
   scrollTimeout: any
 
-  // Configurações do AG Grid
   columnDefs: ColDef[] = []
   defaultColDef: ColDef = {
     sortable: true,
     filter: true,
     resizable: true
   }
-  
+
   constructor(private zone: NgZone, private cdr: ChangeDetectorRef) { }
 
   @HostListener('window:resize')
@@ -173,12 +172,52 @@ export class TableQueryComponent implements AfterViewInit {
   }
 
   newValues() {
+    this.saveScrollPosition()
     this.newValuesQuery.emit()
+    this.restoreScrollPosition()
+  }
+
+  onBodyScroll(event: any) {
+    const bodyViewport = document.querySelector('.ag-body-viewport') as HTMLElement
+
+    if (bodyViewport) {
+      const scrollTop = bodyViewport.scrollTop
+      const scrollHeight = bodyViewport.scrollHeight
+      const clientHeight = bodyViewport.clientHeight
+
+      if (scrollTop + clientHeight >= scrollHeight) {
+        console.log('Reached the bottom of the grid!')
+        this.newValues()
+      }
+    }
+  }
+
+  saveScrollPosition() {
+    const bodyViewport = document.querySelector('.ag-body-viewport') as HTMLElement
+    if (bodyViewport) {
+      this.scrollTop = bodyViewport.scrollTop
+    }
+  }
+
+  restoreScrollPosition() {
+    const bodyViewport = document.querySelector('.ag-body-viewport') as HTMLElement
+    if (bodyViewport) {
+      bodyViewport.scrollTop = this.scrollTop
+    }
   }
 
   private updateColumns() {
     if (this.query.length > 0) {
-      this.columnDefs = Object.keys(this.query[0]).map((key) => ({ field: key }))
+      this.columnDefs = [
+        {
+          headerName: '#',
+          valueGetter: 'node.rowIndex + 1',
+          pinned: 'left',
+          filter: false,
+          width: 50
+        },
+        ...Object.keys(this.query[0]).map((key) => ({ field: key }))
+      ]
     }
   }
 }

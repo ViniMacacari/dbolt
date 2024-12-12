@@ -1,6 +1,7 @@
 <div #tableWrapper class="table-wrapper">
     <div class="resize-handle" (mousedown)="startResize($event)"></div>
     <ag-grid-angular class="ag-root" [rowData]="query" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef"
-        [domLayout]="'normal'" [animateRows]="true" (firstDataRendered)="newValues()">
+        [domLayout]="'normal'" [animateRows]="true" (firstDataRendered)="query"
+        (bodyScroll)="onBodyScroll($event)">
     </ag-grid-angular>
 </div>
