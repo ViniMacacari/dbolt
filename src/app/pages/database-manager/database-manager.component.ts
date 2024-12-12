@@ -32,7 +32,7 @@ export class DatabaseManagerComponent {
   tableInfoData: any
 
   dbInfoOpen: boolean = false
-  tableInfoOpen: boolean = false
+  tableInfoOpen: boolean = true
   editorOpen: boolean = false
 
   sqlContent: string = ''

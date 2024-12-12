@@ -9,7 +9,7 @@
         </div>
         <div class="p-3 organize">
             <div class="d-flex flex-column w-100 h-100 user-content">
-                <h3 *ngIf="!dbInfoOpen && !editorOpen" class="subtitle-min text-center py-4">Create a new SQL query or
+                <h3 *ngIf="!dbInfoOpen && !editorOpen && !tableInfoOpen" class="subtitle-min text-center py-4">Create a new SQL query or
                     open
                     database information</h3>
                 <app-db-info *ngIf="dbInfoOpen" [data]="dbSchemasData" (moreInfo)="openMoreInfo($event)"></app-db-info>

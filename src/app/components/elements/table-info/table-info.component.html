@@ -2,21 +2,21 @@
     <div class="editor-toolbar d-flex align-items-center flex-column">
         <button class="btn" [ngClass]="{ 'active': showTables }" (click)="filterTables()">
             <img src="icons/table.png" title="Run selected code" height="15px">
-            Tables
+            Data
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': showViews }" (click)="filterViews()">
-            <img src="icons/view.png" title="Run all code" height="15px">
-            Views
+            <img src="icons/column.png" title="Run all code" height="15px">
+            Columns
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': showProcedures }" (click)="filterProcedures()">
-            <img src="icons/procedure.png" title="Indent code" height="15px">
-            Procedures
+            <img src="icons/key.png" title="Indent code" height="15px">
+            Keys
         </button>
 
         <div class="separator"></div>
@@ -24,6 +24,13 @@
         <button class="btn" [ngClass]="{ 'active': showIndexes }" (click)="filterIndexes()">
             <img src="icons/index.png" title="Save code" height="15px">
             Indexes
+        </button>
+
+        <div class="separator"></div>
+
+        <button class="btn" [ngClass]="{ 'active': showIndexes }" (click)="filterIndexes()">
+            <img src="icons/code.png" title="Save code" height="15px">
+            DDL
         </button>
     </div>
     <div class="info py-2">
