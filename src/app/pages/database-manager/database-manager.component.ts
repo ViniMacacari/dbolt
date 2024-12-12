@@ -169,6 +169,7 @@ export class DatabaseManagerComponent {
     } else if (tab.type === 'schema') {
       this.dbInfoOpen = true
       this.editorOpen = false
+      this.dbSchemasData = tab.info.dbInfo
     }
     this.tabInfo = tab
     this.sqlContent = tab.info.sql
@@ -211,11 +212,6 @@ export class DatabaseManagerComponent {
 
       console.log(schemaDb)
 
-      this.tabsComponent.newTab('schema', {
-        id: Date.now(),
-        info: {}
-      }, schemaDb.schema)
-
       const response: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/list-objects`)
 
       const result: any = {
@@ -233,6 +229,8 @@ export class DatabaseManagerComponent {
       })
 
       this.dbSchemasData = result
+
+      this.tabsComponent.newTab('schema', { dbInfo: this.dbSchemasData }, schemaDb.schema)
     } catch (error: any) {
       console.error(error)
       this.toast.showToast(error.error, 'red')
