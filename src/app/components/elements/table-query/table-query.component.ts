@@ -45,7 +45,7 @@ export class TableQueryComponent implements AfterViewInit {
   private initialTop = 0
   private initialBottom = 0
   private lastScrollTop = 0
-  private rowData: any[] = []
+  private rowData: any = []
   private gridApi!: GridApi
 
   scrollTimeout: any
@@ -60,19 +60,15 @@ export class TableQueryComponent implements AfterViewInit {
   constructor(private zone: NgZone, private cdr: ChangeDetectorRef) { }
 
   @Input()
-  set query(value: any) {
-    if (this.gridApi) {
-      this.saveScrollPosition()
-      this.gridApi.applyTransaction(value)
+  set query(value: any[]) {
+    this.saveScrollPosition()
+    this._query = value
+    setTimeout(() => {
       this.restoreScrollPosition()
-    } else {
-      this.rowData = value
-    }
-    this.updateColumns()
+    })
   }
-
   get query(): any[] {
-    return this.rowData
+    return this._query
   }
 
   @HostListener('window:resize')
