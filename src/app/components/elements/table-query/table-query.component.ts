@@ -1,10 +1,28 @@
-import { Component, Input, AfterViewInit, ViewChild, ElementRef, HostListener, ViewEncapsulation, SimpleChanges, ChangeDetectorRef, EventEmitter, Output, NgZone } from '@angular/core'
+import {
+  Component,
+  Input,
+  AfterViewInit,
+  ViewChild,
+  ElementRef,
+  HostListener,
+  ViewEncapsulation,
+  SimpleChanges,
+  ChangeDetectorRef,
+  EventEmitter,
+  Output,
+  NgZone
+} from '@angular/core'
 import { CommonModule } from '@angular/common'
+import { AgGridAngular } from 'ag-grid-angular'
+import { ColDef, ModuleRegistry, AllCommunityModule, GridOptions } from 'ag-grid-community'
+
+// Registrar módulos do AG Grid
+ModuleRegistry.registerModules([AllCommunityModule])
 
 @Component({
   selector: 'app-table-query',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, AgGridAngular],
   templateUrl: './table-query.component.html',
   styleUrls: ['./table-query.component.scss'],
   encapsulation: ViewEncapsulation.None
@@ -28,10 +46,15 @@ export class TableQueryComponent implements AfterViewInit {
 
   scrollTimeout: any
 
-  constructor(
-    private zone: NgZone,
-    private cdr: ChangeDetectorRef
-  ) { }
+  // Configurações do AG Grid
+  columnDefs: ColDef[] = []
+  defaultColDef: ColDef = {
+    sortable: true,
+    filter: true,
+    resizable: true
+  }
+  
+  constructor(private zone: NgZone, private cdr: ChangeDetectorRef) { }
 
   @HostListener('window:resize')
   onResize() {
@@ -42,6 +65,7 @@ export class TableQueryComponent implements AfterViewInit {
   ngAfterViewInit(): void {
     this.isElementVisible = true
     this.adjustTableWrapperSize()
+    this.updateColumns()
     this.cdr.detectChanges()
   }
 
@@ -49,6 +73,7 @@ export class TableQueryComponent implements AfterViewInit {
     if (changes['calcWidth']) {
       setTimeout(() => this.adjustTableWrapperSize(), 100)
     }
+    this.updateColumns()
   }
 
   adjustTableWrapperSize() {
@@ -149,5 +174,11 @@ export class TableQueryComponent implements AfterViewInit {
 
   newValues() {
     this.newValuesQuery.emit()
+  }
+
+  private updateColumns() {
+    if (this.query.length > 0) {
+      this.columnDefs = Object.keys(this.query[0]).map((key) => ({ field: key }))
+    }
   }
 }
