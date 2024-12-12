@@ -14,7 +14,7 @@ import {
 } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { AgGridAngular } from 'ag-grid-angular'
-import { ColDef, ModuleRegistry, AllCommunityModule, GridOptions } from 'ag-grid-community'
+import { ColDef, ModuleRegistry, AllCommunityModule, GridApi } from 'ag-grid-community'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
@@ -27,12 +27,15 @@ ModuleRegistry.registerModules([AllCommunityModule])
   encapsulation: ViewEncapsulation.None
 })
 export class TableQueryComponent implements AfterViewInit {
-  @Input() query: any[] = []
+  private _query: any[] = []
+  private scrollTop = 0
+
   @Input() calcWidth: number = 300
 
   @Output() newValuesQuery = new EventEmitter<void>()
 
   @ViewChild('tableWrapper') tableWrapper!: ElementRef<HTMLDivElement>
+  @ViewChild('agGrid') agGrid!: AgGridAngular
 
   isElementVisible = false
   private resizeTimeout: any
@@ -42,7 +45,8 @@ export class TableQueryComponent implements AfterViewInit {
   private initialTop = 0
   private initialBottom = 0
   private lastScrollTop = 0
-  private scrollTop = 0
+  private rowData: any[] = []
+  private gridApi!: GridApi
 
   scrollTimeout: any
 
@@ -54,6 +58,22 @@ export class TableQueryComponent implements AfterViewInit {
   }
 
   constructor(private zone: NgZone, private cdr: ChangeDetectorRef) { }
+
+  @Input()
+  set query(value: any) {
+    if (this.gridApi) {
+      this.saveScrollPosition()
+      this.gridApi.applyTransaction(value)
+      this.restoreScrollPosition()
+    } else {
+      this.rowData = value
+    }
+    this.updateColumns()
+  }
+
+  get query(): any[] {
+    return this.rowData
+  }
 
   @HostListener('window:resize')
   onResize() {
