@@ -12,28 +12,34 @@
 
     overflow-y: auto;
 
-    .table {
-        max-width: 100%;
-        border-bottom: 1px solid #363535;
+    .tables {
+        width: 100%;
+        height: calc(100% - 40px);
+        overflow: auto;
 
-        margin: 0;
+        .table {
+            max-width: 100%;
+            border-bottom: 1px solid #363535;
 
-        cursor: pointer;
-        transition: all 0.2s ease-in-out;
-
-        &:hover {
-            background-color: #3d3a3a;
-        }
-
-        h2 {
-            max-width: 400px;
-
-            padding: 10px 5px;
             margin: 0;
 
-            flex-wrap: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+
+            &:hover {
+                background-color: #3d3a3a;
+            }
+
+            h2 {
+                max-width: 400px;
+
+                padding: 10px 5px;
+                margin: 0;
+
+                flex-wrap: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
         }
     }
 
@@ -41,6 +47,14 @@
         position: relative;
         height: 100%;
     }
+}
+
+.input-container {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+
+    background-color: #292727;
 }
 
 .editor-toolbar {

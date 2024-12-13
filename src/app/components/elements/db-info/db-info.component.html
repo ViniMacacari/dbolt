@@ -26,10 +26,16 @@
             Indexes
         </button>
     </div>
-    <div class="info py-2">
+    <div class="info">
         <div *ngIf="showTables">
-            <div class="table" *ngFor="let table of data.tables" (click)="tableInfo(table)">
-                <h2 class="subtitle-min">{{ table.NAME || table.name }}</h2>
+            <div class="input-container py-2">
+                <input type="text" class="input-page mb-1" placeholder="Search table..." [(ngModel)]="filterTable"
+                    (input)="applyFilterTable()">
+            </div>
+            <div class="tables">
+                <div class="table" *ngFor="let table of filteredTables" (click)="tableInfo(table)">
+                    <h2 class="subtitle-min">{{ table.NAME || table.name }}</h2>
+                </div>
             </div>
         </div>
         <div *ngIf="showViews">

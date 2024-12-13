@@ -1,5 +1,6 @@
 import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewChecked, OnDestroy } from '@angular/core'
 import { CommonModule } from '@angular/common'
+import { FormsModule } from '@angular/forms'
 import * as monaco from 'monaco-editor'
 import { GetDbschemaService } from '../../../services/db-info/get-dbschema.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
@@ -11,7 +12,7 @@ import { InternalApiService } from '../../../services/requests/internal-api.serv
 @Component({
   selector: 'app-db-info',
   standalone: true,
-  imports: [CommonModule, ToastComponent],
+  imports: [CommonModule, ToastComponent, FormsModule],
   templateUrl: './db-info.component.html',
   styleUrl: './db-info.component.scss'
 })
@@ -34,16 +35,23 @@ export class DbInfoComponent {
 
   dataSave: any = {}
 
-  showTables: boolean = false
+  showTables: boolean = true
   showViews: boolean = false
   showProcedures: boolean = false
   showIndexes: boolean = false
+
+  filterTable: string = ''
+  filteredTables: any[] = []
 
   constructor(
     private dbSchemas: GetDbschemaService,
     private runQuery: RunQueryService,
     private IAPI: InternalApiService
   ) { }
+
+  ngOnInit(): void {
+    this.filteredTables = this.data.tables
+  }
 
   async filterTables(): Promise<void> {
     this.showTables = true
@@ -74,6 +82,21 @@ export class DbInfoComponent {
   }
 
   tableInfo(tabInfo: any): void {
+    console.log(tabInfo)
     this.moreInfo.emit(tabInfo)
+  }
+
+  applyFilterTable(): void {
+    const searchText = this.filterTable.toLowerCase()
+    if (!searchText) {
+      this.filteredTables = this.data.tables
+    } else {
+      this.filteredTables = this.data.tables.filter((table: any) =>
+        (table.NAME || table.name)
+          .toString()
+          .toLowerCase()
+          .includes(searchText)
+      )
+    }
   }
 }

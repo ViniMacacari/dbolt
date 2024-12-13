@@ -35,7 +35,7 @@ export class TableInfoComponent {
 
   dataSave: any = {}
 
-  showData: boolean = false
+  showData: boolean = true
   showColumns: boolean = false
   showKeys: boolean = false
   showIndexes: boolean = false
