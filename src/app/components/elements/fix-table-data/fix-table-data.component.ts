@@ -151,11 +151,10 @@ export class FixTableDataComponent {
       const isAtBottom = currentScrollTop + clientHeight >= scrollHeight - buffer
 
       if (isAtTop) {
-        console.log('Scrolled to the top')
+
       }
 
       if (isAtBottom && isScrollingDown) {
-        console.log('Scrolled to the bottom')
         this.newValues()
       }
 
