@@ -36,7 +36,7 @@ class LSSQLServer1 {
             const databasesQuery = `
                 SELECT name AS database_name
                 FROM sys.databases
-                WHERE name NOT IN ('master', 'tempdb', 'model', 'msdb')
+                WHERE name NOT IN ('tempdb', 'model', 'msdb')
                 ORDER BY name
             `
             const databases = await this.db.executeQuery(databasesQuery)
@@ -53,10 +53,23 @@ class LSSQLServer1 {
                     })
 
                     const schemaQuery = `
-                        SELECT name AS schema_name
-                        FROM sys.schemas
-                        WHERE name NOT LIKE 'db_%' AND name NOT LIKE 'guest'
-                        ORDER BY name
+                    SELECT name AS schema_name
+                    FROM sys.schemas
+                    WHERE name NOT IN (
+                        'sys', 
+                        'guest', 
+                        'INFORMATION_SCHEMA', 
+                        'db_accessadmin',
+                        'db_backupoperator',
+                        'db_datareader',
+                        'db_datawriter',
+                        'db_ddladmin',
+                        'db_denydatareader',
+                        'db_denydatawriter',
+                        'db_owner',
+                        'db_securityadmin'
+                    )
+                    ORDER BY name
                     `
                     const schemas = await this.db.executeQuery(schemaQuery)
 
