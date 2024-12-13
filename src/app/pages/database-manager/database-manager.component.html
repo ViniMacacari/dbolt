@@ -13,7 +13,7 @@
                     open
                     database information</h3>
                 <app-db-info *ngIf="dbInfoOpen" [data]="dbSchemasData" (moreInfo)="openMoreInfo($event)"></app-db-info>
-                <app-table-info *ngIf="tableInfoOpen" [data]="tableInfoData"></app-table-info>
+                <app-table-info *ngIf="tableInfoOpen" [data]="tableInfoData" [elementName]="elementName"></app-table-info>
 
                 <app-code-editor *ngIf="editorOpen" [(sqlContent)]="sqlContent" [widthTable]="widthTable"
                     [tabInfo]="tabInfo" (sqlContentChange)="onSqlContentChange($event)"

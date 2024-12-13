@@ -32,11 +32,13 @@ export class DatabaseManagerComponent {
   tableInfoData: any
 
   dbInfoOpen: boolean = false
-  tableInfoOpen: boolean = true
+  tableInfoOpen: boolean = false
   editorOpen: boolean = false
 
   sqlContent: string = ''
   tabInfo: any
+
+  elementName: string = ''
 
   widthTable: number = 0
 
@@ -176,6 +178,11 @@ export class DatabaseManagerComponent {
       this.editorOpen = false
       this.tableInfoOpen = false
       this.dbSchemasData = tab.info.dbInfo
+    } else {
+      this.tableInfoOpen = true
+      this.editorOpen = false
+      this.dbInfoOpen = false
+      this.elementName = tab.info.name
     }
     this.tabInfo = tab
     this.sqlContent = tab.info.sql
@@ -257,6 +264,7 @@ export class DatabaseManagerComponent {
   }
 
   openMoreInfo(event: any): void {
-    console.log(event)
+    console.log('nome> ', event.name)
+    this.tabsComponent.newTab('table', { name: event.name }, event.name)
   }
 }

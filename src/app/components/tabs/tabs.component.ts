@@ -36,7 +36,6 @@ export class TabsComponent {
     const routeParamId = Number(routeParams.get('id'))
     const database = await this.IAPI.get(`/api/connections/${routeParamId}`)
 
-    // Configuração do SortableJS
     Sortable.create(this.tabsContainer.nativeElement, {
       animation: 150,
       onEnd: (event) => {

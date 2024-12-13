@@ -22,6 +22,7 @@ export class TableInfoComponent {
   @Output() savedName = new EventEmitter<string>()
   @Input() widthTable: number = 300
   @Input() tabInfo: any
+  @Input() elementName: string = ''
 
   @ViewChild('editorContainer') editorContainer!: ElementRef
   @ViewChild(ToastComponent) toast!: ToastComponent

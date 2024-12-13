@@ -17,13 +17,15 @@ import { AgGridAngular } from 'ag-grid-angular'
 import { ColDef, ModuleRegistry, AllCommunityModule, GridApi } from 'ag-grid-community'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
+import { LoadingComponent } from "../../modal/loading/loading.component"
+import { ToastComponent } from "../../toast/toast.component"
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
 @Component({
   selector: 'app-fix-table-data',
   standalone: true,
-  imports: [CommonModule, AgGridAngular],
+  imports: [CommonModule, AgGridAngular, LoadingComponent, ToastComponent],
   templateUrl: './fix-table-data.component.html',
   styleUrl: './fix-table-data.component.scss'
 })
@@ -32,11 +34,13 @@ export class FixTableDataComponent {
   private scrollTop = 0
 
   @Input() calcWidth: number = 300
+  @Input() elementName: string = ''
 
   @Output() newValuesQuery = new EventEmitter<void>()
 
   @ViewChild('tableWrapper') tableWrapper!: ElementRef<HTMLDivElement>
   @ViewChild('agGrid') agGrid!: AgGridAngular
+  @ViewChild(ToastComponent) toast!: ToastComponent
 
   isElementVisible = false
   private resizeTimeout: any
@@ -50,6 +54,8 @@ export class FixTableDataComponent {
   private gridApi!: GridApi
 
   scrollTimeout: any
+  maxResultLines: number | null = 0
+  queryLines: number = 50
 
   columnDefs: ColDef[] = []
   defaultColDef: ColDef = {
@@ -84,17 +90,7 @@ export class FixTableDataComponent {
   }
 
   async ngAfterViewInit(): Promise<void> {
-
-    try {
-      const result: any = await this.runQuery.runSQL('select * from nomes', 9999999999)
-      this.query = result
-
-      console.log(result)
-    } catch (error: any) {
-      console.log(error)
-    }
-
-
+    await this.getTableInfo()
     this.isElementVisible = true
     this.adjustTableWrapperSize()
     this.updateColumns()
@@ -175,9 +171,9 @@ export class FixTableDataComponent {
     return row ? Object.values(row) : []
   }
 
-  newValues() {
+  async newValues(): Promise<void> {
     this.saveScrollPosition()
-    this.newValuesQuery.emit()
+    await this.newLines()
     this.restoreScrollPosition()
   }
 
@@ -189,7 +185,9 @@ export class FixTableDataComponent {
       const scrollHeight = bodyViewport.scrollHeight
       const clientHeight = bodyViewport.clientHeight
 
-      if (scrollTop + clientHeight >= scrollHeight) {
+      const tolerance = 5
+
+      if (scrollTop + clientHeight >= scrollHeight - tolerance) {
         console.log('Reached the bottom of the grid!')
         this.newValues()
       }
@@ -223,5 +221,37 @@ export class FixTableDataComponent {
         ...Object.keys(this.query[0]).map((key) => ({ field: key }))
       ]
     }
+  }
+
+  async getTableInfo(): Promise<void> {
+    try {
+      const result: any = await this.runQuery.runSQL('select * from ' + this.elementName, this.queryLines)
+      const maxLines: any = this.runQuery.getQueryLines()
+
+      this.maxResultLines = maxLines
+      this.query = result
+
+      console.log(result)
+    } catch (error: any) {
+      console.log(error)
+    }
+  }
+
+  async newLines(): Promise<void> {
+    console.log(this.query.length, this.maxResultLines)
+    if (this.query.length >= (this.maxResultLines || 0)) return
+
+    LoadingComponent.show()
+
+    try {
+      this.queryLines += 50
+      const result: any = await this.runQuery.runSQL('select * from ' + this.elementName, this.queryLines)
+      this.query = result
+    } catch (error: any) {
+      console.log(error)
+      this.toast.showToast(error.error, 'red')
+    }
+
+    LoadingComponent.hide()
   }
 }
