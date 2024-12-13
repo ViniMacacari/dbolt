@@ -30,14 +30,14 @@ For more details, refer to the license included in the repository.
 - OS: Windows 7 (64-bit recommended)
 - Processor: 64-bit processor (x64) with SSE2 support
 - Memory: 2 GB
-- Disk Space: 1 GB
+- Disk Space: 3 GB
 
 ## 🔧 Recommended Requirements
 
 - OS: Windows 11
-- Processor: Intel Core i5-5200U (5th generation) / AMD Ryzen 5 2500U, or equivalent
-- Memory: 16 GB
-- Disk Space: 2 GB
+- Processor: Intel Core i3-4000 Series (4th generation) / AMD Ryzen 3 2200U, or equivalent
+- Memory: 8 GB
+- Disk Space: 4 GB
 
 ## 📖 License
 This project is licensed under a custom license:
