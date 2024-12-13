@@ -4,6 +4,7 @@ import sql from 'mssql'
 class SSSQLServerV1 {
     constructor() {
         this.db = new SQLServerV1()
+        this.selectedSchema = null
     }
 
     async getSelectedSchema() {
@@ -17,7 +18,7 @@ class SSSQLServerV1 {
             return {
                 success: true,
                 database: result[0].current_database,
-                schema: result[0].current_schema
+                schema: this.selectedSchema || result[0].current_schema
             }
         } catch (error) {
             console.error('Error getting selected schema:', error)
@@ -37,6 +38,7 @@ class SSSQLServerV1 {
 
                 if (!schemaName) {
                     const currentSchema = await this.getSelectedSchema()
+                    this.selectedSchema = schemaName
                     return {
                         success: true,
                         message: `Connected to database "${databaseName}" without setting a schema`,
@@ -55,6 +57,7 @@ class SSSQLServerV1 {
                 }
 
                 const currentSchema = await this.getSelectedSchema()
+                this.selectedSchema = schemaName
                 return {
                     success: true,
                     message: `Connected to database "${databaseName}" and schema "${schemaName}" verified successfully`,
@@ -72,6 +75,7 @@ class SSSQLServerV1 {
                 }
 
                 const currentSchema = await this.getSelectedSchema()
+                this.selectedSchema = schemaName
                 return {
                     success: true,
                     message: `Schema "${schemaName}" verified in the current database`,

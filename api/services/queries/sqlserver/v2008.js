@@ -1,4 +1,5 @@
 import SQLServerV1 from '../../../models/sqlserver/v2008.js'
+import SSSQLServerV1 from '../../schemas/sqlserver/v2008.js'
 
 class SQuerySQLServerV1 {
     constructor() {
@@ -7,6 +8,9 @@ class SQuerySQLServerV1 {
 
     async query(sql, maxLines = null) {
         let totalRows = null
+
+        sql = await this.adjustSchemaInQuery(sql)
+
         const cleanedSql = this.removeComments(sql)
 
         if (this.isSelectQuery(cleanedSql)) {
@@ -93,6 +97,27 @@ class SQuerySQLServerV1 {
     addTotalRowCountQuery(sql) {
         const trimmedSql = this.removeComments(sql).trim()
         return `SELECT COUNT(*) OVER() AS total_rows, * FROM (${trimmedSql}) AS query_with_count`
+    }
+
+    async adjustSchemaInQuery(sql) {
+        const currentSchemaResult = await SSSQLServerV1.getSelectedSchema()
+        const currentSchema = currentSchemaResult.schema
+
+        if (!currentSchema) {
+            throw new Error('No schema selected')
+        }
+
+        const regex = /(?:from|join)\s+([\w\d]+(?:\.[\w\d]+)?)(\s+[as]?\s+\w+)?/gi
+
+        const adjustedSql = sql.replace(regex, (match, table, alias) => {
+            if (table.includes('.')) {
+                return match
+            }
+
+            return match.replace(table, `${currentSchema}.${table}`)
+        })
+
+        return adjustedSql
     }
 }
 
