@@ -1,6 +1,6 @@
 {
   "name": "dbolt",
-  "version": "0.0.1",
+  "version": "0.0.5",
   "description": "DBOLT Database Manager - Manage your databases with ease",
   "author": "Vinícius Macacari de Almeida",
   "main": "main.js",
