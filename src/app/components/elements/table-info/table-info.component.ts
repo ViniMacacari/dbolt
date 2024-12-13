@@ -7,11 +7,12 @@ import { LoadingComponent } from '../../modal/loading/loading.component'
 import { ToastComponent } from '../../toast/toast.component'
 import { SaveQueryComponent } from "../../modal/save-query/save-query.component"
 import { InternalApiService } from '../../../services/requests/internal-api.service'
+import { FixTableDataComponent } from '../fix-table-data/fix-table-data.component'
 
 @Component({
   selector: 'app-table-info',
   standalone: true,
-  imports: [CommonModule, ToastComponent],
+  imports: [CommonModule, ToastComponent, FixTableDataComponent],
   templateUrl: './table-info.component.html',
   styleUrl: './table-info.component.scss'
 })

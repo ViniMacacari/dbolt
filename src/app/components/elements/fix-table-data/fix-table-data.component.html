@@ -1,0 +1,5 @@
+<div #tableWrapper class="table-wrapper">
+    <ag-grid-angular #agGrid class="ag-root" [rowData]="query" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef"
+        [domLayout]="'normal'" [animateRows]="true" (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)">
+    </ag-grid-angular>
+</div>

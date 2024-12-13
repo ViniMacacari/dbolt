@@ -35,8 +35,8 @@
     </div>
     <div class="info py-2">
         <div *ngIf="showData">
-            <div class="table" *ngFor="let table of data.tables">
-                <h2 class="subtitle-min">{{ table.NAME || table.name }}</h2>
+            <div class="table">
+                <app-fix-table-data [calcWidth]="380"></app-fix-table-data>
             </div>
         </div>
         <div *ngIf="showColumns">

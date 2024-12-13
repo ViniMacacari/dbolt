@@ -12,31 +12,6 @@
 
     overflow-y: auto;
 
-    .table {
-        max-width: 100%;
-        border-bottom: 1px solid #363535;
-
-        margin: 0;
-
-        cursor: pointer;
-        transition: all 0.2s ease-in-out;
-
-        &:hover {
-            background-color: #3d3a3a;
-        }
-
-        h2 {
-            max-width: 400px;
-
-            padding: 10px 5px;
-            margin: 0;
-
-            flex-wrap: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-    }
-
     .editor {
         position: relative;
         height: 100%;
