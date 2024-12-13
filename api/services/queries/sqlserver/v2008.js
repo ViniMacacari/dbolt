@@ -33,6 +33,20 @@ class SQuerySQLServerV1 {
 
         try {
             const result = await this.db.executeQuery(sql)
+
+            if (result.length === 0) {
+                const columnSql = this.addPaginationToQuery(sql, 0)
+                const columnsResult = await this.db.executeQuery(columnSql)
+                const columns = Object.keys(columnsResult[0] || {})
+
+                return {
+                    success: true,
+                    result: [],
+                    columns: columns,
+                    totalRows: totalRows
+                }
+            }
+
             return {
                 success: true,
                 result: result,
