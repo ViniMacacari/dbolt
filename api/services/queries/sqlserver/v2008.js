@@ -92,20 +92,25 @@ class SQuerySQLServerV1 {
     addPaginationToQuery(sql, maxLines) {
         const trimmedSql = sql.trim()
 
-        if (!this.hasOrderByClause(trimmedSql)) {
-            sql = `${trimmedSql} ORDER BY (SELECT NULL)`
-        }
+        const orderByClause = this.hasOrderByClause(trimmedSql)
+            ? this.extractOrderByClause(trimmedSql)
+            : 'ORDER BY (SELECT NULL)'
 
-        if (trimmedSql.toLowerCase().startsWith('with ')) {
-            const lastSelectIndex = trimmedSql.lastIndexOf('select ')
-            if (lastSelectIndex !== -1) {
-                const beforeSelect = trimmedSql.slice(0, lastSelectIndex)
-                const afterSelect = trimmedSql.slice(lastSelectIndex)
-                return `${beforeSelect}${afterSelect.trim()} OFFSET 0 ROWS FETCH NEXT ${maxLines} ROWS ONLY`
-            }
-        }
+        const paginatedSql = `
+            SELECT TOP ${maxLines} *
+            FROM (${trimmedSql.replace(/order\s+by\s+.+$/i, '')}) AS PaginatedQuery
+            ${orderByClause}
+        `
 
-        return `${sql} OFFSET 0 ROWS FETCH NEXT ${maxLines} ROWS ONLY`
+        return paginatedSql
+    }
+
+    extractOrderByClause(sql) {
+        const match = sql.match(/order\s+by\s+.+$/i)
+        if (!match) {
+            throw new Error('ORDER BY clause is required for pagination.')
+        }
+        return match[0]
     }
 
     addTotalRowCountQuery(sql) {

@@ -18,14 +18,13 @@ import { ColDef, ModuleRegistry, AllCommunityModule, GridApi } from 'ag-grid-com
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
 import { LoadingComponent } from "../../modal/loading/loading.component"
-import { ToastComponent } from "../../toast/toast.component"
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
 @Component({
   selector: 'app-fix-table-data',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, LoadingComponent, ToastComponent],
+  imports: [CommonModule, AgGridAngular, LoadingComponent],
   templateUrl: './fix-table-data.component.html',
   styleUrl: './fix-table-data.component.scss'
 })
@@ -40,7 +39,6 @@ export class FixTableDataComponent {
 
   @ViewChild('tableWrapper') tableWrapper!: ElementRef<HTMLDivElement>
   @ViewChild('agGrid') agGrid!: AgGridAngular
-  @ViewChild(ToastComponent) toast!: ToastComponent
 
   isElementVisible = false
   private resizeTimeout: any
@@ -245,10 +243,10 @@ export class FixTableDataComponent {
     try {
       this.queryLines += 50
       const result: any = await this.runQuery.runSQL('select * from ' + this.elementName, this.queryLines)
+      console.log(result)
       this.query = result
     } catch (error: any) {
-      console.log(error)
-      this.toast.showToast(error.error, 'red')
+      console.error(error)
     }
 
     LoadingComponent.hide()
