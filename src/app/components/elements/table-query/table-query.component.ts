@@ -201,7 +201,9 @@ export class TableQueryComponent implements AfterViewInit {
       const scrollHeight = bodyViewport.scrollHeight
       const clientHeight = bodyViewport.clientHeight
 
-      if (scrollTop + clientHeight >= scrollHeight) {
+      const tolerance = 5
+
+      if (scrollTop + clientHeight >= scrollHeight - tolerance) {
         console.log('Reached the bottom of the grid!')
         this.newValues()
       }

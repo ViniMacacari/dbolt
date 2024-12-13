@@ -31,6 +31,7 @@ export class DatabaseManagerComponent {
   dbSchemasData: any
   tableInfoData: any
 
+  firstMessage: boolean = true
   dbInfoOpen: boolean = false
   tableInfoOpen: boolean = false
   editorOpen: boolean = false
@@ -169,23 +170,31 @@ export class DatabaseManagerComponent {
   }
 
   onTabSelected(tab: any): void {
-    if (tab.type === 'sql') {
-      this.editorOpen = true
-      this.dbInfoOpen = false
-      this.tableInfoOpen = false
-    } else if (tab.type === 'schema') {
-      this.dbInfoOpen = true
-      this.editorOpen = false
-      this.tableInfoOpen = false
-      this.dbSchemasData = tab.info.dbInfo
-    } else {
-      this.tableInfoOpen = true
-      this.editorOpen = false
-      this.dbInfoOpen = false
-      this.elementName = tab.info.name
-    }
-    this.tabInfo = tab
-    this.sqlContent = tab.info.sql
+    this.firstMessage = false
+    this.editorOpen = false
+    this.dbInfoOpen = false
+    this.tableInfoOpen = false
+
+    setTimeout(() => {
+      if (tab.type === 'sql') {
+        this.editorOpen = true
+        this.dbInfoOpen = false
+        this.tableInfoOpen = false
+      } else if (tab.type === 'schema') {
+        this.dbInfoOpen = true
+        this.editorOpen = false
+        this.tableInfoOpen = false
+        this.dbSchemasData = tab.info.dbInfo
+      } else {
+        this.tableInfoOpen = true
+        this.editorOpen = false
+        this.dbInfoOpen = false
+        this.elementName = tab.info.name
+      }
+
+      this.tabInfo = tab
+      this.sqlContent = tab.info.sql
+    }, 1)
   }
 
   onTabClosed(): void {
