@@ -31,7 +31,8 @@ class SQueryMySQLV1 {
             const result = await this.db.executeQuery(sql)
 
             if (result.length === 0) {
-                const columnSql = this.addLimitToQuery(sql, 0)
+                let columnSql = sql.replace(/limit\s+\d+(\s+offset\s+\d+)?/i, '').trim()
+                columnSql = this.addLimitToQuery(columnSql, 0)
                 const columnsResult = await this.db.executeQuery(columnSql)
                 const columns = Object.keys(columnsResult[0] || {})
                 return {

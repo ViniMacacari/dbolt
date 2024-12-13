@@ -29,15 +29,28 @@ class SQuerysHana {
             const result = await this.db.executeQuery(sql)
 
             if (result.length === 0) {
-                const columnSql = this.addLimitToQuery(sql, 0)
-                const columnsResult = await this.db.executeQuery(columnSql)
-                const columns = Object.keys(columnsResult[0] || {})
-                return {
-                    success: true,
-                    database: 'Hana',
-                    result: [],
-                    columns: columns,
-                    totalRows: totalRows
+                let columnSql = sql.replace(/limit\s+\d+(\s+offset\s+\d+)?/i, '').trim()
+
+                columnSql = this.addLimitToQuery(columnSql, 0)
+
+                try {
+                    const columnsResult = await this.db.executeQuery(columnSql)
+
+                    const columns = Object.keys(columnsResult[0] || {})
+
+                    return {
+                        success: true,
+                        database: 'Hana',
+                        result: [],
+                        columns: columns,
+                        totalRows: totalRows
+                    }
+                } catch (error) {
+                    throw {
+                        success: false,
+                        message: `Error fetching columns: ${error.message || 'Unknown error'}`,
+                        code: error.code || null
+                    }
                 }
             }
 
