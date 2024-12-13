@@ -33,10 +33,11 @@ export class TableInfoComponent {
 
   dataSave: any = {}
 
-  showTables: boolean = false
-  showViews: boolean = false
-  showProcedures: boolean = false
+  showData: boolean = false
+  showColumns: boolean = false
+  showKeys: boolean = false
   showIndexes: boolean = false
+  showDDL: boolean = false
 
   constructor(
     private dbSchemas: GetDbschemaService,
@@ -44,31 +45,43 @@ export class TableInfoComponent {
     private IAPI: InternalApiService
   ) { }
 
-  async filterTables(): Promise<void> {
-    this.showTables = true
-    this.showViews = false
-    this.showProcedures = false
+  async filterData(): Promise<void> {
+    this.showData = true
+    this.showColumns = false
+    this.showKeys = false
     this.showIndexes = false
+    this.showDDL = false
   }
 
-  async filterViews(): Promise<void> {
-    this.showTables = false
-    this.showViews = true
-    this.showProcedures = false
+  async filterColumns(): Promise<void> {
+    this.showData = false
+    this.showColumns = true
+    this.showKeys = false
     this.showIndexes = false
+    this.showDDL = false
   }
 
-  async filterProcedures(): Promise<void> {
-    this.showTables = false
-    this.showViews = false
-    this.showProcedures = true
+  async filterKeys(): Promise<void> {
+    this.showData = false
+    this.showColumns = false
+    this.showKeys = true
     this.showIndexes = false
+    this.showDDL = false
   }
 
   async filterIndexes(): Promise<void> {
-    this.showTables = false
-    this.showViews = false
-    this.showProcedures = false
+    this.showData = false
+    this.showColumns = false
+    this.showKeys = false
     this.showIndexes = true
+    this.showDDL = false
+  }
+
+  async filterDDL(): Promise<void> {
+    this.showData = false
+    this.showColumns = false
+    this.showKeys = false
+    this.showIndexes = false
+    this.showDDL = true
   }
 }
