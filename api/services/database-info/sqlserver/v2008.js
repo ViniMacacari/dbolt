@@ -67,6 +67,31 @@ class ListObjectsSQLServerV1 {
             }
         }
     }
+
+    async tableColumns(tableName) {
+        try {
+            const columnsQuery = `
+                SELECT COLUMN_NAME AS name, DATA_TYPE AS type
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = ?
+                ORDER BY ORDINAL_POSITION
+            `
+
+            const columns = await this.db.executeQuery(columnsQuery, [tableName])
+
+            return {
+                success: true,
+                data: columns
+            }
+        } catch (error) {
+            console.error('Error listing table columns:', error)
+            return {
+                success: false,
+                message: 'Error occurred while listing table columns.',
+                error: error.message
+            }
+        }
+    }
 }
 
 export default new ListObjectsSQLServerV1()

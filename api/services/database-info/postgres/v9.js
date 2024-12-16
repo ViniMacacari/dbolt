@@ -87,6 +87,31 @@ class ListObjectsPgV1 {
             }
         }
     }
+
+    async tableColumns(tableName) {
+        try {
+            const columnsQuery = `
+                SELECT column_name AS name, data_type AS type
+                FROM information_schema.columns
+                WHERE table_name = $1
+                ORDER BY ordinal_position
+            `
+
+            const columns = await this.db.executeQuery(columnsQuery, [tableName])
+
+            return {
+                success: true,
+                data: columns
+            }
+        } catch (error) {
+            console.error('Error listing table columns:', error)
+            return {
+                success: false,
+                message: 'Error occurred while listing table columns.',
+                error: error.message
+            }
+        }
+    }
 }
 
 export default new ListObjectsPgV1()

@@ -10,5 +10,6 @@ router.get('/global-version/get-selected-schema', (req, res) => CHanaV1.getSelec
 router.post('/global-version/set-schema', (req, res) => CHanaV1.setSchema(req, res))
 router.post('/global-version/query', (req, res) => CHanaV1.query(req, res))
 router.get('/global-version/list-objects', (req, res) => CHanaV1.listDatabaseObjects(req, res))
+router.get('/global-version/table-columns/:tableName', (req, res) => CHanaV1.tableColumns(req, res))
 
 export default router

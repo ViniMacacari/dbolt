@@ -60,6 +60,31 @@ class ListObjectsHanaV1 {
             }
         }
     }
+
+    async tableColumns(tableName) {
+        try {
+            const columnsQuery = `
+                SELECT COLUMN_NAME AS name, DATA_TYPE_NAME AS type
+                FROM SYS.TABLE_COLUMNS
+                WHERE TABLE_NAME = '${tableName.toUpperCase()}'
+                ORDER BY COLUMN_NAME
+            `
+
+            const columns = await this.db.executeQuery(columnsQuery)
+
+            return {
+                success: true,
+                data: columns
+            }
+        } catch (error) {
+            console.error('Error listing table columns in HANA:', error)
+            return {
+                success: false,
+                message: 'Error occurred while listing table columns.',
+                error: error.message
+            }
+        }
+    }
 }
 
 export default new ListObjectsHanaV1()

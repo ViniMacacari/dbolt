@@ -10,5 +10,6 @@ router.get('/get-selected-schema', (req, res) => CMySQLV1.getSelectedDatabase(re
 router.post('/set-schema', (req, res) => CMySQLV1.setDatabase(req, res))
 router.post('/query', (req, res) => CMySQLV1.query(req, res))
 router.get('/list-objects', (req, res) => CMySQLV1.listDatabaseObjects(req, res))
+router.get('/table-columns/:tableName', (req, res) => CMySQLV1.tableColumns(req, res))
 
 export default router

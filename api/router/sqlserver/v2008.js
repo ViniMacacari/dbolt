@@ -10,5 +10,6 @@ router.get('/get-selected-schema', (req, res) => CSQLServerV1.getSelectedSchema(
 router.post('/set-schema', (req, res) => CSQLServerV1.setDatabaseAndSchema(req, res))
 router.post('/query', (req, res) => CSQLServerV1.query(req, res))
 router.get('/list-objects', (req, res) => CSQLServerV1.listObjects(req, res))
+router.get('/table-columns/:tableName', (req, res) => CSQLServerV1.tableColumns(req, res))
 
 export default router

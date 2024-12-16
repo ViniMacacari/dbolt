@@ -100,6 +100,21 @@ class CHanaV1 {
             return res.status(500).json({ success: false, message: 'Server error', error: error.message })
         }
     }
+
+    async tableColumns(req, res) {
+        try {
+            const tableName = req.params.tableName
+            const result = await ListObjectsHanaV1.tableColumns(tableName)
+
+            if (result.success) {
+                return res.status(200).json(result)
+            } else {
+                return res.status(500).json(result)
+            }
+        } catch (error) {
+            return res.status(500).json({ success: false, message: 'Server error', error: error.message })
+        }
+    }
 }
 
 export default new CHanaV1()
