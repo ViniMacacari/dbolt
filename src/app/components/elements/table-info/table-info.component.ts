@@ -47,6 +47,10 @@ export class TableInfoComponent {
     private IAPI: InternalApiService
   ) { }
 
+  ngOnInit(): void {
+    console.log(this.tabInfo)
+  }
+
   async filterData(): Promise<void> {
     this.showData = true
     this.showColumns = false
@@ -85,5 +89,9 @@ export class TableInfoComponent {
     this.showKeys = false
     this.showIndexes = false
     this.showDDL = true
+  }
+
+  async searchColumns(table: string): Promise<void> {
+    this.IAPI.get(`/api/`)
   }
 }

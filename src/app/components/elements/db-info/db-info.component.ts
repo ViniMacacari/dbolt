@@ -82,7 +82,13 @@ export class DbInfoComponent {
   }
 
   tableInfo(tabInfo: any): void {
-    console.log(tabInfo)
+    tabInfo = {
+      ...tabInfo,
+      info: this.data.connection
+    }
+
+    console.log('->', tabInfo)
+
     this.moreInfo.emit(tabInfo)
   }
 

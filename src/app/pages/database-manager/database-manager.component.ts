@@ -273,7 +273,11 @@ export class DatabaseManagerComponent {
   }
 
   openMoreInfo(event: any): void {
+    console.log('full info> ', event)
     console.log('nome> ', (event.name || event.NAME))
-    this.tabsComponent.newTab('table', { name: (event.name || event.NAME) }, (event.name || event.NAME))
+    this.tabsComponent.newTab('table', {
+      name: (event.name || event.NAME),
+      info: event.info
+    }, (event.name || event.NAME))
   }
 }
