@@ -236,7 +236,8 @@ export class TableQueryComponent implements AfterViewInit {
         },
         ...Object.keys(this.query[0]).map((key) => ({
           field: key.trim(),
-          headerName: key.trim()
+          headerName: key.trim(),
+          valueFormatter: (params: any) => (params.value === null || params.value === undefined ? '[NULL]' : params.value)
         }))
       ]
     }
