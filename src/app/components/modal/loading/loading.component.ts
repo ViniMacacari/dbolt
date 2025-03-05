@@ -1,4 +1,4 @@
-import { Component, Renderer2 } from '@angular/core'
+import { Component, Renderer2, Input } from '@angular/core'
 import { CommonModule } from '@angular/common'
 
 @Component({
@@ -11,6 +11,7 @@ import { CommonModule } from '@angular/common'
 export class LoadingComponent {
   static instance: LoadingComponent
   isLoading = false
+  @Input() message: string = 'Connecting to database...'
 
   constructor(private renderer: Renderer2) {
     LoadingComponent.instance = this
