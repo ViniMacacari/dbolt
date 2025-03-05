@@ -75,17 +75,11 @@ class SQuerysHana {
     }
 
     isSelectQuery(sql) {
-        const trimmedSql = sql.trim().toLowerCase()
-
-        const sqlWithoutComments = trimmedSql
-            .split('\n')
-            .map(line => line.trim())
-            .filter(line => !line.startsWith('--'))
-            .join(' ')
+        const cleanedSql = this.removeComments(sql).trim().toLowerCase()
 
         const nonSelectKeywords = /^(insert|update|delete|alter|drop|create|truncate|merge|grant|revoke|exec|set|use|describe|explain|show|call|backup|restore|analyze|optimize|begin|commit|rollback)\b/
 
-        return !nonSelectKeywords.test(sqlWithoutComments) && sqlWithoutComments.startsWith('select ')
+        return !nonSelectKeywords.test(cleanedSql) && cleanedSql.startsWith('select ')
     }
 
     addLimitToQuery(sql, maxLines) {
@@ -102,12 +96,19 @@ class SQuerysHana {
     }
 
     getCountQuery(sql) {
-        const trimmedSql = sql.trim().toLowerCase()
-        if (trimmedSql.startsWith('select')) {
+        const cleanedSql = this.removeComments(sql).trim().toLowerCase()
+        if (cleanedSql.startsWith('select')) {
             const withoutOrderBy = sql.replace(/order\s+by\s+[^)]+$/gi, '')
             return `SELECT COUNT(*) AS TOTAL_ROWS FROM (${withoutOrderBy}) AS count_query`
         }
         throw new Error('Not a SELECT query for count calculation')
+    }
+
+    removeComments(sql) {
+        return sql
+            .replace(/--.*$/gm, '')
+            .replace(/\/\*[\s\S]*?\*\//g, '')
+            .trim()
     }
 }
 
