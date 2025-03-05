@@ -27,3 +27,4 @@
 
 <app-toast></app-toast>
 <app-save-query [data]="dataSave" *ngIf="isSaveAsOpen" (saved)="savedSaveAs($event)" (close)="closeSaveAs()"></app-save-query>
+<app-loading [message]="'Running command...'"></app-loading>

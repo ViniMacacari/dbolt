@@ -14,7 +14,7 @@ import { InternalApiService } from '../../../services/requests/internal-api.serv
   standalone: true,
   templateUrl: './code-editor.component.html',
   styleUrls: ['./code-editor.component.scss'],
-  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveQueryComponent],
+  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveQueryComponent, LoadingComponent],
 })
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   @Input() sqlContent: string = ''
