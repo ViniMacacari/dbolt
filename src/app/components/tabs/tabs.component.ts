@@ -4,11 +4,12 @@ import { Router, ActivatedRoute } from '@angular/router'
 import Sortable from 'sortablejs'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { LoadQueryComponent } from "../modal/load-query/load-query.component"
+import { YesNoModalComponent } from "../modal/yes-no-modal/yes-no-modal.component"
 
 @Component({
   selector: 'app-tabs',
   standalone: true,
-  imports: [CommonModule, LoadQueryComponent],
+  imports: [CommonModule, LoadQueryComponent, YesNoModalComponent],
   templateUrl: './tabs.component.html',
   styleUrl: './tabs.component.scss'
 })
@@ -17,12 +18,16 @@ export class TabsComponent {
   @Output() tabClosed = new EventEmitter<void>()
 
   showLoadQuery: boolean = false
+  showYNModal: boolean = false
+  titleYN: string = 'Unsaved changes'
+  messageYN: string = 'Do you want to close the tab even without saving the changes?'
 
   dataList: any = []
   dropdownVisible: boolean = false
   tabs: { id: number, name: string, info: { sql: string }, originalContent: string, icon: string }[] = []
   activeTab: number | null = null
   idTabs: number = 0
+  confirmToClose: any = {}
 
   icon: string = 'CODE'
 
@@ -101,17 +106,36 @@ export class TabsComponent {
     }, 100)
   }
 
-  closeTab(index: number, event: MouseEvent): void {
+  closeTab(index: number, event: MouseEvent, tab: any): void {
     event.stopPropagation()
 
-    this.tabs.splice(index, 1)
+    this.confirmToClose = index
+
+    if (tab.icon !== 'CODE') {
+      this.showYNModal = true
+    } else {
+      this.tabs.splice(index, 1)
+
+      if (this.tabs.length === 0) {
+        this.activeTab = null
+        this.tabClosed.emit()
+      } else {
+        const newActiveTab = Math.min(index, this.tabs.length - 1)
+        this.selectTab(newActiveTab)
+      }
+    }
+  }
+
+  confirmTabClose(): void {
+    this.showYNModal = false
+    this.tabs.splice(this.confirmToClose, 1)
 
     if (this.tabs.length === 0) {
       this.activeTab = null
       this.tabClosed.emit()
     } else {
-      const newActiveTab = Math.min(index, this.tabs.length - 1)
-      this.selectTab(newActiveTab)
+    const newActiveTab = Math.min(this.confirmToClose, this.tabs.length - 1)
+    this.selectTab(newActiveTab)
     }
   }
 

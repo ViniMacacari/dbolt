@@ -23,7 +23,7 @@
                 <div class="text">
                     <p class="text-min">{{ tab.name }}</p>
                 </div>
-                <img src="icons/close.png" height="15px" (click)="closeTab(i, $event)" />
+                <img src="icons/close.png" height="15px" (click)="closeTab(i, $event, tab)" />
             </div>
         </div>
     </div>
@@ -31,3 +31,5 @@
 
 <app-load-query *ngIf="showLoadQuery" (open)="onOpenLoadQuery($event)"
     (close)="onCloseLoadQuery($event)"></app-load-query>
+<app-yes-no-modal *ngIf="showYNModal" [title]="titleYN" [message]="messageYN" (closeAction)="showYNModal = false"
+    (continueAction)="confirmTabClose()"></app-yes-no-modal>
