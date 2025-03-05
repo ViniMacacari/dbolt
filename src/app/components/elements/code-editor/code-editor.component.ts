@@ -212,10 +212,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
       const result: any = await this.runQuery.runSQL(sql, this.queryLines)
       this.queryReponse = result
       this.maxResultLines = this.runQuery.getQueryLines()
-
-      console.log(result)
     } catch (error: any) {
-      console.log(error)
+      console.error(error)
       this.toast.showToast(error.error, 'red')
     }
 
@@ -232,7 +230,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
       const result: any = await this.runQuery.runSQL(this.cacheSql, this.queryLines)
       this.queryReponse = result
     } catch (error: any) {
-      console.log(error)
+      console.error(error)
       this.toast.showToast(error.error, 'red')
     }
 
