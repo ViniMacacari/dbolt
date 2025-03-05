@@ -36,7 +36,7 @@ class SQuerysHana {
                 try {
                     const columnsResult = await this.db.executeQuery(columnSql)
 
-                    const columns = Object.keys(columnsResult[0] || {})
+                    const columns = Object.keys(columnsResult[0] || {}).map(col => col.trim())
 
                     return {
                         success: true,
