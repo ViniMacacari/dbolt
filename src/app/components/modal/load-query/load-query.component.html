@@ -13,9 +13,10 @@
             </div>
 
             <div class="queries">
-                <div class="query-item" *ngFor="let query of queries" (click)="loadQuery(query)">
-                    <img src="db-logo/{{ query.dbSchema.sgbd }}.png" height="15px">
-                    <h2 class="subtitle">{{ query.name }}</h2>
+                <div class="query-item" *ngFor="let query of queries">
+                    <img src="db-logo/{{ query.dbSchema.sgbd }}.png" height="15px" (click)="loadQuery(query)">
+                    <h2 class="subtitle" (click)="loadQuery(query)">{{ query.name }}</h2>
+                    <img src="icons/delete.png" height="15px" (click)="deleteQuery(query)">
                 </div>
             </div>
         </div>

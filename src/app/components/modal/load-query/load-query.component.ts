@@ -84,4 +84,15 @@ export class LoadQueryComponent {
   async loadQuery(query: any): Promise<void> {
     this.open.emit(query)
   }
+
+  async deleteQuery(query: any): Promise<void> {
+    try {
+      await this.IAPI.delete(`/api/query/${query.id}`)
+      this.originalQueries = this.originalQueries.filter((item: { id: number }) => item.id !== query.id)
+      this.queries = this.queries.filter((item: { id: number }) => item.id !== query.id)
+      this.toast.showToast('Query deleted successfully', 'green')
+    } catch (error: any) {
+      this.toast.showToast(error.error, 'red')
+    }
+  }
 }
