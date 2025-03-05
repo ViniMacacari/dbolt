@@ -17,7 +17,7 @@
 
                 <app-code-editor *ngIf="editorOpen" [(sqlContent)]="sqlContent" [widthTable]="widthTable"
                     [tabInfo]="tabInfo" (sqlContentChange)="onSqlContentChange($event)"
-                    (savedName)="onSavedQuery($event)"></app-code-editor>
+                    (savedName)="onSavedQuery($event)" (savedQuery)="onExistingSavedQuery($event)"></app-code-editor>
             </div>
         </div>
     </div>

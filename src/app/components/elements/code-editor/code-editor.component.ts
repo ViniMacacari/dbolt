@@ -20,6 +20,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   @Input() sqlContent: string = ''
   @Output() sqlContentChange = new EventEmitter<string>()
   @Output() savedName = new EventEmitter<string>()
+  @Output() savedQuery = new EventEmitter<any>()
   @Input() widthTable: number = 300
   @Input() tabInfo: any
 
@@ -257,13 +258,19 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
       const dbSchemas = await this.dbSchemas.getSelectedSchemaDB()
 
       this.dataSave = {
+        id: this.tabInfo?.id,
         name: this.tabInfo?.name,
         type: 'sql',
         sql: this.editor?.getValue() || '',
+        originalContent: this.editor?.getValue() || '',
+        icon: 'CODE',
         dbSchema: dbSchemas
       }
 
       await this.IAPI.put('/api/query/' + this.tabInfo.id, this.dataSave)
+
+      this.savedQuery.emit(this.dataSave)
+      this.toast.showToast('Saved successfully ', 'green')
     } catch (error: any) {
       this.toast.showToast(error.error, 'red')
     }

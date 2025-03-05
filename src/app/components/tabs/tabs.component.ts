@@ -20,9 +20,11 @@ export class TabsComponent {
 
   dataList: any = []
   dropdownVisible: boolean = false
-  tabs: { id: number, name: string, info: { sql: string } }[] = []
+  tabs: { id: number, name: string, info: { sql: string }, originalContent: string, icon: string }[] = []
   activeTab: number | null = null
   idTabs: number = 0
+
+  icon: string = 'CODE'
 
   @ViewChild('tabsContainer') tabsContainer!: ElementRef
 
@@ -55,7 +57,9 @@ export class TabsComponent {
       id: Date.now(),
       name: name || Date.now(),
       type: type,
-      info: info
+      info: info,
+      originalContent: info.sql || '',
+      icon: 'CODE'
     }
 
     this.idTabs += 1
@@ -75,7 +79,9 @@ export class TabsComponent {
       type: type,
       info: {
         sql: info.info.sql
-      }
+      },
+      originalSql: info.info.sql,
+      icon: 'CODE'
     }
 
     this.idTabs += 1
@@ -111,7 +117,6 @@ export class TabsComponent {
 
   selectTab(index: number): void {
     this.activeTab = index
-    console.log(this.tabs[index])
     this.tabSelected.emit(this.tabs[index])
   }
 
@@ -132,7 +137,9 @@ export class TabsComponent {
       type: event.type,
       info: {
         sql: event.sql
-      }
+      },
+      originalContent: event.sql,
+      icon: 'CODE'
     }
 
     this.idTabs += 1

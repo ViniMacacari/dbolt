@@ -19,7 +19,7 @@
         <div class="tabs" #tabsContainer>
             <div class="tab gap-3" *ngFor="let tab of tabs; let i = index" [class.active]="i === activeTab"
                 (click)="selectTab(i)">
-                <img src="icons/code.png" height="15px" />
+                <img src="{{ tab.icon == 'CODE' ? 'icons/code.png' : 'icons/circle-unsaved.png' }}" height="15px" />
                 <div class="text">
                     <p class="text-min">{{ tab.name }}</p>
                 </div>

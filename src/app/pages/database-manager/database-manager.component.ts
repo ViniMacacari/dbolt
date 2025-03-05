@@ -208,6 +208,17 @@ export class DatabaseManagerComponent {
 
     if (this.tabsComponent.activeTab !== null) {
       this.tabsComponent.tabs[this.tabsComponent.activeTab].info.sql = content
+
+      const tab = this.tabsComponent.tabs[this.tabsComponent.activeTab]
+      tab.info.sql = content
+      const currentSql = tab.info.sql || ''
+      const originalSql = tab.originalContent || ''
+
+      if (currentSql.trim() !== originalSql.trim()) {
+        tab.icon = 'CHANGE'
+      } else {
+        tab.icon = 'CODE'
+      }
     }
   }
 
@@ -223,8 +234,18 @@ export class DatabaseManagerComponent {
     this.tabsComponent.newSavedTab('sql', {
       id: Date.now(),
       info: { sql: this.sqlContent },
+      originalContent: this.sqlContent,
+      icon: 'CODE',
       name: name
     })
+  }
+
+  onExistingSavedQuery(savedTab: any): void {
+    const tab = this.tabsComponent.tabs.find(t => t.id === savedTab.id)
+
+    if (tab) {
+      tab.icon = 'CODE'
+    }
   }
 
   async onDbInfoRequested(event: any): Promise<void> {
@@ -261,8 +282,6 @@ export class DatabaseManagerComponent {
 
       this.dbSchemasData = result
 
-      console.log(this.dbSchemasData)
-
       this.tabsComponent.newTab('schema', { dbInfo: this.dbSchemasData }, schemaDb.schema)
     } catch (error: any) {
       console.error(error)
@@ -273,8 +292,6 @@ export class DatabaseManagerComponent {
   }
 
   openMoreInfo(event: any): void {
-    console.log('full info> ', event)
-    console.log('nome> ', (event.name || event.NAME))
     this.tabsComponent.newTab('table', {
       name: (event.name || event.NAME),
       info: event.info
