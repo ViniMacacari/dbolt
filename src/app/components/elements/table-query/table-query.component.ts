@@ -234,7 +234,10 @@ export class TableQueryComponent implements AfterViewInit {
           filter: false,
           width: 50
         },
-        ...Object.keys(this.query[0]).map((key) => ({ field: key }))
+        ...Object.keys(this.query[0]).map((key) => ({
+          field: key.trim(),
+          headerName: key.trim()
+        }))
       ]
     }
   }
