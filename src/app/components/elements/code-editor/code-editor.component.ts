@@ -148,6 +148,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
       this.runSelected()
     })
 
+    this.editor?.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+      this.saveQuery()
+    })
+
     this.editor?.onDidChangeModelContent(() => {
       const value = this.editor?.getValue() || ''
       if (value !== this.sqlContent) {
@@ -272,7 +276,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
       this.savedQuery.emit(this.dataSave)
       this.toast.showToast('Saved successfully ', 'green')
     } catch (error: any) {
-      this.toast.showToast(error.error, 'red')
+      this.saveAs()
     }
   }
 
