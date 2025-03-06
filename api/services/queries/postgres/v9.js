@@ -11,8 +11,7 @@ class SQueryPgV1 {
                 const result = await this.db.executeQuery(sql)
                 console.log('sucess')
                 return {
-                    success: true,
-                    result: result
+                    success: true
                 }
             } catch (error) {
                 throw {

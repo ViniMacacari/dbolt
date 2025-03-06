@@ -216,6 +216,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
 
       const result: any = await this.runQuery.runSQL(sql, this.queryLines)
       this.queryReponse = result
+      console.log('result: ', result)
       this.maxResultLines = this.runQuery.getQueryLines()
     } catch (error: any) {
       console.error(error)
