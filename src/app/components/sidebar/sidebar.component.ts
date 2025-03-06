@@ -124,17 +124,51 @@ export class SidebarComponent {
   async addDatabase(connection: any): Promise<void> {
     const schemasDb: any = await this.IAPI.get(`/api/${connection.database}/${connection.version}/list-databases-and-schemas`)
 
-    schemasDb.data.forEach((schema: any, index: number) => {
-      this.dbSchemas.data.push({
-        sgbd: connection.database,
-        host: connection.host,
-        port: connection.port,
-        version: connection.version,
-        database: schema.database,
-        schemas: schema.schemas,
-        connected: index === 0
-      })
+    schemasDb.data.forEach((schema: any) => {
+      const exists = this.dbSchemas.data.some((db: any) =>
+        db.sgbd === connection.database &&
+        db.host === connection.host &&
+        db.port === connection.port &&
+        db.version === connection.version &&
+        db.database === schema.database &&
+        this.arraysEqual(db.schemas, schema.schemas)
+      )
+
+      if (!exists) {
+        this.dbSchemas.data.push({
+          sgbd: connection.database,
+          host: connection.host,
+          port: connection.port,
+          version: connection.version,
+          database: schema.database,
+          schemas: schema.schemas,
+          connected: this.dbSchemas.data.length === 0
+        })
+
+        console.log('Adicionado:', {
+          sgbd: connection.database,
+          host: connection.host,
+          port: connection.port,
+          version: connection.version,
+          database: schema.database,
+          schemas: schema.schemas
+        })
+      } else {
+        console.log('Já existe, ignorado:', {
+          sgbd: connection.database,
+          host: connection.host,
+          port: connection.port,
+          version: connection.version,
+          database: schema.database,
+          schemas: schema.schemas
+        })
+      }
     })
+  }
+
+  private arraysEqual(arr1: any[], arr2: any[]): boolean {
+    if (arr1.length !== arr2.length) return false
+    return arr1.every((value, index) => value === arr2[index])
   }
 
   async selectSchema(connection: any): Promise<any> {
