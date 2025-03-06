@@ -6,6 +6,7 @@ import { ToastComponent } from '../toast/toast.component'
 import { EditConnectionComponent } from "../modal/edit-connection/edit-connection.component"
 import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
 import { connect } from 'rxjs'
+import { version } from 'sortablejs'
 
 @Component({
   selector: 'app-sidebar',
@@ -160,17 +161,27 @@ export class SidebarComponent {
       return
     }
 
-    const matchedConnection = this.dbSchemas.data.find((db: any) =>
-      db.database === connection.database &&
-      db.host === connection.host &&
-      db.port === connection.port &&
-      db.sgbd === connection.sgbd &&
-      db.version === connection.version
-    )
+    console.log('info to connect ->', connection)
 
     let schemaDb: any
 
     try {
+      await this.connectDatabase({
+        host: connection.host,
+        port: connection.port,
+        user: connection.user,
+        password: connection.password,
+        database: connection.sgbd,
+        version: connection.version
+      })
+
+      const matchedConnection = this.dbSchemas.data.find((db: any) =>
+        db.database === connection.database &&
+        db.host === connection.host &&
+        db.port === connection.port &&
+        db.sgbd === connection.sgbd &&
+        db.version === connection.version
+      )
       console.log(matchedConnection)
       schemaDb = await this.connectToSchemaDb(matchedConnection, connection)
 

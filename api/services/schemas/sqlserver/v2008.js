@@ -34,6 +34,11 @@ class SSSQLServerV1 {
 
             if (databaseName) {
                 await this.db.disconnect()
+                console.log('--------------------------')
+                console.log('Database name:', databaseName)
+                console.log('CONFIG:', this.db.getConfig())
+                console.log('Schema name:', schemaName)
+                console.log('--------------------------')
                 await this.db.connect({ ...this.db.getConfig(), database: databaseName })
 
                 if (!schemaName) {
