@@ -144,24 +144,6 @@ export class SidebarComponent {
           schemas: schema.schemas,
           connected: this.dbSchemas.data.length === 0
         })
-
-        console.log('Adicionado:', {
-          sgbd: connection.database,
-          host: connection.host,
-          port: connection.port,
-          version: connection.version,
-          database: schema.database,
-          schemas: schema.schemas
-        })
-      } else {
-        console.log('Já existe, ignorado:', {
-          sgbd: connection.database,
-          host: connection.host,
-          port: connection.port,
-          version: connection.version,
-          database: schema.database,
-          schemas: schema.schemas
-        })
       }
     })
   }
