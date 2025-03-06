@@ -168,31 +168,30 @@ export class SidebarComponent {
       db.version === connection.version
     )
 
-    if (matchedConnection) {
-      if (matchedConnection) {
-        let schemaDb: any
+    let schemaDb: any
 
-        try {
-          schemaDb = await this.connectToSchemaDb(matchedConnection, connection)
-        } catch (error: any) {
-          console.error(error)
-          this.toast.showToast(error.message, 'red')
-          return
-        }
+    try {
+      console.log(matchedConnection)
+      schemaDb = await this.connectToSchemaDb(matchedConnection, connection)
 
-        this.selectedSchemaDB = {
-          database: schemaDb?.currentSchema?.database || connection.database,
-          schema: schemaDb?.currentSchema?.schema || connection.schema,
-          sgbd: connection.sgbd,
-          version: connection.version,
-          name: connection.name,
-          host: connection.host,
-          port: connection.port,
-          connId: connection.id
-        }
-
-        this.dbSchemaService.setSelectedSchemaDB(this.selectedSchemaDB)
+      this.selectedSchemaDB = {
+        database: schemaDb?.currentSchema?.database || connection.database,
+        schema: schemaDb?.currentSchema?.schema || connection.schema,
+        sgbd: connection.sgbd,
+        version: connection.version,
+        name: connection.name,
+        host: connection.host,
+        port: connection.port,
+        connId: connection.id
       }
+
+      console.log(this.selectedSchemaDB)
+
+      this.dbSchemaService.setSelectedSchemaDB(this.selectedSchemaDB)
+    } catch (error: any) {
+      console.error(error)
+      this.toast.showToast(error.message, 'red')
+      return
     }
   }
 
@@ -222,6 +221,8 @@ export class SidebarComponent {
         database: connection.database || data.database,
         schema: connection.schema || data.schema
       })
+
+      console.log(result, '-> connected')
 
       return {
         database: connection?.database || data?.database,
