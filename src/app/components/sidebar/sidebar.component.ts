@@ -161,8 +161,6 @@ export class SidebarComponent {
       return
     }
 
-    console.log('info to connect ->', connection)
-
     let schemaDb: any
 
     try {
@@ -182,7 +180,6 @@ export class SidebarComponent {
         db.sgbd === connection.sgbd &&
         db.version === connection.version
       )
-      console.log(matchedConnection)
       schemaDb = await this.connectToSchemaDb(matchedConnection, connection)
 
       this.selectedSchemaDB = {
@@ -195,8 +192,6 @@ export class SidebarComponent {
         port: connection.port,
         connId: connection.id
       }
-
-      console.log(this.selectedSchemaDB)
 
       this.dbSchemaService.setSelectedSchemaDB(this.selectedSchemaDB)
     } catch (error: any) {
@@ -232,8 +227,6 @@ export class SidebarComponent {
         database: connection.database || data.database,
         schema: connection.schema || data.schema
       })
-
-      console.log(result, '-> connected')
 
       return {
         database: connection?.database || data?.database,
