@@ -5,6 +5,7 @@ import Sortable from 'sortablejs'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { LoadQueryComponent } from "../modal/load-query/load-query.component"
 import { YesNoModalComponent } from "../modal/yes-no-modal/yes-no-modal.component"
+import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
 
 @Component({
   selector: 'app-tabs',
@@ -35,7 +36,8 @@ export class TabsComponent {
 
   constructor(
     private route: ActivatedRoute,
-    private IAPI: InternalApiService
+    private IAPI: InternalApiService,
+    private dbSchema: GetDbschemaService
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
@@ -64,6 +66,7 @@ export class TabsComponent {
       type: type,
       info: info,
       originalContent: info.sql || '',
+      dbInfo: this.dbSchema.getSelectedSchemaDB(),
       icon: 'CODE'
     }
 
@@ -85,6 +88,7 @@ export class TabsComponent {
       info: {
         sql: info.info.sql
       },
+      dbInfo: this.dbSchema.getSelectedSchemaDB(),
       originalSql: info.info.sql,
       icon: 'CODE'
     }
@@ -142,6 +146,7 @@ export class TabsComponent {
   selectTab(index: number): void {
     this.activeTab = index
     this.tabSelected.emit(this.tabs[index])
+    console.log(this.tabs[index])
   }
 
   @HostListener('document:click', ['$event'])
@@ -163,6 +168,7 @@ export class TabsComponent {
         sql: event.sql
       },
       originalContent: event.sql,
+      dbInfo: this.dbSchema.getSelectedSchemaDB(),
       icon: 'CODE'
     }
 
