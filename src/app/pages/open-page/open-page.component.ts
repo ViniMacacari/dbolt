@@ -54,7 +54,6 @@ export class OpenPageComponent {
     LoadingComponent.show()
     try {
       const result: any = await this.IAPI.get(`/api/connections/${id}`)
-      console.log(result)
       await this.IAPI.post(`/api/${result.database}/${result.version}/connect`, {
         host: result.host,
         port: result.port,

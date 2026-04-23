@@ -8,6 +8,11 @@ import {
   type StoredConnectionsResult,
   isSavedConnection
 } from '../types.js';
+import SecureStorage from '../services/dbolt/secure-storage.js';
+
+const CONNECTIONS_FILENAME = 'connections.json';
+const TEMP_FILENAME = `${CONNECTIONS_FILENAME}.tmp`;
+const BACKUP_FILENAME = `${CONNECTIONS_FILENAME}.bak`;
 
 class DbConnections {
   private readonly basePath: string;
@@ -22,7 +27,6 @@ class DbConnections {
 
   async saveConnectionsFile(newConnections: SavedConnectionInput[]): Promise<void> {
     await this.ensureDirectoryExists();
-    const filePath = join(this.basePath, 'connections.json');
     const existingConnections = await this.readConnectionsFile();
 
     const lastId =
@@ -38,11 +42,13 @@ class DbConnections {
       }))
     ];
 
-    await fs.writeFile(filePath, JSON.stringify(updatedConnections, null, 2), 'utf8');
+    await this.writeConnectionsFile(updatedConnections);
   }
 
   async readConnectionsFile(): Promise<StoredConnectionsResult> {
-    const filePath = join(this.basePath, 'connections.json');
+    await this.ensureDirectoryExists();
+    await this.restoreBackupIfNeeded();
+    const filePath = this.getConnectionsFilePath();
 
     try {
       const data = await fs.readFile(filePath, 'utf8');
@@ -51,7 +57,16 @@ class DbConnections {
       }
 
       const parsed = JSON.parse(data) as unknown;
-      return Array.isArray(parsed) ? parsed.filter(isSavedConnection) : [];
+      const storedConnections = Array.isArray(parsed)
+        ? parsed.filter(isSavedConnection)
+        : [];
+      const decryptedConnections = await this.decryptConnections(storedConnections);
+
+      if (this.hasLegacyPasswords(storedConnections)) {
+        await this.writeConnectionsFile(decryptedConnections);
+      }
+
+      return decryptedConnections;
     } catch (error: unknown) {
       const errorCode =
         typeof error === 'object' && error !== null && 'code' in error
@@ -81,9 +96,126 @@ class DbConnections {
       return false;
     }
 
-    const filePath = join(this.basePath, 'connections.json');
-    await fs.writeFile(filePath, JSON.stringify(updatedConnections, null, 2), 'utf8');
+    await this.writeConnectionsFile(updatedConnections);
     return true;
+  }
+
+  private getConnectionsFilePath(): string {
+    return join(this.basePath, CONNECTIONS_FILENAME);
+  }
+
+  private getTempFilePath(): string {
+    return join(this.basePath, TEMP_FILENAME);
+  }
+
+  private getBackupFilePath(): string {
+    return join(this.basePath, BACKUP_FILENAME);
+  }
+
+  private async decryptConnections(
+    connections: SavedConnection[]
+  ): Promise<SavedConnection[]> {
+    return Promise.all(
+      connections.map(async (connection) => ({
+        ...connection,
+        password: await SecureStorage.decryptString(connection.password)
+      }))
+    );
+  }
+
+  private hasLegacyPasswords(connections: SavedConnection[]): boolean {
+    return connections.some(
+      (connection) => !SecureStorage.isEncrypted(connection.password)
+    );
+  }
+
+  private async encryptConnections(
+    connections: SavedConnection[]
+  ): Promise<SavedConnection[]> {
+    return Promise.all(
+      connections.map(async (connection) => ({
+        ...connection,
+        password: await SecureStorage.encryptString(connection.password)
+      }))
+    );
+  }
+
+  private async writeConnectionsFile(
+    connections: SavedConnection[]
+  ): Promise<void> {
+    await this.ensureDirectoryExists();
+
+    const filePath = this.getConnectionsFilePath();
+    const tempFilePath = this.getTempFilePath();
+    const backupFilePath = this.getBackupFilePath();
+    const encryptedConnections = await this.encryptConnections(connections);
+    const payload = JSON.stringify(encryptedConnections, null, 2);
+
+    await fs.unlink(backupFilePath).catch(() => undefined);
+    await fs.writeFile(tempFilePath, payload, 'utf8');
+
+    try {
+      await fs.access(filePath);
+      await fs.rename(filePath, backupFilePath);
+    } catch (error: unknown) {
+      const errorCode =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? error.code
+          : undefined;
+
+      if (errorCode !== 'ENOENT') {
+        await fs.unlink(tempFilePath).catch(() => undefined);
+        throw error;
+      }
+    }
+
+    try {
+      await fs.rename(tempFilePath, filePath);
+      await fs.unlink(backupFilePath).catch(() => undefined);
+    } catch (error: unknown) {
+      await this.restoreFromBackup();
+      throw error;
+    }
+  }
+
+  private async restoreBackupIfNeeded(): Promise<void> {
+    const filePath = this.getConnectionsFilePath();
+    const backupFilePath = this.getBackupFilePath();
+
+    try {
+      await fs.access(filePath);
+    } catch (error: unknown) {
+      const errorCode =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? error.code
+          : undefined;
+
+      if (errorCode === 'ENOENT') {
+        await this.restoreFromBackup();
+      }
+    }
+  }
+
+  private async restoreFromBackup(): Promise<void> {
+    const filePath = this.getConnectionsFilePath();
+    const tempFilePath = this.getTempFilePath();
+    const backupFilePath = this.getBackupFilePath();
+
+    await fs.unlink(tempFilePath).catch(() => undefined);
+
+    try {
+      await fs.access(backupFilePath);
+      await fs.rename(backupFilePath, filePath);
+    } catch (error: unknown) {
+      const errorCode =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? error.code
+          : undefined;
+
+      if (errorCode !== 'ENOENT') {
+        throw error;
+      }
+    }
   }
 }
 

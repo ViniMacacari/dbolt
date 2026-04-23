@@ -6,9 +6,7 @@ import type { SavedConnection, StoredConnectionsResult } from '../../types.js';
 class LoadConnections {
   async getAllConnections(): Promise<StoredConnectionsResult> {
     try {
-      const connections = await DbConnections.readConnectionsFile();
-      console.log('All connections loaded successfully:', connections);
-      return connections;
+      return await DbConnections.readConnectionsFile();
     } catch (error: unknown) {
       console.error('Error loading connections:', error);
       throw new Error(getErrorMessage(error, 'Failed to load connections'));
@@ -51,7 +49,6 @@ class LoadConnections {
         return null;
       }
 
-      console.log(`Connection with ID "${id}" loaded successfully:`, connection);
       return connection;
     } catch (error: unknown) {
       console.error(`Error fetching connection with ID "${id}":`, error);
