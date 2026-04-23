@@ -17,7 +17,7 @@ function createWindow(): void {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      devTools: false
+      devTools: true
     },
     autoHideMenuBar: true,
     resizable: true
@@ -25,7 +25,7 @@ function createWindow(): void {
 
   win.setMinimumSize(800, 655);
 
-  const rendererUrl = process.env.ELECTRON_RENDERER_URL;
+  const rendererUrl = process.env['ELECTRON_RENDERER_URL'] ?? undefined;
   const angularIndexPath = path.join(
     appRoot,
     'dist',
