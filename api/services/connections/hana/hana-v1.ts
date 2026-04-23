@@ -1,29 +1,48 @@
-// @ts-nocheck
-import HanaV1 from "../../../models/hana/hana-v1.js"
+import HanaV1 from '../../../models/hana/hana-v1.js';
+import { getErrorMessage } from '../../../utils/errors.js';
+
+import type {
+  ConnectionServiceResult,
+  HanaConnectionConfig
+} from '../../../types.js';
 
 class SHanaV1 {
-    async testConnection(config) {
-        const db = new HanaV1()
-        try {
-            await db.connect(config)
-            await db.disconnect()
-            return { success: true, message: 'Connection successfully established!' }
-        } catch (error) {
-            console.error('Error to connect:', error)
-            return { success: false, message: 'Failed to connect to Hana', error: error.message }
-        }
-    }
+  async testConnection(
+    config: HanaConnectionConfig
+  ): Promise<ConnectionServiceResult> {
+    const db = new HanaV1();
 
-    async connection(config) {
-        const db = new HanaV1()
-        try {
-            await db.connect(config)
-            return { success: true, message: 'Connection successfully established!' }
-        } catch (error) {
-            console.error('Error to connect:', error)
-            return { success: false, message: 'Failed to connect to Hana', error: error.message }
-        }
+    try {
+      await db.connect(config);
+      await db.disconnect();
+      return { success: true, message: 'Connection successfully established!' };
+    } catch (error: unknown) {
+      console.error('Error to connect:', error);
+      return {
+        success: false,
+        message: 'Failed to connect to Hana',
+        error: getErrorMessage(error)
+      };
     }
+  }
+
+  async connection(
+    config: HanaConnectionConfig
+  ): Promise<ConnectionServiceResult> {
+    const db = new HanaV1();
+
+    try {
+      await db.connect(config);
+      return { success: true, message: 'Connection successfully established!' };
+    } catch (error: unknown) {
+      console.error('Error to connect:', error);
+      return {
+        success: false,
+        message: 'Failed to connect to Hana',
+        error: getErrorMessage(error)
+      };
+    }
+  }
 }
 
-export default new SHanaV1()
+export default new SHanaV1();

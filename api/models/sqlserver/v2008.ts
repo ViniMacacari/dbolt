@@ -1,107 +1,141 @@
-// @ts-nocheck
-import sql from 'mssql'
+import sql, {
+  type ConnectionPool,
+  type config as SqlConfig,
+  type IResult
+} from 'mssql';
+
+import type {
+  ConnectionStatus,
+  QueryRows,
+  SqlServerConnectionConfig,
+  SqlServerQueryParameter
+} from '../../types.js';
+
+type SqlServerConnectionInput = SqlServerConnectionConfig | SqlConfig;
 
 class SQLServerV1 {
-    constructor() {
-        if (!SQLServerV1.instance) {
-            this.pool = null
-            this.config = null
-            SQLServerV1.instance = this
-        }
-        return SQLServerV1.instance
+  private static instance: SQLServerV1 | null = null;
+
+  public pool: ConnectionPool | null = null;
+  private config: SqlConfig | null = null;
+
+  constructor() {
+    if (SQLServerV1.instance) {
+      return SQLServerV1.instance;
     }
 
-    async connect(config) {
-        if (this.pool) {
-            await this.disconnect()
-        }
+    SQLServerV1.instance = this;
+  }
 
-        if (!config || typeof config !== 'object') {
-            throw new Error('Invalid configuration')
-        }
-
-        try {
-            this.config = { ...config }
-            console.log({
-                server: config.host,
-                ...config,
-                options: {
-                    encrypt: false,
-                    trustServerCertificate: true,
-                    port: parseInt(config.port, 10),
-                    ...(config.options || {})
-                }
-            })
-            this.pool = await sql.connect({
-                server: config.host,
-                ...config,
-                options: {
-                    encrypt: false,
-                    trustServerCertificate: true,
-                    port: parseInt(config.port, 10),
-                    ...(config.options || {})
-                }
-            })
-
-            console.log('Connected to SQL Server successfully')
-            return this.pool
-        } catch (error) {
-            if (error.code === 'ETIMEOUT' || error.code === 'ELOGIN') {
-                console.warn('SQL Server is inactive or unreachable')
-            } else {
-                console.error('Error connecting to SQL Server:', error)
-                throw error
-            }
-        }
+  async connect(config: SqlServerConnectionInput): Promise<ConnectionPool | undefined> {
+    if (this.pool) {
+      await this.disconnect();
     }
 
-    async disconnect() {
-        if (!this.pool) {
-            console.warn('Not connected to SQL Server')
-            return
-        }
+    const normalizedHost =
+      'host' in config && typeof config.host === 'string'
+        ? config.host
+        : config.server;
+    const normalizedTopLevelPort =
+      typeof config.port === 'number'
+        ? config.port
+        : config.port !== undefined
+          ? Number.parseInt(String(config.port), 10)
+          : 1433;
+    const normalizedOptionPort =
+      typeof config.options?.port === 'number'
+        ? config.options.port
+        : config.options?.port !== undefined
+          ? Number.parseInt(String(config.options.port), 10)
+          : undefined;
+    const { options, ...baseConfig } = config;
+    const { port: _ignoredOptionPort, ...restOptions } = options ?? {};
 
-        try {
-            await this.pool.close()
-            console.log('Disconnected from SQL Server successfully')
-        } catch (error) {
-            console.error('Error disconnecting from SQL Server:', error)
-            throw error
-        } finally {
-            this.pool = null
-        }
+    const normalizedConfig: SqlConfig = {
+      ...baseConfig,
+      server: normalizedHost,
+      port: normalizedTopLevelPort,
+      options: {
+        ...restOptions,
+        port: normalizedOptionPort,
+        encrypt: options?.encrypt ?? false,
+        trustServerCertificate: options?.trustServerCertificate ?? true
+      }
+    };
+
+    this.config = normalizedConfig;
+
+    try {
+      this.pool = await sql.connect(normalizedConfig);
+      console.log('Connected to SQL Server successfully');
+      return this.pool;
+    } catch (error: unknown) {
+      const code =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? error.code
+          : undefined;
+
+      if (code === 'ETIMEOUT' || code === 'ELOGIN') {
+        console.warn('SQL Server is inactive or unreachable');
+        return undefined;
+      }
+
+      console.error('Error connecting to SQL Server:', error);
+      throw error;
+    }
+  }
+
+  async disconnect(): Promise<void> {
+    if (!this.pool) {
+      console.warn('Not connected to SQL Server');
+      return;
     }
 
-    async executeQuery(query, params = []) {
-        if (!this.pool) {
-            throw new Error('Not connected to SQL Server.')
-        }
+    try {
+      await this.pool.close();
+      console.log('Disconnected from SQL Server successfully');
+    } catch (error: unknown) {
+      console.error('Error disconnecting from SQL Server:', error);
+      throw error;
+    } finally {
+      this.pool = null;
+    }
+  }
 
-        try {
-            const request = this.pool.request()
-
-            params.forEach(param => {
-                request.input(param.name, param.type, param.value)
-            })
-
-            const result = await request.query(query)
-            return result.recordset
-        } catch (error) {
-            console.error('Error executing query:', error)
-            throw error
-        }
+  async executeQuery(
+    query: string,
+    params: readonly SqlServerQueryParameter[] = []
+  ): Promise<QueryRows> {
+    if (!this.pool) {
+      throw new Error('Not connected to SQL Server.');
     }
 
-    getStatus() {
-        return this.pool ? 'connected' : 'disconnected'
+    try {
+      const request = this.pool.request();
+
+      for (const parameter of params) {
+        request.input(parameter.name, parameter.type, parameter.value);
+      }
+
+      const result: IResult<Record<string, unknown>> = await request.query(query);
+      return result.recordset as QueryRows;
+    } catch (error: unknown) {
+      console.error('Error executing query:', error);
+      throw error;
+    }
+  }
+
+  getStatus(): ConnectionStatus {
+    return this.pool ? 'connected' : 'disconnected';
+  }
+
+  getConfig(): SqlConfig {
+    if (!this.config) {
+      throw new Error('No configuration available');
     }
 
-    getConfig() {
-        if (!this.config) {
-            throw new Error('No configuration available')
-        }
-        return this.config
-    }
+    return this.config;
+  }
 }
 
-export default SQLServerV1
+export default SQLServerV1;

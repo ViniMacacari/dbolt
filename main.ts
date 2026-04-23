@@ -1,61 +1,66 @@
-// @ts-nocheck
-import path from 'path'
-import fs from 'fs'
-import './api/server.js'
+import fs from 'fs';
+import path from 'path';
 
-const { app, BrowserWindow } = require('electron')
-const appRoot = path.resolve(__dirname, '..')
+import './api/server.js';
 
-let win: Electron.BrowserWindow | null
+const { app, BrowserWindow } = require('electron') as typeof import('electron');
+const appRoot = path.resolve(__dirname, '..');
 
-function createWindow() {
-    win = new BrowserWindow({
-        width: 800,
-        height: 655,
-        minHeight: 655,
-        minWidth: 800,
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-	    devTools: false
-        },
-        autoHideMenuBar: true,
-        resizable: true
-    })
+let win: InstanceType<typeof BrowserWindow> | null = null;
 
-    win.setMinimumSize(800, 655)
+function createWindow(): void {
+  win = new BrowserWindow({
+    width: 800,
+    height: 655,
+    minHeight: 655,
+    minWidth: 800,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      devTools: false
+    },
+    autoHideMenuBar: true,
+    resizable: true
+  });
 
-    const rendererUrl = process.env.ELECTRON_RENDERER_URL
-    const angularIndexPath = path.join(appRoot, 'dist', 'dbolt', 'browser', 'index.html')
+  win.setMinimumSize(800, 655);
 
-    if (rendererUrl) {
-        win.loadURL(rendererUrl)
-    } else if (fs.existsSync(angularIndexPath)) {
-        win.loadFile(angularIndexPath)
-    } else {
-        win.loadURL('http://localhost:4200')
-    }
+  const rendererUrl = process.env.ELECTRON_RENDERER_URL;
+  const angularIndexPath = path.join(
+    appRoot,
+    'dist',
+    'dbolt',
+    'browser',
+    'index.html'
+  );
 
-    win.webContents.on('did-finish-load', () => {
-        win.webContents.setZoomFactor(1.0)
-    })
+  if (rendererUrl) {
+    void win.loadURL(rendererUrl);
+  } else if (fs.existsSync(angularIndexPath)) {
+    void win.loadFile(angularIndexPath);
+  } else {
+    void win.loadURL('http://localhost:4200');
+  }
 
-    win.on('closed', () => {
-        win = null
-    })
+  win.webContents.on('did-finish-load', () => {
+    win?.webContents.setZoomFactor(1.0);
+  });
+
+  win.on('closed', () => {
+    win = null;
+  });
 }
 
-app.on('ready', createWindow)
+app.on('ready', createWindow);
 
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit()
-    }
-})
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
 
 app.on('activate', () => {
-    if (win === null) {
-        createWindow()
-    }
-})
-
+  if (win === null) {
+    createWindow();
+  }
+});

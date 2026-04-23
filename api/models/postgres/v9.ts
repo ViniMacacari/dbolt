@@ -1,83 +1,103 @@
-// @ts-nocheck
-import pkg from 'pg'
-const { Client } = pkg
+import { Client, type ClientConfig } from 'pg';
+
+import type {
+  ConnectionStatus,
+  DatabaseConnectionConfig,
+  QueryRows
+} from '../../types.js';
+
+type PgConnectionInput = DatabaseConnectionConfig | ClientConfig;
 
 class PgV1 {
-    constructor() {
-        if (!PgV1.instance) {
-            this.connection = null
-            this.config = null
-            PgV1.instance = this
-        }
-        return PgV1.instance
+  private static instance: PgV1 | null = null;
+
+  public connection: Client | null = null;
+  private config: ClientConfig | null = null;
+
+  constructor() {
+    if (PgV1.instance) {
+      return PgV1.instance;
     }
 
-    async connect(config) {
-        if (this.connection) {
-            await this.disconnect()
-        }
+    PgV1.instance = this;
+  }
 
-        if (!config || typeof config !== 'object') {
-            throw new Error('Invalid configuration')
-        }
-
-        try {
-            this.config = { ...config }
-            this.connection = new Client({
-                ...config,
-                database: config.database || 'postgres'
-            })
-            await this.connection.connect()
-            console.log('Connected to PostgreSQL successfully')
-            return this.connection
-        } catch (error) {
-            console.error('Error connecting to PostgreSQL:', error)
-            this.connection = null
-            throw error
-        }
+  async connect(config: PgConnectionInput): Promise<Client> {
+    if (this.connection) {
+      await this.disconnect();
     }
 
-    async disconnect() {
-        if (!this.connection) {
-            console.warn('Not connected to PostgreSQL')
-            return
-        }
+    this.config = {
+      ...config,
+      port:
+        typeof config.port === 'number'
+          ? config.port
+          : config.port !== undefined
+            ? Number.parseInt(String(config.port), 10)
+            : undefined,
+      database: config.database ?? 'postgres'
+    };
+    this.connection = new Client(this.config);
 
-        try {
-            await this.connection.end()
-            console.log('Disconnected from PostgreSQL successfully')
-        } catch (error) {
-            console.error('Error disconnecting from PostgreSQL:', error)
-            throw new error
-        } finally {
-            this.connection = null
-        }
+    try {
+      await this.connection.connect();
+      console.log('Connected to PostgreSQL successfully');
+      return this.connection;
+    } catch (error: unknown) {
+      console.error('Error connecting to PostgreSQL:', error);
+      this.connection = null;
+      throw error;
+    }
+  }
+
+  async disconnect(): Promise<void> {
+    if (!this.connection) {
+      console.warn('Not connected to PostgreSQL');
+      return;
     }
 
-    async executeQuery(query, params = []) {
-        if (!this.connection) {
-            throw new Error('Not connected to PostgreSQL.')
-        }
+    try {
+      await this.connection.end();
+      console.log('Disconnected from PostgreSQL successfully');
+    } catch (error: unknown) {
+      console.error('Error disconnecting from PostgreSQL:', error);
+      throw error;
+    } finally {
+      this.connection = null;
+    }
+  }
 
-        try {
-            const result = await this.connection.query(query, params)
-            return result.rows
-        } catch (error) {
-            console.error('Error executing query:', error)
-            throw error
-        }
+  async executeQuery(
+    query: string,
+    params: readonly unknown[] = []
+  ): Promise<QueryRows> {
+    if (!this.connection) {
+      throw new Error('Not connected to PostgreSQL.');
     }
 
-    getStatus() {
-        return this.connection ? 'connected' : 'disconnected'
+    try {
+      const result = await this.connection.query<Record<string, unknown>>(
+        query,
+        [...params]
+      );
+      return result.rows as QueryRows;
+    } catch (error: unknown) {
+      console.error('Error executing query:', error);
+      throw error;
+    }
+  }
+
+  getStatus(): ConnectionStatus {
+    return this.connection ? 'connected' : 'disconnected';
+  }
+
+  getConfig(): ClientConfig {
+    if (!this.config) {
+      throw new Error('No configuration available');
     }
 
-    getConfig() {
-        if (!this.config) {
-            throw new Error('No configuration available')
-        }
-        return this.config
-    }
+    return this.config;
+  }
 }
 
-export default PgV1
+export default PgV1;

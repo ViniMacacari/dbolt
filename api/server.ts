@@ -1,38 +1,39 @@
-// @ts-nocheck
-import express from 'express'
-import cors from 'cors'
+import cors from 'cors';
+import express, { type Application } from 'express';
+import type { Server } from 'node:http';
 
-import databases from './router/dbolt/databases.js'
-import connections from './router/dbolt/connections.js'
-import query from './router/dbolt/query.js'
+import databases from './router/dbolt/databases.js';
+import connections from './router/dbolt/connections.js';
+import query from './router/dbolt/query.js';
+import hanaV1 from './router/hana/hana-v1.js';
+import pgV9 from './router/postgres/v9.js';
+import mysql5 from './router/mysql/mysql5.js';
+import sqlserver2008 from './router/sqlserver/v2008.js';
 
-import hanaV1 from './router/hana/hana-v1.js'
-import pgV9 from './router/postgres/v9.js'
-import mysql5 from './router/mysql/mysql5.js'
-import sqlserver2008 from './router/sqlserver/v2008.js'
-
-const app = express()
-
-app.use(express.json())
-app.use(cors())
-
-const PORT = 47953
+const PORT = 47953;
 
 class InternalServer {
-    loadServer() {
-        app.use('/api/databases', databases)
-        app.use('/api/connections', connections)
-        app.use('/api/query', query)
+  private readonly app: Application;
 
-        app.use('/api/Hana', hanaV1)
-        app.use('/api/Postgres/v9', pgV9)
-        app.use('/api/MySQL/v5', mysql5)
-        app.use('/api/SqlServer/2008', sqlserver2008)
+  constructor() {
+    this.app = express();
+    this.app.use(express.json());
+    this.app.use(cors());
+  }
 
-        app.listen(PORT, () => {
-            console.log(`App listening on port ${PORT}`)
-        })
-    }
+  loadServer(): Server {
+    this.app.use('/api/databases', databases);
+    this.app.use('/api/connections', connections);
+    this.app.use('/api/query', query);
+    this.app.use('/api/Hana', hanaV1);
+    this.app.use('/api/Postgres/v9', pgV9);
+    this.app.use('/api/MySQL/v5', mysql5);
+    this.app.use('/api/SqlServer/2008', sqlserver2008);
+
+    return this.app.listen(PORT, () => {
+      console.log(`App listening on port ${PORT}`);
+    });
+  }
 }
 
-export default new InternalServer().loadServer()
+export default new InternalServer().loadServer();
