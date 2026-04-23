@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "rootDir": ".",
+    "outDir": "dist-electron",
+    "strict": false,
+    "noImplicitAny": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "declaration": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "useUnknownInCatchVariables": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "main.ts",
+    "api/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "dist-electron",
+    "node_modules",
+    "src"
+  ]
+}
