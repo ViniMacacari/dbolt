@@ -36,6 +36,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   cacheSql: string = ''
   queryReponse: any[] = []
   queryLines: number = 50
+  queryFetchSize: number = 50
   maxResultLines: number | null = 0
 
   dataSave: any = {}
@@ -219,7 +220,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     LoadingComponent.show()
 
     try {
-      this.queryLines = 50
+      this.queryFetchSize = this.normalizeQueryLimit(this.queryFetchSize)
+      this.queryLines = this.queryFetchSize
       this.cacheSql = sql
 
       const result: any = await this.runQuery.runSQL(sql, this.queryLines, this.tabInfo?.dbInfo)
@@ -235,12 +237,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   async newValues(): Promise<void> {
-    if (this.queryReponse.length >= (this.maxResultLines || 0)) return
+    if (this.maxResultLines === null || this.maxResultLines === undefined) return
+    if (this.queryReponse.length >= this.maxResultLines) return
 
     LoadingComponent.show()
 
     try {
-      this.queryLines += 50
+      this.queryLines += this.queryFetchSize
       const result: any = await this.runQuery.runSQL(this.cacheSql, this.queryLines, this.tabInfo?.dbInfo)
       this.queryReponse = result
       this.persistQueryState()
@@ -294,12 +297,30 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.isSaveAsOpen = false
   }
 
+  onQueryFetchSizeChange(size: number): void {
+    this.queryFetchSize = this.normalizeQueryLimit(size)
+    this.persistQueryState()
+  }
+
+  async refreshQueryWithFetchSize(): Promise<void> {
+    if (!this.cacheSql) return
+
+    await this.runSql(this.cacheSql)
+  }
+
+  closeQueryResult(): void {
+    this.queryReponse = []
+    this.maxResultLines = 0
+    this.persistQueryState()
+  }
+
   private restoreQueryState(): void {
     const queryState = this.tabInfo?.queryState
 
     this.cacheSql = queryState?.cacheSql || ''
     this.queryReponse = queryState?.queryResponse || []
     this.queryLines = queryState?.queryLines ?? 50
+    this.queryFetchSize = queryState?.queryFetchSize ?? 50
     this.maxResultLines = queryState?.maxResultLines ?? 0
   }
 
@@ -310,7 +331,15 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       cacheSql: this.cacheSql,
       queryResponse: this.queryReponse,
       queryLines: this.queryLines,
+      queryFetchSize: this.queryFetchSize,
       maxResultLines: this.maxResultLines
     }
+  }
+
+  private normalizeQueryLimit(size: number): number {
+    const parsed = Number(size)
+    if (!Number.isFinite(parsed) || parsed < 1) return 50
+
+    return Math.floor(parsed)
   }
 }

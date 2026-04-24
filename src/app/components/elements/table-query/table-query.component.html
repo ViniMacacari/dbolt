@@ -1,5 +1,22 @@
 <div #tableWrapper class="table-wrapper">
-    <div class="resize-handle" (mousedown)="startResize($event)"></div>
+    <div class="result-bar">
+        <div class="resize-handle" (mousedown)="startResize($event)"></div>
+        <div class="result-actions">
+            <div class="result-title">
+                <span>Results</span>
+                <small *ngIf="isSelectResult && totalRows !== null">{{ totalRows }} rows</small>
+            </div>
+
+            <div class="row-limit" *ngIf="isSelectResult">
+                <label for="query-row-limit">Rows</label>
+                <input id="query-row-limit" type="number" min="1" step="1" [value]="rowLimit"
+                    (input)="onRowLimitInput($event)" (keydown.enter)="applyRowLimit()">
+                <button type="button" (click)="applyRowLimit()">Apply</button>
+            </div>
+
+            <button type="button" class="close-result" aria-label="Close results" (click)="close()">x</button>
+        </div>
+    </div>
     <ag-grid-angular #agGrid class="ag-root" [rowData]="query" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef"
         [domLayout]="'normal'" [animateRows]="true" (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)">
     </ag-grid-angular>

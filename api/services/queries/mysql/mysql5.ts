@@ -1,5 +1,13 @@
 import MySQLV1 from '../../../models/mysql/mysql5.js';
 import { getErrorMessage } from '../../../utils/errors.js';
+import {
+  addLimitClause,
+  hasTopLevelClause,
+  isReadOnlySelectQuery,
+  normalizeRowLimit,
+  removeTopLevelOrderBy,
+  trimStatementTerminator
+} from '../../../utils/sql-query.js';
 
 import type {
   QueryExecutionResult,
@@ -13,27 +21,26 @@ class SQueryMySQLV1 {
 
   async query(sql: string, maxLines: number | null = null, connectionKey?: string): Promise<QueryExecutionResult> {
     let totalRows: number | null = null;
+    const isSelectQuery = isReadOnlySelectQuery(sql);
+    const rowLimit = normalizeRowLimit(maxLines);
 
-    if (this.isSelectQuery(sql)) {
+    if (isSelectQuery) {
       const countSql = this.getCountQuery(sql);
       const countResult = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
       totalRows = countResult[0]?.TOTAL_ROWS ?? null;
     }
 
-    let executableSql = sql;
+    let executableSql = trimStatementTerminator(sql);
 
-    if (maxLines && !this.hasLimitClause(executableSql) && this.isSelectQuery(executableSql)) {
-      executableSql = this.addLimitToQuery(executableSql, maxLines);
+    if (rowLimit && !this.hasLimitClause(executableSql) && isSelectQuery) {
+      executableSql = this.addLimitToQuery(executableSql, rowLimit);
     }
 
     const result = await this.db.executeQuery(executableSql, [], connectionKey);
 
-    if (result.length === 0) {
-      const withoutLimit = executableSql
-        .replace(/limit\s+\d+(\s+offset\s+\d+)?/i, '')
-        .trim();
+    if (result.length === 0 && isSelectQuery) {
       const columnsResult = await this.db.executeQuery(
-        this.addLimitToQuery(withoutLimit, 0),
+        `SELECT * FROM (${trimStatementTerminator(executableSql)}) AS empty_columns WHERE 1 = 0`,
         [],
         connectionKey
       );
@@ -55,47 +62,19 @@ class SQueryMySQLV1 {
   }
 
   hasLimitClause(sql: string): boolean {
-    const lowerSql = sql.toLowerCase();
-    return lowerSql.includes(' limit ') || lowerSql.includes(' offset ');
-  }
-
-  isSelectQuery(sql: string): boolean {
-    const trimmedSql = sql.trim().toLowerCase();
-    const sqlWithoutComments = trimmedSql
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => !line.startsWith('--'))
-      .join(' ');
-    const nonSelectKeywords =
-      /^(insert|update|delete|alter|drop|create|truncate|merge|grant|revoke|exec|set|use|describe|explain|show|call|backup|restore|analyze|optimize|begin|commit|rollback)\b/;
-
-    return (
-      !nonSelectKeywords.test(sqlWithoutComments) &&
-      sqlWithoutComments.startsWith('select ')
-    );
+    return hasTopLevelClause(sql, 'limit') || hasTopLevelClause(sql, 'offset');
   }
 
   addLimitToQuery(sql: string, maxLines: number): string {
-    const trimmedSql = sql.trim();
-    if (trimmedSql.toLowerCase().startsWith('with ')) {
-      const lastSelectIndex = trimmedSql.lastIndexOf('select ');
-      if (lastSelectIndex !== -1) {
-        const beforeSelect = trimmedSql.slice(0, lastSelectIndex);
-        const afterSelect = trimmedSql.slice(lastSelectIndex);
-        return `${beforeSelect}${afterSelect.trim()} LIMIT ${maxLines}`;
-      }
-    }
-
-    return `${trimmedSql} LIMIT ${maxLines}`;
+    return addLimitClause(sql, maxLines);
   }
 
   getCountQuery(sql: string): string {
-    const trimmedSql = sql.trim().toLowerCase();
-    if (!trimmedSql.startsWith('select')) {
+    if (!isReadOnlySelectQuery(sql)) {
       throw new Error('Not a SELECT query for count calculation');
     }
 
-    const withoutOrderBy = sql.replace(/order\s+by\s+[^)]+$/gi, '');
+    const withoutOrderBy = removeTopLevelOrderBy(sql);
     return `SELECT COUNT(*) AS TOTAL_ROWS FROM (${withoutOrderBy}) AS count_query`;
   }
 }

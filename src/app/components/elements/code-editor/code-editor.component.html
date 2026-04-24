@@ -20,7 +20,10 @@
         <div class="code-editor py-2">
             <div #editorContainer class="editor"></div>
             <app-table-query (newValuesQuery)="newValues()" *ngIf="queryReponse.length > 0" [query]="queryReponse"
-                [calcWidth]="widthTable"></app-table-query>
+                [calcWidth]="widthTable" [rowLimit]="queryFetchSize" [totalRows]="maxResultLines"
+                [isSelectResult]="maxResultLines !== null && maxResultLines !== undefined"
+                (rowLimitChange)="onQueryFetchSizeChange($event)" (refreshQuery)="refreshQueryWithFetchSize()"
+                (closeResult)="closeQueryResult()"></app-table-query>
         </div>
     </div>
 </div>

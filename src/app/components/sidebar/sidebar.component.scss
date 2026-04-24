@@ -240,6 +240,32 @@
     text-transform: uppercase;
 }
 
+.quick-selector-search {
+    border-bottom: 1px solid #2b2b2b;
+    padding: 12px 14px;
+
+    input {
+        background: #232020;
+        border: 1px solid #353535;
+        border-radius: 13px;
+        color: #e8eaed;
+        font-family: 'Nunito';
+        font-size: .84em;
+        outline: none;
+        padding: 11px 12px;
+        width: 100%;
+
+        &::placeholder {
+            color: #777;
+        }
+
+        &:focus {
+            border-color: #739eca;
+            box-shadow: 0 0 0 3px rgba(115, 158, 202, 0.1);
+        }
+    }
+}
+
 .quick-selector-body {
     display: flex;
     flex-direction: column;

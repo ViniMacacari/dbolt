@@ -32,6 +32,7 @@ export class SidebarComponent {
   expandedDatabases: Set<string> = new Set()
   clickTimeout: any = null
   quickSelectorType: 'connection' | 'database' | 'schema' | null = null
+  quickSelectorFilter: string = ''
 
   constructor(
     private IAPI: InternalApiService,
@@ -47,12 +48,19 @@ export class SidebarComponent {
 
   toggleQuickSelector(type: 'connection' | 'database' | 'schema', event: MouseEvent): void {
     event.stopPropagation()
-    this.quickSelectorType = this.quickSelectorType === type ? null : type
+    if (this.quickSelectorType === type) {
+      this.closeQuickSelector()
+      return
+    }
+
+    this.quickSelectorFilter = ''
+    this.quickSelectorType = type
   }
 
   closeQuickSelector(event?: MouseEvent): void {
     event?.stopPropagation()
     this.quickSelectorType = null
+    this.quickSelectorFilter = ''
   }
 
   getQuickSelectorTitle(): string {
@@ -104,6 +112,21 @@ export class SidebarComponent {
     }
 
     return []
+  }
+
+  getFilteredQuickSelectorOptions(): any[] {
+    const filter = this.quickSelectorFilter.trim().toLowerCase()
+    const options = this.getQuickSelectorOptions()
+
+    if (!filter) return options
+
+    return options.filter((option) =>
+      `${option.label || ''} ${option.description || ''}`.toLowerCase().includes(filter)
+    )
+  }
+
+  onQuickSelectorFilter(event: Event): void {
+    this.quickSelectorFilter = (event.target as HTMLInputElement).value
   }
 
   async selectQuickOption(option: any, event: MouseEvent): Promise<void> {

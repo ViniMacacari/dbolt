@@ -1,5 +1,15 @@
 import SQLServerV1 from '../../../models/sqlserver/v2008.js';
 import SSSQLServerV1 from '../../schemas/sqlserver/v2008.js';
+import {
+  addSqlServerTopClause,
+  hasSqlServerTopClause,
+  hasTopLevelClause,
+  isReadOnlySelectQuery,
+  normalizeRowLimit,
+  removeTopLevelOrderBy,
+  splitCtePrefix,
+  trimStatementTerminator
+} from '../../../utils/sql-query.js';
 
 import type {
   QueryExecutionResult,
@@ -12,24 +22,29 @@ class SQuerySQLServerV1 {
   private readonly db = new SQLServerV1();
 
   async query(sql: string, maxLines: number | null = null, connectionKey?: string): Promise<QueryExecutionResult> {
-    let totalRows: number | null = null;
-    let executableSql = await this.adjustSchemaInQuery(sql, connectionKey);
-    const cleanedSql = this.removeComments(executableSql);
+    const isSelectQuery = isReadOnlySelectQuery(sql);
+    const rowLimit = normalizeRowLimit(maxLines);
 
-    if (this.isSelectQuery(cleanedSql)) {
-      const countSql = this.addTotalRowCountQuery(executableSql);
-      const resultWithCount = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
-      totalRows = resultWithCount[0]?.total_rows ?? 0;
+    if (!isSelectQuery) {
+      await this.db.executeQuery(sql, [], connectionKey);
+      return { success: true };
     }
 
-    if (maxLines && this.isSelectQuery(cleanedSql) && !this.hasLimitClause(cleanedSql)) {
-      executableSql = this.addPaginationToQuery(executableSql, maxLines);
+    let totalRows: number | null = null;
+    let executableSql = await this.adjustSchemaInQuery(sql, connectionKey);
+
+    const countSql = this.addTotalRowCountQuery(executableSql);
+    const resultWithCount = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
+    totalRows = resultWithCount[0]?.total_rows ?? 0;
+
+    if (rowLimit && !this.hasLimitClause(executableSql)) {
+      executableSql = this.addPaginationToQuery(executableSql, rowLimit);
     }
 
     const result = await this.db.executeQuery(executableSql, [], connectionKey);
 
     if (result.length === 0) {
-      const columnSql = this.addPaginationToQuery(executableSql, 0);
+      const columnSql = this.getEmptyColumnsQuery(executableSql);
       const columnsResult = await this.db.executeQuery(columnSql, [], connectionKey);
       const columns = Object.keys(columnsResult[0] ?? {});
 
@@ -49,54 +64,27 @@ class SQuerySQLServerV1 {
   }
 
   hasLimitClause(sql: string): boolean {
-    const cleanedSql = this.removeComments(sql);
-    const lowerSql = cleanedSql.toLowerCase();
-    return lowerSql.includes(' fetch next ') || lowerSql.includes(' offset ');
-  }
-
-  hasOrderByClause(sql: string): boolean {
-    const cleanedSql = this.removeComments(sql);
-    const lowerSql = cleanedSql.toLowerCase();
-    return lowerSql.includes(' order by ');
-  }
-
-  isSelectQuery(sql: string): boolean {
-    const cleanedSql = this.removeComments(sql).trim().toLowerCase();
-    const nonSelectKeywords =
-      /^(insert|update|delete|alter|drop|create|truncate|merge|grant|revoke|exec|set|use|describe|explain|show|call|backup|restore|analyze|optimize|begin|commit|rollback)\b/;
-
-    return !nonSelectKeywords.test(cleanedSql) && cleanedSql.startsWith('select ');
-  }
-
-  removeComments(sql: string): string {
-    return sql.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '').trim();
+    return hasSqlServerTopClause(sql) ||
+      hasTopLevelClause(sql, 'offset') ||
+      hasTopLevelClause(sql, 'fetch');
   }
 
   addPaginationToQuery(sql: string, maxLines: number): string {
-    const trimmedSql = sql.trim();
-    const orderByClause = this.hasOrderByClause(trimmedSql)
-      ? this.extractOrderByClause(trimmedSql)
-      : 'ORDER BY (SELECT NULL)';
-
-    return `
-      SELECT TOP ${maxLines} *
-      FROM (${trimmedSql.replace(/order\s+by\s+.+$/i, '')}) AS PaginatedQuery
-      ${orderByClause}
-    `;
-  }
-
-  extractOrderByClause(sql: string): string {
-    const match = sql.match(/order\s+by\s+.+$/i);
-    if (!match) {
-      throw new Error('ORDER BY clause is required for pagination.');
-    }
-
-    return match[0];
+    return addSqlServerTopClause(trimStatementTerminator(sql), maxLines);
   }
 
   addTotalRowCountQuery(sql: string): string {
-    const trimmedSql = this.removeComments(sql).trim();
-    return `SELECT COUNT(*) OVER() AS total_rows, * FROM (${trimmedSql}) AS query_with_count`;
+    const { prefix, mainSql } = splitCtePrefix(sql);
+    const countableSql = removeTopLevelOrderBy(mainSql);
+
+    return `${prefix} SELECT COUNT(*) AS total_rows FROM (${countableSql}) AS query_with_count`;
+  }
+
+  getEmptyColumnsQuery(sql: string): string {
+    const { prefix, mainSql } = splitCtePrefix(sql);
+    const countableSql = removeTopLevelOrderBy(mainSql);
+
+    return `${prefix} SELECT TOP (0) * FROM (${countableSql}) AS empty_columns`;
   }
 
   async adjustSchemaInQuery(sql: string, connectionKey?: string): Promise<string> {
@@ -110,14 +98,28 @@ class SQuerySQLServerV1 {
     }
 
     const regex = /(?:from|join)\s+([\w\d]+(?:\.[\w\d]+)?)(\s+[as]?\s+\w+)?/gi;
+    const cteNames = this.getCteNames(sql);
 
     return sql.replace(regex, (match, table: string) => {
-      if (table.includes('.')) {
+      if (table.includes('.') || cteNames.has(table.toLowerCase())) {
         return match;
       }
 
       return match.replace(table, `${currentSchema}.${table}`);
     });
+  }
+
+  private getCteNames(sql: string): Set<string> {
+    const { prefix } = splitCtePrefix(sql);
+    const cteNames = new Set<string>();
+    const regex = /(?:with|,)\s*([\w\d_]+)(?:\s*\([^)]*\))?\s+as\s*\(/gi;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(prefix)) !== null) {
+      cteNames.add(match[1].toLowerCase());
+    }
+
+    return cteNames;
   }
 }
 

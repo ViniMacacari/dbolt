@@ -31,8 +31,14 @@ export class TableQueryComponent implements AfterViewInit {
   private scrollTop = 0
 
   @Input() calcWidth: number = 300
+  @Input() rowLimit: number = 50
+  @Input() totalRows: number | null = null
+  @Input() isSelectResult: boolean = false
 
   @Output() newValuesQuery = new EventEmitter<void>()
+  @Output() closeResult = new EventEmitter<void>()
+  @Output() rowLimitChange = new EventEmitter<number>()
+  @Output() refreshQuery = new EventEmitter<void>()
 
   @ViewChild('tableWrapper') tableWrapper!: ElementRef<HTMLDivElement>
   @ViewChild('agGrid') agGrid!: AgGridAngular
@@ -191,6 +197,21 @@ export class TableQueryComponent implements AfterViewInit {
     this.saveScrollPosition()
     this.newValuesQuery.emit()
     this.restoreScrollPosition()
+  }
+
+  onRowLimitInput(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value)
+    if (!Number.isFinite(value)) return
+
+    this.rowLimitChange.emit(Math.max(1, Math.floor(value)))
+  }
+
+  applyRowLimit(): void {
+    this.refreshQuery.emit()
+  }
+
+  close(): void {
+    this.closeResult.emit()
   }
 
   onBodyScroll(event: any) {
