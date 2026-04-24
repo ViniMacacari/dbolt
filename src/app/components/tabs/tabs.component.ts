@@ -161,7 +161,7 @@ export class TabsComponent {
         sql: event.sql
       },
       originalContent: event.sql,
-      dbInfo: this.createTabDbInfo(event.dbSchema, true),
+      dbInfo: this.createTabDbInfo(null, true),
       icon: 'CODE'
     }
 

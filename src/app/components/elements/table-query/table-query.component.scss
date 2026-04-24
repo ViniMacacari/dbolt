@@ -129,6 +129,8 @@
     }
 
     input {
+        -moz-appearance: textfield;
+        appearance: textfield;
         background: #292727;
         border: 1px solid #3b3b3b;
         border-radius: 9px;
@@ -142,6 +144,12 @@
 
         &:focus {
             border-color: #739eca;
+        }
+
+        &::-webkit-inner-spin-button,
+        &::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
     }
 

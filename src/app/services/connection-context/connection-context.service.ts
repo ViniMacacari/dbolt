@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core'
 import { InternalApiService } from '../requests/internal-api.service'
-import { ConnectionsService } from '../resolve-connections/connections.service'
+import { ConnectionsService, SavedConnection } from '../resolve-connections/connections.service'
 
 @Injectable({
   providedIn: 'root'
@@ -25,22 +25,22 @@ export class ConnectionContextService {
   }
 
   async ensureContext(schemaDb: any): Promise<any> {
-    const context = this.createContext(schemaDb)
+    let context = this.createContext(schemaDb)
+
+    if (!context?.sgbd && !context?.connId && !context?.connectionId) {
+      throw new Error('No database connection selected for this tab.')
+    }
+
+    const connection = await this.resolveSavedConnection(context)
+    context = this.enrichContextWithConnection(context, connection)
 
     if (!context?.sgbd || !context?.version) {
       throw new Error('No database connection selected for this tab.')
     }
 
-    const connectionId = context.connId || context.connectionId
-    if (!connectionId) {
-      throw new Error('Selected connection has no saved connection id.')
-    }
-
-    const connection = await this.connectionsService.getConnectionById(connectionId)
-
     const stateKey = [
       context.connectionKey,
-      connection.id ?? connectionId,
+      connection.id,
       connection.host,
       connection.port,
       connection.user,
@@ -89,5 +89,44 @@ export class ConnectionContextService {
 
   private createConnectionKey(): string {
     return `tab-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+  }
+
+  private async resolveSavedConnection(context: any): Promise<SavedConnection> {
+    const connectionId = context.connId || context.connectionId
+    if (connectionId) {
+      return this.connectionsService.getConnectionById(connectionId)
+    }
+
+    const connections = await this.connectionsService.loadConnections()
+    const matchedConnection = connections.find((connection) =>
+      this.sameSavedConnection(connection, context)
+    )
+
+    if (!matchedConnection) {
+      throw new Error('Selected connection was not found in saved connections.')
+    }
+
+    return matchedConnection
+  }
+
+  private sameSavedConnection(connection: SavedConnection, context: any): boolean {
+    const sameDatabase = connection.database === context.sgbd
+    const sameHost = !context.host || connection.host === context.host
+    const samePort = !context.port || String(connection.port) === String(context.port)
+    const sameName = !context.name || connection.name === context.name
+
+    return sameDatabase && sameHost && samePort && sameName
+  }
+
+  private enrichContextWithConnection(context: any, connection: SavedConnection): any {
+    return {
+      ...context,
+      connId: context.connId || context.connectionId || connection.id,
+      name: context.name || connection.name,
+      host: context.host || connection.host,
+      port: context.port || connection.port,
+      sgbd: context.sgbd || connection.database,
+      version: context.version || connection.version
+    }
   }
 }
