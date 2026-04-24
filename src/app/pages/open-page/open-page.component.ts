@@ -29,8 +29,17 @@ export class OpenPageComponent {
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
-    this.getConfigurations()
-    await this.loadConnections()
+    LoadingComponent.show('Loading saved connections...')
+
+    try {
+      await this.getConfigurations()
+      await this.loadConnections()
+    } catch (error: any) {
+      console.error(error)
+      this.toast.showToast(error.message || 'Error loading saved connections', 'red')
+    } finally {
+      LoadingComponent.hide()
+    }
   }
 
   async getConfigurations(): Promise<void> {

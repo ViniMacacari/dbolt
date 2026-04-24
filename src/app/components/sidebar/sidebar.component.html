@@ -1,9 +1,15 @@
 <div class="sidebar" [class.open]="isOpen">
-    <div (click)="toggle()" class="d-flex justify-content-center align-items-center w-100 my-2 py-1 toogle-div">
-        <img src="icons/menu.png" height="30px" class="toogle-img">
+    <div class="sidebar-actions my-2">
+        <button type="button" (click)="toggle()" class="sidebar-action-button menu-button">
+            <img src="icons/menu.png" height="24px" class="toogle-img">
+        </button>
+        <button type="button" (click)="goToHome()" class="sidebar-action-button home-button">
+            Home
+        </button>
     </div>
     <div class="py-2"></div>
 
+    <p class="selected-title">Currently selected</p>
     <div class="sgbd">
         <img src="db-logo/{{ selectedSchemaDB?.sgbd }}.png" height="15px" width="15px">
         <p class="text-min w-100">{{ selectedSchemaDB?.sgbd }} ({{ selectedSchemaDB?.name }})</p>
@@ -33,7 +39,8 @@
                 <div *ngFor="let database of getSchemasByConnection(connection)" class="d-flex flex-column">
                     <div class="separator"></div>
                     <div (click)="toggleDatabase(connection.id + '-' + database.database)"
-                        class="d-flex align-items-center gap-2">
+                        class="database-row d-flex align-items-center gap-2"
+                        [class.selected-database]="isSelectedDatabase(connection, database)">
                         <img src="icons/database.png" height="15px" width="15px">
                         <h2 class="database-name">{{ database.database }}</h2>
                     </div>
@@ -71,7 +78,8 @@
                             port: connection.port,
                             password: connection.password,
                             user: connection.user
-                        })" class="d-flex align-items-center gap-2 mb-2">
+                        })" class="schema-row d-flex align-items-center gap-2 mb-2"
+                            [class.selected-schema]="isSelectedSchema(connection, database.database, schema)">
                             <img src="icons/schema.png" height="10px" width="10px">
                             <p class="text-min-gray">{{ schema }}</p>
                         </div>

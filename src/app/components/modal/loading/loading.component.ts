@@ -15,18 +15,20 @@ export class LoadingComponent {
   minutes = 0
   static interval: any = null
   static startTime = 0
-  @Input() message = 'Connecting to database...'
+  private defaultMessage = 'Connecting to database...'
+  @Input() message = this.defaultMessage
 
   constructor(private renderer: Renderer2) {
     LoadingComponent.instance = this
   }
 
-  static show() {
+  static show(message?: string) {
     if (LoadingComponent.interval) {
       clearInterval(LoadingComponent.interval)
     }
 
     LoadingComponent.instance.isLoading = true
+    LoadingComponent.instance.message = message || LoadingComponent.instance.defaultMessage
     LoadingComponent.instance.seconds = 0
     LoadingComponent.instance.minutes = 0
     LoadingComponent.instance.renderer.setStyle(document.body, 'overflow', 'hidden')
@@ -45,6 +47,7 @@ export class LoadingComponent {
       LoadingComponent.interval = null
     }
     LoadingComponent.instance.isLoading = false
+    LoadingComponent.instance.message = LoadingComponent.instance.defaultMessage
     LoadingComponent.instance.seconds = 0
     LoadingComponent.instance.minutes = 0
     LoadingComponent.instance.renderer.removeStyle(document.body, 'overflow')

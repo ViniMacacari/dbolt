@@ -1,7 +1,7 @@
 import { Component, ViewChild, Output, EventEmitter } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../services/requests/internal-api.service'
-import { Router, ActivatedRoute } from '@angular/router'
+import { ActivatedRoute } from '@angular/router'
 import { SidebarComponent } from "../../components/sidebar/sidebar.component"
 import { TabsComponent } from "../../components/tabs/tabs.component"
 import { LoadingComponent } from '../../components/modal/loading/loading.component'
@@ -46,7 +46,6 @@ export class DatabaseManagerComponent {
   constructor(
     private IAPI: InternalApiService,
     private route: ActivatedRoute,
-    private router: Router,
     private dbSchemaService: GetDbschemaService
   ) { }
 

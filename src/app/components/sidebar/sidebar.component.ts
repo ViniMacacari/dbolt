@@ -5,6 +5,7 @@ import { LoadingComponent } from '../modal/loading/loading.component'
 import { ToastComponent } from '../toast/toast.component'
 import { EditConnectionComponent } from "../modal/edit-connection/edit-connection.component"
 import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
+import { Router } from '@angular/router'
 import { connect } from 'rxjs'
 import { version } from 'sortablejs'
 
@@ -34,12 +35,17 @@ export class SidebarComponent {
   constructor(
     private IAPI: InternalApiService,
     private cdr: ChangeDetectorRef,
-    private dbSchemaService: GetDbschemaService
+    private dbSchemaService: GetDbschemaService,
+    private router: Router
   ) { }
 
   toggle() {
     this.isOpen = !this.isOpen
     this.sidebarStatusChange.emit(this.isOpen)
+  }
+
+  goToHome(): void {
+    this.router.navigate(['/'])
   }
 
   toggleConnection(connectionId: number) {
@@ -70,6 +76,27 @@ export class SidebarComponent {
       (item: any) =>
         item.host === connection.host && item.port === connection.port
     )
+  }
+
+  isSelectedDatabase(connection: any, database: any): boolean {
+    if (!this.selectedSchemaDB) return false
+
+    return this.isSameConnection(connection) &&
+      this.selectedSchemaDB.database === database.database
+  }
+
+  isSelectedSchema(connection: any, database: string, schema: string): boolean {
+    if (!this.selectedSchemaDB) return false
+
+    return this.isSameConnection(connection) &&
+      this.selectedSchemaDB.database === database &&
+      this.selectedSchemaDB.schema === schema
+  }
+
+  private isSameConnection(connection: any): boolean {
+    return this.selectedSchemaDB?.host === connection.host &&
+      String(this.selectedSchemaDB?.port) === String(connection.port) &&
+      this.selectedSchemaDB?.sgbd === connection.database
   }
 
   async canConnect(connection: any): Promise<void> {
@@ -186,7 +213,8 @@ export class SidebarComponent {
         user: connection.user,
         password: connection.password,
         database: connection.sgbd,
-        version: connection.version
+        version: connection.version,
+        id: connection.connectionId || connection.id
       })
 
       const matchedConnection = this.dbSchemas.data.find((db: any) =>
@@ -206,7 +234,7 @@ export class SidebarComponent {
         name: connection.name,
         host: connection.host,
         port: connection.port,
-        connId: connection.id
+        connId: connection.connectionId || connection.id
       }
 
       this.dbSchemaService.setSelectedSchemaDB(this.selectedSchemaDB)
