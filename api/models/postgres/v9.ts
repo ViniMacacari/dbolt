@@ -9,25 +9,16 @@ import type {
 type PgConnectionInput = DatabaseConnectionConfig | ClientConfig;
 
 class PgV1 {
-  private static instance: PgV1 | null = null;
+  private readonly defaultConnectionKey = 'default';
+  private static readonly connections = new Map<string, { connection: Client; config: ClientConfig }>();
 
-  public connection: Client | null = null;
-  private config: ClientConfig | null = null;
-
-  constructor() {
-    if (PgV1.instance) {
-      return PgV1.instance;
+  async connect(config: PgConnectionInput, connectionKey?: string): Promise<Client> {
+    const key = this.getConnectionKey(connectionKey);
+    if (PgV1.connections.has(key)) {
+      await this.disconnect(key);
     }
 
-    PgV1.instance = this;
-  }
-
-  async connect(config: PgConnectionInput): Promise<Client> {
-    if (this.connection) {
-      await this.disconnect();
-    }
-
-    this.config = {
+    const normalizedConfig: ClientConfig = {
       ...config,
       port:
         typeof config.port === 'number'
@@ -37,46 +28,51 @@ class PgV1 {
             : undefined,
       database: config.database ?? 'postgres'
     };
-    this.connection = new Client(this.config);
+    const connection = new Client(normalizedConfig);
 
     try {
-      await this.connection.connect();
+      await connection.connect();
+      PgV1.connections.set(key, { connection, config: normalizedConfig });
       console.log('Connected to PostgreSQL successfully');
-      return this.connection;
+      return connection;
     } catch (error: unknown) {
       console.error('Error connecting to PostgreSQL:', error);
-      this.connection = null;
       throw error;
     }
   }
 
-  async disconnect(): Promise<void> {
-    if (!this.connection) {
+  async disconnect(connectionKey?: string): Promise<void> {
+    const key = this.getConnectionKey(connectionKey);
+    const state = PgV1.connections.get(key);
+
+    if (!state) {
       console.warn('Not connected to PostgreSQL');
       return;
     }
 
     try {
-      await this.connection.end();
+      await state.connection.end();
       console.log('Disconnected from PostgreSQL successfully');
     } catch (error: unknown) {
       console.error('Error disconnecting from PostgreSQL:', error);
       throw error;
     } finally {
-      this.connection = null;
+      PgV1.connections.delete(key);
     }
   }
 
   async executeQuery(
     query: string,
-    params: readonly unknown[] = []
+    params: readonly unknown[] = [],
+    connectionKey?: string
   ): Promise<QueryRows> {
-    if (!this.connection) {
+    const state = PgV1.connections.get(this.getConnectionKey(connectionKey));
+    if (!state) {
       throw new Error('Not connected to PostgreSQL.');
     }
 
     try {
-      const result = await this.connection.query<Record<string, unknown>>(
+      const result = await state.connection.query<Record<string, unknown>>(
         query,
         [...params]
       );
@@ -87,16 +83,21 @@ class PgV1 {
     }
   }
 
-  getStatus(): ConnectionStatus {
-    return this.connection ? 'connected' : 'disconnected';
+  getStatus(connectionKey?: string): ConnectionStatus {
+    return PgV1.connections.has(this.getConnectionKey(connectionKey)) ? 'connected' : 'disconnected';
   }
 
-  getConfig(): ClientConfig {
-    if (!this.config) {
+  getConfig(connectionKey?: string): ClientConfig {
+    const state = PgV1.connections.get(this.getConnectionKey(connectionKey));
+    if (!state) {
       throw new Error('No configuration available');
     }
 
-    return this.config;
+    return state.config;
+  }
+
+  private getConnectionKey(connectionKey?: string): string {
+    return connectionKey || this.defaultConnectionKey;
   }
 }
 

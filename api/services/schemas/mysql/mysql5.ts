@@ -12,15 +12,17 @@ type CurrentDatabaseRow = QueryRow & { database: string | null };
 class SSMySQLV1 {
   private readonly db = new MySQLV1();
 
-  async getSelectedDatabase(): Promise<SelectedSchemaResult> {
-    if (this.db.getStatus() !== 'connected') {
+  async getSelectedDatabase(connectionKey?: string): Promise<SelectedSchemaResult> {
+    if (this.db.getStatus(connectionKey) !== 'connected') {
       console.log('Reconnecting to MySQL...');
-      await this.db.connect(this.db.getConfig());
+      await this.db.connect(this.db.getConfig(connectionKey), connectionKey);
     }
 
     try {
       const result = (await this.db.executeQuery(
-        'SELECT DATABASE() AS `database`'
+        'SELECT DATABASE() AS `database`',
+        [],
+        connectionKey
       )) as CurrentDatabaseRow[];
 
       if (!result[0]?.database) {
@@ -33,16 +35,17 @@ class SSMySQLV1 {
     }
   }
 
-  async setDatabase(databaseName: string): Promise<SchemaChangeResult> {
+  async setDatabase(databaseName: string, connectionKey?: string): Promise<SchemaChangeResult> {
     try {
       if (!databaseName) {
         throw new Error('Database name is required');
       }
 
-      await this.db.disconnect();
-      await this.db.connect({ ...this.db.getConfig(), database: databaseName });
+      const config = this.db.getConfig(connectionKey);
+      await this.db.disconnect(connectionKey);
+      await this.db.connect({ ...config, database: databaseName }, connectionKey);
 
-      const currentDatabase = await this.getSelectedDatabase();
+      const currentDatabase = await this.getSelectedDatabase(connectionKey);
       if (!currentDatabase.success) {
         throw new Error(currentDatabase.message);
       }

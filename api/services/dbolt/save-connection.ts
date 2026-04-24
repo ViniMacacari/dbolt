@@ -2,14 +2,15 @@ import DbConnections from '../../utils/connections.js';
 import loadConnection from './load-connection.js';
 
 import type {
-  ConnectionServiceResult,
-  SavedConnectionInput
+  SavedConnection,
+  SavedConnectionInput,
+  SavedEntityResult
 } from '../../types.js';
 
 class SaveConnection {
   async newConnection(
     connection: SavedConnectionInput
-  ): Promise<ConnectionServiceResult> {
+  ): Promise<SavedEntityResult<SavedConnection>> {
     const existingConnections = await loadConnection.getAllConnections();
 
     const hasDuplicateName = existingConnections.some(
@@ -30,9 +31,18 @@ class SaveConnection {
       throw new Error(errorMessage);
     }
 
-    await DbConnections.saveConnectionsFile([connection]);
+    const savedConnections = await DbConnections.saveConnectionsFile([connection]);
+    const savedConnection = savedConnections[0];
 
-    return { success: true, message: 'Connection saved successfully!' };
+    if (!savedConnection) {
+      throw new Error('Connection was not saved.');
+    }
+
+    return {
+      success: true,
+      message: 'Connection saved successfully!',
+      data: savedConnection
+    };
   }
 }
 

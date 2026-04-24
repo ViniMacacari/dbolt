@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectorRef, ViewChild, EventEmitter, Output } from '@angular/core'
+import { Component, Input, ViewChild, EventEmitter, Output } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { LoadingComponent } from '../modal/loading/loading.component'
@@ -6,8 +6,7 @@ import { ToastComponent } from '../toast/toast.component'
 import { EditConnectionComponent } from "../modal/edit-connection/edit-connection.component"
 import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
 import { Router } from '@angular/router'
-import { connect } from 'rxjs'
-import { version } from 'sortablejs'
+import { ConnectionsService } from '../../services/resolve-connections/connections.service'
 
 @Component({
   selector: 'app-sidebar',
@@ -23,6 +22,7 @@ export class SidebarComponent {
   @Input() selectedSchemaDB: any
   @Output() sidebarStatusChange = new EventEmitter<boolean>()
   @Output() dbInfoRequested = new EventEmitter<any>()
+  @Output() selectedSchemaChanged = new EventEmitter<any>()
 
   @ViewChild('toast') toast!: ToastComponent
 
@@ -31,17 +31,109 @@ export class SidebarComponent {
   expandedConnections: Set<number> = new Set()
   expandedDatabases: Set<string> = new Set()
   clickTimeout: any = null
+  quickSelectorType: 'connection' | 'database' | 'schema' | null = null
 
   constructor(
     private IAPI: InternalApiService,
-    private cdr: ChangeDetectorRef,
     private dbSchemaService: GetDbschemaService,
-    private router: Router
+    private router: Router,
+    private connectionsService: ConnectionsService
   ) { }
 
   toggle() {
     this.isOpen = !this.isOpen
     this.sidebarStatusChange.emit(this.isOpen)
+  }
+
+  toggleQuickSelector(type: 'connection' | 'database' | 'schema', event: MouseEvent): void {
+    event.stopPropagation()
+    this.quickSelectorType = this.quickSelectorType === type ? null : type
+  }
+
+  closeQuickSelector(event?: MouseEvent): void {
+    event?.stopPropagation()
+    this.quickSelectorType = null
+  }
+
+  getQuickSelectorTitle(): string {
+    if (this.quickSelectorType === 'connection') return 'Select connection'
+    if (this.quickSelectorType === 'database') return 'Select database'
+    if (this.quickSelectorType === 'schema') return 'Select schema'
+
+    return ''
+  }
+
+  getQuickSelectorOptions(): any[] {
+    if (this.quickSelectorType === 'connection') {
+      return this.connections.map((connection) => ({
+        type: 'connection',
+        label: connection.name,
+        description: `${connection.database} - ${connection.host}:${connection.port}`,
+        icon: `db-logo/${connection.database}.png`,
+        value: connection
+      }))
+    }
+
+    const selectedConnection = this.getSelectedSavedConnection()
+    if (!selectedConnection) return []
+
+    if (this.quickSelectorType === 'database') {
+      return this.getSchemasByConnection(selectedConnection).map((database) => ({
+        type: 'database',
+        label: database.database,
+        description: `${database.schemas.length} schemas`,
+        icon: 'icons/database.png',
+        value: database,
+        connection: selectedConnection
+      }))
+    }
+
+    if (this.quickSelectorType === 'schema') {
+      const database = this.getSchemasByConnection(selectedConnection)
+        .find((item) => item.database === this.selectedSchemaDB?.database)
+
+      return (database?.schemas || []).map((schema: string) => ({
+        type: 'schema',
+        label: schema,
+        description: this.selectedSchemaDB?.database,
+        icon: 'icons/schema.png',
+        value: schema,
+        database,
+        connection: selectedConnection
+      }))
+    }
+
+    return []
+  }
+
+  async selectQuickOption(option: any, event: MouseEvent): Promise<void> {
+    event.stopPropagation()
+
+    if (option.type === 'connection') {
+      await this.canConnect(option.value)
+      const database = this.getSchemasByConnection(option.value)[0]
+      const schema = database?.schemas?.[0]
+
+      if (database && schema) {
+        await this.setSchema(this.buildSchemaSelection(option.value, database.database, schema))
+      }
+    }
+
+    if (option.type === 'database') {
+      const schema = option.value.schemas.includes(this.selectedSchemaDB?.schema)
+        ? this.selectedSchemaDB.schema
+        : option.value.schemas[0]
+
+      if (schema) {
+        await this.setSchema(this.buildSchemaSelection(option.connection, option.value.database, schema))
+      }
+    }
+
+    if (option.type === 'schema') {
+      await this.setSchema(this.buildSchemaSelection(option.connection, option.database.database, option.value))
+    }
+
+    this.quickSelectorType = null
   }
 
   goToHome(): void {
@@ -76,6 +168,32 @@ export class SidebarComponent {
       (item: any) =>
         item.host === connection.host && item.port === connection.port
     )
+  }
+
+  private getSelectedSavedConnection(): any {
+    return this.connections.find((connection) =>
+      connection.id === this.selectedSchemaDB?.connId ||
+      (
+        connection.host === this.selectedSchemaDB?.host &&
+        String(connection.port) === String(this.selectedSchemaDB?.port) &&
+        connection.database === this.selectedSchemaDB?.sgbd
+      )
+    )
+  }
+
+  private buildSchemaSelection(connection: any, database: string, schema: string): any {
+    return {
+      schema,
+      database,
+      sgbd: connection.database,
+      version: connection.version,
+      connectionId: connection.id,
+      name: connection.name,
+      host: connection.host,
+      port: connection.port,
+      password: connection.password,
+      user: connection.user
+    }
   }
 
   isSelectedDatabase(connection: any, database: any): boolean {
@@ -238,6 +356,7 @@ export class SidebarComponent {
       }
 
       this.dbSchemaService.setSelectedSchemaDB(this.selectedSchemaDB)
+      this.selectedSchemaChanged.emit(this.selectedSchemaDB)
     } catch (error: any) {
       console.error(error)
       this.toast.showToast(error.message, 'red')
@@ -289,5 +408,6 @@ export class SidebarComponent {
 
   async closeModal() {
     this.isModalOpen = false
+    this.connections = this.connectionsService.getCachedConnections()
   }
 }

@@ -11,14 +11,14 @@ type CountRow = QueryRow & { total_rows: number };
 class SQuerySQLServerV1 {
   private readonly db = new SQLServerV1();
 
-  async query(sql: string, maxLines: number | null = null): Promise<QueryExecutionResult> {
+  async query(sql: string, maxLines: number | null = null, connectionKey?: string): Promise<QueryExecutionResult> {
     let totalRows: number | null = null;
-    let executableSql = await this.adjustSchemaInQuery(sql);
+    let executableSql = await this.adjustSchemaInQuery(sql, connectionKey);
     const cleanedSql = this.removeComments(executableSql);
 
     if (this.isSelectQuery(cleanedSql)) {
       const countSql = this.addTotalRowCountQuery(executableSql);
-      const resultWithCount = (await this.db.executeQuery(countSql)) as CountRow[];
+      const resultWithCount = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
       totalRows = resultWithCount[0]?.total_rows ?? 0;
     }
 
@@ -26,11 +26,11 @@ class SQuerySQLServerV1 {
       executableSql = this.addPaginationToQuery(executableSql, maxLines);
     }
 
-    const result = await this.db.executeQuery(executableSql);
+    const result = await this.db.executeQuery(executableSql, [], connectionKey);
 
     if (result.length === 0) {
       const columnSql = this.addPaginationToQuery(executableSql, 0);
-      const columnsResult = await this.db.executeQuery(columnSql);
+      const columnsResult = await this.db.executeQuery(columnSql, [], connectionKey);
       const columns = Object.keys(columnsResult[0] ?? {});
 
       return {
@@ -99,8 +99,8 @@ class SQuerySQLServerV1 {
     return `SELECT COUNT(*) OVER() AS total_rows, * FROM (${trimmedSql}) AS query_with_count`;
   }
 
-  async adjustSchemaInQuery(sql: string): Promise<string> {
-    const currentSchemaResult = await SSSQLServerV1.getSelectedSchema();
+  async adjustSchemaInQuery(sql: string, connectionKey?: string): Promise<string> {
+    const currentSchemaResult = await SSSQLServerV1.getSelectedSchema(connectionKey);
     const currentSchema = currentSchemaResult.success
       ? currentSchemaResult.schema
       : null;

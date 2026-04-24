@@ -8,13 +8,14 @@ import type {
 
 class SHanaV1 {
   async testConnection(
-    config: HanaConnectionConfig
+    config: HanaConnectionConfig,
+    connectionKey?: string
   ): Promise<ConnectionServiceResult> {
     const db = new HanaV1();
 
     try {
-      await db.connect(config);
-      await db.disconnect();
+      await db.connect(config, connectionKey);
+      await db.disconnect(connectionKey);
       return { success: true, message: 'Connection successfully established!' };
     } catch (error: unknown) {
       console.error('Error to connect:', error);
@@ -27,12 +28,13 @@ class SHanaV1 {
   }
 
   async connection(
-    config: HanaConnectionConfig
+    config: HanaConnectionConfig,
+    connectionKey?: string
   ): Promise<ConnectionServiceResult> {
     const db = new HanaV1();
 
     try {
-      await db.connect(config);
+      await db.connect(config, connectionKey);
       return { success: true, message: 'Connection successfully established!' };
     } catch (error: unknown) {
       console.error('Error to connect:', error);

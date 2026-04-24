@@ -11,8 +11,8 @@ type HanaSchemaRow = QueryRow & { SCHEMA_NAME: string };
 class LSHanaV1 {
   private readonly db = new HanaV1();
 
-  async listDatabasesAndSchemas(): Promise<DatabaseSchemaListResult> {
-    if (this.db.getStatus() !== 'connected') {
+  async listDatabasesAndSchemas(connectionKey?: string): Promise<DatabaseSchemaListResult> {
+    if (this.db.getStatus(connectionKey) !== 'connected') {
       return {
         success: false,
         message: 'No active connection. Ensure the database is connected before querying.'
@@ -29,7 +29,7 @@ class LSHanaV1 {
               'SYS', 'SYSTEM', 'HANACLEANER', 'RSP', 'HANA_XS_BASE'
           )
         ORDER BY 1
-      `)) as HanaSchemaRow[];
+      `, [], connectionKey)) as HanaSchemaRow[];
 
       return {
         success: true,

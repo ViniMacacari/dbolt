@@ -6,8 +6,10 @@ import SSSQLServerV1 from '../../services/schemas/sqlserver/v2008.js';
 import SQuerySQLServerV1 from '../../services/queries/sqlserver/v2008.js';
 import ListObjectsSQLServerV1 from '../../services/database-info/sqlserver/v2008.js';
 import { sendBadRequest, sendInternalError, sendServiceResult } from '../../utils/http.js';
+import { getConnectionKey } from '../../utils/request-context.js';
 
 import type {
+  ConnectionContextPayload,
   QueryRequestBody,
   SchemaRequestBody,
   SqlServerConnectionConfig
@@ -17,17 +19,17 @@ type TableNameParams = { tableName: string };
 
 class CSQLServerV1 {
   async testConnection(
-    req: Request<Record<string, never>, unknown, SqlServerConnectionConfig>,
+    req: Request<Record<string, never>, unknown, SqlServerConnectionConfig & ConnectionContextPayload>,
     res: Response
   ): Promise<void> {
-    const config = req.body;
+    const { connectionKey, ...config } = req.body;
     if (!config.host || !config.port || !config.user || !config.password) {
       sendBadRequest(res, 'Invalid configuration');
       return;
     }
 
     try {
-      const result = await SSQLServerV1.testConnection(config);
+      const result = await SSQLServerV1.testConnection(config, connectionKey);
       sendServiceResult(res, result);
     } catch (error: unknown) {
       console.error('Controller error:', error);
@@ -35,10 +37,10 @@ class CSQLServerV1 {
     }
   }
 
-  async listDatabasesAndSchemas(_req: Request, res: Response): Promise<void> {
+  async listDatabasesAndSchemas(req: Request, res: Response): Promise<void> {
     try {
       const lssql1 = new LSSQLServer1();
-      const result = await lssql1.listDatabasesAndSchemas();
+      const result = await lssql1.listDatabasesAndSchemas(getConnectionKey(req));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
@@ -46,17 +48,17 @@ class CSQLServerV1 {
   }
 
   async connection(
-    req: Request<Record<string, never>, unknown, SqlServerConnectionConfig>,
+    req: Request<Record<string, never>, unknown, SqlServerConnectionConfig & ConnectionContextPayload>,
     res: Response
   ): Promise<void> {
-    const config = req.body;
+    const { connectionKey, ...config } = req.body;
     if (!config.host || !config.port || !config.user || !config.password) {
       sendBadRequest(res, 'Invalid configuration');
       return;
     }
 
     try {
-      const result = await SSQLServerV1.connection(config);
+      const result = await SSQLServerV1.connection(config, connectionKey);
       sendServiceResult(res, result);
     } catch (error: unknown) {
       console.error('Controller error:', error);
@@ -64,9 +66,9 @@ class CSQLServerV1 {
     }
   }
 
-  async getSelectedSchema(_req: Request, res: Response): Promise<void> {
+  async getSelectedSchema(req: Request, res: Response): Promise<void> {
     try {
-      const result = await SSSQLServerV1.getSelectedSchema();
+      const result = await SSSQLServerV1.getSelectedSchema(getConnectionKey(req));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
@@ -80,7 +82,8 @@ class CSQLServerV1 {
     try {
       const result = await SSSQLServerV1.setDatabaseAndSchema(
         req.body.schema,
-        req.body.database
+        req.body.database,
+        req.body.connectionKey
       );
       sendServiceResult(res, result);
     } catch (error: unknown) {
@@ -95,7 +98,8 @@ class CSQLServerV1 {
     try {
       const result = await SQuerySQLServerV1.query(
         req.body.sql,
-        req.body.maxLines
+        req.body.maxLines,
+        req.body.connectionKey
       );
       sendServiceResult(res, result);
     } catch (error: unknown) {
@@ -103,9 +107,9 @@ class CSQLServerV1 {
     }
   }
 
-  async listObjects(_req: Request, res: Response): Promise<void> {
+  async listObjects(req: Request, res: Response): Promise<void> {
     try {
-      const result = await ListObjectsSQLServerV1.listDatabaseObjects();
+      const result = await ListObjectsSQLServerV1.listDatabaseObjects(getConnectionKey(req));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       console.error('Error in listObjects controller:', error);
@@ -118,7 +122,7 @@ class CSQLServerV1 {
     res: Response
   ): Promise<void> {
     try {
-      const result = await ListObjectsSQLServerV1.tableColumns(req.params.tableName);
+      const result = await ListObjectsSQLServerV1.tableColumns(req.params.tableName, getConnectionKey(req));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);

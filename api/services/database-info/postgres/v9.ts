@@ -17,10 +17,12 @@ type ColumnRow = QueryRow & TableColumn;
 class ListObjectsPgV1 {
   private readonly db = new PgV1();
 
-  async listDatabaseObjects(): Promise<DatabaseObjectsResult> {
+  async listDatabaseObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
     try {
       const currentSchemaResult = (await this.db.executeQuery(
-        'SELECT current_schema() AS schema'
+        'SELECT current_schema() AS schema',
+        [],
+        connectionKey
       )) as CurrentSchemaRow[];
       const currentSchema = currentSchemaResult[0]?.schema;
 
@@ -37,7 +39,8 @@ class ListObjectsPgV1 {
           WHERE table_type = 'BASE TABLE' AND table_schema = $1
           ORDER BY table_name
         `,
-        [currentSchema]
+        [currentSchema],
+        connectionKey
       )) as NamedObjectRow[];
 
       const views = (await this.db.executeQuery(
@@ -49,7 +52,8 @@ class ListObjectsPgV1 {
           WHERE table_schema = $1
           ORDER BY table_name
         `,
-        [currentSchema]
+        [currentSchema],
+        connectionKey
       )) as NamedObjectRow[];
 
       const routines = (await this.db.executeQuery(
@@ -64,7 +68,8 @@ class ListObjectsPgV1 {
           WHERE specific_schema = $1
           ORDER BY routine_name
         `,
-        [currentSchema]
+        [currentSchema],
+        connectionKey
       )) as NamedObjectRow[];
 
       const indexes = (await this.db.executeQuery(
@@ -82,7 +87,8 @@ class ListObjectsPgV1 {
           WHERE t.relkind = 'r' AND n.nspname = $1
           ORDER BY t.relname, i.relname
         `,
-        [currentSchema]
+        [currentSchema],
+        connectionKey
       )) as IndexRow[];
 
       const data: DatabaseObject[] = [
@@ -111,7 +117,7 @@ class ListObjectsPgV1 {
     }
   }
 
-  async tableColumns(tableName: string): Promise<TableColumnsResult> {
+  async tableColumns(tableName: string, connectionKey?: string): Promise<TableColumnsResult> {
     try {
       const columns = (await this.db.executeQuery(
         `
@@ -120,7 +126,8 @@ class ListObjectsPgV1 {
           WHERE table_name = $1
           ORDER BY ordinal_position
         `,
-        [tableName]
+        [tableName],
+        connectionKey
       )) as ColumnRow[];
 
       return {

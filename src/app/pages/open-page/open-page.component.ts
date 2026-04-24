@@ -5,6 +5,7 @@ import { InternalApiService } from '../../services/requests/internal-api.service
 import { ConnectionComponent } from "../../components/modal/connection/connection.component"
 import { ToastComponent } from '../../components/toast/toast.component'
 import { LoadingComponent } from '../../components/modal/loading/loading.component'
+import { ConnectionsService } from '../../services/resolve-connections/connections.service'
 
 @Component({
   selector: 'app-open-page',
@@ -25,7 +26,8 @@ export class OpenPageComponent {
 
   constructor(
     private IAPI: InternalApiService,
-    private router: Router
+    private router: Router,
+    private connectionsService: ConnectionsService
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
@@ -56,13 +58,13 @@ export class OpenPageComponent {
   }
 
   async loadConnections(): Promise<void> {
-    this.connections = await this.IAPI.get('/api/connections/load')
+    this.connections = await this.connectionsService.loadConnections()
   }
 
   async onCardClick(id: number): Promise<void> {
     LoadingComponent.show()
     try {
-      const result: any = await this.IAPI.get(`/api/connections/${id}`)
+      const result: any = await this.connectionsService.getConnectionById(id)
       await this.IAPI.post(`/api/${result.database}/${result.version}/connect`, {
         host: result.host,
         port: result.port,
@@ -80,7 +82,7 @@ export class OpenPageComponent {
 
   async deleteConnection(id: number, event: MouseEvent): Promise<void> {
     event.stopPropagation()
-    await this.IAPI.delete(`/api/connections/${id}`)
-    await this.loadConnections()
+    await this.connectionsService.deleteConnection(id)
+    this.connections = this.connectionsService.getCachedConnections()
   }
 }

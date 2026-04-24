@@ -12,10 +12,12 @@ type CurrentSchemaRow = QueryRow & { schema: string };
 class SSchemaHanaV1 {
   private readonly db = new HanaV1();
 
-  async getSelectedSchema(): Promise<SelectedSchemaResult> {
+  async getSelectedSchema(connectionKey?: string): Promise<SelectedSchemaResult> {
     try {
       const result = (await this.db.executeQuery(
-        'SELECT CURRENT_SCHEMA AS "schema" FROM DUMMY'
+        'SELECT CURRENT_SCHEMA AS "schema" FROM DUMMY',
+        [],
+        connectionKey
       )) as CurrentSchemaRow[];
 
       return { success: true, database: 'Hana', schema: result[0].schema };
@@ -24,13 +26,13 @@ class SSchemaHanaV1 {
     }
   }
 
-  async setSchema(schemaName: string): Promise<ConnectionServiceResult> {
+  async setSchema(schemaName: string, connectionKey?: string): Promise<ConnectionServiceResult> {
     try {
       if (!schemaName) {
         throw new Error('Schema name is required');
       }
 
-      await this.db.executeQuery(`SET SCHEMA ${schemaName}`);
+      await this.db.executeQuery(`SET SCHEMA ${schemaName}`, [], connectionKey);
 
       return { success: true, message: `Schema changed to ${schemaName}` };
     } catch (error: unknown) {

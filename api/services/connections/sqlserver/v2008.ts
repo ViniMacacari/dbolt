@@ -8,17 +8,18 @@ import type {
 
 class SSQLServerV1 {
   async testConnection(
-    config: SqlServerConnectionConfig
+    config: SqlServerConnectionConfig,
+    connectionKey?: string
   ): Promise<ConnectionServiceResult> {
     const db = new SQLServerV1();
 
     try {
-      await db.connect(config);
-      await db.disconnect();
+      await db.connect(config, connectionKey);
+      await db.disconnect(connectionKey);
       return { success: true, message: 'Connection successfully established!' };
     } catch (error: unknown) {
       console.error('Error connecting to SQL Server:', error);
-      await db.disconnect();
+      await db.disconnect(connectionKey);
       return {
         success: false,
         message: 'Failed to connect to SQL Server',
@@ -28,12 +29,13 @@ class SSQLServerV1 {
   }
 
   async connection(
-    config: SqlServerConnectionConfig
+    config: SqlServerConnectionConfig,
+    connectionKey?: string
   ): Promise<ConnectionServiceResult> {
     const db = new SQLServerV1();
 
     try {
-      await db.connect(config);
+      await db.connect(config, connectionKey);
       return { success: true, message: 'Connection successfully established!' };
     } catch (error: unknown) {
       console.error('Error connecting to SQL Server:', error);

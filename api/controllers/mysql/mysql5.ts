@@ -6,8 +6,10 @@ import SSMySQLV1 from '../../services/schemas/mysql/mysql5.js';
 import SQueryMySQLV1 from '../../services/queries/mysql/mysql5.js';
 import ListObjectsMySQLV1 from '../../services/database-info/mysql/mysql5.js';
 import { sendBadRequest, sendInternalError, sendServiceResult } from '../../utils/http.js';
+import { getConnectionKey } from '../../utils/request-context.js';
 
 import type {
+  ConnectionContextPayload,
   DatabaseConnectionConfig,
   QueryRequestBody,
   SchemaRequestBody
@@ -17,17 +19,17 @@ type TableNameParams = { tableName: string };
 
 class CMySQLV1 {
   async testConnection(
-    req: Request<Record<string, never>, unknown, DatabaseConnectionConfig>,
+    req: Request<Record<string, never>, unknown, DatabaseConnectionConfig & ConnectionContextPayload>,
     res: Response
   ): Promise<void> {
-    const config = req.body;
+    const { connectionKey, ...config } = req.body;
     if (!config.host || !config.user || !config.password) {
       sendBadRequest(res, 'Invalid configuration');
       return;
     }
 
     try {
-      const result = await SMySQLV1.testConnection(config);
+      const result = await SMySQLV1.testConnection(config, connectionKey);
       sendServiceResult(res, result);
     } catch (error: unknown) {
       console.error('Controller error:', error);
@@ -35,10 +37,10 @@ class CMySQLV1 {
     }
   }
 
-  async listDatabases(_req: Request, res: Response): Promise<void> {
+  async listDatabases(req: Request, res: Response): Promise<void> {
     try {
       const lsMySQL1 = new LSMySQL1();
-      const result = await lsMySQL1.listDatabasesAndSchemas();
+      const result = await lsMySQL1.listDatabasesAndSchemas(getConnectionKey(req));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
@@ -46,17 +48,17 @@ class CMySQLV1 {
   }
 
   async connection(
-    req: Request<Record<string, never>, unknown, DatabaseConnectionConfig>,
+    req: Request<Record<string, never>, unknown, DatabaseConnectionConfig & ConnectionContextPayload>,
     res: Response
   ): Promise<void> {
-    const config = req.body;
+    const { connectionKey, ...config } = req.body;
     if (!config.host || !config.user || !config.password) {
       sendBadRequest(res, 'Invalid configuration');
       return;
     }
 
     try {
-      const result = await SMySQLV1.connection(config);
+      const result = await SMySQLV1.connection(config, connectionKey);
       sendServiceResult(res, result);
     } catch (error: unknown) {
       console.error('Controller error:', error);
@@ -64,9 +66,9 @@ class CMySQLV1 {
     }
   }
 
-  async getSelectedDatabase(_req: Request, res: Response): Promise<void> {
+  async getSelectedDatabase(req: Request, res: Response): Promise<void> {
     try {
-      const result = await SSMySQLV1.getSelectedDatabase();
+      const result = await SSMySQLV1.getSelectedDatabase(getConnectionKey(req));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
@@ -78,7 +80,7 @@ class CMySQLV1 {
     res: Response
   ): Promise<void> {
     try {
-      const result = await SSMySQLV1.setDatabase(req.body.database ?? '');
+      const result = await SSMySQLV1.setDatabase(req.body.database ?? '', req.body.connectionKey);
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
@@ -90,16 +92,16 @@ class CMySQLV1 {
     res: Response
   ): Promise<void> {
     try {
-      const result = await SQueryMySQLV1.query(req.body.sql, req.body.maxLines);
+      const result = await SQueryMySQLV1.query(req.body.sql, req.body.maxLines, req.body.connectionKey);
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
     }
   }
 
-  async listDatabaseObjects(_req: Request, res: Response): Promise<void> {
+  async listDatabaseObjects(req: Request, res: Response): Promise<void> {
     try {
-      const result = await ListObjectsMySQLV1.listDatabaseObjects();
+      const result = await ListObjectsMySQLV1.listDatabaseObjects(getConnectionKey(req));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
@@ -111,7 +113,7 @@ class CMySQLV1 {
     res: Response
   ): Promise<void> {
     try {
-      const result = await ListObjectsMySQLV1.tableColumns(req.params.tableName);
+      const result = await ListObjectsMySQLV1.tableColumns(req.params.tableName, getConnectionKey(req));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);

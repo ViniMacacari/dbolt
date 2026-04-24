@@ -11,67 +11,62 @@ import type {
 } from '../../types.js';
 
 class HanaV1 {
-  private static instance: HanaV1 | null = null;
+  private readonly defaultConnectionKey = 'default';
+  private static readonly connections = new Map<string, { connection: HanaConnection; config: HanaConnectionConfig }>();
 
-  public connection: HanaConnection | null = null;
-  private config: HanaConnectionConfig | null = null;
-
-  constructor() {
-    if (HanaV1.instance) {
-      return HanaV1.instance;
+  async connect(config: HanaConnectionConfig, connectionKey?: string): Promise<HanaConnection> {
+    const key = this.getConnectionKey(connectionKey);
+    if (HanaV1.connections.has(key)) {
+      await this.disconnect(key);
     }
 
-    HanaV1.instance = this;
-  }
-
-  async connect(config: HanaConnectionConfig): Promise<HanaConnection> {
-    if (this.connection) {
-      await this.disconnect();
-    }
-
-    this.config = { ...config };
-    this.connection = hana.createConnection();
+    const normalizedConfig = { ...config };
+    const connection = hana.createConnection();
 
     try {
-      this.connection.connect(config);
+      connection.connect(normalizedConfig);
+      HanaV1.connections.set(key, { connection, config: normalizedConfig });
       console.log('Connected to HANA successfully');
-      return this.connection;
+      return connection;
     } catch (error: unknown) {
       console.error('Error connecting to HANA:', error);
-      this.connection = null;
       throw error;
     }
   }
 
-  async disconnect(): Promise<void> {
-    if (!this.connection) {
+  async disconnect(connectionKey?: string): Promise<void> {
+    const key = this.getConnectionKey(connectionKey);
+    const state = HanaV1.connections.get(key);
+
+    if (!state) {
       console.warn('Not connected to HANA');
       return;
     }
 
     try {
-      this.connection.disconnect();
+      state.connection.disconnect();
       console.log('Disconnected from HANA successfully');
     } catch (error: unknown) {
       console.error('Error disconnecting from HANA:', error);
       throw error;
     } finally {
-      this.connection = null;
-      this.config = null;
+      HanaV1.connections.delete(key);
     }
   }
 
   async executeQuery(
     query: string,
-    params: HanaParameterList = []
+    params: HanaParameterList = [],
+    connectionKey?: string
   ): Promise<QueryRows> {
-    if (!this.connection) {
+    const state = HanaV1.connections.get(this.getConnectionKey(connectionKey));
+    if (!state) {
       throw new Error('Not connected to HANA.');
     }
 
     try {
       const result = await new Promise<HANAStatementRow[]>((resolve, reject) => {
-        const statement = this.connection!.prepare(query);
+        const statement = state.connection.prepare(query);
         statement.exec<HANAStatementRow[]>(
           params,
           (error: Error, results?: HANAStatementRow[]) => {
@@ -92,16 +87,21 @@ class HanaV1 {
     }
   }
 
-  getStatus(): ConnectionStatus {
-    return this.connection ? 'connected' : 'disconnected';
+  getStatus(connectionKey?: string): ConnectionStatus {
+    return HanaV1.connections.has(this.getConnectionKey(connectionKey)) ? 'connected' : 'disconnected';
   }
 
-  getConfig(): HanaConnectionConfig {
-    if (!this.config) {
+  getConfig(connectionKey?: string): HanaConnectionConfig {
+    const state = HanaV1.connections.get(this.getConnectionKey(connectionKey));
+    if (!state) {
       throw new Error('No configuration available');
     }
 
-    return this.config;
+    return state.config;
+  }
+
+  private getConnectionKey(connectionKey?: string): string {
+    return connectionKey || this.defaultConnectionKey;
   }
 }
 

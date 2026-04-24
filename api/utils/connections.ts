@@ -25,7 +25,7 @@ class DbConnections {
     await fs.mkdir(this.basePath, { recursive: true });
   }
 
-  async saveConnectionsFile(newConnections: SavedConnectionInput[]): Promise<void> {
+  async saveConnectionsFile(newConnections: SavedConnectionInput[]): Promise<SavedConnection[]> {
     await this.ensureDirectoryExists();
     const existingConnections = await this.readConnectionsFile();
 
@@ -34,15 +34,19 @@ class DbConnections {
         ? Math.max(...existingConnections.map((connection) => connection.id))
         : 0;
 
+    const savedConnections: SavedConnection[] = newConnections.map((connection, index) => ({
+      id: lastId + index + 1,
+      ...connection
+    }));
+
     const updatedConnections: SavedConnection[] = [
       ...existingConnections,
-      ...newConnections.map((connection, index) => ({
-        id: lastId + index + 1,
-        ...connection
-      }))
+      ...savedConnections
     ];
 
     await this.writeConnectionsFile(updatedConnections);
+
+    return savedConnections;
   }
 
   async readConnectionsFile(): Promise<StoredConnectionsResult> {

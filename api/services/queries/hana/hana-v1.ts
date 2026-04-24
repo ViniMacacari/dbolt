@@ -10,12 +10,12 @@ type CountRow = QueryRow & { TOTAL_ROWS: number | null };
 class SQuerysHana {
   private readonly db = new HanaV1();
 
-  async query(sql: string, maxLines: number | null = null): Promise<QueryExecutionResult> {
+  async query(sql: string, maxLines: number | null = null, connectionKey?: string): Promise<QueryExecutionResult> {
     let totalRows: number | null = null;
 
     if (this.isSelectQuery(sql)) {
       const countSql = this.getCountQuery(sql);
-      const countResult = (await this.db.executeQuery(countSql)) as CountRow[];
+      const countResult = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
       totalRows = countResult[0]?.TOTAL_ROWS ?? null;
     }
 
@@ -25,14 +25,16 @@ class SQuerysHana {
       executableSql = this.addLimitToQuery(executableSql, maxLines);
     }
 
-    const result = await this.db.executeQuery(executableSql);
+    const result = await this.db.executeQuery(executableSql, [], connectionKey);
 
     if (result.length === 0) {
       const withoutLimit = executableSql
         .replace(/limit\s+\d+(\s+offset\s+\d+)?/i, '')
         .trim();
       const columnsResult = await this.db.executeQuery(
-        this.addLimitToQuery(withoutLimit, 0)
+        this.addLimitToQuery(withoutLimit, 0),
+        [],
+        connectionKey
       );
       const columns = Object.keys(columnsResult[0] ?? {}).map((column) =>
         column.trim()

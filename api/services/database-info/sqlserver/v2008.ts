@@ -19,27 +19,27 @@ type ColumnRow = QueryRow & TableColumn;
 class ListObjectsSQLServerV1 {
   private readonly db = new SQLServerV1();
 
-  async listDatabaseObjects(): Promise<DatabaseObjectsResult> {
+  async listDatabaseObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
     try {
       const tables = (await this.db.executeQuery(`
         SELECT TABLE_NAME AS name, 'table' AS type
         FROM INFORMATION_SCHEMA.TABLES
         WHERE TABLE_TYPE = 'BASE TABLE'
         ORDER BY TABLE_NAME
-      `)) as NamedObjectRow[];
+      `, [], connectionKey)) as NamedObjectRow[];
 
       const views = (await this.db.executeQuery(`
         SELECT TABLE_NAME AS name, 'view' AS type
         FROM INFORMATION_SCHEMA.VIEWS
         ORDER BY TABLE_NAME
-      `)) as NamedObjectRow[];
+      `, [], connectionKey)) as NamedObjectRow[];
 
       const procedures = (await this.db.executeQuery(`
         SELECT ROUTINE_NAME AS name, 'procedure' AS type
         FROM INFORMATION_SCHEMA.ROUTINES
         WHERE ROUTINE_TYPE = 'PROCEDURE'
         ORDER BY ROUTINE_NAME
-      `)) as NamedObjectRow[];
+      `, [], connectionKey)) as NamedObjectRow[];
 
       const indexes = (await this.db.executeQuery(`
         SELECT
@@ -51,7 +51,7 @@ class ListObjectsSQLServerV1 {
         INNER JOIN sys.tables t ON i.object_id = t.object_id
         WHERE i.is_primary_key = 0 AND i.is_unique_constraint = 0
         ORDER BY t.name, i.name
-      `)) as IndexRow[];
+      `, [], connectionKey)) as IndexRow[];
 
       const data: DatabaseObject[] = [
         ...tables.map((object) => ({ name: object.name, type: 'table' as const })),
@@ -79,7 +79,7 @@ class ListObjectsSQLServerV1 {
     }
   }
 
-  async tableColumns(tableName: string): Promise<TableColumnsResult> {
+  async tableColumns(tableName: string, connectionKey?: string): Promise<TableColumnsResult> {
     try {
       const parameters: SqlServerQueryParameter[] = [
         { name: 'tableName', type: sql.NVarChar, value: tableName }
@@ -91,7 +91,8 @@ class ListObjectsSQLServerV1 {
           WHERE TABLE_NAME = @tableName
           ORDER BY ORDINAL_POSITION
         `,
-        parameters
+        parameters,
+        connectionKey
       )) as ColumnRow[];
 
       return {

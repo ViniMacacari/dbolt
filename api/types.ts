@@ -32,6 +32,10 @@ export interface DatabaseConnectionConfig {
   database?: string;
 }
 
+export interface ConnectionContextPayload {
+  connectionKey?: string;
+}
+
 export interface SqlServerConnectionOptions {
   port?: NumericLike;
   encrypt?: boolean;
@@ -176,12 +180,12 @@ export type SchemaChangeResult = ServiceResult<SchemaChangePayload>;
 export type StoredConnectionsResult = SavedConnection[];
 export type StoredQueriesResult = SavedQuery[];
 
-export interface QueryRequestBody {
+export interface QueryRequestBody extends ConnectionContextPayload {
   sql: string;
   maxLines?: number | null;
 }
 
-export interface SchemaRequestBody {
+export interface SchemaRequestBody extends ConnectionContextPayload {
   schema?: string;
   database?: string;
 }

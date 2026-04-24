@@ -13,10 +13,12 @@ type SchemaExistsRow = QueryRow & { schema_name: string };
 class SSPgV1 {
   private readonly db = new PgV1();
 
-  async getSelectedSchema(): Promise<SelectedSchemaResult> {
+  async getSelectedSchema(connectionKey?: string): Promise<SelectedSchemaResult> {
     try {
       const result = (await this.db.executeQuery(
-        'SELECT current_database() as "database", current_schema() as "schema"'
+        'SELECT current_database() as "database", current_schema() as "schema"',
+        [],
+        connectionKey
       )) as CurrentSchemaRow[];
 
       return {
@@ -31,7 +33,8 @@ class SSPgV1 {
 
   async setDatabaseAndSchema(
     schemaName?: string,
-    databaseName?: string
+    databaseName?: string,
+    connectionKey?: string
   ): Promise<SchemaChangeResult> {
     try {
       if (!schemaName && !databaseName) {
@@ -39,11 +42,12 @@ class SSPgV1 {
       }
 
       if (databaseName) {
-        await this.db.disconnect();
-        await this.db.connect({ ...this.db.getConfig(), database: databaseName });
+        const config = this.db.getConfig(connectionKey);
+        await this.db.disconnect(connectionKey);
+        await this.db.connect({ ...config, database: databaseName }, connectionKey);
 
         if (!schemaName) {
-          const currentSchema = await this.getSelectedSchema();
+          const currentSchema = await this.getSelectedSchema(connectionKey);
           if (!currentSchema.success) {
             throw new Error(currentSchema.message);
           }
@@ -60,7 +64,8 @@ class SSPgV1 {
             FROM information_schema.schemata
             WHERE schema_name = $1
           `,
-          [schemaName]
+          [schemaName],
+          connectionKey
         )) as SchemaExistsRow[];
 
         if (schemaExistsInNewDb.length === 0) {
@@ -69,8 +74,8 @@ class SSPgV1 {
           );
         }
 
-        await this.db.executeQuery(`SET search_path TO ${schemaName}`);
-        const currentSchema = await this.getSelectedSchema();
+        await this.db.executeQuery(`SET search_path TO ${schemaName}`, [], connectionKey);
+        const currentSchema = await this.getSelectedSchema(connectionKey);
         if (!currentSchema.success) {
           throw new Error(currentSchema.message);
         }
@@ -88,15 +93,16 @@ class SSPgV1 {
           FROM information_schema.schemata
           WHERE schema_name = $1
         `,
-        [schemaName]
+        [schemaName],
+        connectionKey
       )) as SchemaExistsRow[];
 
       if (schemaExists.length === 0) {
         throw new Error(`Schema "${schemaName}" does not exist in the current database`);
       }
 
-      await this.db.executeQuery(`SET search_path TO ${schemaName}`);
-      const currentSchema = await this.getSelectedSchema();
+      await this.db.executeQuery(`SET search_path TO ${schemaName}`, [], connectionKey);
+      const currentSchema = await this.getSelectedSchema(connectionKey);
       if (!currentSchema.success) {
         throw new Error(currentSchema.message);
       }

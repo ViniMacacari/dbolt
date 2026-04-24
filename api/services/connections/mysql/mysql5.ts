@@ -8,17 +8,18 @@ import type {
 
 class SMySQLV1 {
   async testConnection(
-    config: DatabaseConnectionConfig
+    config: DatabaseConnectionConfig,
+    connectionKey?: string
   ): Promise<ConnectionServiceResult> {
     const db = new MySQLV1();
 
     try {
-      await db.connect(config);
-      await db.disconnect();
+      await db.connect(config, connectionKey);
+      await db.disconnect(connectionKey);
       return { success: true, message: 'Connection successfully established!' };
     } catch (error: unknown) {
       console.error('Error to connect:', error);
-      await db.disconnect();
+      await db.disconnect(connectionKey);
       return {
         success: false,
         message: 'Failed to connect to MySQL',
@@ -28,12 +29,13 @@ class SMySQLV1 {
   }
 
   async connection(
-    config: DatabaseConnectionConfig
+    config: DatabaseConnectionConfig,
+    connectionKey?: string
   ): Promise<ConnectionServiceResult> {
     const db = new MySQLV1();
 
     try {
-      await db.connect(config);
+      await db.connect(config, connectionKey);
       return { success: true, message: 'Connection successfully established!' };
     } catch (error: unknown) {
       console.error('Error to connect:', error);

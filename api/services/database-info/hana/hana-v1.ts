@@ -15,28 +15,28 @@ type ColumnRow = QueryRow & TableColumn;
 class ListObjectsHanaV1 {
   private readonly db = new HanaV1();
 
-  async listDatabaseObjects(): Promise<DatabaseObjectsResult> {
+  async listDatabaseObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
     try {
       const tables = (await this.db.executeQuery(`
         SELECT TABLE_NAME AS name, 'table' AS type
         FROM PUBLIC.TABLES
         WHERE SCHEMA_NAME = CURRENT_SCHEMA
         ORDER BY TABLE_NAME
-      `)) as NamedObjectRow[];
+      `, [], connectionKey)) as NamedObjectRow[];
 
       const views = (await this.db.executeQuery(`
         SELECT VIEW_NAME AS name, 'view' AS type
         FROM PUBLIC.VIEWS
         WHERE SCHEMA_NAME = CURRENT_SCHEMA
         ORDER BY VIEW_NAME
-      `)) as NamedObjectRow[];
+      `, [], connectionKey)) as NamedObjectRow[];
 
       const procedures = (await this.db.executeQuery(`
         SELECT PROCEDURE_NAME AS name, 'procedure' AS type
         FROM PUBLIC.PROCEDURES
         WHERE SCHEMA_NAME = CURRENT_SCHEMA
         ORDER BY PROCEDURE_NAME
-      `)) as NamedObjectRow[];
+      `, [], connectionKey)) as NamedObjectRow[];
 
       const data: DatabaseObject[] = [
         ...tables.map((object) => ({ name: object.name, type: 'table' as const })),
@@ -58,14 +58,14 @@ class ListObjectsHanaV1 {
     }
   }
 
-  async tableColumns(tableName: string): Promise<TableColumnsResult> {
+  async tableColumns(tableName: string, connectionKey?: string): Promise<TableColumnsResult> {
     try {
       const columns = (await this.db.executeQuery(`
         SELECT COLUMN_NAME AS name, DATA_TYPE_NAME AS type
         FROM SYS.TABLE_COLUMNS
         WHERE TABLE_NAME = '${tableName.toUpperCase()}'
         ORDER BY COLUMN_NAME
-      `)) as ColumnRow[];
+      `, [], connectionKey)) as ColumnRow[];
 
       return {
         success: true,

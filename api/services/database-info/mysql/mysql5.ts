@@ -16,8 +16,8 @@ type ColumnRow = QueryRow & TableColumn;
 class ListObjectsMySQLV1 {
   private readonly db = new MySQLV1();
 
-  async listDatabaseObjects(): Promise<DatabaseObjectsResult> {
-    if (this.db.getStatus() !== 'connected') {
+  async listDatabaseObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
+    if (this.db.getStatus(connectionKey) !== 'connected') {
       return {
         success: false,
         message: 'No active connection. Ensure the database is connected before querying.'
@@ -31,14 +31,14 @@ class ListObjectsMySQLV1 {
         WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_TYPE = 'BASE TABLE'
         ORDER BY TABLE_NAME
-      `)) as NamedObjectRow[];
+      `, [], connectionKey)) as NamedObjectRow[];
 
       const views = (await this.db.executeQuery(`
         SELECT TABLE_NAME AS name, 'view' AS type
         FROM INFORMATION_SCHEMA.VIEWS
         WHERE TABLE_SCHEMA = DATABASE()
         ORDER BY TABLE_NAME
-      `)) as NamedObjectRow[];
+      `, [], connectionKey)) as NamedObjectRow[];
 
       const procedures = (await this.db.executeQuery(`
         SELECT ROUTINE_NAME AS name, 'procedure' AS type
@@ -46,7 +46,7 @@ class ListObjectsMySQLV1 {
         WHERE ROUTINE_SCHEMA = DATABASE()
           AND ROUTINE_TYPE = 'PROCEDURE'
         ORDER BY ROUTINE_NAME
-      `)) as NamedObjectRow[];
+      `, [], connectionKey)) as NamedObjectRow[];
 
       const indexes = (await this.db.executeQuery(`
         SELECT
@@ -57,7 +57,7 @@ class ListObjectsMySQLV1 {
         FROM INFORMATION_SCHEMA.STATISTICS
         WHERE TABLE_SCHEMA = DATABASE()
         ORDER BY TABLE_NAME, INDEX_NAME
-      `)) as IndexRow[];
+      `, [], connectionKey)) as IndexRow[];
 
       const data: DatabaseObject[] = [
         ...tables.map((object) => ({ name: object.name, type: 'table' as const })),
@@ -85,8 +85,8 @@ class ListObjectsMySQLV1 {
     }
   }
 
-  async tableColumns(tableName: string): Promise<TableColumnsResult> {
-    if (this.db.getStatus() !== 'connected') {
+  async tableColumns(tableName: string, connectionKey?: string): Promise<TableColumnsResult> {
+    if (this.db.getStatus(connectionKey) !== 'connected') {
       return {
         success: false,
         message: 'No active connection. Ensure the database is connected before querying.'
@@ -102,7 +102,8 @@ class ListObjectsMySQLV1 {
             AND TABLE_NAME = ?
           ORDER BY ORDINAL_POSITION
         `,
-        [tableName]
+        [tableName],
+        connectionKey
       )) as ColumnRow[];
 
       return {

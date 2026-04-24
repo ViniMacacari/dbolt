@@ -19,20 +19,20 @@ type SchemaExistsRow = QueryRow & { schema_name: string };
 
 class SSSQLServerV1 {
   private readonly db = new SQLServerV1();
-  private selectedSchema: string | null = null;
+  private readonly selectedSchemas = new Map<string, string | null>();
 
-  async getSelectedSchema(): Promise<SelectedSchemaResult> {
+  async getSelectedSchema(connectionKey?: string): Promise<SelectedSchemaResult> {
     try {
       const result = (await this.db.executeQuery(`
         SELECT
             DB_NAME() AS current_database,
             SCHEMA_NAME() AS current_schema
-      `)) as CurrentSchemaRow[];
+      `, [], connectionKey)) as CurrentSchemaRow[];
 
       return {
         success: true,
         database: result[0].current_database,
-        schema: this.selectedSchema ?? result[0].current_schema
+        schema: this.selectedSchemas.get(connectionKey || 'default') ?? result[0].current_schema
       };
     } catch (error: unknown) {
       console.error('Error getting selected schema:', error);
@@ -42,7 +42,8 @@ class SSSQLServerV1 {
 
   async setDatabaseAndSchema(
     schemaName?: string,
-    databaseName?: string
+    databaseName?: string,
+    connectionKey?: string
   ): Promise<SchemaChangeResult> {
     try {
       if (!schemaName && !databaseName) {
@@ -54,15 +55,16 @@ class SSSQLServerV1 {
         : [];
 
       if (databaseName) {
-        await this.db.disconnect();
-        await this.db.connect({ ...this.db.getConfig(), database: databaseName });
+        const config = this.db.getConfig(connectionKey);
+        await this.db.disconnect(connectionKey);
+        await this.db.connect({ ...config, database: databaseName }, connectionKey);
 
         if (!schemaName) {
-          const currentSchema = await this.getSelectedSchema();
+          const currentSchema = await this.getSelectedSchema(connectionKey);
           if (!currentSchema.success) {
             throw new Error(currentSchema.message);
           }
-          this.selectedSchema = null;
+          this.selectedSchemas.set(connectionKey || 'default', null);
           return {
             success: true,
             message: `Connected to database "${databaseName}" without setting a schema`,
@@ -76,7 +78,8 @@ class SSSQLServerV1 {
             FROM sys.schemas
             WHERE name = @schemaName
           `,
-          schemaParameter
+          schemaParameter,
+          connectionKey
         )) as SchemaExistsRow[];
 
         if (schemaExists.length === 0) {
@@ -85,11 +88,11 @@ class SSSQLServerV1 {
           );
         }
 
-        const currentSchema = await this.getSelectedSchema();
+        const currentSchema = await this.getSelectedSchema(connectionKey);
         if (!currentSchema.success) {
           throw new Error(currentSchema.message);
         }
-        this.selectedSchema = schemaName;
+        this.selectedSchemas.set(connectionKey || 'default', schemaName);
         return {
           success: true,
           message: `Connected to database "${databaseName}" and schema "${schemaName}" verified successfully`,
@@ -103,18 +106,19 @@ class SSSQLServerV1 {
           FROM sys.schemas
           WHERE name = @schemaName
         `,
-        schemaParameter
+        schemaParameter,
+        connectionKey
       )) as SchemaExistsRow[];
 
       if (schemaExists.length === 0) {
         throw new Error(`Schema "${schemaName}" does not exist in the current database`);
       }
 
-      const currentSchema = await this.getSelectedSchema();
+      const currentSchema = await this.getSelectedSchema(connectionKey);
       if (!currentSchema.success) {
         throw new Error(currentSchema.message);
       }
-      this.selectedSchema = schemaName ?? null;
+      this.selectedSchemas.set(connectionKey || 'default', schemaName ?? null);
 
       return {
         success: true,

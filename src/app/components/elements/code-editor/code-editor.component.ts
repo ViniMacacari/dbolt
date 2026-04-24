@@ -8,6 +8,7 @@ import { ToastComponent } from '../../toast/toast.component'
 import { TableQueryComponent } from "../table-query/table-query.component"
 import { SaveQueryComponent } from "../../modal/save-query/save-query.component"
 import { InternalApiService } from '../../../services/requests/internal-api.service'
+import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
 
 @Component({
   selector: 'app-code-editor',
@@ -42,7 +43,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   constructor(
     private dbSchemas: GetDbschemaService,
     private runQuery: RunQueryService,
-    private IAPI: InternalApiService
+    private IAPI: InternalApiService,
+    private connectionContext: ConnectionContextService
   ) { }
 
   ngAfterViewChecked(): void {
@@ -214,7 +216,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
       this.queryLines = 50
       this.cacheSql = sql
 
-      const result: any = await this.runQuery.runSQL(sql, this.queryLines)
+      const result: any = await this.runQuery.runSQL(sql, this.queryLines, this.tabInfo?.dbInfo)
       this.queryReponse = result
       this.maxResultLines = this.runQuery.getQueryLines()
     } catch (error: any) {
@@ -232,7 +234,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
 
     try {
       this.queryLines += 50
-      const result: any = await this.runQuery.runSQL(this.cacheSql, this.queryLines)
+      const result: any = await this.runQuery.runSQL(this.cacheSql, this.queryLines, this.tabInfo?.dbInfo)
       this.queryReponse = result
     } catch (error: any) {
       console.error(error)
@@ -245,11 +247,11 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
   async saveAs(): Promise<void> {
     this.isSaveAsOpen = true
 
-    const dbSchemas = await this.dbSchemas.getSelectedSchemaDB()
+    const dbSchemas = this.tabInfo?.dbInfo || await this.dbSchemas.getSelectedSchemaDB()
 
     this.dataSave = {
       sql: this.editor?.getValue() || '',
-      dataDbSchema: dbSchemas
+      dataDbSchema: this.connectionContext.withoutRuntimeFields(dbSchemas)
     }
   }
 
@@ -259,7 +261,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
 
   async saveQuery(): Promise<void> {
     try {
-      const dbSchemas = await this.dbSchemas.getSelectedSchemaDB()
+      const dbSchemas = this.tabInfo?.dbInfo || await this.dbSchemas.getSelectedSchemaDB()
 
       this.dataSave = {
         id: this.tabInfo?.id,
@@ -268,7 +270,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
         sql: this.editor?.getValue() || '',
         originalContent: this.editor?.getValue() || '',
         icon: 'CODE',
-        dbSchema: dbSchemas
+        dbSchema: this.connectionContext.withoutRuntimeFields(dbSchemas)
       }
 
       await this.IAPI.put('/api/query/' + this.tabInfo.id, this.dataSave)

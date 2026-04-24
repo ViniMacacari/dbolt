@@ -14,22 +14,13 @@ import type {
 type SqlServerConnectionInput = SqlServerConnectionConfig | SqlConfig;
 
 class SQLServerV1 {
-  private static instance: SQLServerV1 | null = null;
+  private readonly defaultConnectionKey = 'default';
+  private static readonly connections = new Map<string, { pool: ConnectionPool; config: SqlConfig }>();
 
-  public pool: ConnectionPool | null = null;
-  private config: SqlConfig | null = null;
-
-  constructor() {
-    if (SQLServerV1.instance) {
-      return SQLServerV1.instance;
-    }
-
-    SQLServerV1.instance = this;
-  }
-
-  async connect(config: SqlServerConnectionInput): Promise<ConnectionPool | undefined> {
-    if (this.pool) {
-      await this.disconnect();
+  async connect(config: SqlServerConnectionInput, connectionKey?: string): Promise<ConnectionPool | undefined> {
+    const key = this.getConnectionKey(connectionKey);
+    if (SQLServerV1.connections.has(key)) {
+      await this.disconnect(key);
     }
 
     const normalizedHost =
@@ -63,12 +54,11 @@ class SQLServerV1 {
       }
     };
 
-    this.config = normalizedConfig;
-
     try {
-      this.pool = await sql.connect(normalizedConfig);
+      const pool = await new sql.ConnectionPool(normalizedConfig).connect();
+      SQLServerV1.connections.set(key, { pool, config: normalizedConfig });
       console.log('Connected to SQL Server successfully');
-      return this.pool;
+      return pool;
     } catch (error: unknown) {
       const code =
         typeof error === 'object' && error !== null && 'code' in error
@@ -85,33 +75,38 @@ class SQLServerV1 {
     }
   }
 
-  async disconnect(): Promise<void> {
-    if (!this.pool) {
+  async disconnect(connectionKey?: string): Promise<void> {
+    const key = this.getConnectionKey(connectionKey);
+    const state = SQLServerV1.connections.get(key);
+
+    if (!state) {
       console.warn('Not connected to SQL Server');
       return;
     }
 
     try {
-      await this.pool.close();
+      await state.pool.close();
       console.log('Disconnected from SQL Server successfully');
     } catch (error: unknown) {
       console.error('Error disconnecting from SQL Server:', error);
       throw error;
     } finally {
-      this.pool = null;
+      SQLServerV1.connections.delete(key);
     }
   }
 
   async executeQuery(
     query: string,
-    params: readonly SqlServerQueryParameter[] = []
+    params: readonly SqlServerQueryParameter[] = [],
+    connectionKey?: string
   ): Promise<QueryRows> {
-    if (!this.pool) {
+    const state = SQLServerV1.connections.get(this.getConnectionKey(connectionKey));
+    if (!state) {
       throw new Error('Not connected to SQL Server.');
     }
 
     try {
-      const request = this.pool.request();
+      const request = state.pool.request();
 
       for (const parameter of params) {
         request.input(parameter.name, parameter.type, parameter.value);
@@ -125,16 +120,21 @@ class SQLServerV1 {
     }
   }
 
-  getStatus(): ConnectionStatus {
-    return this.pool ? 'connected' : 'disconnected';
+  getStatus(connectionKey?: string): ConnectionStatus {
+    return SQLServerV1.connections.has(this.getConnectionKey(connectionKey)) ? 'connected' : 'disconnected';
   }
 
-  getConfig(): SqlConfig {
-    if (!this.config) {
+  getConfig(connectionKey?: string): SqlConfig {
+    const state = SQLServerV1.connections.get(this.getConnectionKey(connectionKey));
+    if (!state) {
       throw new Error('No configuration available');
     }
 
-    return this.config;
+    return state.config;
+  }
+
+  private getConnectionKey(connectionKey?: string): string {
+    return connectionKey || this.defaultConnectionKey;
   }
 }
 

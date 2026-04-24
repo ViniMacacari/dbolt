@@ -14,8 +14,8 @@ class LSPg1 {
   private readonly db = new PgV1();
   private mainConfig: ReturnType<PgV1['getConfig']> | null = null;
 
-  async listDatabasesAndSchemas(): Promise<DatabaseSchemaListResult> {
-    if (this.db.getStatus() !== 'connected') {
+  async listDatabasesAndSchemas(connectionKey?: string): Promise<DatabaseSchemaListResult> {
+    if (this.db.getStatus(connectionKey) !== 'connected') {
       return {
         success: false,
         message: 'No active connection. Ensure the database is connected before querying.'
@@ -24,7 +24,7 @@ class LSPg1 {
 
     try {
       if (!this.mainConfig) {
-        this.mainConfig = this.db.getConfig();
+        this.mainConfig = this.db.getConfig(connectionKey);
       }
 
       const currentDatabase = this.mainConfig.database;
@@ -33,23 +33,23 @@ class LSPg1 {
         FROM pg_database
         WHERE datistemplate = false
         ORDER BY 1
-      `)) as DatabaseRow[];
+      `, [], connectionKey)) as DatabaseRow[];
 
       const results: DatabaseSchemaEntry[] = [];
 
       for (const databaseInfo of databases) {
-        await this.db.disconnect();
+        await this.db.disconnect(connectionKey);
         await this.db.connect({
           ...this.mainConfig,
           database: databaseInfo.database_name
-        });
+        }, connectionKey);
 
         const schemas = (await this.db.executeQuery(`
           SELECT schema_name
           FROM information_schema.schemata
           WHERE schema_name NOT LIKE 'pg_%' AND schema_name NOT LIKE 'information_schema'
           ORDER BY 1
-        `)) as SchemaRow[];
+        `, [], connectionKey)) as SchemaRow[];
 
         results.push({
           database: databaseInfo.database_name,
@@ -57,8 +57,8 @@ class LSPg1 {
         });
       }
 
-      await this.db.disconnect();
-      await this.db.connect({ ...this.mainConfig, database: currentDatabase });
+      await this.db.disconnect(connectionKey);
+      await this.db.connect({ ...this.mainConfig, database: currentDatabase }, connectionKey);
 
       return { success: true, data: results };
     } catch (error: unknown) {

@@ -10,15 +10,15 @@
     <div class="py-2"></div>
 
     <p class="selected-title">Currently selected</p>
-    <div class="sgbd">
+    <div class="sgbd" (click)="toggleQuickSelector('connection', $event)">
         <img src="db-logo/{{ selectedSchemaDB?.sgbd }}.png" height="15px" width="15px">
         <p class="text-min w-100">{{ selectedSchemaDB?.sgbd }} ({{ selectedSchemaDB?.name }})</p>
     </div>
-    <div class="database">
+    <div class="database" (click)="toggleQuickSelector('database', $event)">
         <img src="icons/database.png" height="15px" width="15px">
         <p class="text-min w-100">{{ selectedSchemaDB?.database }}</p>
     </div>
-    <div class="schema">
+    <div class="schema" (click)="toggleQuickSelector('schema', $event)">
         <img src="icons/schema.png" height="15px" width="15px">
         <p class="text-min w-100">{{ selectedSchemaDB?.schema }}</p>
     </div>
@@ -92,3 +92,26 @@
 
 <app-edit-connection *ngIf="isModalOpen" (close)="closeModal()"></app-edit-connection>
 <app-toast #toast></app-toast>
+
+<div class="quick-selector-backdrop" *ngIf="quickSelectorType" (click)="closeQuickSelector()">
+    <div class="quick-selector-modal" (click)="$event.stopPropagation()">
+        <div class="quick-selector-header">
+            <div>
+                <p class="quick-selector-kicker">Currently selected</p>
+                <h2>{{ getQuickSelectorTitle() }}</h2>
+            </div>
+            <button type="button" aria-label="Close selector" (click)="closeQuickSelector($event)">x</button>
+        </div>
+
+        <div class="quick-selector-body">
+            <button type="button" class="quick-option" *ngFor="let option of getQuickSelectorOptions()"
+                (click)="selectQuickOption(option, $event)">
+                <img [src]="option.icon" height="18px" width="18px">
+                <span>{{ option.label }}</span>
+                <small>{{ option.description }}</small>
+            </button>
+
+            <p class="quick-empty" *ngIf="getQuickSelectorOptions().length === 0">No options available</p>
+        </div>
+    </div>
+</div>

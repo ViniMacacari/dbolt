@@ -22,25 +22,16 @@ type MySqlExecutionResult =
   | ResultSetHeader;
 
 class MySQLV1 {
-  private static instance: MySQLV1 | null = null;
+  private readonly defaultConnectionKey = 'default';
+  private static readonly connections = new Map<string, { connection: MySqlConnection; config: MySqlConnectionOptions }>();
 
-  public connection: MySqlConnection | null = null;
-  private config: MySqlConnectionOptions | null = null;
-
-  constructor() {
-    if (MySQLV1.instance) {
-      return MySQLV1.instance;
+  async connect(config: MySqlConnectionInput, connectionKey?: string): Promise<MySqlConnection> {
+    const key = this.getConnectionKey(connectionKey);
+    if (MySQLV1.connections.has(key)) {
+      await this.disconnect(key);
     }
 
-    MySQLV1.instance = this;
-  }
-
-  async connect(config: MySqlConnectionInput): Promise<MySqlConnection> {
-    if (this.connection) {
-      await this.disconnect();
-    }
-
-    this.config = {
+    const normalizedConfig: MySqlConnectionOptions = {
       ...config,
       port:
         typeof config.port === 'number'
@@ -51,43 +42,48 @@ class MySQLV1 {
     };
 
     try {
-      this.connection = await mysql.createConnection(this.config);
+      const connection = await mysql.createConnection(normalizedConfig);
+      MySQLV1.connections.set(key, { connection, config: normalizedConfig });
       console.log('Connected to MySQL successfully');
-      return this.connection;
+      return connection;
     } catch (error: unknown) {
       console.error('Error connecting to MySQL:', error);
-      this.connection = null;
       throw error;
     }
   }
 
-  async disconnect(): Promise<void> {
-    if (!this.connection) {
+  async disconnect(connectionKey?: string): Promise<void> {
+    const key = this.getConnectionKey(connectionKey);
+    const state = MySQLV1.connections.get(key);
+
+    if (!state) {
       console.warn('Not connected to MySQL');
       return;
     }
 
     try {
-      await this.connection.end();
+      await state.connection.end();
       console.log('Disconnected from MySQL successfully');
     } catch (error: unknown) {
       console.error('Error disconnecting from MySQL:', error);
       throw error;
     } finally {
-      this.connection = null;
+      MySQLV1.connections.delete(key);
     }
   }
 
   async executeQuery(
     query: string,
-    params: readonly unknown[] = []
+    params: readonly unknown[] = [],
+    connectionKey?: string
   ): Promise<QueryRows> {
-    if (!this.connection) {
+    const state = MySQLV1.connections.get(this.getConnectionKey(connectionKey));
+    if (!state) {
       throw new Error('Not connected to MySQL.');
     }
 
     try {
-      const [rows] = await this.connection.execute<MySqlExecutionResult>(query, [
+      const [rows] = await state.connection.execute<MySqlExecutionResult>(query, [
         ...params
       ]);
 
@@ -98,16 +94,21 @@ class MySQLV1 {
     }
   }
 
-  getStatus(): ConnectionStatus {
-    return this.connection ? 'connected' : 'disconnected';
+  getStatus(connectionKey?: string): ConnectionStatus {
+    return MySQLV1.connections.has(this.getConnectionKey(connectionKey)) ? 'connected' : 'disconnected';
   }
 
-  getConfig(): MySqlConnectionOptions {
-    if (!this.config) {
+  getConfig(connectionKey?: string): MySqlConnectionOptions {
+    const state = MySQLV1.connections.get(this.getConnectionKey(connectionKey));
+    if (!state) {
       throw new Error('No configuration available');
     }
 
-    return this.config;
+    return state.config;
+  }
+
+  private getConnectionKey(connectionKey?: string): string {
+    return connectionKey || this.defaultConnectionKey;
   }
 }
 

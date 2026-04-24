@@ -6,8 +6,10 @@ import SSPgV1 from '../../services/schemas/postgres/v9.js';
 import SQueryPgV1 from '../../services/queries/postgres/v9.js';
 import ListObjectsPgV1 from '../../services/database-info/postgres/v9.js';
 import { sendBadRequest, sendInternalError, sendServiceResult } from '../../utils/http.js';
+import { getConnectionKey } from '../../utils/request-context.js';
 
 import type {
+  ConnectionContextPayload,
   DatabaseConnectionConfig,
   QueryRequestBody,
   SchemaRequestBody
@@ -17,17 +19,17 @@ type TableNameParams = { tableName: string };
 
 class CPostgresV1 {
   async testConnection(
-    req: Request<Record<string, never>, unknown, DatabaseConnectionConfig>,
+    req: Request<Record<string, never>, unknown, DatabaseConnectionConfig & ConnectionContextPayload>,
     res: Response
   ): Promise<void> {
-    const config = req.body;
+    const { connectionKey, ...config } = req.body;
     if (!config.host || !config.port || !config.user || !config.password) {
       sendBadRequest(res, 'Invalid configuration');
       return;
     }
 
     try {
-      const result = await SPgV1.testConnection(config);
+      const result = await SPgV1.testConnection(config, connectionKey);
       sendServiceResult(res, result);
     } catch (error: unknown) {
       console.error('Controller error:', error);
@@ -36,12 +38,12 @@ class CPostgresV1 {
   }
 
   async listDatabasesAndSchemas(
-    _req: Request,
+    req: Request,
     res: Response
   ): Promise<void> {
     try {
       const lspg1 = new LSPg1();
-      const result = await lspg1.listDatabasesAndSchemas();
+      const result = await lspg1.listDatabasesAndSchemas(getConnectionKey(req));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
@@ -49,17 +51,17 @@ class CPostgresV1 {
   }
 
   async connection(
-    req: Request<Record<string, never>, unknown, DatabaseConnectionConfig>,
+    req: Request<Record<string, never>, unknown, DatabaseConnectionConfig & ConnectionContextPayload>,
     res: Response
   ): Promise<void> {
-    const config = req.body;
+    const { connectionKey, ...config } = req.body;
     if (!config.host || !config.port || !config.user || !config.password) {
       sendBadRequest(res, 'Invalid configuration');
       return;
     }
 
     try {
-      const result = await SPgV1.connection(config);
+      const result = await SPgV1.connection(config, connectionKey);
       sendServiceResult(res, result);
     } catch (error: unknown) {
       console.error('Controller error:', error);
@@ -67,9 +69,9 @@ class CPostgresV1 {
     }
   }
 
-  async getSelectedSchema(_req: Request, res: Response): Promise<void> {
+  async getSelectedSchema(req: Request, res: Response): Promise<void> {
     try {
-      const result = await SSPgV1.getSelectedSchema();
+      const result = await SSPgV1.getSelectedSchema(getConnectionKey(req));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
@@ -83,7 +85,8 @@ class CPostgresV1 {
     try {
       const result = await SSPgV1.setDatabaseAndSchema(
         req.body.schema,
-        req.body.database
+        req.body.database,
+        req.body.connectionKey
       );
       sendServiceResult(res, result);
     } catch (error: unknown) {
@@ -96,16 +99,16 @@ class CPostgresV1 {
     res: Response
   ): Promise<void> {
     try {
-      const result = await SQueryPgV1.query(req.body.sql, req.body.maxLines);
+      const result = await SQueryPgV1.query(req.body.sql, req.body.maxLines, req.body.connectionKey);
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
     }
   }
 
-  async listDatabaseObjects(_req: Request, res: Response): Promise<void> {
+  async listDatabaseObjects(req: Request, res: Response): Promise<void> {
     try {
-      const result = await ListObjectsPgV1.listDatabaseObjects();
+      const result = await ListObjectsPgV1.listDatabaseObjects(getConnectionKey(req));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
@@ -117,7 +120,7 @@ class CPostgresV1 {
     res: Response
   ): Promise<void> {
     try {
-      const result = await ListObjectsPgV1.tableColumns(req.params.tableName);
+      const result = await ListObjectsPgV1.tableColumns(req.params.tableName, getConnectionKey(req));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);

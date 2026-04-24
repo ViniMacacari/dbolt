@@ -13,8 +13,8 @@ class LSMySQL1 {
   private readonly db = new MySQLV1();
   private mainConfig: ReturnType<MySQLV1['getConfig']> | null = null;
 
-  async listDatabasesAndSchemas(): Promise<DatabaseSchemaListResult> {
-    if (this.db.getStatus() !== 'connected') {
+  async listDatabasesAndSchemas(connectionKey?: string): Promise<DatabaseSchemaListResult> {
+    if (this.db.getStatus(connectionKey) !== 'connected') {
       return {
         success: false,
         message: 'No active connection. Ensure the database is connected before querying.'
@@ -23,10 +23,10 @@ class LSMySQL1 {
 
     try {
       if (!this.mainConfig) {
-        this.mainConfig = this.db.getConfig();
+        this.mainConfig = this.db.getConfig(connectionKey);
       }
 
-      const databases = (await this.db.executeQuery('SHOW DATABASES')) as MySqlDatabaseRow[];
+      const databases = (await this.db.executeQuery('SHOW DATABASES', [], connectionKey)) as MySqlDatabaseRow[];
 
       const results: DatabaseSchemaEntry[] = [];
 
@@ -51,12 +51,12 @@ class LSMySQL1 {
         await this.db.connect({
           ...this.mainConfig,
           database: results[0].database
-        });
+        }, connectionKey);
       } else {
-        await this.db.connect(this.mainConfig);
+        await this.db.connect(this.mainConfig, connectionKey);
       }
 
-      console.log('selected database', this.db.getConfig().database);
+      console.log('selected database', this.db.getConfig(connectionKey).database);
       return { success: true, data: results };
     } catch (error: unknown) {
       console.error('Error in listDatabasesAndSchemas:', error);

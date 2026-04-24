@@ -14,8 +14,8 @@ class LSSQLServer1 {
   private readonly db = new SQLServerV1();
   private mainConfig: ReturnType<SQLServerV1['getConfig']> | null = null;
 
-  async listDatabasesAndSchemas(): Promise<DatabaseSchemaListResult> {
-    if (this.db.getStatus() !== 'connected') {
+  async listDatabasesAndSchemas(connectionKey?: string): Promise<DatabaseSchemaListResult> {
+    if (this.db.getStatus(connectionKey) !== 'connected') {
       return {
         success: false,
         message: 'No active connection. Ensure the database is connected before querying.'
@@ -28,7 +28,7 @@ class LSSQLServer1 {
 
     try {
       if (!this.mainConfig) {
-        this.mainConfig = this.db.getConfig();
+        this.mainConfig = this.db.getConfig(connectionKey);
       }
 
       const databases = (await this.db.executeQuery(`
@@ -36,17 +36,17 @@ class LSSQLServer1 {
         FROM sys.databases
         WHERE name NOT IN ('tempdb', 'model', 'msdb')
         ORDER BY name
-      `)) as DatabaseRow[];
+      `, [], connectionKey)) as DatabaseRow[];
 
       for (const databaseInfo of databases) {
         totalConnections += 1;
 
         try {
-          await this.db.disconnect();
+          await this.db.disconnect(connectionKey);
           await this.db.connect({
             ...this.mainConfig,
             database: databaseInfo.database_name
-          });
+          }, connectionKey);
 
           const schemas = (await this.db.executeQuery(`
             SELECT name AS schema_name
@@ -66,7 +66,7 @@ class LSSQLServer1 {
               'db_securityadmin'
             )
             ORDER BY name
-          `)) as SchemaRow[];
+          `, [], connectionKey)) as SchemaRow[];
 
           results.push({
             database: databaseInfo.database_name,
@@ -100,8 +100,8 @@ class LSSQLServer1 {
     } finally {
       if (this.mainConfig) {
         try {
-          await this.db.disconnect();
-          await this.db.connect({ ...this.mainConfig });
+          await this.db.disconnect(connectionKey);
+          await this.db.connect({ ...this.mainConfig }, connectionKey);
         } catch (finalError: unknown) {
           console.error(
             'Failed to reconnect to the main database:',

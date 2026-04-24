@@ -5,6 +5,7 @@ import { InternalApiService } from '../../../services/requests/internal-api.serv
 import { InputListComponent } from "../../elements/input-list/input-list.component"
 import { LoadingComponent } from '../loading/loading.component'
 import { ToastComponent } from "../../toast/toast.component"
+import { ConnectionsService } from '../../../services/resolve-connections/connections.service'
 
 @Component({
   selector: 'app-edit-connection',
@@ -33,7 +34,10 @@ export class EditConnectionComponent {
 
   private _sgbd: string = ''
 
-  constructor(private IAPI: InternalApiService) { }
+  constructor(
+    private IAPI: InternalApiService,
+    private connectionsService: ConnectionsService
+  ) { }
 
   async ngAfterViewInit(): Promise<void> {
     const result: any = await this.IAPI.get('/api/databases/avaliable')
@@ -141,7 +145,7 @@ export class EditConnectionComponent {
         password: this.connectionConfig.password
       })
 
-      await this.IAPI.post('/api/connections/new', {
+      await this.connectionsService.createConnection({
         name: this.connectionName,
         database: this.sgbd,
         version: this.sgbdVersion,

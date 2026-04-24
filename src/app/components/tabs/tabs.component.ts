@@ -1,11 +1,10 @@
 import { Component, HostListener, Output, EventEmitter, ElementRef, AfterViewInit, ViewChild } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { Router, ActivatedRoute } from '@angular/router'
 import Sortable from 'sortablejs'
-import { InternalApiService } from '../../services/requests/internal-api.service'
 import { LoadQueryComponent } from "../modal/load-query/load-query.component"
 import { YesNoModalComponent } from "../modal/yes-no-modal/yes-no-modal.component"
 import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
+import { ConnectionContextService } from '../../services/connection-context/connection-context.service'
 
 @Component({
   selector: 'app-tabs',
@@ -25,7 +24,7 @@ export class TabsComponent {
 
   dataList: any = []
   dropdownVisible: boolean = false
-  tabs: { id: number, name: string, info: { sql: string }, originalContent: string, icon: string }[] = []
+  tabs: any[] = []
   activeTab: number | null = null
   idTabs: number = 0
   confirmToClose: any = {}
@@ -35,16 +34,11 @@ export class TabsComponent {
   @ViewChild('tabsContainer') tabsContainer!: ElementRef
 
   constructor(
-    private route: ActivatedRoute,
-    private IAPI: InternalApiService,
-    private dbSchema: GetDbschemaService
+    private dbSchema: GetDbschemaService,
+    private connectionContext: ConnectionContextService
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
-    const routeParams = this.route.snapshot.paramMap
-    const routeParamId = Number(routeParams.get('id'))
-    const database = await this.IAPI.get(`/api/connections/${routeParamId}`)
-
     Sortable.create(this.tabsContainer.nativeElement, {
       animation: 150,
       onEnd: (event) => {
@@ -66,7 +60,7 @@ export class TabsComponent {
       type: type,
       info: info,
       originalContent: info.sql || '',
-      dbInfo: this.dbSchema.getSelectedSchemaDB(),
+      dbInfo: this.createTabDbInfo(info.context),
       icon: 'CODE'
     }
 
@@ -88,7 +82,7 @@ export class TabsComponent {
       info: {
         sql: info.info.sql
       },
-      dbInfo: this.dbSchema.getSelectedSchemaDB(),
+      dbInfo: this.createTabDbInfo(info.context),
       originalSql: info.info.sql,
       icon: 'CODE'
     }
@@ -168,7 +162,7 @@ export class TabsComponent {
         sql: event.sql
       },
       originalContent: event.sql,
-      dbInfo: this.dbSchema.getSelectedSchemaDB(),
+      dbInfo: this.createTabDbInfo(event.dbSchema),
       icon: 'CODE'
     }
 
@@ -198,6 +192,20 @@ export class TabsComponent {
     ) {
       this.activeTab++
     }
+  }
+
+  updateActiveTabDbInfo(dbInfo: any): void {
+    if (this.activeTab === null) return
+
+    this.tabs[this.activeTab].dbInfo = dbInfo
+  }
+
+  getActiveTab(): any {
+    return this.activeTab === null ? null : this.tabs[this.activeTab]
+  }
+
+  private createTabDbInfo(context: any = null): any {
+    return this.connectionContext.createContext(context || this.dbSchema.getSelectedSchemaDB())
   }
 
   onCloseLoadQuery(event: any): void {

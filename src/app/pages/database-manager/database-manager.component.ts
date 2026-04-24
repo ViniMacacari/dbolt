@@ -10,6 +10,8 @@ import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
 import { DbInfoComponent } from "../../components/elements/db-info/db-info.component"
 import { ToastComponent } from "../../components/toast/toast.component"
 import { TableInfoComponent } from "../../components/elements/table-info/table-info.component"
+import { ConnectionsService } from '../../services/resolve-connections/connections.service'
+import { ConnectionContextService } from '../../services/connection-context/connection-context.service'
 
 @Component({
   selector: 'app-database-manager',
@@ -46,7 +48,9 @@ export class DatabaseManagerComponent {
   constructor(
     private IAPI: InternalApiService,
     private route: ActivatedRoute,
-    private dbSchemaService: GetDbschemaService
+    private dbSchemaService: GetDbschemaService,
+    private connectionsService: ConnectionsService,
+    private connectionContext: ConnectionContextService
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
@@ -64,7 +68,7 @@ export class DatabaseManagerComponent {
 
   async firstConnectionConfig(): Promise<void> {
     try {
-      this.activeConnection = [await this.IAPI.get('/api/connections/' + this.getPageId())]
+      this.activeConnection = [await this.connectionsService.getConnectionById(this.getPageId())]
     } catch (error: any) {
       this.toast.showToast(error.message, 'danger')
       console.error(error)
@@ -84,7 +88,7 @@ export class DatabaseManagerComponent {
     }
 
     try {
-      this.connections = await this.IAPI.get('/api/connections/load')
+      this.connections = await this.connectionsService.loadConnections()
 
       if (!this.activeConnection || !this.activeConnection[0]) {
         console.warn('Conexão ativa não definida ou inválida.')
@@ -169,6 +173,11 @@ export class DatabaseManagerComponent {
   }
 
   onTabSelected(tab: any): void {
+    if (tab?.dbInfo) {
+      this.selectedSchemaDB = tab.dbInfo
+      this.dbSchemaService.setSelectedSchemaDB(tab.dbInfo)
+    }
+
     this.firstMessage = false
     this.editorOpen = false
     this.dbInfoOpen = false
@@ -229,6 +238,25 @@ export class DatabaseManagerComponent {
     }
   }
 
+  onSelectedSchemaChanged(selectedSchemaDB: any): void {
+    const activeTab = this.tabsComponent?.getActiveTab()
+
+    if (!activeTab) {
+      this.selectedSchemaDB = selectedSchemaDB
+      this.dbSchemaService.setSelectedSchemaDB(selectedSchemaDB)
+      return
+    }
+
+    const tabContext = this.connectionContext.createContext({
+      ...selectedSchemaDB,
+      connectionKey: activeTab.dbInfo?.connectionKey
+    })
+
+    activeTab.dbInfo = tabContext
+    this.selectedSchemaDB = tabContext
+    this.dbSchemaService.setSelectedSchemaDB(tabContext)
+  }
+
   onSavedQuery(name: string): void {
     this.tabsComponent.newSavedTab('sql', {
       id: Date.now(),
@@ -251,9 +279,24 @@ export class DatabaseManagerComponent {
     LoadingComponent.show()
 
     try {
-      const schemaDb: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/get-selected-schema`)
+      const context = await this.connectionContext.ensureContext(this.connectionContext.createContext({
+        database: event.database,
+        schema: event.schema,
+        sgbd: event.sgbd,
+        version: event.version,
+        name: event.name,
+        host: event.host,
+        port: event.port,
+        connId: event.connectionId
+      }))
 
-      const response: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/list-objects`)
+      this.selectedSchemaDB = context
+      this.dbSchemaService.setSelectedSchemaDB(context)
+
+      const queryString = this.connectionContext.toQueryString(context)
+      const schemaDb: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/get-selected-schema${queryString}`)
+
+      const response: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/list-objects${queryString}`)
 
       const result: any = {
         tables: [],
@@ -281,7 +324,7 @@ export class DatabaseManagerComponent {
 
       this.dbSchemasData = result
 
-      this.tabsComponent.newTab('schema', { dbInfo: this.dbSchemasData }, schemaDb.schema)
+      this.tabsComponent.newTab('schema', { dbInfo: this.dbSchemasData, context }, schemaDb.schema)
     } catch (error: any) {
       console.error(error)
       this.toast.showToast(error.error, 'red')
@@ -291,9 +334,12 @@ export class DatabaseManagerComponent {
   }
 
   openMoreInfo(event: any): void {
+    const activeContext = this.tabsComponent.getActiveTab()?.dbInfo || this.selectedSchemaDB
+
     this.tabsComponent.newTab('table', {
       name: (event.name || event.NAME),
-      info: event.info
+      info: event.info,
+      context: activeContext
     }, (event.name || event.NAME))
   }
 }
