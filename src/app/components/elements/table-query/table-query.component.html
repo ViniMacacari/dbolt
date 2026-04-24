@@ -1,6 +1,6 @@
-<div #tableWrapper class="table-wrapper">
+<div #tableWrapper class="query-result-wrapper">
     <div class="result-bar">
-        <div class="resize-handle" (mousedown)="startResize($event)"></div>
+        <div class="resize-handle" title="Resize results" (mousedown)="startResize($event)"></div>
         <div class="result-actions">
             <div class="result-title">
                 <span>Results</span>
@@ -14,10 +14,18 @@
                 <button type="button" (click)="applyRowLimit()">Apply</button>
             </div>
 
-            <button type="button" class="close-result" aria-label="Close results" (click)="close()">x</button>
+            <button type="button" class="toggle-result-size"
+                [attr.aria-label]="isExpanded ? 'Restore results' : 'Expand results'"
+                [title]="isExpanded ? 'Restore results' : 'Expand results'" (click)="toggleResultSize()">
+                <img [src]="isExpanded ? 'icons/minimize.png' : 'icons/maximize.png'" height="12px" width="12px">
+            </button>
+            <button type="button" class="close-result" aria-label="Close results" title="Close results"
+                (click)="close()">x</button>
         </div>
     </div>
     <ag-grid-angular #agGrid class="ag-root" [rowData]="query" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef"
-        [domLayout]="'normal'" [animateRows]="true" (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)">
+        [domLayout]="'normal'" [rowBuffer]="20" [suppressRowVirtualisation]="false"
+        [suppressColumnVirtualisation]="false" [animateRows]="false" (firstDataRendered)="query"
+        (bodyScroll)="onBodyScroll($event)">
     </ag-grid-angular>
 </div>

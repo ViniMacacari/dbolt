@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewChecked, OnDestroy, OnChanges, SimpleChanges } from '@angular/core'
+import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewChecked, OnDestroy, OnChanges, SimpleChanges, HostListener } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import * as monaco from 'monaco-editor'
 import { GetDbschemaService } from '../../../services/db-info/get-dbschema.service'
@@ -26,17 +26,24 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   @Input() tabInfo: any
 
   @ViewChild('editorContainer') editorContainer!: ElementRef
+  @ViewChild('codeEditorPanel') codeEditorPanel!: ElementRef<HTMLDivElement>
   @ViewChild(ToastComponent) toast!: ToastComponent
   @ViewChild(SaveQueryComponent) saveConnection!: SaveQueryComponent
 
   private editor: monaco.editor.IStandaloneCodeEditor | null = null
   private initialized = false
+  private readonly defaultResultHeight = 300
+  private readonly minimumResultHeight = 120
+  private readonly minimumEditorHeight = 120
 
   isSaveAsOpen: boolean = false
   cacheSql: string = ''
   queryReponse: any[] = []
   queryLines: number = 50
   queryFetchSize: number = 50
+  queryResultHeight: number = 300
+  previousQueryResultHeight: number = 300
+  queryResultExpanded: boolean = false
   maxResultLines: number | null = 0
 
   dataSave: any = {}
@@ -77,6 +84,23 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     if (this.editor) {
       this.editor.dispose()
     }
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    if (this.queryReponse.length === 0) {
+      this.layoutEditor()
+      return
+    }
+
+    if (this.queryResultExpanded) {
+      this.queryResultHeight = this.getExpandedResultHeight()
+    } else {
+      this.queryResultHeight = this.normalizeResultHeight(this.queryResultHeight)
+    }
+
+    this.persistQueryState()
+    this.layoutEditor()
   }
 
   private initializeEditor(): void {
@@ -227,7 +251,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       const result: any = await this.runQuery.runSQL(sql, this.queryLines, this.tabInfo?.dbInfo)
       this.queryReponse = result
       this.maxResultLines = this.runQuery.getQueryLines()
+      this.prepareResultLayout()
       this.persistQueryState()
+      this.layoutEditor()
     } catch (error: any) {
       console.error(error)
       this.toast.showToast(error.error, 'red')
@@ -311,7 +337,31 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   closeQueryResult(): void {
     this.queryReponse = []
     this.maxResultLines = 0
+    this.queryResultExpanded = false
     this.persistQueryState()
+    this.layoutEditor()
+  }
+
+  onQueryResultHeightChange(height: number): void {
+    this.queryResultExpanded = false
+    this.queryResultHeight = this.normalizeResultHeight(height)
+    this.previousQueryResultHeight = this.queryResultHeight
+    this.persistQueryState()
+    this.layoutEditor()
+  }
+
+  toggleQueryResultExpanded(): void {
+    if (this.queryResultExpanded) {
+      this.queryResultExpanded = false
+      this.queryResultHeight = this.normalizeResultHeight(this.previousQueryResultHeight)
+    } else {
+      this.previousQueryResultHeight = this.queryResultHeight
+      this.queryResultExpanded = true
+      this.queryResultHeight = this.getExpandedResultHeight()
+    }
+
+    this.persistQueryState()
+    this.layoutEditor()
   }
 
   private restoreQueryState(): void {
@@ -321,7 +371,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.queryReponse = queryState?.queryResponse || []
     this.queryLines = queryState?.queryLines ?? 50
     this.queryFetchSize = queryState?.queryFetchSize ?? 50
+    this.previousQueryResultHeight = this.normalizeResultHeight(queryState?.previousQueryResultHeight ?? this.defaultResultHeight)
+    this.queryResultExpanded = queryState?.queryResultExpanded ?? false
+    this.queryResultHeight = this.queryResultExpanded
+      ? this.getExpandedResultHeight()
+      : this.normalizeResultHeight(queryState?.queryResultHeight ?? this.defaultResultHeight)
     this.maxResultLines = queryState?.maxResultLines ?? 0
+    this.layoutEditor()
   }
 
   private persistQueryState(): void {
@@ -332,6 +388,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       queryResponse: this.queryReponse,
       queryLines: this.queryLines,
       queryFetchSize: this.queryFetchSize,
+      queryResultHeight: this.queryResultHeight,
+      previousQueryResultHeight: this.previousQueryResultHeight,
+      queryResultExpanded: this.queryResultExpanded,
       maxResultLines: this.maxResultLines
     }
   }
@@ -341,5 +400,41 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     if (!Number.isFinite(parsed) || parsed < 1) return 50
 
     return Math.floor(parsed)
+  }
+
+  private normalizeResultHeight(height: number): number {
+    const parsed = Number(height)
+    const maxHeight = this.getMaxResultHeight()
+
+    if (!Number.isFinite(parsed)) return this.defaultResultHeight
+
+    return Math.min(Math.max(Math.floor(parsed), this.minimumResultHeight), maxHeight)
+  }
+
+  private getExpandedResultHeight(): number {
+    return this.getPanelHeight()
+  }
+
+  private getMaxResultHeight(): number {
+    const panelHeight = this.getPanelHeight()
+
+    return Math.max(this.minimumResultHeight, Math.floor(panelHeight - this.minimumEditorHeight))
+  }
+
+  private getPanelHeight(): number {
+    return this.codeEditorPanel?.nativeElement?.clientHeight || Math.max(420, window.innerHeight - 180)
+  }
+
+  private prepareResultLayout(): void {
+    if (this.queryResultExpanded) {
+      this.queryResultHeight = this.getExpandedResultHeight()
+      return
+    }
+
+    this.queryResultHeight = this.normalizeResultHeight(this.queryResultHeight || this.defaultResultHeight)
+  }
+
+  private layoutEditor(): void {
+    setTimeout(() => this.editor?.layout(), 0)
   }
 }

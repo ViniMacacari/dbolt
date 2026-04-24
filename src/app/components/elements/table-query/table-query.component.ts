@@ -14,7 +14,7 @@ import {
 } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { AgGridAngular } from 'ag-grid-angular'
-import { ColDef, ModuleRegistry, AllCommunityModule, GridApi } from 'ag-grid-community'
+import { ColDef, ModuleRegistry, AllCommunityModule } from 'ag-grid-community'
 import { buildTypedColumnDefs } from '../../../utils/grid-column-formatting'
 
 ModuleRegistry.registerModules([AllCommunityModule])
@@ -35,11 +35,15 @@ export class TableQueryComponent implements AfterViewInit {
   @Input() rowLimit: number = 50
   @Input() totalRows: number | null = null
   @Input() isSelectResult: boolean = false
+  @Input() resultHeight: number = 300
+  @Input() isExpanded: boolean = false
 
   @Output() newValuesQuery = new EventEmitter<void>()
   @Output() closeResult = new EventEmitter<void>()
   @Output() rowLimitChange = new EventEmitter<number>()
   @Output() refreshQuery = new EventEmitter<void>()
+  @Output() resultHeightChange = new EventEmitter<number>()
+  @Output() toggleExpanded = new EventEmitter<void>()
 
   @ViewChild('tableWrapper') tableWrapper!: ElementRef<HTMLDivElement>
   @ViewChild('agGrid') agGrid!: AgGridAngular
@@ -53,7 +57,6 @@ export class TableQueryComponent implements AfterViewInit {
   private initialBottom = 0
   private lastScrollTop = 0
   private rowData: any = []
-  private gridApi!: GridApi
 
   scrollTimeout: any
 
@@ -92,34 +95,14 @@ export class TableQueryComponent implements AfterViewInit {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['calcWidth']) {
-      setTimeout(() => this.adjustTableWrapperSize(), 100)
+    if (changes['calcWidth'] || changes['resultHeight']) {
+      this.adjustTableWrapperSize()
     }
     this.updateColumns()
   }
 
   adjustTableWrapperSize() {
-    const wrapper = this.tableWrapper.nativeElement
-
-    const screenWidth = window.innerWidth
-
-    if (this.calcWidth === 0) {
-      this.calcWidth = 300
-    }
-
-    const adjustedWidth = screenWidth - this.calcWidth
-
-    if (adjustedWidth > 0) {
-      wrapper.style.width = `${adjustedWidth}px`
-      if (!this.isResizing) {
-        wrapper.style.height = `300px`
-      }
-      wrapper.style.overflowX = 'auto'
-      wrapper.style.overflowY = 'auto'
-      wrapper.style.resize = 'vertical'
-    } else {
-      console.warn('Invalid adjusted dimensions:', { adjustedWidth })
-    }
+    // Keep AG Grid virtualisation intact. The browser updates the fixed viewport size.
   }
 
   onScroll(event: Event) {
@@ -158,11 +141,10 @@ export class TableQueryComponent implements AfterViewInit {
   }
 
   startResize(event: MouseEvent) {
+    event.preventDefault()
     this.isResizing = true
     this.initialMouseY = event.clientY
-    const wrapper = this.tableWrapper.nativeElement
-    this.initialHeight = wrapper.offsetHeight
-    this.initialBottom = window.innerHeight - wrapper.offsetTop - wrapper.offsetHeight
+    this.initialHeight = this.resultHeight
 
     document.addEventListener('mousemove', this.resize)
     document.addEventListener('mouseup', this.stopResize)
@@ -171,12 +153,11 @@ export class TableQueryComponent implements AfterViewInit {
   resize = (event: MouseEvent) => {
     if (!this.isResizing) return
 
-    const wrapper = this.tableWrapper.nativeElement
     const deltaY = this.initialMouseY - event.clientY
 
     const newHeight = Math.max(this.initialHeight + deltaY, 100)
 
-    wrapper.style.height = `${newHeight}px`
+    this.resultHeightChange.emit(newHeight)
   }
 
   stopResize = () => {
@@ -211,12 +192,16 @@ export class TableQueryComponent implements AfterViewInit {
     this.refreshQuery.emit()
   }
 
+  toggleResultSize(): void {
+    this.toggleExpanded.emit()
+  }
+
   close(): void {
     this.closeResult.emit()
   }
 
   onBodyScroll(event: any) {
-    const bodyViewport = document.querySelector('.ag-body-viewport') as HTMLElement
+    const bodyViewport = this.getBodyViewport()
 
     if (bodyViewport) {
       const scrollTop = bodyViewport.scrollTop
@@ -233,14 +218,14 @@ export class TableQueryComponent implements AfterViewInit {
   }
 
   saveScrollPosition() {
-    const bodyViewport = document.querySelector('.ag-body-viewport') as HTMLElement
+    const bodyViewport = this.getBodyViewport()
     if (bodyViewport) {
       this.scrollTop = bodyViewport.scrollTop
     }
   }
 
   restoreScrollPosition() {
-    const bodyViewport = document.querySelector('.ag-body-viewport') as HTMLElement
+    const bodyViewport = this.getBodyViewport()
     if (bodyViewport) {
       bodyViewport.scrollTop = this.scrollTop
     }
@@ -250,5 +235,9 @@ export class TableQueryComponent implements AfterViewInit {
     if (this.query.length > 0) {
       this.columnDefs = buildTypedColumnDefs(this.query, 90)
     }
+  }
+
+  private getBodyViewport(): HTMLElement | null {
+    return this.tableWrapper?.nativeElement.querySelector('.ag-body-viewport')
   }
 }

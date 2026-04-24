@@ -1,22 +1,27 @@
-.table-wrapper {
-    position: absolute;
-    display: block;
-    left: 0;
-    right: 0;
-    bottom: 0;
+.query-result-wrapper {
+    bottom: auto !important;
+    position: relative !important;
+    display: flex;
+    flex-direction: column;
+    height: 100% !important;
+    left: auto !important;
+    max-height: none !important;
+    min-height: 0;
+    right: auto !important;
+    width: 100% !important;
     overflow: hidden;
     resize: none !important;
     border-top: 1px solid #444;
 
     background-color: #444;
 
-    max-height: 90%;
-
-    z-index: 1000;
+    z-index: 1;
 
     .ag-root {
-        height: calc(100% - 52px);
-        max-height: calc(100% - 52px);
+        flex: 1 1 0;
+        height: 100%;
+        max-height: none;
+        min-height: 0;
         width: 100%;
 
         border-radius: 0 !important;
@@ -75,21 +80,40 @@
     background: #1b1b1b;
     border-bottom: 1px solid #2f2f2f;
     color: #e8eaed;
-    position: sticky;
-    top: 0;
+    flex: 0 0 auto;
+    position: relative;
     z-index: 3;
 }
 
 .resize-handle {
-    height: 8px;
-    cursor: row-resize;
+    background: #1b1b1b;
+    border-bottom: 1px solid #2f2f2f;
+    cursor: ns-resize;
+    height: 9px;
+    position: relative;
+
+    &::before {
+        background: #5a5a5a;
+        border-radius: 2px;
+        content: '';
+        height: 3px;
+        left: 50%;
+        position: absolute;
+        top: 3px;
+        transform: translateX(-50%);
+        width: 68px;
+    }
+
+    &:hover::before {
+        background: #8aaed2;
+    }
 }
 
 .result-actions {
     align-items: center;
     display: flex;
     gap: 12px;
-    justify-content: space-between;
+    justify-content: flex-start;
     min-height: 36px;
     padding: 0 12px 8px;
 }
@@ -98,6 +122,7 @@
     align-items: center;
     display: flex;
     gap: 8px;
+    margin-right: auto;
     min-width: 0;
 
     span {
@@ -171,6 +196,7 @@
     }
 }
 
+.toggle-result-size,
 .close-result {
     align-items: center;
     background: #292727;
@@ -190,6 +216,16 @@
     &:hover {
         background: #3a3030;
         color: #e8eaed;
+    }
+}
+
+.toggle-result-size {
+    img {
+        filter: invert(72%) sepia(3%) saturate(25%) hue-rotate(346deg) brightness(85%) contrast(88%);
+    }
+
+    &:hover img {
+        filter: invert(100%);
     }
 }
 
