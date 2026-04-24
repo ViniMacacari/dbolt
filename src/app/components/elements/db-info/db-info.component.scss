@@ -1,46 +1,66 @@
 :host {
+    display: block;
     height: 100%;
+    min-height: 0;
+    width: 100%;
 }
 
 .db-info-container {
     display: flex;
     height: 100%;
+    min-height: 0;
     max-width: 100%;
+    width: 100%;
     gap: 1rem;
     overflow: hidden;
 }
 
 .db-info-panel {
+    flex: 1 1 auto;
     width: 100%;
     height: 100%;
     min-width: 0;
+    min-height: 0;
     position: relative;
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 
-.input-container {
-    flex: 0 0 auto;
-    background-color: #292727;
-}
-
 .db-info-grid-wrapper {
-    flex: 1 1 0;
+    flex: 1 1 auto;
+    height: 100%;
     min-height: 0;
     overflow: hidden;
+    background-color: #292727;
+    border: 1px solid #363535;
+    border-radius: 10px;
 
     .db-info-grid {
+        display: block;
         height: 100%;
+        min-height: 0;
         width: 100%;
     }
 
+    .ag-root,
     .ag-root-wrapper {
+        height: 100% !important;
+        min-height: 0;
         background-color: #292727;
-        border: 1px solid #363535;
+        border: none;
         border-radius: 10px;
         color: #e8eaed;
         overflow: hidden;
+    }
+
+    .ag-root-wrapper-body,
+    .ag-root,
+    .ag-body,
+    .ag-body-viewport,
+    .ag-center-cols-viewport,
+    .ag-center-cols-container {
+        background-color: #292727;
     }
 
     .ag-header {
@@ -71,6 +91,7 @@
 }
 
 .editor-toolbar {
+    flex: 0 0 160px;
     background-color: #1b1b1b;
     border-radius: 15px;
     padding: 10px;

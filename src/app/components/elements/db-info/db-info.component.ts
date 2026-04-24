@@ -1,6 +1,5 @@
-import { Component, Input, Output, EventEmitter, ViewChild, OnChanges, SimpleChanges, ViewEncapsulation } from '@angular/core'
+import { AfterViewInit, Component, ElementRef, HostListener, Input, Output, EventEmitter, ViewChild, OnChanges, SimpleChanges, ViewEncapsulation } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { FormsModule } from '@angular/forms'
 import { AgGridAngular } from 'ag-grid-angular'
 import { AllCommunityModule, ColDef, GridApi, GridReadyEvent, ModuleRegistry, RowClickedEvent } from 'ag-grid-community'
 import { ToastComponent } from '../../toast/toast.component'
@@ -13,12 +12,12 @@ type ObjectRow = Record<string, any>
 @Component({
   selector: 'app-db-info',
   standalone: true,
-  imports: [CommonModule, ToastComponent, FormsModule, AgGridAngular],
+  imports: [CommonModule, ToastComponent, AgGridAngular],
   templateUrl: './db-info.component.html',
   styleUrl: './db-info.component.scss',
   encapsulation: ViewEncapsulation.None
 })
-export class DbInfoComponent implements OnChanges {
+export class DbInfoComponent implements AfterViewInit, OnChanges {
   @Input() data: any
   @Output() sqlContentChange = new EventEmitter<string>()
   @Output() savedName = new EventEmitter<string>()
@@ -26,6 +25,7 @@ export class DbInfoComponent implements OnChanges {
   @Input() widthTable: number = 300
   @Input() tabInfo: any
 
+  @ViewChild('gridWrapper') gridWrapper!: ElementRef<HTMLDivElement>
   @ViewChild(ToastComponent) toast!: ToastComponent
 
   showTables: boolean = true
@@ -33,9 +33,9 @@ export class DbInfoComponent implements OnChanges {
   showProcedures: boolean = false
   showIndexes: boolean = false
 
-  filterTable: string = ''
   activeRows: ObjectRow[] = []
   activeGroup: ObjectGroup = 'tables'
+  gridHeight: string = '100%'
 
   columnDefs: ColDef[] = []
   defaultColDef: ColDef = {
@@ -48,31 +48,26 @@ export class DbInfoComponent implements OnChanges {
   private readonly groupConfig: Record<ObjectGroup, {
     label: string
     singular: string
-    searchPlaceholder: string
     emptyMessage: string
   }> = {
     tables: {
       label: 'Tables',
       singular: 'Table',
-      searchPlaceholder: 'Search tables...',
       emptyMessage: 'No tables found'
     },
     views: {
       label: 'Views',
       singular: 'View',
-      searchPlaceholder: 'Search views...',
       emptyMessage: 'No views found'
     },
     procedures: {
       label: 'Procedures',
       singular: 'Procedure',
-      searchPlaceholder: 'Search procedures...',
       emptyMessage: 'No procedures found'
     },
     indexes: {
       label: 'Indexes',
       singular: 'Index',
-      searchPlaceholder: 'Search indexes...',
       emptyMessage: 'No indexes found'
     }
   }
@@ -82,10 +77,20 @@ export class DbInfoComponent implements OnChanges {
     this.refreshActiveRows()
   }
 
+  ngAfterViewInit(): void {
+    this.syncGridHeight()
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['data']) {
       this.refreshActiveRows()
+      this.queueGridResize()
     }
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.queueGridResize()
   }
 
   filterTables(): void {
@@ -106,7 +111,7 @@ export class DbInfoComponent implements OnChanges {
 
   onGridReady(event: GridReadyEvent): void {
     this.gridApi = event.api
-    this.gridApi.setGridOption('quickFilterText', this.filterTable)
+    this.queueGridResize()
   }
 
   onRowClicked(event: RowClickedEvent<ObjectRow>): void {
@@ -126,21 +131,12 @@ export class DbInfoComponent implements OnChanges {
     })
   }
 
-  applyFilterTable(): void {
-    this.gridApi?.setGridOption('quickFilterText', this.filterTable)
-  }
-
-  get searchPlaceholder(): string {
-    return this.groupConfig[this.activeGroup].searchPlaceholder
-  }
-
   get emptyMessage(): string {
     return this.groupConfig[this.activeGroup].emptyMessage
   }
 
   private setActiveGroup(group: ObjectGroup): void {
     this.activeGroup = group
-    this.filterTable = ''
     this.showTables = group === 'tables'
     this.showViews = group === 'views'
     this.showProcedures = group === 'procedures'
@@ -148,7 +144,7 @@ export class DbInfoComponent implements OnChanges {
 
     this.updateColumns()
     this.refreshActiveRows()
-    this.gridApi?.setGridOption('quickFilterText', '')
+    this.queueGridResize()
   }
 
   private refreshActiveRows(): void {
@@ -218,5 +214,24 @@ export class DbInfoComponent implements OnChanges {
     }
 
     this.columnDefs = columns
+  }
+
+  private queueGridResize(): void {
+    requestAnimationFrame(() => this.syncGridHeight())
+  }
+
+  private syncGridHeight(): void {
+    if (!this.gridWrapper?.nativeElement) {
+      return
+    }
+
+    const wrapper = this.gridWrapper.nativeElement
+    const content = wrapper.closest('.user-content') as HTMLElement | null
+    const wrapperTop = wrapper.getBoundingClientRect().top
+    const bottom = content?.getBoundingClientRect().bottom ?? window.innerHeight
+    const availableHeight = Math.max(260, Math.floor(bottom - wrapperTop))
+
+    this.gridHeight = `${availableHeight}px`
+    wrapper.style.height = this.gridHeight
   }
 }

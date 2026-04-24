@@ -28,13 +28,8 @@
     </div>
 
     <div class="info db-info-panel">
-        <div class="input-container py-2">
-            <input type="text" class="input-page mb-1" [placeholder]="searchPlaceholder" [(ngModel)]="filterTable"
-                (input)="applyFilterTable()">
-        </div>
-
-        <div class="db-info-grid-wrapper">
-            <ag-grid-angular class="ag-root db-info-grid" [rowData]="activeRows" [columnDefs]="columnDefs"
+        <div #gridWrapper class="db-info-grid-wrapper">
+            <ag-grid-angular class="db-info-grid" [style.height]="gridHeight" [rowData]="activeRows" [columnDefs]="columnDefs"
                 [defaultColDef]="defaultColDef" [domLayout]="'normal'" [rowBuffer]="30"
                 [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false" [animateRows]="false"
                 (gridReady)="onGridReady($event)" (rowClicked)="onRowClicked($event)">
