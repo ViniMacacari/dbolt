@@ -5,6 +5,7 @@ import {
   isReadOnlySelectQuery,
   normalizeRowLimit,
   removeTopLevelOrderBy,
+  splitCtePrefix,
   trimStatementTerminator
 } from '../../../utils/sql-query.js';
 
@@ -24,9 +25,13 @@ class SQuerysHana {
     const rowLimit = normalizeRowLimit(maxLines);
 
     if (isSelectQuery) {
-      const countSql = this.getCountQuery(sql);
-      const countResult = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
-      totalRows = countResult[0]?.TOTAL_ROWS ?? null;
+      try {
+        const countSql = this.getCountQuery(sql);
+        const countResult = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
+        totalRows = countResult[0]?.TOTAL_ROWS ?? null;
+      } catch (error: unknown) {
+        console.warn('Unable to count HANA query rows. Running main query without total row count.', error);
+      }
     }
 
     let executableSql = trimStatementTerminator(sql);
@@ -39,7 +44,7 @@ class SQuerysHana {
 
     if (result.length === 0 && isSelectQuery) {
       const columnsResult = await this.db.executeQuery(
-        `SELECT * FROM (${trimStatementTerminator(executableSql)}) AS empty_columns WHERE 1 = 0`,
+        this.getEmptyColumnsQuery(executableSql),
         [],
         connectionKey
       );
@@ -78,7 +83,15 @@ class SQuerysHana {
     }
 
     const withoutOrderBy = removeTopLevelOrderBy(sql);
-    return `SELECT COUNT(*) AS TOTAL_ROWS FROM (${withoutOrderBy}) AS count_query`;
+    const { prefix, mainSql } = splitCtePrefix(withoutOrderBy);
+
+    return `${prefix} SELECT COUNT(*) AS TOTAL_ROWS FROM (\n${mainSql}\n) AS count_query`;
+  }
+
+  getEmptyColumnsQuery(sql: string): string {
+    const { prefix, mainSql } = splitCtePrefix(sql);
+
+    return `${prefix} SELECT * FROM (\n${trimStatementTerminator(mainSql)}\n) AS empty_columns WHERE 1 = 0`;
   }
 }
 

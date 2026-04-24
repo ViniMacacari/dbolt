@@ -6,6 +6,7 @@ import {
   isReadOnlySelectQuery,
   normalizeRowLimit,
   removeTopLevelOrderBy,
+  splitCtePrefix,
   trimStatementTerminator
 } from '../../../utils/sql-query.js';
 
@@ -29,9 +30,13 @@ class SQueryPgV1 {
     }
 
     let totalRows: number | null = null;
-    const countSql = this.getCountQuery(sql);
-    const countResult = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
-    totalRows = countResult[0]?.total_rows ?? 0;
+    try {
+      const countSql = this.getCountQuery(sql);
+      const countResult = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
+      totalRows = countResult[0]?.total_rows ?? 0;
+    } catch (error: unknown) {
+      console.warn('Unable to count PostgreSQL query rows. Running main query without total row count.', error);
+    }
 
     let executableSql = trimStatementTerminator(sql);
 
@@ -43,7 +48,7 @@ class SQueryPgV1 {
 
     if (result.length === 0) {
       try {
-        const columnSql = `SELECT * FROM (${executableSql}) AS temp_table WHERE FALSE`;
+        const columnSql = this.getEmptyColumnsQuery(executableSql);
         const columnsResult = await this.db.executeQuery(columnSql, [], connectionKey);
         const columns = Object.keys(columnsResult[0] ?? {});
 
@@ -80,7 +85,15 @@ class SQueryPgV1 {
     }
 
     const withoutOrderBy = removeTopLevelOrderBy(sql);
-    return `SELECT COUNT(*) AS total_rows FROM (${withoutOrderBy}) AS count_query_alias`;
+    const { prefix, mainSql } = splitCtePrefix(withoutOrderBy);
+
+    return `${prefix} SELECT COUNT(*) AS total_rows FROM (\n${mainSql}\n) AS count_query_alias`;
+  }
+
+  getEmptyColumnsQuery(sql: string): string {
+    const { prefix, mainSql } = splitCtePrefix(sql);
+
+    return `${prefix} SELECT * FROM (\n${trimStatementTerminator(mainSql)}\n) AS temp_table WHERE FALSE`;
   }
 }
 

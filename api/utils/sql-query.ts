@@ -58,7 +58,7 @@ export function trimStatementTerminator(sql: string): string {
 }
 
 export function addLimitClause(sql: string, maxLines: number): string {
-  return `${trimStatementTerminator(sql)} LIMIT ${Math.max(0, Math.floor(maxLines))}`;
+  return `${trimStatementTerminator(sql)}\nLIMIT ${Math.max(0, Math.floor(maxLines))}`;
 }
 
 export function removeTopLevelOrderBy(sql: string): string {

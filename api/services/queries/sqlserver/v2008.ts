@@ -33,9 +33,13 @@ class SQuerySQLServerV1 {
     let totalRows: number | null = null;
     let executableSql = await this.adjustSchemaInQuery(sql, connectionKey);
 
-    const countSql = this.addTotalRowCountQuery(executableSql);
-    const resultWithCount = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
-    totalRows = resultWithCount[0]?.total_rows ?? 0;
+    try {
+      const countSql = this.addTotalRowCountQuery(executableSql);
+      const resultWithCount = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
+      totalRows = resultWithCount[0]?.total_rows ?? 0;
+    } catch (error: unknown) {
+      console.warn('Unable to count SQL Server query rows. Running main query without total row count.', error);
+    }
 
     if (rowLimit && !this.hasLimitClause(executableSql)) {
       executableSql = this.addPaginationToQuery(executableSql, rowLimit);
@@ -77,14 +81,14 @@ class SQuerySQLServerV1 {
     const { prefix, mainSql } = splitCtePrefix(sql);
     const countableSql = removeTopLevelOrderBy(mainSql);
 
-    return `${prefix} SELECT COUNT(*) AS total_rows FROM (${countableSql}) AS query_with_count`;
+    return `${prefix} SELECT COUNT(*) AS total_rows FROM (\n${countableSql}\n) AS query_with_count`;
   }
 
   getEmptyColumnsQuery(sql: string): string {
     const { prefix, mainSql } = splitCtePrefix(sql);
     const countableSql = removeTopLevelOrderBy(mainSql);
 
-    return `${prefix} SELECT TOP (0) * FROM (${countableSql}) AS empty_columns`;
+    return `${prefix} SELECT TOP (0) * FROM (\n${countableSql}\n) AS empty_columns`;
   }
 
   async adjustSchemaInQuery(sql: string, connectionKey?: string): Promise<string> {
