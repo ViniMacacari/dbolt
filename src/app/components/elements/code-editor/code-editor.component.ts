@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewChecked, OnDestroy } from '@angular/core'
+import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewChecked, OnDestroy, OnChanges, SimpleChanges } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import * as monaco from 'monaco-editor'
 import { GetDbschemaService } from '../../../services/db-info/get-dbschema.service'
@@ -17,7 +17,7 @@ import { ConnectionContextService } from '../../../services/connection-context/c
   styleUrls: ['./code-editor.component.scss'],
   imports: [TableQueryComponent, CommonModule, ToastComponent, SaveQueryComponent, LoadingComponent],
 })
-export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
+export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChanges {
   @Input() sqlContent: string = ''
   @Output() sqlContentChange = new EventEmitter<string>()
   @Output() savedName = new EventEmitter<string>()
@@ -60,13 +60,19 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
     }
   }
 
-  ngOnChanges(): void {
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['tabInfo']) {
+      this.restoreQueryState()
+    }
+
     if (this.editor && this.sqlContent !== this.editor.getValue()) {
       this.editor.setValue(this.sqlContent || '')
     }
   }
 
   ngOnDestroy(): void {
+    this.persistQueryState()
+
     if (this.editor) {
       this.editor.dispose()
     }
@@ -219,6 +225,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
       const result: any = await this.runQuery.runSQL(sql, this.queryLines, this.tabInfo?.dbInfo)
       this.queryReponse = result
       this.maxResultLines = this.runQuery.getQueryLines()
+      this.persistQueryState()
     } catch (error: any) {
       console.error(error)
       this.toast.showToast(error.error, 'red')
@@ -236,6 +243,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
       this.queryLines += 50
       const result: any = await this.runQuery.runSQL(this.cacheSql, this.queryLines, this.tabInfo?.dbInfo)
       this.queryReponse = result
+      this.persistQueryState()
     } catch (error: any) {
       console.error(error)
       this.toast.showToast(error.error, 'red')
@@ -284,5 +292,25 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy {
 
   async closeSaveAs(): Promise<void> {
     this.isSaveAsOpen = false
+  }
+
+  private restoreQueryState(): void {
+    const queryState = this.tabInfo?.queryState
+
+    this.cacheSql = queryState?.cacheSql || ''
+    this.queryReponse = queryState?.queryResponse || []
+    this.queryLines = queryState?.queryLines ?? 50
+    this.maxResultLines = queryState?.maxResultLines ?? 0
+  }
+
+  private persistQueryState(): void {
+    if (!this.tabInfo) return
+
+    this.tabInfo.queryState = {
+      cacheSql: this.cacheSql,
+      queryResponse: this.queryReponse,
+      queryLines: this.queryLines,
+      maxResultLines: this.maxResultLines
+    }
   }
 }

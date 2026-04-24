@@ -34,6 +34,7 @@ export class FixTableDataComponent {
 
   @Input() calcWidth: number = 300
   @Input() elementName: string = ''
+  @Input() tabInfo: any
 
   @Output() newValuesQuery = new EventEmitter<void>()
 
@@ -88,7 +89,11 @@ export class FixTableDataComponent {
   }
 
   async ngAfterViewInit(): Promise<void> {
-    await this.getTableInfo()
+    const restored = this.restoreTableState()
+    if (!restored) {
+      await this.getTableInfo()
+    }
+
     this.isElementVisible = true
     this.adjustTableWrapperSize()
     this.updateColumns()
@@ -222,33 +227,52 @@ export class FixTableDataComponent {
 
   async getTableInfo(): Promise<void> {
     try {
-      const result: any = await this.runQuery.runSQL('select * from ' + this.elementName, this.queryLines)
+      const result: any = await this.runQuery.runSQL('select * from ' + this.elementName, this.queryLines, this.tabInfo?.dbInfo)
       const maxLines: any = this.runQuery.getQueryLines()
 
       this.maxResultLines = maxLines
       this.query = result
-
-      console.log(result)
+      this.persistTableState()
     } catch (error: any) {
       console.log(error)
     }
   }
 
   async newLines(): Promise<void> {
-    console.log(this.query.length, this.maxResultLines)
     if (this.query.length >= (this.maxResultLines || 0)) return
 
     LoadingComponent.show()
 
     try {
       this.queryLines += 50
-      const result: any = await this.runQuery.runSQL('select * from ' + this.elementName, this.queryLines)
-      console.log(result)
+      const result: any = await this.runQuery.runSQL('select * from ' + this.elementName, this.queryLines, this.tabInfo?.dbInfo)
       this.query = result
+      this.persistTableState()
     } catch (error: any) {
       console.error(error)
     }
 
     LoadingComponent.hide()
+  }
+
+  private restoreTableState(): boolean {
+    const tableState = this.tabInfo?.tableDataState
+    if (!tableState) return false
+
+    this.query = tableState.query || []
+    this.queryLines = tableState.queryLines ?? 50
+    this.maxResultLines = tableState.maxResultLines ?? 0
+
+    return this.query.length > 0
+  }
+
+  private persistTableState(): void {
+    if (!this.tabInfo) return
+
+    this.tabInfo.tableDataState = {
+      query: this.query,
+      queryLines: this.queryLines,
+      maxResultLines: this.maxResultLines
+    }
   }
 }

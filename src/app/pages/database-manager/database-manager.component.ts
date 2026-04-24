@@ -198,6 +198,7 @@ export class DatabaseManagerComponent {
         this.editorOpen = false
         this.dbInfoOpen = false
         this.elementName = tab.info.name
+        this.tableInfoData = tab.info.info
       }
 
       this.tabInfo = tab
