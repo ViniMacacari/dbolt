@@ -1,13 +1,16 @@
 import PgV1 from '../../../models/postgres/v9.js';
 import { getErrorMessage } from '../../../utils/errors.js';
 import { groupDatabaseObjects, toIndexDatabaseObject, toNamedDatabaseObject } from '../../../utils/database-objects.js';
+import { quoteIdentifier } from '../../../utils/sql-identifiers.js';
 
 import type {
   DatabaseObject,
   DatabaseObjectsResult,
   QueryRow,
   TableColumn,
-  TableColumnsResult
+  TableColumnsResult,
+  TableDDLResult,
+  TableMetadataRowsResult
 } from '../../../types.js';
 
 type CurrentSchemaRow = QueryRow & { schema: string };
@@ -140,6 +143,123 @@ class ListObjectsPgV1 {
         error: getErrorMessage(error)
       };
     }
+  }
+
+  async tableKeys(tableName: string, connectionKey?: string): Promise<TableMetadataRowsResult> {
+    try {
+      const keys = (await this.db.executeQuery(
+        `
+          SELECT
+            tc.constraint_name AS name,
+            tc.constraint_type AS type,
+            kcu.column_name,
+            kcu.ordinal_position,
+            ccu.table_name AS referenced_table,
+            ccu.column_name AS referenced_column
+          FROM information_schema.table_constraints tc
+          LEFT JOIN information_schema.key_column_usage kcu
+            ON kcu.constraint_schema = tc.constraint_schema
+            AND kcu.constraint_name = tc.constraint_name
+            AND kcu.table_schema = tc.table_schema
+            AND kcu.table_name = tc.table_name
+          LEFT JOIN information_schema.constraint_column_usage ccu
+            ON ccu.constraint_schema = tc.constraint_schema
+            AND ccu.constraint_name = tc.constraint_name
+          WHERE tc.table_schema = current_schema()
+            AND tc.table_name = $1
+          ORDER BY tc.constraint_type, tc.constraint_name, kcu.ordinal_position
+        `,
+        [tableName],
+        connectionKey
+      )) as QueryRow[];
+
+      return { success: true, data: keys };
+    } catch (error: unknown) {
+      return {
+        success: false,
+        message: 'Error occurred while listing table keys.',
+        error: getErrorMessage(error)
+      };
+    }
+  }
+
+  async tableIndexes(tableName: string, connectionKey?: string): Promise<TableMetadataRowsResult> {
+    try {
+      const indexes = (await this.db.executeQuery(
+        `
+          SELECT
+            indexname AS name,
+            indexdef AS ddl
+          FROM pg_indexes
+          WHERE schemaname = current_schema()
+            AND tablename = $1
+          ORDER BY indexname
+        `,
+        [tableName],
+        connectionKey
+      )) as QueryRow[];
+
+      return { success: true, data: indexes };
+    } catch (error: unknown) {
+      return {
+        success: false,
+        message: 'Error occurred while listing table indexes.',
+        error: getErrorMessage(error)
+      };
+    }
+  }
+
+  async tableDDL(tableName: string, connectionKey?: string): Promise<TableDDLResult> {
+    try {
+      const columns = (await this.db.executeQuery(
+        `
+          SELECT
+            column_name,
+            data_type,
+            character_maximum_length,
+            numeric_precision,
+            numeric_scale,
+            is_nullable,
+            column_default
+          FROM information_schema.columns
+          WHERE table_schema = current_schema()
+            AND table_name = $1
+          ORDER BY ordinal_position
+        `,
+        [tableName],
+        connectionKey
+      )) as QueryRow[];
+      const columnLines = columns.map((column) => {
+        const type = this.formatPostgresColumnType(column);
+        const nullable = column['is_nullable'] === 'NO' ? ' NOT NULL' : '';
+        const defaultValue = column['column_default'] ? ` DEFAULT ${String(column['column_default'])}` : '';
+        return `  ${quoteIdentifier(String(column['column_name']))} ${type}${defaultValue}${nullable}`;
+      });
+      const ddl = `CREATE TABLE ${quoteIdentifier(tableName)} (\n${columnLines.join(',\n')}\n);`;
+
+      return { success: true, ddl };
+    } catch (error: unknown) {
+      return {
+        success: false,
+        message: 'Error occurred while loading table DDL.',
+        error: getErrorMessage(error)
+      };
+    }
+  }
+
+  private formatPostgresColumnType(column: QueryRow): string {
+    const dataType = String(column['data_type'] || '');
+    if (column['character_maximum_length']) {
+      return `${dataType}(${column['character_maximum_length']})`;
+    }
+
+    if (column['numeric_precision']) {
+      return column['numeric_scale']
+        ? `${dataType}(${column['numeric_precision']}, ${column['numeric_scale']})`
+        : `${dataType}(${column['numeric_precision']})`;
+    }
+
+    return dataType;
   }
 }
 

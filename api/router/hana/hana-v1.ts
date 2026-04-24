@@ -28,5 +28,14 @@ router.get('/global-version/list-objects', (req, res) => {
 router.get('/global-version/table-columns/:tableName', (req, res) => {
   void CHanaV1.tableColumns(req, res);
 });
+router.get('/global-version/table-keys/:tableName', (req, res) => {
+  void CHanaV1.tableKeys(req, res);
+});
+router.get('/global-version/table-indexes/:tableName', (req, res) => {
+  void CHanaV1.tableIndexes(req, res);
+});
+router.get('/global-version/table-ddl/:tableName', (req, res) => {
+  void CHanaV1.tableDDL(req, res);
+});
 
 export default router;

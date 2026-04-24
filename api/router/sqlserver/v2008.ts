@@ -28,5 +28,14 @@ router.get('/list-objects', (req, res) => {
 router.get('/table-columns/:tableName', (req, res) => {
   void CSQLServerV1.tableColumns(req, res);
 });
+router.get('/table-keys/:tableName', (req, res) => {
+  void CSQLServerV1.tableKeys(req, res);
+});
+router.get('/table-indexes/:tableName', (req, res) => {
+  void CSQLServerV1.tableIndexes(req, res);
+});
+router.get('/table-ddl/:tableName', (req, res) => {
+  void CSQLServerV1.tableDDL(req, res);
+});
 
 export default router;

@@ -119,6 +119,42 @@ class CMySQLV1 {
       sendInternalError(res, error);
     }
   }
+
+  async tableKeys(
+    req: Request<TableNameParams>,
+    res: Response
+  ): Promise<void> {
+    try {
+      const result = await ListObjectsMySQLV1.tableKeys(req.params.tableName, getConnectionKey(req));
+      sendServiceResult(res, result);
+    } catch (error: unknown) {
+      sendInternalError(res, error);
+    }
+  }
+
+  async tableIndexes(
+    req: Request<TableNameParams>,
+    res: Response
+  ): Promise<void> {
+    try {
+      const result = await ListObjectsMySQLV1.tableIndexes(req.params.tableName, getConnectionKey(req));
+      sendServiceResult(res, result);
+    } catch (error: unknown) {
+      sendInternalError(res, error);
+    }
+  }
+
+  async tableDDL(
+    req: Request<TableNameParams>,
+    res: Response
+  ): Promise<void> {
+    try {
+      const result = await ListObjectsMySQLV1.tableDDL(req.params.tableName, getConnectionKey(req));
+      sendServiceResult(res, result);
+    } catch (error: unknown) {
+      sendInternalError(res, error);
+    }
+  }
 }
 
 export default new CMySQLV1();

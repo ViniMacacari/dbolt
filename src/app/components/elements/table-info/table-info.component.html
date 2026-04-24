@@ -1,64 +1,63 @@
-<div class="code-editor-container d-flex h-100 gap-2">
+<div class="code-editor-container table-info-container d-flex h-100 gap-2">
     <div class="editor-toolbar d-flex h-100 align-items-center flex-column">
         <button class="btn" [ngClass]="{ 'active': showData }" (click)="filterData()">
-            <img src="icons/table.png" title="Run selected code" height="15px">
+            <img src="icons/table.png" title="Data" height="15px">
             Data
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': showColumns }" (click)="filterColumns()">
-            <img src="icons/column.png" title="Run all code" height="15px">
+            <img src="icons/column.png" title="Columns" height="15px">
             Columns
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': showKeys }" (click)="filterKeys()">
-            <img src="icons/key.png" title="Indent code" height="15px">
+            <img src="icons/key.png" title="Keys" height="15px">
             Keys
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': showIndexes }" (click)="filterIndexes()">
-            <img src="icons/index.png" title="Save code" height="15px">
+            <img src="icons/index.png" title="Indexes" height="15px">
             Indexes
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': showDDL }" (click)="filterDDL()">
-            <img src="icons/code.png" title="Save code" height="15px">
+            <img src="icons/code.png" title="DDL" height="15px">
             DDL
         </button>
     </div>
-    <div class="info py-2">
-        <div *ngIf="showData">
-            <div class="table">
-                <app-fix-table-data [calcWidth]="380" [elementName]="elementName"
-                    [tabInfo]="tabInfo"></app-fix-table-data>
-            </div>
+
+    <div class="info table-info-panel">
+        <div *ngIf="showData" class="data-panel">
+            <app-fix-table-data [calcWidth]="380" [elementName]="elementName" [tabInfo]="tabInfo"></app-fix-table-data>
         </div>
-        <div *ngIf="showColumns">
-            <div class="columns" *ngFor="let table of data.views">
-                <h2 class="subtitle-min">{{ table.NAME || table.name }}</h2>
-            </div>
+
+        <div *ngIf="!showData && !showDDL" class="metadata-panel">
+            <p class="metadata-status" *ngIf="isLoadingMetadata">Loading metadata...</p>
+            <p class="metadata-status error" *ngIf="metadataError">{{ metadataError }}</p>
+
+            <ag-grid-angular *ngIf="!isLoadingMetadata && !metadataError" class="metadata-grid"
+                [rowData]="activeRows" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef"
+                [domLayout]="'normal'" [rowBuffer]="30" [suppressRowVirtualisation]="false"
+                [suppressColumnVirtualisation]="false" [animateRows]="false">
+            </ag-grid-angular>
+
+            <p class="metadata-status" *ngIf="!isLoadingMetadata && !metadataError && activeRows.length === 0">
+                No metadata found
+            </p>
         </div>
-        <div *ngIf="showKeys">
-            <div class="table" *ngFor="let table of data.procedures">
-                <h2 class=" subtitle-min">{{ table.NAME || table.name }}</h2>
-            </div>
-        </div>
-        <div *ngIf="showIndexes">
-            <div class="table" *ngFor="let table of data.indexes">
-                <h2 class=" subtitle-min">{{ table.NAME || table.name }}</h2>
-            </div>
-        </div>
-        <div *ngIf="showDDL">
-            <div class="table" *ngFor="let table of data.indexes">
-                <h2 class=" subtitle-min">{{ table.NAME || table.name }}</h2>
-            </div>
+
+        <div *ngIf="showDDL" class="ddl-panel">
+            <p class="metadata-status" *ngIf="isLoadingMetadata">Loading DDL...</p>
+            <p class="metadata-status error" *ngIf="metadataError">{{ metadataError }}</p>
+            <pre *ngIf="!isLoadingMetadata && !metadataError">{{ ddl || 'No DDL available' }}</pre>
         </div>
     </div>
 </div>
