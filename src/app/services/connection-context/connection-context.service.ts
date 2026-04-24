@@ -13,12 +13,14 @@ export class ConnectionContextService {
     private connectionsService: ConnectionsService
   ) { }
 
-  createContext(schemaDb: any): any {
+  createContext(schemaDb: any, forceNewKey: boolean = false): any {
     if (!schemaDb) return schemaDb
 
     return {
       ...schemaDb,
-      connectionKey: schemaDb.connectionKey || this.createConnectionKey()
+      connectionKey: forceNewKey
+        ? this.createConnectionKey()
+        : schemaDb.connectionKey || this.createConnectionKey()
     }
   }
 
@@ -34,8 +36,14 @@ export class ConnectionContextService {
       throw new Error('Selected connection has no saved connection id.')
     }
 
+    const connection = await this.connectionsService.getConnectionById(connectionId)
+
     const stateKey = [
       context.connectionKey,
+      connection.id ?? connectionId,
+      connection.host,
+      connection.port,
+      connection.user,
       context.sgbd,
       context.version,
       context.database,
@@ -45,8 +53,6 @@ export class ConnectionContextService {
     if (this.ensuredContexts.get(context.connectionKey) === stateKey) {
       return context
     }
-
-    const connection = await this.connectionsService.getConnectionById(connectionId)
 
     await this.IAPI.post(`/api/${context.sgbd}/${context.version}/connect`, {
       host: connection.host,

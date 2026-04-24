@@ -60,7 +60,7 @@ export class TabsComponent {
       type: type,
       info: info,
       originalContent: info.sql || '',
-      dbInfo: this.createTabDbInfo(info.context),
+      dbInfo: this.createTabDbInfo(info.context, !info.context),
       icon: 'CODE'
     }
 
@@ -82,7 +82,7 @@ export class TabsComponent {
       info: {
         sql: info.info.sql
       },
-      dbInfo: this.createTabDbInfo(info.context),
+      dbInfo: this.createTabDbInfo(info.context, !info.context),
       originalSql: info.info.sql,
       icon: 'CODE'
     }
@@ -140,7 +140,6 @@ export class TabsComponent {
   selectTab(index: number): void {
     this.activeTab = index
     this.tabSelected.emit(this.tabs[index])
-    console.log(this.tabs[index])
   }
 
   @HostListener('document:click', ['$event'])
@@ -162,7 +161,7 @@ export class TabsComponent {
         sql: event.sql
       },
       originalContent: event.sql,
-      dbInfo: this.createTabDbInfo(event.dbSchema),
+      dbInfo: this.createTabDbInfo(event.dbSchema, true),
       icon: 'CODE'
     }
 
@@ -204,8 +203,11 @@ export class TabsComponent {
     return this.activeTab === null ? null : this.tabs[this.activeTab]
   }
 
-  private createTabDbInfo(context: any = null): any {
-    return this.connectionContext.createContext(context || this.dbSchema.getSelectedSchemaDB())
+  private createTabDbInfo(context: any = null, forceNewKey: boolean = false): any {
+    return this.connectionContext.createContext(
+      context || this.dbSchema.getSelectedSchemaDB(),
+      forceNewKey
+    )
   }
 
   onCloseLoadQuery(event: any): void {
