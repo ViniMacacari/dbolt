@@ -2,83 +2,96 @@
     height: 100%;
 }
 
-.info {
+.db-info-container {
+    display: flex;
+    height: 100%;
+    max-width: 100%;
+    gap: 1rem;
+    overflow: hidden;
+}
+
+.db-info-panel {
     width: 100%;
     height: 100%;
-
+    min-width: 0;
     position: relative;
     display: flex;
     flex-direction: column;
-
-    overflow-y: auto;
-
-    .tables {
-        width: 100%;
-        height: calc(100% - 40px);
-        overflow: auto;
-
-        .table {
-            max-width: 100%;
-            border-bottom: 1px solid #363535;
-
-            margin: 0;
-
-            cursor: pointer;
-            transition: all 0.2s ease-in-out;
-
-            &:hover {
-                background-color: #3d3a3a;
-            }
-
-            h2 {
-                max-width: 400px;
-
-                padding: 10px 5px;
-                margin: 0;
-
-                flex-wrap: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-        }
-    }
-
-    .editor {
-        position: relative;
-        height: 100%;
-    }
+    overflow: hidden;
 }
 
 .input-container {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-
+    flex: 0 0 auto;
     background-color: #292727;
+}
+
+.db-info-grid-wrapper {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+
+    .db-info-grid {
+        height: 100%;
+        width: 100%;
+    }
+
+    .ag-root-wrapper {
+        background-color: #292727;
+        border: 1px solid #363535;
+        border-radius: 10px;
+        color: #e8eaed;
+        overflow: hidden;
+    }
+
+    .ag-header {
+        background-color: #1b1b1b;
+        border-bottom: 1px solid #363535;
+        color: #e8eaed;
+    }
+
+    .ag-row-even,
+    .ag-row-odd {
+        background-color: #292727;
+        border-bottom: 1px solid #363535;
+        color: #e8eaed;
+    }
+
+    .ag-row-hover {
+        background-color: #3d3a3a !important;
+        cursor: pointer;
+    }
+
+    .ag-cell-focus {
+        border: 1px solid #747474 !important;
+    }
+
+    .ag-body-viewport {
+        overflow-y: auto !important;
+    }
 }
 
 .editor-toolbar {
     background-color: #1b1b1b;
     border-radius: 15px;
-
     padding: 10px;
 
     .btn {
         display: flex;
         align-items: center;
-
         width: 100%;
-
         padding: 5px;
         gap: 10px;
         border: none;
-
         color: #e8eaed;
         font-size: .9em;
         font-family: 'Nunito';
-
         cursor: pointer;
         transition: all 0.2s ease-in-out;
+
+        small {
+            color: #969696;
+            margin-left: auto;
+        }
 
         &:hover {
             background-color: #3d3a3a;
@@ -91,15 +104,14 @@
     }
 }
 
-.code-editor-container {
-    display: flex;
-    height: 100%;
-    max-width: 100%;
-    gap: 1rem;
-    overflow: hidden;
-}
-
 .active {
     background-color: #3d3a3a;
     border: none;
+}
+
+.empty-list {
+    color: #969696;
+    font-family: 'Nunito';
+    font-size: .8em;
+    padding: 12px 5px;
 }

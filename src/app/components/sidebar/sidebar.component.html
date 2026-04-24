@@ -39,6 +39,7 @@
                 <div *ngFor="let database of getSchemasByConnection(connection)" class="d-flex flex-column">
                     <div class="separator"></div>
                     <div (click)="toggleDatabase(connection.id + '-' + database.database)"
+                        (dblclick)="openDatabaseInfo(connection, database, $event)"
                         class="database-row d-flex align-items-center gap-2"
                         [class.selected-database]="isSelectedDatabase(connection, database)">
                         <img src="icons/database.png" height="15px" width="15px">

@@ -1,7 +1,9 @@
 import sql from 'mssql';
 
 import SQLServerV1 from '../../../models/sqlserver/v2008.js';
+import SSSQLServerV1 from '../../schemas/sqlserver/v2008.js';
 import { getErrorMessage } from '../../../utils/errors.js';
+import { groupDatabaseObjects, toIndexDatabaseObject, toNamedDatabaseObject } from '../../../utils/database-objects.js';
 
 import type {
   DatabaseObject,
@@ -21,25 +23,37 @@ class ListObjectsSQLServerV1 {
 
   async listDatabaseObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
     try {
+      const selectedSchema = await SSSQLServerV1.getSelectedSchema(connectionKey);
+      if (!selectedSchema.success) {
+        throw new Error(selectedSchema.message);
+      }
+
+      const parameters: SqlServerQueryParameter[] = [
+        { name: 'schemaName', type: sql.NVarChar, value: selectedSchema.schema }
+      ];
+
       const tables = (await this.db.executeQuery(`
         SELECT TABLE_NAME AS name, 'table' AS type
         FROM INFORMATION_SCHEMA.TABLES
         WHERE TABLE_TYPE = 'BASE TABLE'
+          AND TABLE_SCHEMA = @schemaName
         ORDER BY TABLE_NAME
-      `, [], connectionKey)) as NamedObjectRow[];
+      `, parameters, connectionKey)) as NamedObjectRow[];
 
       const views = (await this.db.executeQuery(`
         SELECT TABLE_NAME AS name, 'view' AS type
         FROM INFORMATION_SCHEMA.VIEWS
+        WHERE TABLE_SCHEMA = @schemaName
         ORDER BY TABLE_NAME
-      `, [], connectionKey)) as NamedObjectRow[];
+      `, parameters, connectionKey)) as NamedObjectRow[];
 
       const procedures = (await this.db.executeQuery(`
         SELECT ROUTINE_NAME AS name, 'procedure' AS type
         FROM INFORMATION_SCHEMA.ROUTINES
         WHERE ROUTINE_TYPE = 'PROCEDURE'
+          AND ROUTINE_SCHEMA = @schemaName
         ORDER BY ROUTINE_NAME
-      `, [], connectionKey)) as NamedObjectRow[];
+      `, parameters, connectionKey)) as NamedObjectRow[];
 
       const indexes = (await this.db.executeQuery(`
         SELECT
@@ -49,26 +63,21 @@ class ListObjectsSQLServerV1 {
             'index' AS type
         FROM sys.indexes i
         INNER JOIN sys.tables t ON i.object_id = t.object_id
-        WHERE i.is_primary_key = 0 AND i.is_unique_constraint = 0
+        INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+        WHERE i.index_id > 0
+          AND i.name IS NOT NULL
+          AND s.name = @schemaName
         ORDER BY t.name, i.name
-      `, [], connectionKey)) as IndexRow[];
+      `, parameters, connectionKey)) as IndexRow[];
 
       const data: DatabaseObject[] = [
-        ...tables.map((object) => ({ name: object.name, type: 'table' as const })),
-        ...views.map((object) => ({ name: object.name, type: 'view' as const })),
-        ...procedures.map((object) => ({
-          name: object.name,
-          type: 'procedure' as const
-        })),
-        ...indexes.map((object) => ({
-          name: object.index_name,
-          table: object.table_name,
-          index_type: object.index_type,
-          type: 'index' as const
-        }))
+        ...tables.map((object, index) => toNamedDatabaseObject(object, 'table', index)),
+        ...views.map((object, index) => toNamedDatabaseObject(object, 'view', index)),
+        ...procedures.map((object, index) => toNamedDatabaseObject(object, 'procedure', index)),
+        ...indexes.map((object, index) => toIndexDatabaseObject(object, index))
       ];
 
-      return { success: true, data };
+      return { success: true, data, ...groupDatabaseObjects(data) };
     } catch (error: unknown) {
       console.error('Error listing database objects:', error);
       return {
@@ -81,14 +90,21 @@ class ListObjectsSQLServerV1 {
 
   async tableColumns(tableName: string, connectionKey?: string): Promise<TableColumnsResult> {
     try {
+      const selectedSchema = await SSSQLServerV1.getSelectedSchema(connectionKey);
+      if (!selectedSchema.success) {
+        throw new Error(selectedSchema.message);
+      }
+
       const parameters: SqlServerQueryParameter[] = [
-        { name: 'tableName', type: sql.NVarChar, value: tableName }
+        { name: 'tableName', type: sql.NVarChar, value: tableName },
+        { name: 'schemaName', type: sql.NVarChar, value: selectedSchema.schema }
       ];
       const columns = (await this.db.executeQuery(
         `
           SELECT COLUMN_NAME AS name, DATA_TYPE AS type
           FROM INFORMATION_SCHEMA.COLUMNS
           WHERE TABLE_NAME = @tableName
+            AND TABLE_SCHEMA = @schemaName
           ORDER BY ORDINAL_POSITION
         `,
         parameters,

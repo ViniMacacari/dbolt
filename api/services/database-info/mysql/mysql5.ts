@@ -1,5 +1,6 @@
 import MySQLV1 from '../../../models/mysql/mysql5.js';
 import { getErrorMessage } from '../../../utils/errors.js';
+import { groupDatabaseObjects, toIndexDatabaseObject, toNamedDatabaseObject } from '../../../utils/database-objects.js';
 
 import type {
   DatabaseObject,
@@ -60,21 +61,13 @@ class ListObjectsMySQLV1 {
       `, [], connectionKey)) as IndexRow[];
 
       const data: DatabaseObject[] = [
-        ...tables.map((object) => ({ name: object.name, type: 'table' as const })),
-        ...views.map((object) => ({ name: object.name, type: 'view' as const })),
-        ...procedures.map((object) => ({
-          name: object.name,
-          type: 'procedure' as const
-        })),
-        ...indexes.map((object) => ({
-          name: object.index_name,
-          table: object.table_name,
-          index_type: object.index_type,
-          type: 'index' as const
-        }))
+        ...tables.map((object, index) => toNamedDatabaseObject(object, 'table', index)),
+        ...views.map((object, index) => toNamedDatabaseObject(object, 'view', index)),
+        ...procedures.map((object, index) => toNamedDatabaseObject(object, 'procedure', index)),
+        ...indexes.map((object, index) => toIndexDatabaseObject(object, index))
       ];
 
-      return { success: true, data };
+      return { success: true, data, ...groupDatabaseObjects(data) };
     } catch (error: unknown) {
       console.error('Error listing database objects:', error);
       return {

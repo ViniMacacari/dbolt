@@ -1,58 +1,47 @@
-<div class="code-editor-container d-flex h-100 gap-2">
+<div class="code-editor-container db-info-container d-flex h-100 gap-2">
     <div class="editor-toolbar d-flex align-items-center flex-column">
         <button class="btn" [ngClass]="{ 'active': showTables }" (click)="filterTables()">
-            <img src="icons/table.png" title="Run selected code" height="15px">
-            Tables
+            <img src="icons/table.png" title="Tables" height="15px">
+            Tables <small>{{ data?.tables?.length || 0 }}</small>
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': showViews }" (click)="filterViews()">
-            <img src="icons/view.png" title="Run all code" height="15px">
-            Views
+            <img src="icons/view.png" title="Views" height="15px">
+            Views <small>{{ data?.views?.length || 0 }}</small>
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': showProcedures }" (click)="filterProcedures()">
-            <img src="icons/procedure.png" title="Indent code" height="15px">
-            Procedures
+            <img src="icons/procedure.png" title="Procedures" height="15px">
+            Procedures <small>{{ data?.procedures?.length || 0 }}</small>
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': showIndexes }" (click)="filterIndexes()">
-            <img src="icons/index.png" title="Save code" height="15px">
-            Indexes
+            <img src="icons/index.png" title="Indexes" height="15px">
+            Indexes <small>{{ data?.indexes?.length || 0 }}</small>
         </button>
     </div>
-    <div class="info">
-        <div *ngIf="showTables">
-            <div class="input-container py-2">
-                <input type="text" class="input-page mb-1" placeholder="Search table..." [(ngModel)]="filterTable"
-                    (input)="applyFilterTable()">
-            </div>
-            <div class="tables">
-                <div class="table" *ngFor="let table of filteredTables" (click)="tableInfo(table)">
-                    <h2 class="subtitle-min">{{ table.NAME || table.name }}</h2>
-                </div>
-            </div>
+
+    <div class="info db-info-panel">
+        <div class="input-container py-2">
+            <input type="text" class="input-page mb-1" [placeholder]="searchPlaceholder" [(ngModel)]="filterTable"
+                (input)="applyFilterTable()">
         </div>
-        <div *ngIf="showViews">
-            <div class="table" *ngFor="let table of data.views" (click)="tableInfo(table)">
-                <h2 class="subtitle-min">{{ table.NAME || table.name }}</h2>
-            </div>
+
+        <div class="db-info-grid-wrapper">
+            <ag-grid-angular class="ag-root db-info-grid" [rowData]="activeRows" [columnDefs]="columnDefs"
+                [defaultColDef]="defaultColDef" [domLayout]="'normal'" [rowBuffer]="30"
+                [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false" [animateRows]="false"
+                (gridReady)="onGridReady($event)" (rowClicked)="onRowClicked($event)">
+            </ag-grid-angular>
         </div>
-        <div *ngIf="showProcedures">
-            <div class="table" *ngFor="let table of data.procedures" (click)="tableInfo(table)">
-                <h2 class=" subtitle-min">{{ table.NAME || table.name }}</h2>
-            </div>
-        </div>
-        <div *ngIf="showIndexes">
-            <div class="table" *ngFor="let table of data.indexes" (click)="tableInfo(table)">
-                <h2 class=" subtitle-min">{{ table.NAME || table.name }}</h2>
-            </div>
-        </div>
+
+        <p class="empty-list" *ngIf="activeRows.length === 0">{{ emptyMessage }}</p>
     </div>
 </div>
 

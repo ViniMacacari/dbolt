@@ -115,11 +115,13 @@ export type DatabaseObjectType =
   | 'index';
 
 export interface NamedDatabaseObject {
+  id?: string;
   name: string;
   type: Exclude<DatabaseObjectType, 'index'>;
 }
 
 export interface IndexedDatabaseObject {
+  id?: string;
   name: string;
   table: string;
   type: 'index';
@@ -127,6 +129,13 @@ export interface IndexedDatabaseObject {
 }
 
 export type DatabaseObject = NamedDatabaseObject | IndexedDatabaseObject;
+
+export interface GroupedDatabaseObjects {
+  tables: DatabaseObject[];
+  views: DatabaseObject[];
+  procedures: DatabaseObject[];
+  indexes: DatabaseObject[];
+}
 
 export interface TableColumn {
   name: string;
@@ -173,7 +182,7 @@ export type ConnectionServiceResult = ServiceResult;
 export type QueryExecutionResult = ServiceResult<QueryExecutionPayload>;
 export type SavedEntityResult<T> = ServiceResult<{ data: T }>;
 export type DatabaseSchemaListResult = ServiceResult<{ data: DatabaseSchemaEntry[] }>;
-export type DatabaseObjectsResult = ServiceResult<{ data: DatabaseObject[] }>;
+export type DatabaseObjectsResult = ServiceResult<{ data: DatabaseObject[] } & GroupedDatabaseObjects>;
 export type TableColumnsResult = ServiceResult<{ data: TableColumn[] }>;
 export type SelectedSchemaResult = ServiceResult<SelectedSchemaInfo>;
 export type SchemaChangeResult = ServiceResult<SchemaChangePayload>;

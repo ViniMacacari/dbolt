@@ -298,29 +298,23 @@ export class DatabaseManagerComponent {
       const schemaDb: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/get-selected-schema${queryString}`)
 
       const response: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/list-objects${queryString}`)
-
-      const result: any = {
-        tables: [],
-        views: [],
-        procedures: [],
-        indexes: [],
-        connection: {}
+      if (!response.success) {
+        throw new Error(response.message || 'Could not load database objects.')
       }
 
-      await response.data.forEach((item: any) => {
-        if (item.type === 'table') result.tables.push(item)
-        else if (item.type === 'view') result.views.push(item)
-        else if (item.type === 'procedure') result.procedures.push(item)
-        else if (item.type === 'index') result.indexes.push(item)
-      })
+      const result: any = this.normalizeDatabaseObjects(response)
 
       result.connection = {
         host: event.host,
         port: event.port,
         database: event.database,
+        schema: event.schema,
         sgbd: event.sgbd,
         version: event.version,
-        user: event.user
+        user: event.user,
+        name: event.name,
+        connId: event.connectionId || event.id,
+        connectionKey: context.connectionKey
       }
 
       this.dbSchemasData = result
@@ -328,7 +322,7 @@ export class DatabaseManagerComponent {
       this.tabsComponent.newTab('schema', { dbInfo: this.dbSchemasData, context }, schemaDb.schema)
     } catch (error: any) {
       console.error(error)
-      this.toast.showToast(error.error, 'red')
+      this.toast.showToast(error?.error || error?.message || 'Could not load database objects.', 'red')
     }
 
     LoadingComponent.hide()
@@ -342,5 +336,29 @@ export class DatabaseManagerComponent {
       info: event.info,
       context: activeContext
     }, (event.name || event.NAME))
+  }
+
+  private normalizeDatabaseObjects(response: any): any {
+    const groupedResult = {
+      tables: [...(response.tables || [])],
+      views: [...(response.views || [])],
+      procedures: [...(response.procedures || [])],
+      indexes: [...(response.indexes || [])],
+      connection: {}
+    }
+
+    if (groupedResult.tables.length || groupedResult.views.length || groupedResult.procedures.length || groupedResult.indexes.length) {
+      return groupedResult
+    }
+
+    const data = response.data || []
+    data.forEach((item: any) => {
+      if (item.type === 'table') groupedResult.tables.push(item)
+      else if (item.type === 'view') groupedResult.views.push(item)
+      else if (item.type === 'procedure' || item.type === 'function') groupedResult.procedures.push(item)
+      else if (item.type === 'index') groupedResult.indexes.push(item)
+    })
+
+    return groupedResult
   }
 }

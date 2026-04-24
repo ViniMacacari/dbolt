@@ -391,8 +391,6 @@ export class SidebarComponent {
     if (this.clickTimeout) {
       clearTimeout(this.clickTimeout)
       this.clickTimeout = null
-
-      return
     }
 
     LoadingComponent.show()
@@ -401,10 +399,19 @@ export class SidebarComponent {
     this.dbInfoRequested.emit(connection)
 
     LoadingComponent.hide()
+  }
 
-    this.clickTimeout = setTimeout(() => {
-      this.clickTimeout = null
-    }, 300)
+  async openDatabaseInfo(connection: any, database: any, event: MouseEvent): Promise<void> {
+    event.stopPropagation()
+
+    const schema = database.schemas.includes(this.selectedSchemaDB?.schema)
+      ? this.selectedSchemaDB.schema
+      : database.schemas[0]
+
+    if (!schema) return
+
+    const selection = this.buildSchemaSelection(connection, database.database, schema)
+    await this.openSchemaDBInfo(selection, selection)
   }
 
   async connectToSchemaDb(connection: any, data: any | null = null): Promise<any> {
