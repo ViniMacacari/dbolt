@@ -253,7 +253,7 @@ export class TableQueryComponent implements AfterViewInit {
           valueGetter: 'node.rowIndex + 1',
           pinned: 'left',
           filter: false,
-          width: 50
+          width: 90
         },
         ...Object.keys(this.query[0]).map((key) => ({
           field: key.trim(),
