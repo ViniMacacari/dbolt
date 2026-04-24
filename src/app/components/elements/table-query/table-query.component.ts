@@ -37,6 +37,7 @@ export class TableQueryComponent implements AfterViewInit {
   @Input() isSelectResult: boolean = false
   @Input() resultHeight: number = 300
   @Input() isExpanded: boolean = false
+  @Input() isLoadingMore: boolean = false
 
   @Output() newValuesQuery = new EventEmitter<void>()
   @Output() closeResult = new EventEmitter<void>()
@@ -57,6 +58,8 @@ export class TableQueryComponent implements AfterViewInit {
   private initialBottom = 0
   private lastScrollTop = 0
   private rowData: any = []
+  private columnSignature = ''
+  private viewportRefreshTimeout: any
 
   scrollTimeout: any
 
@@ -72,10 +75,9 @@ export class TableQueryComponent implements AfterViewInit {
   @Input()
   set query(value: any[]) {
     this.saveScrollPosition()
-    this._query = value
-    setTimeout(() => {
-      this.restoreScrollPosition()
-    })
+    this._query = value || []
+    this.updateColumns()
+    this.queueViewportRefresh()
   }
   get query(): any[] {
     return this._query
@@ -98,7 +100,6 @@ export class TableQueryComponent implements AfterViewInit {
     if (changes['calcWidth'] || changes['resultHeight']) {
       this.adjustTableWrapperSize()
     }
-    this.updateColumns()
   }
 
   adjustTableWrapperSize() {
@@ -176,9 +177,10 @@ export class TableQueryComponent implements AfterViewInit {
   }
 
   newValues() {
+    if (this.isLoadingMore || !this.canLoadMore()) return
+
     this.saveScrollPosition()
     this.newValuesQuery.emit()
-    this.restoreScrollPosition()
   }
 
   onRowLimitInput(event: Event): void {
@@ -201,6 +203,8 @@ export class TableQueryComponent implements AfterViewInit {
   }
 
   onBodyScroll(event: any) {
+    if (this.isLoadingMore || !this.canLoadMore()) return
+
     const bodyViewport = this.getBodyViewport()
 
     if (bodyViewport) {
@@ -211,7 +215,6 @@ export class TableQueryComponent implements AfterViewInit {
       const tolerance = 5
 
       if (scrollTop + clientHeight >= scrollHeight - tolerance) {
-        console.log('Reached the bottom of the grid!')
         this.newValues()
       }
     }
@@ -232,12 +235,37 @@ export class TableQueryComponent implements AfterViewInit {
   }
 
   private updateColumns() {
-    if (this.query.length > 0) {
-      this.columnDefs = buildTypedColumnDefs(this.query, 90)
+    if (this.query.length === 0) {
+      this.columnSignature = ''
+      this.columnDefs = []
+      return
     }
+
+    const signature = Object.keys(this.query[0]).join('\u001F')
+    if (signature === this.columnSignature) return
+
+    this.columnSignature = signature
+    this.columnDefs = buildTypedColumnDefs(this.query, 90)
   }
 
   private getBodyViewport(): HTMLElement | null {
     return this.tableWrapper?.nativeElement.querySelector('.ag-body-viewport')
+  }
+
+  private queueViewportRefresh(): void {
+    clearTimeout(this.viewportRefreshTimeout)
+
+    this.viewportRefreshTimeout = setTimeout(() => {
+      this.restoreScrollPosition()
+
+      window.requestAnimationFrame(() => {
+        this.agGrid?.api?.refreshCells({ force: false })
+        this.restoreScrollPosition()
+      })
+    })
+  }
+
+  private canLoadMore(): boolean {
+    return !this.isSelectResult || this.totalRows === null || this.query.length < this.totalRows
   }
 }

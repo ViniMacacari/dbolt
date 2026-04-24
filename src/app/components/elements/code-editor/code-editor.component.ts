@@ -44,6 +44,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   queryResultHeight: number = 300
   previousQueryResultHeight: number = 300
   queryResultExpanded: boolean = false
+  isLoadingMore: boolean = false
   maxResultLines: number | null = 0
 
   dataSave: any = {}
@@ -241,6 +242,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   async runSql(sql: string): Promise<void> {
+    this.isLoadingMore = false
     LoadingComponent.show()
 
     try {
@@ -263,9 +265,11 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   async newValues(): Promise<void> {
+    if (this.isLoadingMore) return
     if (this.maxResultLines === null || this.maxResultLines === undefined) return
     if (this.queryReponse.length >= this.maxResultLines) return
 
+    this.isLoadingMore = true
     LoadingComponent.show()
 
     try {
@@ -276,9 +280,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     } catch (error: any) {
       console.error(error)
       this.toast.showToast(error.error, 'red')
+    } finally {
+      this.isLoadingMore = false
+      LoadingComponent.hide()
     }
-
-    LoadingComponent.hide()
   }
 
   async saveAs(): Promise<void> {

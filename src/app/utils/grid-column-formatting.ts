@@ -14,6 +14,8 @@ const decimalFormatter = new Intl.NumberFormat(undefined, {
 export function buildTypedColumnDefs(rows: any[], indexWidth: number): ColDef[] {
   if (!rows.length) return []
 
+  const rowsForTypeDetection = rows.slice(0, 200)
+
   return [
     {
       headerName: '#',
@@ -23,7 +25,7 @@ export function buildTypedColumnDefs(rows: any[], indexWidth: number): ColDef[] 
       width: indexWidth
     },
     ...Object.keys(rows[0]).map((key) => {
-      const columnType = detectColumnType(rows, key)
+      const columnType = detectColumnType(rowsForTypeDetection, key)
 
       return {
         field: key,

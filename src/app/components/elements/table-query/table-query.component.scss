@@ -115,7 +115,7 @@
     gap: 12px;
     justify-content: flex-start;
     min-height: 36px;
-    padding: 0 12px 8px;
+    padding: 5px 8px;
 }
 
 .result-title {
@@ -220,13 +220,13 @@
 }
 
 .toggle-result-size {
-    img {
-        filter: invert(72%) sepia(3%) saturate(25%) hue-rotate(346deg) brightness(85%) contrast(88%);
-    }
+    // img {
+    //     filter: invert(72%) sepia(3%) saturate(25%) hue-rotate(346deg) brightness(85%) contrast(88%);
+    // }
 
-    &:hover img {
-        filter: invert(100%);
-    }
+    // &:hover img {
+    //     filter: invert(100%);
+    // }
 }
 
 .query-table {

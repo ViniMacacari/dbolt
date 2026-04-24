@@ -27,7 +27,7 @@
             <app-table-query (newValuesQuery)="newValues()" [query]="queryReponse" [resultHeight]="queryResultHeight"
                 [calcWidth]="widthTable" [rowLimit]="queryFetchSize" [totalRows]="maxResultLines"
                 [isSelectResult]="maxResultLines !== null && maxResultLines !== undefined"
-                [isExpanded]="queryResultExpanded"
+                [isExpanded]="queryResultExpanded" [isLoadingMore]="isLoadingMore"
                 (rowLimitChange)="onQueryFetchSizeChange($event)" (refreshQuery)="refreshQueryWithFetchSize()"
                 (resultHeightChange)="onQueryResultHeightChange($event)"
                 (toggleExpanded)="toggleQueryResultExpanded()"
