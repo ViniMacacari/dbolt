@@ -249,6 +249,53 @@ input[type='number']::-webkit-outer-spin-button {
     font-family: 'Nunito' !important;
 }
 
+// Grid column type indicators
+
+.dbolt-typed-header .ag-header-cell-label {
+    align-items: center;
+    gap: 6px;
+}
+
+.dbolt-typed-header .ag-header-cell-text {
+    align-items: center;
+    display: inline-flex;
+    gap: 6px;
+}
+
+.dbolt-typed-header .ag-header-cell-text::before {
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    content: '';
+    display: inline-block;
+    flex: 0 0 auto;
+    height: 14px;
+    opacity: .88;
+    width: 14px;
+}
+
+.dbolt-type-boolean .ag-header-cell-text::before {
+    background-image: url('../public/icons/boolean.png');
+}
+
+.dbolt-type-integer .ag-header-cell-text::before {
+    background-image: url('../public/icons/int.png');
+}
+
+.dbolt-type-decimal .ag-header-cell-text::before {
+    background-image: url('../public/icons/decimal.png');
+}
+
+.dbolt-type-string .ag-header-cell-text::before {
+    background-image: url('../public/icons/string.png');
+}
+
+.dbolt-cell-integer,
+.dbolt-cell-decimal {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
 // Table Syles
 
 .table-wrapper {

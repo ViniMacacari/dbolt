@@ -18,6 +18,7 @@ import { ColDef, ModuleRegistry, AllCommunityModule, GridApi } from 'ag-grid-com
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
 import { LoadingComponent } from "../../modal/loading/loading.component"
+import { buildTypedColumnDefs } from '../../../utils/grid-column-formatting'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
@@ -212,16 +213,7 @@ export class FixTableDataComponent {
 
   private updateColumns() {
     if (this.query.length > 0) {
-      this.columnDefs = [
-        {
-          headerName: '#',
-          valueGetter: 'node.rowIndex + 1',
-          pinned: 'left',
-          filter: false,
-          width: 50
-        },
-        ...Object.keys(this.query[0]).map((key) => ({ field: key }))
-      ]
+      this.columnDefs = buildTypedColumnDefs(this.query, 50)
     }
   }
 

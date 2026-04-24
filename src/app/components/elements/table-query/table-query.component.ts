@@ -15,6 +15,7 @@ import {
 import { CommonModule } from '@angular/common'
 import { AgGridAngular } from 'ag-grid-angular'
 import { ColDef, ModuleRegistry, AllCommunityModule, GridApi } from 'ag-grid-community'
+import { buildTypedColumnDefs } from '../../../utils/grid-column-formatting'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
@@ -247,20 +248,7 @@ export class TableQueryComponent implements AfterViewInit {
 
   private updateColumns() {
     if (this.query.length > 0) {
-      this.columnDefs = [
-        {
-          headerName: '#',
-          valueGetter: 'node.rowIndex + 1',
-          pinned: 'left',
-          filter: false,
-          width: 90
-        },
-        ...Object.keys(this.query[0]).map((key) => ({
-          field: key.trim(),
-          headerName: key.trim(),
-          valueFormatter: (params: any) => (params.value === null || params.value === undefined ? '[NULL]' : params.value)
-        }))
-      ]
+      this.columnDefs = buildTypedColumnDefs(this.query, 90)
     }
   }
 }
