@@ -8,6 +8,7 @@ import {
   splitCtePrefix,
   trimStatementTerminator
 } from '../../../utils/sql-query.js';
+import { buildCommandResult } from '../../../utils/query-command-result.js';
 
 import type {
   QueryExecutionResult,
@@ -41,6 +42,15 @@ class SQuerysHana {
     }
 
     const result = await this.db.executeQuery(executableSql, [], connectionKey);
+
+    if (!isSelectQuery && result.length === 0) {
+      return {
+        success: true,
+        database: 'Hana',
+        result: buildCommandResult(sql),
+        totalRows: null
+      };
+    }
 
     if (result.length === 0 && isSelectQuery) {
       const columnsResult = await this.db.executeQuery(

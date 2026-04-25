@@ -113,7 +113,7 @@ class SQLServerV1 {
       }
 
       const result: IResult<Record<string, unknown>> = await request.query(query);
-      return result.recordset as QueryRows;
+      return (result.recordset ?? []) as QueryRows;
     } catch (error: unknown) {
       console.error('Error executing query:', error);
       throw error;

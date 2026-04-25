@@ -15,7 +15,7 @@ import { ConnectionContextService } from '../../../services/connection-context/c
   standalone: true,
   templateUrl: './code-editor.component.html',
   styleUrls: ['./code-editor.component.scss'],
-  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveQueryComponent, LoadingComponent],
+  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveQueryComponent],
 })
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChanges {
   @Input() sqlContent: string = ''

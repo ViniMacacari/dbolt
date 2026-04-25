@@ -131,32 +131,37 @@ export class SidebarComponent {
 
   async selectQuickOption(option: any, event: MouseEvent): Promise<void> {
     event.stopPropagation()
+    LoadingComponent.show('Changing selected connection...')
 
-    if (option.type === 'connection') {
-      await this.canConnect(option.value)
-      const database = this.getSchemasByConnection(option.value)[0]
-      const schema = database?.schemas?.[0]
+    try {
+      if (option.type === 'connection') {
+        await this.canConnect(option.value)
+        const database = this.getSchemasByConnection(option.value)[0]
+        const schema = database?.schemas?.[0]
 
-      if (database && schema) {
-        await this.setSchema(this.buildSchemaSelection(option.value, database.database, schema))
+        if (database && schema) {
+          await this.setSchema(this.buildSchemaSelection(option.value, database.database, schema))
+        }
       }
-    }
 
-    if (option.type === 'database') {
-      const schema = option.value.schemas.includes(this.selectedSchemaDB?.schema)
-        ? this.selectedSchemaDB.schema
-        : option.value.schemas[0]
+      if (option.type === 'database') {
+        const schema = option.value.schemas.includes(this.selectedSchemaDB?.schema)
+          ? this.selectedSchemaDB.schema
+          : option.value.schemas[0]
 
-      if (schema) {
-        await this.setSchema(this.buildSchemaSelection(option.connection, option.value.database, schema))
+        if (schema) {
+          await this.setSchema(this.buildSchemaSelection(option.connection, option.value.database, schema))
+        }
       }
-    }
 
-    if (option.type === 'schema') {
-      await this.setSchema(this.buildSchemaSelection(option.connection, option.database.database, option.value))
-    }
+      if (option.type === 'schema') {
+        await this.setSchema(this.buildSchemaSelection(option.connection, option.database.database, option.value))
+      }
 
-    this.quickSelectorType = null
+      this.quickSelectorType = null
+    } finally {
+      LoadingComponent.hide()
+    }
   }
 
   goToHome(): void {
@@ -255,7 +260,7 @@ export class SidebarComponent {
     if (existsConnection) {
       return
     } else {
-      this.connectDatabase(connection)
+      await this.connectDatabase(connection)
     }
   }
 
@@ -331,11 +336,12 @@ export class SidebarComponent {
     this.clickTimeout = setTimeout(async () => {
       LoadingComponent.show()
 
-      await this.setSchema(connection)
-
-      LoadingComponent.hide()
-
-      this.clickTimeout = null
+      try {
+        await this.setSchema(connection)
+      } finally {
+        LoadingComponent.hide()
+        this.clickTimeout = null
+      }
     }, 300)
   }
 
@@ -395,10 +401,12 @@ export class SidebarComponent {
 
     LoadingComponent.show()
 
-    await this.setSchema(data2)
-    this.dbInfoRequested.emit(connection)
-
-    LoadingComponent.hide()
+    try {
+      await this.setSchema(data2)
+      this.dbInfoRequested.emit(connection)
+    } finally {
+      LoadingComponent.hide()
+    }
   }
 
   async openDatabaseInfo(connection: any, database: any, event: MouseEvent): Promise<void> {

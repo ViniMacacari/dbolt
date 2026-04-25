@@ -25,7 +25,7 @@ ModuleRegistry.registerModules([AllCommunityModule])
 @Component({
   selector: 'app-fix-table-data',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, LoadingComponent],
+  imports: [CommonModule, AgGridAngular],
   templateUrl: './fix-table-data.component.html',
   styleUrl: './fix-table-data.component.scss'
 })

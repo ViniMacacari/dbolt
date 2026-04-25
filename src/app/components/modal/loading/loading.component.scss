@@ -1,7 +1,16 @@
 .loading-overlay {
-    display: block;
+    align-items: center;
     background-color: rgba(7, 7, 7, 0.78);
     backdrop-filter: blur(2px);
+    display: flex !important;
+    inset: 0;
+    justify-content: center;
+    position: fixed !important;
+    z-index: 2147483647 !important;
+
+    .modal-dialog {
+        pointer-events: all;
+    }
 }
 
 .modal {

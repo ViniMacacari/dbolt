@@ -33,7 +33,8 @@ export class RunQueryService {
       return response.result
     } else if (response.success) {
       return [{
-        sucess: true
+        Status: 'Success',
+        Message: response.message || 'Command executed successfully.'
       }]
     } else {
       throw new Error('Invalid data response.')

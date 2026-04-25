@@ -9,6 +9,7 @@ import {
   splitCtePrefix,
   trimStatementTerminator
 } from '../../../utils/sql-query.js';
+import { buildCommandResult } from '../../../utils/query-command-result.js';
 
 import type {
   QueryExecutionResult,
@@ -25,8 +26,13 @@ class SQueryPgV1 {
     const rowLimit = normalizeRowLimit(maxLines);
 
     if (!isSelectQuery) {
-      await this.db.executeQuery(sql, [], connectionKey);
-      return { success: true };
+      const result = await this.db.executeQuery(trimStatementTerminator(sql), [], connectionKey);
+      return {
+        success: true,
+        database: 'PostgreSQL',
+        result: result.length > 0 ? result : buildCommandResult(sql),
+        totalRows: null
+      };
     }
 
     let totalRows: number | null = null;

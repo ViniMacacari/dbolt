@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core'
+import { Component, Input, OnChanges, OnInit, SimpleChanges, ViewEncapsulation } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { AgGridAngular } from 'ag-grid-angular'
 import { AllCommunityModule, ColDef, ModuleRegistry } from 'ag-grid-community'
@@ -16,7 +16,8 @@ type MetadataRow = Record<string, any>
   standalone: true,
   imports: [CommonModule, ToastComponent, FixTableDataComponent, AgGridAngular],
   templateUrl: './table-info.component.html',
-  styleUrl: './table-info.component.scss'
+  styleUrl: './table-info.component.scss',
+  encapsulation: ViewEncapsulation.None
 })
 export class TableInfoComponent implements OnInit, OnChanges {
   @Input() data: any
