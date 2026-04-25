@@ -1,0 +1,30 @@
+<div class="settings-container code-editor-container d-flex h-100 gap-2">
+    <div class="settings-toolbar d-flex align-items-center flex-column">
+        <button type="button" class="btn" [ngClass]="{ 'active': activeTab === 'query' }" (click)="selectTab('query')">
+            <img src="icons/code.png" title="Query" height="15px">
+            Query
+        </button>
+    </div>
+
+    <div class="settings-panel">
+        <div class="settings-header">
+            <p>Settings</p>
+            <h2>Query defaults</h2>
+        </div>
+
+        <div class="settings-card" *ngIf="activeTab === 'query'">
+            <div>
+                <h3>Default query return rows</h3>
+                <p>Used when a new query tab is opened. Existing tabs keep their own selected value.</p>
+            </div>
+
+            <div class="setting-control">
+                <label for="default-query-rows">Rows</label>
+                <input id="default-query-rows" type="number" min="1" step="1" [value]="defaultQueryRows"
+                    (input)="onDefaultRowsInput($event)" (keydown.enter)="saveDefaultRows()">
+                <button type="button" (click)="saveDefaultRows()">Save</button>
+                <small *ngIf="savedMessage">{{ savedMessage }}</small>
+            </div>
+        </div>
+    </div>
+</div>

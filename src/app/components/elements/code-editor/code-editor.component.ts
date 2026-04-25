@@ -9,6 +9,7 @@ import { TableQueryComponent } from "../table-query/table-query.component"
 import { SaveQueryComponent } from "../../modal/save-query/save-query.component"
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
+import { AppSettingsService } from '../../../services/app-settings/app-settings.service'
 
 @Component({
   selector: 'app-code-editor',
@@ -53,7 +54,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     private dbSchemas: GetDbschemaService,
     private runQuery: RunQueryService,
     private IAPI: InternalApiService,
-    private connectionContext: ConnectionContextService
+    private connectionContext: ConnectionContextService,
+    private appSettings: AppSettingsService
   ) { }
 
   ngAfterViewChecked(): void {
@@ -371,11 +373,12 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private restoreQueryState(): void {
     const queryState = this.tabInfo?.queryState
+    const defaultQueryRows = this.appSettings.getDefaultQueryRows()
 
     this.cacheSql = queryState?.cacheSql || ''
     this.queryReponse = queryState?.queryResponse || []
-    this.queryLines = queryState?.queryLines ?? 50
-    this.queryFetchSize = queryState?.queryFetchSize ?? 50
+    this.queryLines = queryState?.queryLines ?? defaultQueryRows
+    this.queryFetchSize = queryState?.queryFetchSize ?? defaultQueryRows
     this.previousQueryResultHeight = this.normalizeResultHeight(queryState?.previousQueryResultHeight ?? this.defaultResultHeight)
     this.queryResultExpanded = queryState?.queryResultExpanded ?? false
     this.queryResultHeight = this.queryResultExpanded
@@ -402,7 +405,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private normalizeQueryLimit(size: number): number {
     const parsed = Number(size)
-    if (!Number.isFinite(parsed) || parsed < 1) return 50
+    if (!Number.isFinite(parsed) || parsed < 1) return this.appSettings.getDefaultQueryRows()
 
     return Math.floor(parsed)
   }

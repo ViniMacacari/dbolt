@@ -15,7 +15,7 @@
 
     .sidebar-actions {
         display: grid;
-        grid-template-columns: 1fr auto;
+        grid-template-columns: 1fr auto auto;
         gap: 8px;
     }
 
@@ -45,8 +45,13 @@
     }
 
     .home-button {
-        color: #b8b8b9;
-        min-width: 58px;
+        min-width: 38px;
+        padding: 0;
+    }
+
+    .settings-button {
+        min-width: 38px;
+        padding: 0;
     }
 
     .selected-title {

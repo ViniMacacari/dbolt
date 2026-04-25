@@ -3,7 +3,8 @@
         [dbSchemas]="databasesSchemasActiveConnections" [selectedSchemaDB]="selectedSchemaDB"
         (sidebarStatusChange)="onSidebarStatusChange($event)"
         (dbInfoRequested)="onDbInfoRequested($event)"
-        (selectedSchemaChanged)="onSelectedSchemaChanged($event)"></app-sidebar>
+        (selectedSchemaChanged)="onSelectedSchemaChanged($event)"
+        (settingsRequested)="onSettingsRequested()"></app-sidebar>
     <div class="d-flex flex-column w-100 h-100">
         <div class="tabs pt-3 px-3">
             <app-tabs (tabSelected)="onTabSelected($event)" (tabClosed)="onTabClosed()"></app-tabs>
@@ -16,6 +17,7 @@
                 <app-db-info *ngIf="dbInfoOpen" [data]="dbSchemasData" (moreInfo)="openMoreInfo($event)"></app-db-info>
                 <app-table-info *ngIf="tableInfoOpen" [data]="tableInfoData" [elementName]="elementName"
                     [tabInfo]="tabInfo"></app-table-info>
+                <app-settings *ngIf="settingsOpen"></app-settings>
 
                 <app-code-editor *ngIf="editorOpen" [(sqlContent)]="sqlContent" [widthTable]="widthTable"
                     [tabInfo]="tabInfo" (sqlContentChange)="onSqlContentChange($event)"

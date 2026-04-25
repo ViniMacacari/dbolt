@@ -104,12 +104,32 @@ export class TabsComponent {
     }, 100)
   }
 
+  openSettingsTab(): void {
+    const existingIndex = this.tabs.findIndex(tab => tab.type === 'settings')
+
+    if (existingIndex >= 0) {
+      this.selectTab(existingIndex)
+      return
+    }
+
+    const newTab: any = {
+      id: 'settings',
+      name: 'Settings',
+      type: 'settings',
+      info: {},
+      icon: 'SETTINGS'
+    }
+
+    this.tabs.push(newTab)
+    this.selectTab(this.tabs.length - 1)
+  }
+
   closeTab(index: number, event: MouseEvent, tab: any): void {
     event.stopPropagation()
 
     this.confirmToClose = index
 
-    if (tab.icon !== 'CODE') {
+    if (tab.icon === 'CHANGE') {
       this.showYNModal = true
     } else {
       this.tabs.splice(index, 1)
@@ -140,6 +160,13 @@ export class TabsComponent {
   selectTab(index: number): void {
     this.activeTab = index
     this.tabSelected.emit(this.tabs[index])
+  }
+
+  getTabIcon(tab: any): string {
+    if (tab.icon === 'CHANGE') return 'icons/circle-unsaved.png'
+    if (tab.icon === 'SETTINGS') return 'icons/settings.png'
+
+    return 'icons/code.png'
   }
 
   @HostListener('document:click', ['$event'])

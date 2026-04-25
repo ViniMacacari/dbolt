@@ -12,11 +12,12 @@ import { ToastComponent } from "../../components/toast/toast.component"
 import { TableInfoComponent } from "../../components/elements/table-info/table-info.component"
 import { ConnectionsService } from '../../services/resolve-connections/connections.service'
 import { ConnectionContextService } from '../../services/connection-context/connection-context.service'
+import { SettingsComponent } from '../../components/elements/settings/settings.component'
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, CodeEditorComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent],
+  imports: [SidebarComponent, TabsComponent, CodeEditorComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
@@ -37,6 +38,7 @@ export class DatabaseManagerComponent {
   dbInfoOpen: boolean = false
   tableInfoOpen: boolean = false
   editorOpen: boolean = false
+  settingsOpen: boolean = false
 
   sqlContent: string = ''
   tabInfo: any
@@ -182,21 +184,30 @@ export class DatabaseManagerComponent {
     this.editorOpen = false
     this.dbInfoOpen = false
     this.tableInfoOpen = false
+    this.settingsOpen = false
 
     setTimeout(() => {
       if (tab.type === 'sql') {
         this.editorOpen = true
         this.dbInfoOpen = false
         this.tableInfoOpen = false
+        this.settingsOpen = false
       } else if (tab.type === 'schema') {
         this.dbInfoOpen = true
         this.editorOpen = false
         this.tableInfoOpen = false
+        this.settingsOpen = false
         this.dbSchemasData = tab.info.dbInfo
+      } else if (tab.type === 'settings') {
+        this.settingsOpen = true
+        this.editorOpen = false
+        this.dbInfoOpen = false
+        this.tableInfoOpen = false
       } else {
         this.tableInfoOpen = true
         this.editorOpen = false
         this.dbInfoOpen = false
+        this.settingsOpen = false
         this.elementName = tab.info.name
         this.tableInfoData = tab.info.info
       }
@@ -210,6 +221,11 @@ export class DatabaseManagerComponent {
     this.editorOpen = false
     this.dbInfoOpen = false
     this.tableInfoOpen = false
+    this.settingsOpen = false
+  }
+
+  onSettingsRequested(): void {
+    this.tabsComponent.openSettingsTab()
   }
 
   onSqlContentChange(content: string): void {

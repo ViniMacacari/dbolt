@@ -23,6 +23,7 @@ export class SidebarComponent {
   @Output() sidebarStatusChange = new EventEmitter<boolean>()
   @Output() dbInfoRequested = new EventEmitter<any>()
   @Output() selectedSchemaChanged = new EventEmitter<any>()
+  @Output() settingsRequested = new EventEmitter<void>()
 
   @ViewChild('toast') toast!: ToastComponent
 
@@ -166,6 +167,10 @@ export class SidebarComponent {
 
   goToHome(): void {
     this.router.navigate(['/'])
+  }
+
+  openSettings(): void {
+    this.settingsRequested.emit()
   }
 
   toggleConnection(connectionId: number) {
