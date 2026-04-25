@@ -45,10 +45,17 @@ app-table-info,
 .table-info-container {
     .metadata-grid {
         display: block;
-        flex: 1 1 0;
         height: 100% !important;
         min-height: 0;
         width: 100%;
+        background-color: #444;
+    }
+
+    .metadata-grid-wrapper {
+        flex: 1 1 auto;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
         background-color: #444;
 
         .ag-layout-normal,
@@ -74,10 +81,16 @@ app-table-info,
         .ag-root-wrapper-body,
         .ag-body,
         .ag-body-viewport,
-        .ag-center-cols-viewport,
+        .ag-center-cols-viewport {
+            background-color: #444 !important;
+        }
+
+        .ag-body-viewport {
+            overflow-y: auto !important;
+        }
+
         .ag-center-cols-container {
-            height: 100% !important;
-            min-height: 0;
+            background-color: #444 !important;
         }
 
         .ag-header,

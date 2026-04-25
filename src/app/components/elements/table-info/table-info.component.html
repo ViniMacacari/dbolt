@@ -43,11 +43,13 @@
             <p class="metadata-status" *ngIf="isLoadingMetadata">Loading metadata...</p>
             <p class="metadata-status error" *ngIf="metadataError">{{ metadataError }}</p>
 
-            <ag-grid-angular *ngIf="!isLoadingMetadata && !metadataError" class="metadata-grid"
-                [rowData]="activeRows" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef"
-                [domLayout]="'normal'" [rowBuffer]="30" [suppressRowVirtualisation]="false"
-                [suppressColumnVirtualisation]="false" [animateRows]="false">
-            </ag-grid-angular>
+            <div #metadataGridWrapper class="metadata-grid-wrapper" *ngIf="!isLoadingMetadata && !metadataError">
+                <ag-grid-angular class="metadata-grid" [style.height]="metadataGridHeight" [rowData]="activeRows"
+                    [columnDefs]="columnDefs" [defaultColDef]="defaultColDef" [domLayout]="'normal'" [rowBuffer]="30"
+                    [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false" [animateRows]="false"
+                    (gridReady)="onGridReady($event)">
+                </ag-grid-angular>
+            </div>
 
             <p class="metadata-status" *ngIf="!isLoadingMetadata && !metadataError && activeRows.length === 0">
                 No metadata found

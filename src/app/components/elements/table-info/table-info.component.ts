@@ -1,7 +1,7 @@
-import { Component, Input, OnChanges, OnInit, SimpleChanges, ViewEncapsulation } from '@angular/core'
+import { AfterViewInit, Component, ElementRef, HostListener, Input, OnChanges, OnInit, SimpleChanges, ViewChild, ViewEncapsulation } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { AgGridAngular } from 'ag-grid-angular'
-import { AllCommunityModule, ColDef, ModuleRegistry } from 'ag-grid-community'
+import { AllCommunityModule, ColDef, GridApi, GridReadyEvent, ModuleRegistry } from 'ag-grid-community'
 import { ToastComponent } from '../../toast/toast.component'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { FixTableDataComponent } from '../fix-table-data/fix-table-data.component'
@@ -19,11 +19,13 @@ type MetadataRow = Record<string, any>
   styleUrl: './table-info.component.scss',
   encapsulation: ViewEncapsulation.None
 })
-export class TableInfoComponent implements OnInit, OnChanges {
+export class TableInfoComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() data: any
   @Input() widthTable: number = 300
   @Input() tabInfo: any
   @Input() elementName: string = ''
+
+  @ViewChild('metadataGridWrapper') metadataGridWrapper?: ElementRef<HTMLDivElement>
 
   showData: boolean = true
   showColumns: boolean = false
@@ -40,12 +42,14 @@ export class TableInfoComponent implements OnInit, OnChanges {
 
   activeRows: MetadataRow[] = []
   columnDefs: ColDef[] = []
+  metadataGridHeight: string = '100%'
   defaultColDef: ColDef = {
     sortable: true,
     filter: true,
     resizable: true
   }
 
+  private gridApi?: GridApi
   private activeView: TableInfoView = 'data'
 
   constructor(private IAPI: InternalApiService) { }
@@ -54,10 +58,19 @@ export class TableInfoComponent implements OnInit, OnChanges {
     void this.loadTableMetadata()
   }
 
+  ngAfterViewInit(): void {
+    this.queueGridResize()
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['elementName'] && !changes['elementName'].firstChange) {
       void this.loadTableMetadata()
     }
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.queueGridResize()
   }
 
   filterData(): void {
@@ -78,6 +91,11 @@ export class TableInfoComponent implements OnInit, OnChanges {
 
   filterDDL(): void {
     this.setActiveView('ddl')
+  }
+
+  onGridReady(event: GridReadyEvent): void {
+    this.gridApi = event.api
+    this.queueGridResize()
   }
 
   private async loadTableMetadata(): Promise<void> {
@@ -110,6 +128,7 @@ export class TableInfoComponent implements OnInit, OnChanges {
       this.ddl = ddl?.ddl || ''
 
       this.refreshActiveRows()
+      this.queueGridResize()
     } catch (error: any) {
       console.error(error)
       this.metadataError = error?.error || error?.message || 'Could not load table metadata.'
@@ -137,6 +156,7 @@ export class TableInfoComponent implements OnInit, OnChanges {
     this.showDDL = view === 'ddl'
 
     this.refreshActiveRows()
+    this.queueGridResize()
   }
 
   private refreshActiveRows(): void {
@@ -151,6 +171,27 @@ export class TableInfoComponent implements OnInit, OnChanges {
     }
 
     this.columnDefs = this.buildColumnDefs(this.activeRows)
+    this.gridApi?.setGridOption('rowData', this.activeRows)
+  }
+
+  private queueGridResize(): void {
+    requestAnimationFrame(() => this.syncGridHeight())
+  }
+
+  private syncGridHeight(): void {
+    if (!this.metadataGridWrapper?.nativeElement || this.showData || this.showDDL) {
+      return
+    }
+
+    const wrapper = this.metadataGridWrapper.nativeElement
+    const panel = wrapper.closest('.table-info-panel') as HTMLElement | null
+    const wrapperTop = wrapper.getBoundingClientRect().top
+    const bottom = panel?.getBoundingClientRect().bottom ?? window.innerHeight
+    const availableHeight = Math.max(260, Math.floor(bottom - wrapperTop))
+
+    this.metadataGridHeight = `${availableHeight}px`
+    wrapper.style.height = this.metadataGridHeight
+    this.gridApi?.setGridOption('domLayout', 'normal')
   }
 
   private normalizeRows(rows: MetadataRow[]): MetadataRow[] {
