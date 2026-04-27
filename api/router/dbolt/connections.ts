@@ -53,6 +53,23 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+router.put('/:id', async (req, res) => {
+  try {
+    const id = Number.parseInt(req.params.id, 10);
+    const connectionData = req.body as SavedConnectionInput;
+
+    if (!connectionData || Object.keys(connectionData).length === 0) {
+      sendBadRequest(res, 'No connection data provided');
+      return;
+    }
+
+    const result = await SaveConnection.updateConnection(id, connectionData);
+    res.status(200).json(result);
+  } catch (error: unknown) {
+    sendInternalError(res, error, 'Failed to update connection');
+  }
+});
+
 router.delete('/:id', async (req, res) => {
   try {
     const id = Number.parseInt(req.params.id, 10);
