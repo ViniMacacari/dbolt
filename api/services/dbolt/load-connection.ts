@@ -41,8 +41,7 @@ class LoadConnections {
 
   async getConnectionById(id: number): Promise<SavedConnection | null> {
     try {
-      const connections = await this.getAllConnections();
-      const connection = connections.find((item) => item.id === id) ?? null;
+      const connection = await DbConnections.getConnectionById(id);
 
       if (!connection) {
         console.log(`Connection with ID ${id} not found.`);
