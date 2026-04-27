@@ -4,12 +4,18 @@
             <img src="icons/code.png" title="Query" height="15px">
             Query
         </button>
+
+        <button type="button" class="btn" [ngClass]="{ 'active': activeTab === 'connections' }"
+            (click)="selectTab('connections')">
+            <img src="icons/database.png" title="Connections" height="15px">
+            Connections
+        </button>
     </div>
 
     <div class="settings-panel">
         <div class="settings-header">
             <p>Settings</p>
-            <h2>Query defaults</h2>
+            <h2>{{ settingsTitle }}</h2>
         </div>
 
         <div class="settings-card" *ngIf="activeTab === 'query'">
@@ -24,6 +30,50 @@
                     (input)="onDefaultRowsInput($event)" (keydown.enter)="saveDefaultRows()">
                 <button type="button" (click)="saveDefaultRows()">Save</button>
                 <small *ngIf="savedMessage">{{ savedMessage }}</small>
+            </div>
+        </div>
+
+        <div class="settings-card connections-settings-card" *ngIf="activeTab === 'connections'">
+            <div class="connection-settings-main">
+                <h3>Default connection target</h3>
+                <p>Choose the saved connection and configure the default database/schema used when it opens.</p>
+
+                <div class="connection-picker">
+                    <p class="setting-label">Connection</p>
+                    <app-input-list [list]="connectionOptions" [displayKey]="'label'" [width]="'100%'"
+                        [placeholder]="'Select connection'" (itemSelected)="onConnectionSelected($event)">
+                    </app-input-list>
+                </div>
+
+                <div class="current-target" *ngIf="selectedConnection">
+                    <span>Current default</span>
+                    <strong>{{ currentDefaultTarget }}</strong>
+                </div>
+
+                <div class="connection-target-actions" *ngIf="selectedConnection">
+                    <button type="button" (click)="loadConnectionTargets()">Load options</button>
+                    <button type="button" (click)="saveConnectionTarget()">Save</button>
+                    <button type="button" class="secondary" (click)="clearConnectionTarget()">Clear</button>
+                    <small *ngIf="connectionMessage">{{ connectionMessage }}</small>
+                </div>
+
+                <p class="settings-error" *ngIf="connectionError">{{ connectionError }}</p>
+
+                <div class="target-inputs" *ngIf="selectedConnection && targetOptionsLoaded">
+                    <div *ngIf="requiresDefaultDatabase">
+                        <p class="setting-label">Default database</p>
+                        <app-input-list [list]="defaultDatabaseList" [displayKey]="'name'" [width]="'100%'"
+                            [placeholder]="'Select database'" (itemSelected)="onDefaultDatabaseSelected($event)">
+                        </app-input-list>
+                    </div>
+
+                    <div *ngIf="requiresDefaultSchema">
+                        <p class="setting-label">Default schema</p>
+                        <app-input-list [list]="defaultSchemaList" [displayKey]="'name'" [width]="'100%'"
+                            [placeholder]="'Select schema'" (itemSelected)="onDefaultSchemaSelected($event)">
+                        </app-input-list>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
