@@ -53,20 +53,6 @@
                 width: 20px;
             }
 
-            .default-target {
-                background: #151c27;
-                border: 1px solid rgba(115, 158, 202, 0.25);
-                border-radius: 10px;
-                margin-bottom: 10px;
-                max-width: 100%;
-                padding: 4px 8px;
-
-                p {
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                }
-            }
         }
     }
 }

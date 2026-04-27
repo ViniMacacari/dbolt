@@ -17,11 +17,6 @@
                 <div class="d-flex w-100 gap-2">
                     <p class="text-min-gray">{{ connection.host }}:{{ connection.port }}</p>
                 </div>
-                <div class="default-target" *ngIf="connection.defaultDatabase || connection.defaultSchema">
-                    <p class="text-min-gray m-0">
-                        {{ connection.defaultDatabase || '' }}{{ connection.defaultDatabase && connection.defaultSchema ? ' / ' : '' }}{{ connection.defaultSchema || '' }}
-                    </p>
-                </div>
                 <img priority src="db-logo/{{ connection.database }}.png" height="70px" width="70px">
             </div>
         </div>
