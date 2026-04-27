@@ -2,7 +2,10 @@
     <section class="home-shell">
         <header class="home-header">
             <div class="title-block">
-                <h1>DBolt Database Manager</h1>
+                <h1>
+                    DBolt Database Manager
+                    <span *ngIf="appVersion">v{{ appVersion }}</span>
+                </h1>
                 <p>Choose your database</p>
             </div>
 

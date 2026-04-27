@@ -26,6 +26,7 @@ export class OpenPageComponent {
   connections: any[] = []
   viewMode: ConnectionViewMode = 'focus'
   selectedConnectionId: number | null = null
+  appVersion: string = ''
 
   private readonly viewModeStorageKey = 'dbolt-home-view-mode'
 
@@ -43,6 +44,7 @@ export class OpenPageComponent {
 
     try {
       await this.getConfigurations()
+      await this.loadAppInfo()
       await this.loadConnections()
     } catch (error: any) {
       console.error(error)
@@ -71,6 +73,16 @@ export class OpenPageComponent {
     this.connections = await this.connectionsService.loadConnections()
     if (!this.selectedConnectionId && this.connections[0]) {
       this.selectedConnectionId = this.connections[0].id
+    }
+  }
+
+  async loadAppInfo(): Promise<void> {
+    try {
+      const appInfo = await this.IAPI.get<{ version: string }>('/api/app-info')
+      this.appVersion = appInfo.version
+    } catch (error) {
+      console.warn('Could not load app version:', error)
+      this.appVersion = ''
     }
   }
 

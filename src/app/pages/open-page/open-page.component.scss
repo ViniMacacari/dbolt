@@ -43,15 +43,25 @@
     }
 
     h1 {
+        align-items: baseline;
         color: #e8eaed;
+        display: flex;
+        gap: 8px;
         font-size: 1.15em;
         font-weight: 800;
+        flex-wrap: wrap;
     }
 
     p {
         color: #b8b8b9;
         font-size: .86em;
         margin-top: 3px;
+    }
+
+    span {
+        color: #969696;
+        font-size: .72em;
+        font-weight: 700;
     }
 }
 
