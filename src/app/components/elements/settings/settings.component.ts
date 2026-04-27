@@ -18,7 +18,9 @@ type SettingsTab = 'query' | 'connections'
 export class SettingsComponent implements OnInit {
   activeTab: SettingsTab = 'query'
   defaultQueryRows: number
+  connectionExpirationMinutes: number
   savedMessage: string = ''
+  expirationSavedMessage: string = ''
   connectionMessage: string = ''
   connectionError: string = ''
   connections: SavedConnection[] = []
@@ -37,6 +39,7 @@ export class SettingsComponent implements OnInit {
     private IAPI: InternalApiService
   ) {
     this.defaultQueryRows = this.settings.getDefaultQueryRows()
+    this.connectionExpirationMinutes = this.settings.getConnectionExpirationMinutes()
   }
 
   async ngOnInit(): Promise<void> {
@@ -82,6 +85,20 @@ export class SettingsComponent implements OnInit {
     const settings = this.settings.setDefaultQueryRows(this.defaultQueryRows)
     this.defaultQueryRows = settings.defaultQueryRows
     this.savedMessage = 'Saved'
+  }
+
+  onConnectionExpirationInput(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value)
+    if (!Number.isFinite(value)) return
+
+    this.connectionExpirationMinutes = Math.max(1, Math.floor(value))
+    this.expirationSavedMessage = ''
+  }
+
+  saveConnectionExpiration(): void {
+    const settings = this.settings.setConnectionExpirationMinutes(this.connectionExpirationMinutes)
+    this.connectionExpirationMinutes = settings.connectionExpirationMinutes
+    this.expirationSavedMessage = 'Saved'
   }
 
   onConnectionSelected(item: { [key: string]: string | number } | null): void {

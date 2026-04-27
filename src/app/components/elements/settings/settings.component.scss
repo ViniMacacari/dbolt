@@ -106,6 +106,12 @@
     }
 }
 
+.settings-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
 .connections-settings-card {
     align-items: stretch;
     display: block;
