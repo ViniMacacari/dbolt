@@ -1,16 +1,23 @@
 import { Injectable } from '@angular/core'
 import { InternalApiService } from '../requests/internal-api.service'
 import { ConnectionsService, SavedConnection } from '../resolve-connections/connections.service'
+import { AppSettingsService } from '../app-settings/app-settings.service'
+
+interface EnsuredContextState {
+  stateKey: string
+  lastUsedAt: number
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class ConnectionContextService {
-  private ensuredContexts = new Map<string, string>()
+  private ensuredContexts = new Map<string, EnsuredContextState>()
 
   constructor(
     private IAPI: InternalApiService,
-    private connectionsService: ConnectionsService
+    private connectionsService: ConnectionsService,
+    private appSettings: AppSettingsService
   ) { }
 
   createContext(schemaDb: any, forceNewKey: boolean = false): any {
@@ -24,7 +31,7 @@ export class ConnectionContextService {
     }
   }
 
-  async ensureContext(schemaDb: any): Promise<any> {
+  async ensureContext(schemaDb: any, forceReconnect: boolean = false): Promise<any> {
     let context = this.createContext(schemaDb)
 
     if (!context?.sgbd && !context?.connId && !context?.connectionId) {
@@ -50,28 +57,29 @@ export class ConnectionContextService {
       context.schema
     ].join(':')
 
-    if (this.ensuredContexts.get(context.connectionKey) === stateKey) {
+    const ensuredContext = this.ensuredContexts.get(context.connectionKey)
+    if (
+      !forceReconnect &&
+      ensuredContext?.stateKey === stateKey &&
+      !this.isExpired(ensuredContext)
+    ) {
+      ensuredContext.lastUsedAt = Date.now()
       return context
     }
 
-    await this.IAPI.post(`/api/${context.sgbd}/${context.version}/connect`, {
-      host: connection.host,
-      port: connection.port,
-      user: connection.user,
-      password: connection.password,
-      connectionKey: context.connectionKey
+    await this.connectContext(context, connection)
+
+    this.ensuredContexts.set(context.connectionKey, {
+      stateKey,
+      lastUsedAt: Date.now()
     })
-
-    if (context.database || context.schema) {
-      await this.IAPI.post(`/api/${context.sgbd}/${context.version}/set-schema`, {
-        database: context.database,
-        schema: context.schema,
-        connectionKey: context.connectionKey
-      })
-    }
-
-    this.ensuredContexts.set(context.connectionKey, stateKey)
     return context
+  }
+
+  forgetContext(connectionKey?: string): void {
+    if (!connectionKey) return
+
+    this.ensuredContexts.delete(connectionKey)
   }
 
   toQueryString(schemaDb: any): string {
@@ -89,6 +97,31 @@ export class ConnectionContextService {
 
   private createConnectionKey(): string {
     return `tab-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+  }
+
+  private async connectContext(context: any, connection: SavedConnection): Promise<void> {
+    await this.IAPI.post(`/api/${context.sgbd}/${context.version}/connect`, {
+      host: connection.host,
+      port: connection.port,
+      user: connection.user,
+      password: connection.password,
+      connectionKey: context.connectionKey
+    })
+
+    if (context.database || context.schema) {
+      await this.IAPI.post(`/api/${context.sgbd}/${context.version}/set-schema`, {
+        database: context.database,
+        schema: context.schema,
+        connectionKey: context.connectionKey
+      })
+    }
+  }
+
+  private isExpired(state: EnsuredContextState): boolean {
+    const expirationMinutes = this.appSettings.getConnectionExpirationMinutes()
+    const expirationMs = expirationMinutes * 60 * 1000
+
+    return Date.now() - state.lastUsedAt >= expirationMs
   }
 
   private async resolveSavedConnection(context: any): Promise<SavedConnection> {
