@@ -1,7 +1,7 @@
 <div class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h5 class="title text-center w-100">Create a new connection</h5>
+            <h5 class="title text-center w-100">{{ isEditing ? 'Edit connection' : 'Create a new connection' }}</h5>
         </div>
         <div class="modal-body">
             <h2 class="subtitle">Connection name</h2>
@@ -42,10 +42,36 @@
                     <button class="btn-page-2 bg-blue" (click)="testConnection()">Try</button>
                 </div>
             </div>
+
+            <div *ngIf="sgbd && sgbdVersion" class="default-section">
+                <div class="default-header">
+                    <div>
+                        <h2 class="subtitle">Default connection target</h2>
+                        <p class="text-min-gray">Optional. Loaded from the database, so you can only select an existing value.</p>
+                    </div>
+                    <button class="btn-page-2" (click)="loadDefaultOptions()">Load</button>
+                </div>
+
+                <div class="d-flex flex-column w-100 gap-2" *ngIf="defaultOptionsLoaded">
+                    <div *ngIf="requiresDefaultDatabase">
+                        <p class="text-min-gray mb-1">Default database</p>
+                        <app-input-list #defaultDatabase [list]="defaultDatabaseList" [displayKey]="'name'"
+                            [width]="'100%'" [placeholder]="'Select database'"
+                            (itemSelected)="onDefaultDatabaseSelected($event)"></app-input-list>
+                    </div>
+
+                    <div *ngIf="requiresDefaultSchema">
+                        <p class="text-min-gray mb-1">Default schema</p>
+                        <app-input-list #defaultSchema [list]="defaultSchemaList" [displayKey]="'name'"
+                            [width]="'100%'" [placeholder]="'Select schema'"
+                            (itemSelected)="onDefaultSchemaSelected($event)"></app-input-list>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn-cancel" (click)="onClose()">Cancel</button>
-            <button class="btn-page" (click)="newConnection()">Add</button>
+            <button class="btn-page" (click)="newConnection()">{{ isEditing ? 'Save' : 'Add' }}</button>
         </div>
     </div>
 </div>

@@ -62,6 +62,16 @@ export class InputListComponent implements OnChanges {
     this.updateFilteredList()
   }
 
+  setSelectedItem(item: { [key: string]: string | number } | null, emitEvent = true): void {
+    this.selectedItem = item
+    this.searchValue = item?.[this.displayKey]?.toString() || ''
+    this.updateFilteredList()
+
+    if (emitEvent) {
+      this.itemSelected.emit(item)
+    }
+  }
+
   private updateFilteredList(): void {
     const query = this.searchValue.toLowerCase().trim()
     if (!query) {

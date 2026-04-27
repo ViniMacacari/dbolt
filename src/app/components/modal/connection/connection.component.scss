@@ -15,6 +15,8 @@
     background-color: #0b0b0b;
     width: 90%;
     max-width: 500px;
+    max-height: calc(100vh - 40px);
+    overflow: hidden;
     border-radius: 25px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
     animation: fadeIn 0.3s ease;
@@ -45,6 +47,8 @@
 
 .modal-body {
     padding: 15px;
+    max-height: calc(100vh - 190px);
+    overflow-y: auto;
 }
 
 .modal-footer {
@@ -79,6 +83,36 @@
 
     margin-bottom: 8px;
     width: 50px;
+}
+
+.default-section {
+    background: #131313;
+    border: 1px solid #2d2d2d;
+    border-radius: 18px;
+    margin-top: 18px;
+    padding: 14px;
+}
+
+.default-header {
+    align-items: flex-start;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    margin-bottom: 12px;
+
+    h2,
+    p {
+        margin: 0;
+    }
+
+    p {
+        margin-top: 3px;
+    }
+
+    .btn-page-2 {
+        flex: 0 0 auto;
+        min-width: 78px;
+    }
 }
 
 @keyframes fadeIn {

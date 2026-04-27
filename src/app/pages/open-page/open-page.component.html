@@ -8,6 +8,7 @@
         <div class="card" *ngFor="let connection of connections" (click)="onCardClick(connection.id)">
             <div class="d-flex flex-column align-items-center justify-content-center w-100">
                 <img class="trash" src="icons/delete.png" (click)="deleteConnection(connection.id, $event)">
+                <img class="edit" src="icons/edit.png" (click)="editConnection(connection, $event)">
                 <h1 class="title text-left w-100">{{connection.name}}</h1>
                 <div class="d-flex w-100 gap-2 mb-2">
                     <h2 class="subtitle-min text-center m-0">{{ connection.database }}</h2>
@@ -15,6 +16,11 @@
                 </div>
                 <div class="d-flex w-100 gap-2">
                     <p class="text-min-gray">{{ connection.host }}:{{ connection.port }}</p>
+                </div>
+                <div class="default-target" *ngIf="connection.defaultDatabase || connection.defaultSchema">
+                    <p class="text-min-gray m-0">
+                        {{ connection.defaultDatabase || '' }}{{ connection.defaultDatabase && connection.defaultSchema ? ' / ' : '' }}{{ connection.defaultSchema || '' }}
+                    </p>
                 </div>
                 <img priority src="db-logo/{{ connection.database }}.png" height="70px" width="70px">
             </div>
@@ -26,5 +32,5 @@
     </div>
 </div>
 
-<app-connection *ngIf="isModalOpen" (close)="closeModal()"></app-connection>
+<app-connection *ngIf="isModalOpen" [connection]="editingConnection" (close)="closeModal()"></app-connection>
 <app-toast #toast></app-toast>

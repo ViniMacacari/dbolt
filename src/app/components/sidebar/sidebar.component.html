@@ -30,6 +30,10 @@
 
     <div class="connections">
         <div *ngFor="let connection of connections" class="connection d-flex w-100 my-3 mt-0">
+            <button type="button" class="connection-edit-button" title="Edit connection"
+                (click)="editConnection(connection, $event)">
+                <img src="icons/edit.png" height="13px" width="13px">
+            </button>
             <div (click)="toggleConnection(connection.id); canConnect(connection)">
                 <div class="d-flex align-items-center gap-2 mb-1">
                     <img src="db-logo/{{ connection.database }}.png" height="20px" width="20px">
@@ -94,7 +98,7 @@
     </div>
 </div>
 
-<app-edit-connection *ngIf="isModalOpen" (close)="closeModal()"></app-edit-connection>
+<app-connection *ngIf="isModalOpen" [connection]="editingConnection" (close)="closeModal()"></app-connection>
 <app-toast #toast></app-toast>
 
 <div class="quick-selector-backdrop" *ngIf="quickSelectorType" (click)="closeQuickSelector()">
