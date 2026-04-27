@@ -24,9 +24,22 @@
     min-height: 100%;
 }
 
-.organize {
+.main-area {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
     height: 100%;
-    // max-height: 90%;
+    overflow: hidden;
+}
+
+.organize {
+    flex: 1;
+    padding: 1rem;
+    box-sizing: border-box;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
 }
 
 @media (min-height: 700px) {
