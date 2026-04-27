@@ -20,6 +20,7 @@ import { ConnectionsService } from '../../services/resolve-connections/connectio
 })
 export class OpenPageComponent {
   isModalOpen = false
+  editingConnection: any = null
   connections: any[] = []
 
   @ViewChild('toast') toast!: ToastComponent
@@ -49,12 +50,14 @@ export class OpenPageComponent {
   }
 
   openModal() {
+    this.editingConnection = null
     this.isModalOpen = true
   }
 
   async closeModal() {
     await this.loadConnections()
     this.isModalOpen = false
+    this.editingConnection = null
   }
 
   async loadConnections(): Promise<void> {
@@ -65,12 +68,28 @@ export class OpenPageComponent {
     LoadingComponent.show()
     try {
       const result: any = await this.connectionsService.getConnectionById(id)
-      await this.IAPI.post(`/api/${result.database}/${result.version}/connect`, {
+      const connectionResult: any = await this.IAPI.post(`/api/${result.database}/${result.version}/connect`, {
         host: result.host,
         port: result.port,
         user: result.user,
         password: result.password
       })
+
+      if (connectionResult?.success === false) {
+        throw new Error(connectionResult.error || connectionResult.message || 'Connection failed')
+      }
+
+      if (result.defaultDatabase || result.defaultSchema) {
+        const schemaResult: any = await this.IAPI.post(`/api/${result.database}/${result.version}/set-schema`, {
+          database: result.defaultDatabase,
+          schema: result.defaultSchema
+        })
+
+        if (schemaResult?.success === false) {
+          throw new Error(schemaResult.error || schemaResult.message || 'Could not apply default database/schema')
+        }
+      }
+
       LoadingComponent.hide()
       this.router.navigate([`/database-management/${id}`])
     } catch (error) {
@@ -84,5 +103,11 @@ export class OpenPageComponent {
     event.stopPropagation()
     await this.connectionsService.deleteConnection(id)
     this.connections = this.connectionsService.getCachedConnections()
+  }
+
+  editConnection(connection: any, event: MouseEvent): void {
+    event.stopPropagation()
+    this.editingConnection = connection
+    this.isModalOpen = true
   }
 }

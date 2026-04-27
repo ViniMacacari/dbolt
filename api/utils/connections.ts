@@ -104,6 +104,33 @@ class DbConnections {
     return true;
   }
 
+  async updateConnectionById(
+    id: number,
+    connectionData: SavedConnectionInput
+  ): Promise<SavedConnection | null> {
+    const connections = await this.readConnectionsFile();
+    const connectionIndex = connections.findIndex(
+      (connection) => connection.id === Number(id)
+    );
+
+    if (connectionIndex === -1) {
+      return null;
+    }
+
+    const updatedConnection: SavedConnection = {
+      id: Number(id),
+      ...connectionData
+    };
+
+    const updatedConnections = connections.map((connection, index) =>
+      index === connectionIndex ? updatedConnection : connection
+    );
+
+    await this.writeConnectionsFile(updatedConnections);
+
+    return updatedConnection;
+  }
+
   private getConnectionsFilePath(): string {
     return join(this.basePath, CONNECTIONS_FILENAME);
   }

@@ -3,15 +3,15 @@ import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { LoadingComponent } from '../modal/loading/loading.component'
 import { ToastComponent } from '../toast/toast.component'
-import { EditConnectionComponent } from "../modal/edit-connection/edit-connection.component"
 import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
 import { Router } from '@angular/router'
 import { ConnectionsService } from '../../services/resolve-connections/connections.service'
+import { ConnectionComponent } from '../modal/connection/connection.component'
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, ToastComponent, EditConnectionComponent],
+  imports: [CommonModule, ToastComponent, ConnectionComponent],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss'
 })
@@ -28,6 +28,7 @@ export class SidebarComponent {
   @ViewChild('toast') toast!: ToastComponent
 
   isModalOpen: boolean = false
+  editingConnection: any = null
   isOpen = true
   expandedConnections: Set<number> = new Set()
   expandedDatabases: Set<string> = new Set()
@@ -137,8 +138,8 @@ export class SidebarComponent {
     try {
       if (option.type === 'connection') {
         await this.canConnect(option.value)
-        const database = this.getSchemasByConnection(option.value)[0]
-        const schema = database?.schemas?.[0]
+        const database = this.getDefaultDatabaseForConnection(option.value)
+        const schema = this.getDefaultSchemaForConnection(option.value, database)
 
         if (database && schema) {
           await this.setSchema(this.buildSchemaSelection(option.value, database.database, schema))
@@ -201,6 +202,25 @@ export class SidebarComponent {
       (item: any) =>
         item.host === connection.host && item.port === connection.port
     )
+  }
+
+  private getDefaultDatabaseForConnection(connection: any): any {
+    const databases = this.getSchemasByConnection(connection)
+    if (!connection?.defaultDatabase) {
+      return databases[0]
+    }
+
+    return databases.find((database) => database.database === connection.defaultDatabase) || databases[0]
+  }
+
+  private getDefaultSchemaForConnection(connection: any, database: any): string {
+    if (!database) return ''
+
+    if (connection?.defaultSchema && database.schemas?.includes(connection.defaultSchema)) {
+      return connection.defaultSchema
+    }
+
+    return database.schemas?.[0] || ''
   }
 
   private getSelectedSavedConnection(): any {
@@ -446,11 +466,19 @@ export class SidebarComponent {
   }
 
   openModal() {
+    this.editingConnection = null
+    this.isModalOpen = true
+  }
+
+  editConnection(connection: any, event: MouseEvent): void {
+    event.stopPropagation()
+    this.editingConnection = connection
     this.isModalOpen = true
   }
 
   async closeModal() {
     this.isModalOpen = false
+    this.editingConnection = null
     this.connections = this.connectionsService.getCachedConnections()
   }
 }

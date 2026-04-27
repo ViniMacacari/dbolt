@@ -1,4 +1,4 @@
-import { Component, Input, HostListener, EventEmitter, Output, OnChanges, SimpleChanges } from '@angular/core'
+import { Component, Input, HostListener, EventEmitter, Output, OnChanges, SimpleChanges, ElementRef } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 
@@ -21,15 +21,17 @@ export class InputListComponent implements OnChanges {
   isDropdownOpen: boolean = false
   selectedItem: { [key: string]: string | number } | null = null
 
+  constructor(private elementRef: ElementRef<HTMLElement>) { }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['list'] && changes['list'].currentValue) {
       this.updateFilteredList()
     }
   }
 
-  toggleDropdown(): void {
-    this.isDropdownOpen = !this.isDropdownOpen
-    if (this.isDropdownOpen) this.updateFilteredList()
+  openDropdown(): void {
+    this.isDropdownOpen = true
+    this.updateFilteredList()
   }
 
   updateSearch(): void {
@@ -37,6 +39,7 @@ export class InputListComponent implements OnChanges {
       this.selectedItem = null
       this.itemSelected.emit(null)
     }
+
     this.updateFilteredList()
   }
 
@@ -47,10 +50,11 @@ export class InputListComponent implements OnChanges {
     this.isDropdownOpen = false
   }
 
-  @HostListener('document:click', ['$event.target'])
-  closeDropdown(target: HTMLElement): void {
-    const dropdownElement = target.closest('.dropdown-container')
-    if (!dropdownElement) {
+  @HostListener('document:click', ['$event'])
+  closeDropdown(event: MouseEvent): void {
+    const clickedInside = this.elementRef.nativeElement.contains(event.target as Node)
+
+    if (!clickedInside) {
       this.isDropdownOpen = false
     }
   }
@@ -64,12 +68,14 @@ export class InputListComponent implements OnChanges {
 
   private updateFilteredList(): void {
     const query = this.searchValue.toLowerCase().trim()
+
     if (!query) {
       this.filteredList = [...this.list]
-    } else {
-      this.filteredList = this.list.filter(item =>
-        item[this.displayKey]?.toString().toLowerCase().includes(query)
-      )
+      return
     }
+
+    this.filteredList = this.list.filter(item =>
+      item[this.displayKey]?.toString().toLowerCase().includes(query)
+    )
   }
 }

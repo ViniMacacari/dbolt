@@ -61,6 +61,8 @@ export interface SavedConnectionInput extends DatabaseConnectionConfig {
   name: string;
   database: SupportedDatabase;
   version: string;
+  defaultDatabase?: string;
+  defaultSchema?: string;
 }
 
 export interface SavedConnection extends SavedConnectionInput {
@@ -228,7 +230,9 @@ export function isSavedConnection(value: unknown): value is SavedConnection {
     typeof value['host'] === 'string' &&
     (typeof value['port'] === 'string' || typeof value['port'] === 'number') &&
     typeof value['user'] === 'string' &&
-    typeof value['password'] === 'string'
+    typeof value['password'] === 'string' &&
+    (value['defaultDatabase'] === undefined || typeof value['defaultDatabase'] === 'string') &&
+    (value['defaultSchema'] === undefined || typeof value['defaultSchema'] === 'string')
   );
 }
 

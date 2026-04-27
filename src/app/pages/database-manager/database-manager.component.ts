@@ -154,24 +154,78 @@ export class DatabaseManagerComponent {
   async loadInitSelectedSchemaAndDB(): Promise<void> {
     LoadingComponent.show()
 
-    const database = this.activeConnection[0].database
+    const activeConnection = this.activeConnection[0]
+    const database = activeConnection.database
     const version = this.databasesSchemasActiveConnections.data[0].version
-    const result: any = await this.IAPI.get(`/api/${database}/${version}/get-selected-schema`)
+    const defaultTarget = this.resolveConnectionDefaultTarget(activeConnection)
+    let result: any
+
+    if (defaultTarget) {
+      const schemaResult: any = await this.IAPI.post(`/api/${database}/${version}/set-schema`, {
+        database: defaultTarget.database,
+        schema: defaultTarget.schema
+      })
+
+      if (schemaResult?.success === false) {
+        throw new Error(schemaResult.error || schemaResult.message || 'Could not apply default database/schema')
+      }
+
+      result = {
+        database: defaultTarget.database,
+        schema: defaultTarget.schema
+      }
+    } else {
+      result = await this.IAPI.get(`/api/${database}/${version}/get-selected-schema`)
+    }
 
     this.selectedSchemaDB = {
       database: result.database,
       schema: result.schema,
       sgbd: this.databasesSchemasActiveConnections.data[0].sgbd,
-      version: this.activeConnection[0].version,
-      name: this.activeConnection[0].name,
-      host: this.activeConnection[0].host,
-      port: this.activeConnection[0].port,
-      connId: this.activeConnection[0].id
+      version: activeConnection.version,
+      name: activeConnection.name,
+      host: activeConnection.host,
+      port: activeConnection.port,
+      connId: activeConnection.id
     }
 
     this.dbSchemaService.setSelectedSchemaDB(this.selectedSchemaDB)
 
     LoadingComponent.hide()
+  }
+
+  private resolveConnectionDefaultTarget(connection: any): any | null {
+    if (!connection?.defaultDatabase && !connection?.defaultSchema) {
+      return null
+    }
+
+    const availableDatabases = (this.databasesSchemasActiveConnections.data || []).filter((item: any) =>
+      item.sgbd === connection.database &&
+      item.host === connection.host &&
+      String(item.port) === String(connection.port)
+    )
+
+    if (availableDatabases.length === 0) {
+      return null
+    }
+
+    const databaseEntry = connection.defaultDatabase
+      ? availableDatabases.find((item: any) => item.database === connection.defaultDatabase)
+      : availableDatabases[0]
+
+    if (!databaseEntry) {
+      return null
+    }
+
+    const schema = connection.defaultSchema || databaseEntry.schemas?.[0]
+    if (connection.defaultSchema && !databaseEntry.schemas?.includes(connection.defaultSchema)) {
+      return null
+    }
+
+    return {
+      database: databaseEntry.database,
+      schema
+    }
   }
 
   onTabSelected(tab: any): void {

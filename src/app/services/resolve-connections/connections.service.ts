@@ -11,6 +11,8 @@ export interface SavedConnection {
   port: string | number
   user: string
   password: string
+  defaultDatabase?: string
+  defaultSchema?: string
 }
 
 export type NewConnection = Omit<SavedConnection, 'id'>
@@ -82,6 +84,18 @@ export class ConnectionsService {
     }
 
     return createdConnection
+  }
+
+  async updateConnection(id: number, connection: NewConnection): Promise<SavedConnection> {
+    const response = await this.IAPI.put<SaveConnectionResponse>(`/api/connections/${id}`, connection)
+
+    if (!response.data) {
+      throw new Error(response.message || 'Connection was not updated')
+    }
+
+    this.upsertConnection(response.data)
+
+    return response.data
   }
 
   async deleteConnection(id: number): Promise<void> {
