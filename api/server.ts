@@ -2,6 +2,7 @@ import cors from 'cors';
 import express, { type Application } from 'express';
 import type { Server } from 'node:http';
 
+import appInfo from './router/dbolt/app-info.js';
 import databases from './router/dbolt/databases.js';
 import connections from './router/dbolt/connections.js';
 import query from './router/dbolt/query.js';
@@ -22,6 +23,7 @@ class InternalServer {
   }
 
   loadServer(): Server {
+    this.app.use('/api/app-info', appInfo);
     this.app.use('/api/databases', databases);
     this.app.use('/api/connections', connections);
     this.app.use('/api/query', query);

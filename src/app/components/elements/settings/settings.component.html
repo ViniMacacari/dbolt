@@ -18,18 +18,36 @@
             <h2>{{ settingsTitle }}</h2>
         </div>
 
-        <div class="settings-card" *ngIf="activeTab === 'query'">
-            <div>
-                <h3>Default query return rows</h3>
-                <p>Used when a new query tab is opened. Existing tabs keep their own selected value.</p>
+        <div class="settings-stack" *ngIf="activeTab === 'query'">
+            <div class="settings-card">
+                <div>
+                    <h3>Default query return rows</h3>
+                    <p>Used when a new query tab is opened. Existing tabs keep their own selected value.</p>
+                </div>
+
+                <div class="setting-control">
+                    <label for="default-query-rows">Rows</label>
+                    <input id="default-query-rows" type="number" min="1" step="1" [value]="defaultQueryRows"
+                        (input)="onDefaultRowsInput($event)" (keydown.enter)="saveDefaultRows()">
+                    <button type="button" (click)="saveDefaultRows()">Save</button>
+                    <small *ngIf="savedMessage">{{ savedMessage }}</small>
+                </div>
             </div>
 
-            <div class="setting-control">
-                <label for="default-query-rows">Rows</label>
-                <input id="default-query-rows" type="number" min="1" step="1" [value]="defaultQueryRows"
-                    (input)="onDefaultRowsInput($event)" (keydown.enter)="saveDefaultRows()">
-                <button type="button" (click)="saveDefaultRows()">Save</button>
-                <small *ngIf="savedMessage">{{ savedMessage }}</small>
+            <div class="settings-card">
+                <div>
+                    <h3>Connection idle expiration</h3>
+                    <p>Reconnects before running a query when a tab connection has been idle for this long.</p>
+                </div>
+
+                <div class="setting-control">
+                    <label for="connection-expiration-minutes">Minutes</label>
+                    <input id="connection-expiration-minutes" type="number" min="1" step="1"
+                        [value]="connectionExpirationMinutes" (input)="onConnectionExpirationInput($event)"
+                        (keydown.enter)="saveConnectionExpiration()">
+                    <button type="button" (click)="saveConnectionExpiration()">Save</button>
+                    <small *ngIf="expirationSavedMessage">{{ expirationSavedMessage }}</small>
+                </div>
             </div>
         </div>
 

@@ -7,6 +7,8 @@ import { ToastComponent } from '../../components/toast/toast.component'
 import { LoadingComponent } from '../../components/modal/loading/loading.component'
 import { ConnectionsService } from '../../services/resolve-connections/connections.service'
 
+type ConnectionViewMode = 'focus' | 'matrix'
+
 @Component({
   selector: 'app-open-page',
   standalone: true,
@@ -22,6 +24,11 @@ export class OpenPageComponent {
   isModalOpen = false
   editingConnection: any = null
   connections: any[] = []
+  viewMode: ConnectionViewMode = 'focus'
+  selectedConnectionId: number | null = null
+  appVersion: string = ''
+
+  private readonly viewModeStorageKey = 'dbolt-home-view-mode'
 
   @ViewChild('toast') toast!: ToastComponent
 
@@ -32,10 +39,12 @@ export class OpenPageComponent {
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
+    this.viewMode = this.getStoredViewMode()
     LoadingComponent.show('Loading saved connections...')
 
     try {
       await this.getConfigurations()
+      await this.loadAppInfo()
       await this.loadConnections()
     } catch (error: any) {
       console.error(error)
@@ -62,6 +71,48 @@ export class OpenPageComponent {
 
   async loadConnections(): Promise<void> {
     this.connections = await this.connectionsService.loadConnections()
+    if (!this.selectedConnectionId && this.connections[0]) {
+      this.selectedConnectionId = this.connections[0].id
+    }
+  }
+
+  async loadAppInfo(): Promise<void> {
+    try {
+      const appInfo = await this.IAPI.get<{ version: string }>('/api/app-info')
+      this.appVersion = appInfo.version
+    } catch (error) {
+      console.warn('Could not load app version:', error)
+      this.appVersion = ''
+    }
+  }
+
+  setViewMode(viewMode: ConnectionViewMode): void {
+    this.viewMode = viewMode
+    localStorage.setItem(this.viewModeStorageKey, viewMode)
+  }
+
+  selectConnection(connection: any): void {
+    this.selectedConnectionId = connection.id
+  }
+
+  get selectedConnection(): any {
+    return this.connections.find((connection) => connection.id === this.selectedConnectionId) || this.connections[0]
+  }
+
+  get selectedTarget(): string {
+    const connection = this.selectedConnection
+    return [connection?.defaultDatabase, connection?.defaultSchema].filter(Boolean).join(' / ') || 'No default target'
+  }
+
+  openSelectedConnection(): void {
+    const connection = this.selectedConnection
+    if (!connection) return
+
+    void this.onCardClick(connection.id)
+  }
+
+  trackConnectionById(index: number, connection: any): number {
+    return connection.id ?? index
   }
 
   async onCardClick(id: number): Promise<void> {
@@ -109,5 +160,12 @@ export class OpenPageComponent {
     event.stopPropagation()
     this.editingConnection = connection
     this.isModalOpen = true
+  }
+
+  private getStoredViewMode(): ConnectionViewMode {
+    const storedViewMode = localStorage.getItem(this.viewModeStorageKey)
+    return storedViewMode === 'focus' || storedViewMode === 'matrix'
+      ? storedViewMode
+      : 'focus'
   }
 }
