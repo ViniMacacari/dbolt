@@ -1,5 +1,4 @@
 import DbConnections from '../../utils/connections.js';
-import loadConnection from './load-connection.js';
 
 import type {
   SavedConnection,
@@ -11,7 +10,7 @@ class SaveConnection {
   async newConnection(
     connection: SavedConnectionInput
   ): Promise<SavedEntityResult<SavedConnection>> {
-    const existingConnections = await loadConnection.getAllConnections();
+    const existingConnections = await DbConnections.getConnectionSummaries();
 
     const hasDuplicateName = existingConnections.some(
       (existingConnection) =>
@@ -49,7 +48,7 @@ class SaveConnection {
     id: number,
     connection: SavedConnectionInput
   ): Promise<SavedEntityResult<SavedConnection>> {
-    const existingConnections = await loadConnection.getAllConnections();
+    const existingConnections = await DbConnections.getConnectionSummaries();
 
     const hasDuplicateName = existingConnections.some(
       (existingConnection) =>
