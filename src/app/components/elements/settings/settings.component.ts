@@ -166,6 +166,8 @@ export class SettingsComponent implements OnInit {
   async saveConnectionTarget(): Promise<void> {
     if (!this.selectedConnection) return
 
+    LoadingComponent.show('Saving connection defaults...')
+
     try {
       this.validateSelectedTarget()
 
@@ -189,6 +191,8 @@ export class SettingsComponent implements OnInit {
       console.error(error)
       this.connectionMessage = ''
       this.connectionError = error?.error || error?.message || 'Could not save connection defaults.'
+    } finally {
+      LoadingComponent.hide()
     }
   }
 
