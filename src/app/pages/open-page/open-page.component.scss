@@ -11,7 +11,7 @@
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    padding: 28px;
+    padding: 24px;
     width: 100%;
 }
 
@@ -19,8 +19,8 @@
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     height: 100%;
-    margin: 0 auto;
-    max-width: 1180px;
+    margin: 0;
+    max-width: none;
     min-height: 0;
     row-gap: 18px;
     width: 100%;
@@ -123,8 +123,10 @@
 .focus-layout {
     display: grid;
     gap: 18px;
-    grid-template-columns: minmax(230px, 310px) minmax(0, 1fr);
+    grid-template-columns: clamp(260px, 24vw, 360px) minmax(0, 1fr);
+    height: 100%;
     min-height: 0;
+    overflow: hidden;
 }
 
 .connection-rail {
@@ -193,8 +195,9 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    height: 100%;
     min-height: 0;
-    overflow: hidden;
+    overflow: auto;
     padding: 34px;
     position: relative;
     text-align: center;
@@ -315,10 +318,12 @@
 .matrix-layout {
     display: grid;
     gap: 14px;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    height: 100%;
     min-height: 0;
     overflow-y: auto;
     padding-bottom: 10px;
+    width: 100%;
 }
 
 .matrix-item {
@@ -426,31 +431,136 @@
 
 @media (max-width: 850px) {
     .home-page {
-        padding: 18px;
+        padding: 14px 16px;
+    }
+
+    .home-shell {
+        row-gap: 12px;
     }
 
     .home-header {
-        align-items: stretch;
-        flex-direction: column;
+        align-items: flex-start;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 10px;
     }
 
     .header-actions {
+        flex: 1 1 260px;
         justify-content: space-between;
+        min-width: 0;
     }
 
     .focus-layout {
         grid-template-columns: 1fr;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 12px;
     }
 
     .connection-rail {
-        max-height: 220px;
+        border-radius: 16px;
+        flex-direction: row;
+        gap: 8px;
+        min-height: 72px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 8px;
+    }
+
+    .rail-item {
+        flex: 0 0 172px;
+        grid-template-columns: 30px minmax(0, 1fr);
+        min-height: 54px;
+        padding: 8px 10px;
     }
 
     .connection-stage {
-        min-height: 420px;
+        border-radius: 22px;
+        justify-content: flex-start;
+        min-height: 0;
+        padding: 18px 20px;
+    }
+
+    .stage-actions {
+        right: 14px;
+        top: 14px;
+    }
+
+    .stage-logo {
+        border-radius: 20px;
+        height: 92px;
+        margin-bottom: 14px;
+        width: 92px;
+
+        img {
+            height: 68px;
+            width: 68px;
+        }
+    }
+
+    .stage-copy {
+        max-width: 560px;
+
+        h2 {
+            font-size: 1.45em;
+            margin: 6px 0;
+        }
+
+        p,
+        span {
+            font-size: .8em;
+        }
     }
 
     .stage-meta {
+        gap: 8px;
         grid-template-columns: 1fr;
+        margin: 16px 0;
+
+        div {
+            padding: 10px 12px;
+        }
+    }
+
+    .open-button {
+        flex: 0 0 auto;
+        height: 38px;
+    }
+
+    .matrix-layout {
+        gap: 10px;
+        grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    }
+
+    .matrix-item {
+        border-radius: 18px;
+        height: 142px;
+        padding: 14px;
+    }
+}
+
+@media (max-width: 560px) {
+    .home-page {
+        padding: 12px;
+    }
+
+    .title-block h1 {
+        font-size: 1em;
+    }
+
+    .header-actions {
+        flex-basis: 100%;
+    }
+
+    .new-button {
+        padding: 0 12px;
+    }
+
+    .connection-stage {
+        padding: 16px;
+    }
+
+    .stage-copy h2 {
+        font-size: 1.3em;
     }
 }
