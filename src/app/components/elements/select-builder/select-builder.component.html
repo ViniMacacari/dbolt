@@ -21,10 +21,11 @@
         </div>
 
         <p class="metadata-status" *ngIf="isLoadingObjects">Loading objects...</p>
+        <p class="metadata-status" *ngIf="!isLoadingObjects && metadataInfo">{{ metadataInfo }}</p>
         <p class="metadata-status error" *ngIf="metadataMessage">{{ metadataMessage }}</p>
 
         <datalist [id]="objectListId">
-            <option *ngFor="let objectName of objectOptions" [value]="objectName"></option>
+            <option *ngFor="let objectName of visibleObjectOptions" [value]="objectName"></option>
         </datalist>
 
         <div class="builder-layout">
@@ -32,13 +33,14 @@
                 <section class="builder-section">
                     <div class="section-title">
                         <h3>From</h3>
-                        <button type="button" class="section-button" (click)="loadObjectOptions()">Refresh</button>
+                        <button type="button" class="section-button" (click)="loadObjectOptions()">Load suggestions</button>
                     </div>
 
                     <div class="field-grid two">
                         <label>
                             <span>Table</span>
                             <input type="text" [(ngModel)]="baseTable" (ngModelChange)="onStateChange()"
+                                (input)="onObjectLookup(baseTable)" (focus)="onObjectLookup(baseTable)"
                                 [attr.list]="objectListId" placeholder="orders">
                         </label>
 
@@ -72,6 +74,7 @@
                             <option *ngFor="let joinType of joinTypes" [ngValue]="joinType">{{ joinType }}</option>
                         </select>
                         <input type="text" [(ngModel)]="join.table" (ngModelChange)="onStateChange()"
+                            (input)="onObjectLookup(join.table)" (focus)="onObjectLookup(join.table)"
                             [attr.list]="objectListId" placeholder="customers">
                         <input type="text" [(ngModel)]="join.alias" (ngModelChange)="onStateChange()"
                             placeholder="c">

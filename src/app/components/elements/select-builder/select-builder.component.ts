@@ -70,10 +70,15 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
   joins: SelectJoin[] = []
   filters: SelectFilter[] = []
   objectOptions: string[] = []
+  visibleObjectOptions: string[] = []
   isLoadingObjects: boolean = false
   metadataMessage: string = ''
+  metadataInfo: string = 'Object suggestions load on demand.'
   copiedMessage: string = ''
+  generatedSql: string = '-- Select a base table to generate SQL.'
   readonly objectListId = `select-builder-objects-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  readonly maxObjectSuggestions = 80
+  readonly maxIndexedObjects = 5000
 
   readonly joinTypes: JoinType[] = ['JOIN', 'LEFT JOIN']
   readonly joinOperators: string[] = ['=', '<>', '>', '>=', '<', '<=']
@@ -104,13 +109,12 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
 
   ngOnInit(): void {
     this.restoreState()
-    void this.loadObjectOptions()
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['tabInfo'] && !changes['tabInfo'].firstChange) {
+      this.clearObjectOptions()
       this.restoreState()
-      void this.loadObjectOptions()
     }
   }
 
@@ -124,12 +128,12 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
       operator: '=',
       rightField: ''
     })
-    this.persistState()
+    this.onStateChange()
   }
 
   removeJoin(joinId: number): void {
     this.joins = this.joins.filter((join) => join.id !== joinId)
-    this.persistState()
+    this.onStateChange()
   }
 
   addFilter(): void {
@@ -141,12 +145,12 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
       value: '',
       valueTo: ''
     })
-    this.persistState()
+    this.onStateChange()
   }
 
   removeFilter(filterId: number): void {
     this.filters = this.filters.filter((filter) => filter.id !== filterId)
-    this.persistState()
+    this.onStateChange()
   }
 
   resetBuilder(): void {
@@ -159,12 +163,17 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
     this.filters = []
     this.nextJoinId = 1
     this.nextFilterId = 1
-    this.persistState()
+    this.onStateChange()
   }
 
   onStateChange(): void {
     this.copiedMessage = ''
+    this.updateGeneratedSql()
     this.persistState()
+  }
+
+  onObjectLookup(value: string): void {
+    this.updateVisibleObjectOptions(value)
   }
 
   openAsQuery(): void {
@@ -183,10 +192,6 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
 
     await navigator.clipboard.writeText(sql)
     this.copiedMessage = 'Copied'
-  }
-
-  get generatedSql(): string {
-    return this.buildSql()
   }
 
   get databaseLabel(): string {
@@ -222,6 +227,7 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
 
     this.isLoadingObjects = true
     this.metadataMessage = ''
+    this.metadataInfo = ''
 
     try {
       const ensuredContext = await this.connectionContext.ensureContext(context)
@@ -230,17 +236,13 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
       }
 
       const queryString = this.connectionContext.toQueryString(ensuredContext)
-      const response: any = await this.IAPI.get(`/api/${ensuredContext.sgbd}/${ensuredContext.version}/list-objects${queryString}`)
+      const response: any = await this.IAPI.get(`/api/${ensuredContext.sgbd}/${ensuredContext.version}/list-table-objects${queryString}`)
 
-      const rows = [
-        ...(response?.tables || []),
-        ...(response?.views || []),
-        ...((response?.data || []).filter((item: any) => item?.type === 'table' || item?.type === 'view'))
-      ]
-
-      this.objectOptions = [...new Set(rows
-        .map((item: any) => String(item?.name || item?.NAME || '').trim())
-        .filter(Boolean))]
+      this.objectOptions = this.buildObjectIndex(response)
+      this.updateVisibleObjectOptions(this.baseTable)
+      this.metadataInfo = this.objectOptions.length >= this.maxIndexedObjects
+        ? `Indexed first ${this.maxIndexedObjects} objects. Type a table name manually if it is not listed.`
+        : `Indexed ${this.objectOptions.length} objects. Showing up to ${this.maxObjectSuggestions} suggestions.`
     } catch (error: any) {
       this.metadataMessage = error?.error || error?.message || 'Could not load database objects.'
     } finally {
@@ -251,6 +253,7 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
   private restoreState(): void {
     const state: BuilderState | undefined = this.tabInfo?.info?.builderState
     if (!state) {
+      this.updateGeneratedSql()
       this.persistState()
       return
     }
@@ -264,6 +267,8 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
     this.filters = (state.filters || []).map((filter) => ({ ...filter }))
     this.nextJoinId = this.getNextId(this.joins)
     this.nextFilterId = this.getNextId(this.filters)
+    this.updateGeneratedSql()
+    this.updateVisibleObjectOptions(this.baseTable)
   }
 
   private persistState(): void {
@@ -285,6 +290,67 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
     if (items.length === 0) return 1
 
     return Math.max(...items.map((item) => item.id)) + 1
+  }
+
+  private clearObjectOptions(): void {
+    this.objectOptions = []
+    this.visibleObjectOptions = []
+    this.metadataMessage = ''
+    this.metadataInfo = 'Object suggestions load on demand.'
+  }
+
+  private buildObjectIndex(response: any): string[] {
+    const objectNames = new Set<string>()
+    this.addObjectNames(objectNames, response?.tables)
+    this.addObjectNames(objectNames, response?.views)
+
+    const dataRows = response?.data || []
+    if (Array.isArray(dataRows)) {
+      for (const item of dataRows) {
+        if (objectNames.size >= this.maxIndexedObjects) break
+        if (item?.type === 'table' || item?.type === 'view') {
+          this.addObjectName(objectNames, item)
+        }
+      }
+    }
+
+    return Array.from(objectNames)
+      .slice(0, this.maxIndexedObjects)
+      .sort((first, second) => first.localeCompare(second))
+  }
+
+  private addObjectNames(objectNames: Set<string>, rows: any): void {
+    if (!Array.isArray(rows)) return
+
+    for (const item of rows) {
+      if (objectNames.size >= this.maxIndexedObjects) return
+      this.addObjectName(objectNames, item)
+    }
+  }
+
+  private addObjectName(objectNames: Set<string>, item: any): void {
+    const name = String(item?.name || item?.NAME || '').trim()
+    if (name) {
+      objectNames.add(name)
+    }
+  }
+
+  private updateGeneratedSql(): void {
+    this.generatedSql = this.buildSql()
+  }
+
+  private updateVisibleObjectOptions(search: string = ''): void {
+    if (this.objectOptions.length === 0) {
+      this.visibleObjectOptions = []
+      return
+    }
+
+    const normalizedSearch = search.trim().toLowerCase()
+    const source = normalizedSearch
+      ? this.objectOptions.filter((objectName) => objectName.toLowerCase().includes(normalizedSearch))
+      : this.objectOptions
+
+    this.visibleObjectOptions = source.slice(0, this.maxObjectSuggestions)
   }
 
   private buildSql(): string {
