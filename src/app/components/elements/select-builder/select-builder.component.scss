@@ -99,13 +99,46 @@
 
 .check-control {
     align-items: center;
+    background: #292727;
+    border: 1px solid #3b3b3b;
+    border-radius: 10px;
     color: #c9c9c9;
+    cursor: pointer;
     display: flex;
     font-family: 'Nunito';
     font-size: .78em;
     font-weight: 700;
-    gap: 6px;
+    gap: 8px;
     min-height: 34px;
+    padding: 0 10px;
+
+    input {
+        appearance: none;
+        background: #1b1b1b;
+        border: 1px solid #4a4a4a;
+        border-radius: 6px;
+        cursor: pointer;
+        height: 16px;
+        margin: 0;
+        position: relative;
+        width: 16px;
+
+        &:checked {
+            background: #2b3340;
+            border-color: rgba(115, 158, 202, 0.7);
+        }
+
+        &:checked::after {
+            color: #d8e9fb;
+            content: '✓';
+            font-size: 12px;
+            font-weight: 900;
+            left: 2px;
+            line-height: 14px;
+            position: absolute;
+            top: 0;
+        }
+    }
 }
 
 .metadata-status {
@@ -213,7 +246,7 @@ label,
     }
 }
 
-input,
+input:not([type='checkbox']),
 select,
 textarea {
     background: #1b1b1b;
@@ -243,6 +276,13 @@ textarea {
     padding: 10px;
     resize: vertical;
     user-select: text;
+}
+
+.column-add-row {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) 70px;
+    margin-top: 10px;
 }
 
 .join-row,
@@ -319,6 +359,7 @@ textarea {
     }
 
     .field-grid.two,
+    .column-add-row,
     .join-row,
     .filter-row {
         grid-template-columns: 1fr;

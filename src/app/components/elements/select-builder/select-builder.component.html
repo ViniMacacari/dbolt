@@ -21,11 +21,15 @@
         </div>
 
         <p class="metadata-status" *ngIf="isLoadingObjects">Loading objects...</p>
+        <p class="metadata-status" *ngIf="isLoadingColumns">Loading columns...</p>
         <p class="metadata-status" *ngIf="!isLoadingObjects && metadataInfo">{{ metadataInfo }}</p>
         <p class="metadata-status error" *ngIf="metadataMessage">{{ metadataMessage }}</p>
 
         <datalist [id]="objectListId">
             <option *ngFor="let objectName of visibleObjectOptions" [value]="objectName"></option>
+        </datalist>
+        <datalist [id]="columnListId">
+            <option *ngFor="let columnName of visibleColumnOptions" [value]="columnName"></option>
         </datalist>
 
         <div class="builder-layout">
@@ -33,22 +37,32 @@
                 <section class="builder-section">
                     <div class="section-title">
                         <h3>From</h3>
-                        <button type="button" class="section-button" (click)="loadObjectOptions()">Load suggestions</button>
                     </div>
 
                     <div class="field-grid two">
                         <label>
                             <span>Table</span>
-                            <input type="text" [(ngModel)]="baseTable" (ngModelChange)="onStateChange()"
-                                (input)="onObjectLookup(baseTable)" (focus)="onObjectLookup(baseTable)"
+                            <input type="text" [ngModel]="baseTable"
+                                (ngModelChange)="baseTable = $event; onBaseTableChange($event)"
+                                (focus)="onObjectLookup(baseTable)"
                                 [attr.list]="objectListId" placeholder="orders">
                         </label>
 
                         <label>
                             <span>Alias</span>
-                            <input type="text" [(ngModel)]="baseAlias" (ngModelChange)="onStateChange()"
+                            <input type="text" [ngModel]="baseAlias"
+                                (ngModelChange)="baseAlias = $event; onBaseAliasChange()"
                                 placeholder="o">
                         </label>
+                    </div>
+
+                    <div class="column-add-row">
+                        <input type="text" [ngModel]="columnSearch"
+                            (ngModelChange)="columnSearch = $event; onColumnLookup($event)"
+                            (focus)="onColumnLookup(columnSearch)"
+                            (keydown.enter)="$event.preventDefault(); addColumnFromSearch()"
+                            [attr.list]="columnListId" placeholder="Search columns">
+                        <button type="button" class="section-button" (click)="addColumnFromSearch()">Add</button>
                     </div>
 
                     <label class="text-area-field">
@@ -73,18 +87,22 @@
                         <select [(ngModel)]="join.type" (ngModelChange)="onStateChange()">
                             <option *ngFor="let joinType of joinTypes" [ngValue]="joinType">{{ joinType }}</option>
                         </select>
-                        <input type="text" [(ngModel)]="join.table" (ngModelChange)="onStateChange()"
-                            (input)="onObjectLookup(join.table)" (focus)="onObjectLookup(join.table)"
+                        <input type="text" [ngModel]="join.table"
+                            (ngModelChange)="join.table = $event; onJoinTableChange(join)"
+                            (focus)="onObjectLookup(join.table)"
                             [attr.list]="objectListId" placeholder="customers">
-                        <input type="text" [(ngModel)]="join.alias" (ngModelChange)="onStateChange()"
+                        <input type="text" [ngModel]="join.alias"
+                            (ngModelChange)="join.alias = $event; onJoinAliasChange()"
                             placeholder="c">
                         <input type="text" [(ngModel)]="join.leftField" (ngModelChange)="onStateChange()"
-                            placeholder="o.customer_id">
+                            (input)="onColumnLookup(join.leftField)" (focus)="onColumnLookup(join.leftField)"
+                            [attr.list]="columnListId" placeholder="o.customer_id">
                         <select [(ngModel)]="join.operator" (ngModelChange)="onStateChange()">
                             <option *ngFor="let operator of joinOperators" [ngValue]="operator">{{ operator }}</option>
                         </select>
                         <input type="text" [(ngModel)]="join.rightField" (ngModelChange)="onStateChange()"
-                            placeholder="c.id">
+                            (input)="onColumnLookup(join.rightField)" (focus)="onColumnLookup(join.rightField)"
+                            [attr.list]="columnListId" placeholder="c.id">
                         <button type="button" class="icon-button" title="Remove join" (click)="removeJoin(join.id)">x</button>
                     </div>
                 </section>
@@ -102,6 +120,8 @@
                             <option *ngFor="let connector of filterConnectors" [ngValue]="connector">{{ connector }}</option>
                         </select>
                         <input type="text" [(ngModel)]="filter.field" (ngModelChange)="onStateChange()"
+                            (input)="onColumnLookup(filter.field)" (focus)="onColumnLookup(filter.field)"
+                            [attr.list]="columnListId"
                             placeholder="o.status">
                         <select [(ngModel)]="filter.operator" (ngModelChange)="onStateChange()">
                             <option *ngFor="let operator of filterOperators" [ngValue]="operator">{{ operator }}</option>

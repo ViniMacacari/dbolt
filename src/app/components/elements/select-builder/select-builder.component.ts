@@ -71,14 +71,21 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
   filters: SelectFilter[] = []
   objectOptions: string[] = []
   visibleObjectOptions: string[] = []
+  objectSearch: string = ''
+  columnOptions: string[] = []
+  visibleColumnOptions: string[] = []
+  columnSearch: string = ''
   isLoadingObjects: boolean = false
+  isLoadingColumns: boolean = false
   metadataMessage: string = ''
-  metadataInfo: string = 'Object suggestions load on demand.'
+  metadataInfo: string = ''
   copiedMessage: string = ''
   generatedSql: string = '-- Select a base table to generate SQL.'
   readonly objectListId = `select-builder-objects-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  readonly columnListId = `select-builder-columns-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   readonly maxObjectSuggestions = 80
-  readonly maxIndexedObjects = 5000
+  readonly maxColumnSuggestions = 80
+  readonly minLookupChars = 3
 
   readonly joinTypes: JoinType[] = ['JOIN', 'LEFT JOIN']
   readonly joinOperators: string[] = ['=', '<>', '>', '>=', '<', '<=']
@@ -101,6 +108,8 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
 
   private nextJoinId = 1
   private nextFilterId = 1
+  private readonly columnsByTable = new Map<string, string[]>()
+  private readonly pendingColumnRequests = new Set<string>()
 
   constructor(
     private IAPI: InternalApiService,
@@ -161,6 +170,9 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
     this.quoteIdentifiers = false
     this.joins = []
     this.filters = []
+    this.objectSearch = ''
+    this.columnSearch = ''
+    this.visibleColumnOptions = []
     this.nextJoinId = 1
     this.nextFilterId = 1
     this.onStateChange()
@@ -173,7 +185,52 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
   }
 
   onObjectLookup(value: string): void {
-    this.updateVisibleObjectOptions(value)
+    const search = value.trim()
+    this.objectSearch = search
+    this.updateVisibleObjectOptions(search)
+
+    if (search.length >= this.minLookupChars && this.objectOptions.length === 0 && !this.isLoadingObjects) {
+      void this.loadObjectOptions(search)
+    }
+  }
+
+  onBaseTableChange(value: string): void {
+    this.onStateChange()
+    this.onObjectLookup(value)
+    this.loadColumnsForSelectedTable(value)
+  }
+
+  onBaseAliasChange(): void {
+    this.refreshColumnOptions()
+    this.onStateChange()
+  }
+
+  onJoinTableChange(join: SelectJoin): void {
+    this.onStateChange()
+    this.onObjectLookup(join.table)
+    this.loadColumnsForSelectedTable(join.table)
+  }
+
+  onJoinAliasChange(): void {
+    this.refreshColumnOptions()
+    this.onStateChange()
+  }
+
+  onColumnLookup(value: string): void {
+    this.updateVisibleColumnOptions(value)
+  }
+
+  addColumnFromSearch(): void {
+    const column = this.columnSearch.trim()
+    if (!column) return
+
+    const currentColumns = this.columnsText.trim()
+    this.columnsText = !currentColumns || currentColumns === '*'
+      ? column
+      : `${this.columnsText.trimEnd()}\n${column}`
+    this.columnSearch = ''
+    this.visibleColumnOptions = []
+    this.onStateChange()
   }
 
   openAsQuery(): void {
@@ -221,9 +278,12 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
     return filter.id
   }
 
-  async loadObjectOptions(): Promise<void> {
+  async loadObjectOptions(search: string = ''): Promise<void> {
     const context = this.tabInfo?.dbInfo
     if (!context?.sgbd || !context?.version) return
+    if (search) {
+      this.objectSearch = search
+    }
 
     this.isLoadingObjects = true
     this.metadataMessage = ''
@@ -239,10 +299,9 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
       const response: any = await this.IAPI.get(`/api/${ensuredContext.sgbd}/${ensuredContext.version}/list-table-objects${queryString}`)
 
       this.objectOptions = this.buildObjectIndex(response)
-      this.updateVisibleObjectOptions(this.baseTable)
-      this.metadataInfo = this.objectOptions.length >= this.maxIndexedObjects
-        ? `Indexed first ${this.maxIndexedObjects} objects. Type a table name manually if it is not listed.`
-        : `Indexed ${this.objectOptions.length} objects. Showing up to ${this.maxObjectSuggestions} suggestions.`
+      this.updateVisibleObjectOptions(this.objectSearch)
+      this.loadColumnsForSelectedTable(this.baseTable)
+      this.joins.forEach((join) => this.loadColumnsForSelectedTable(join.table))
     } catch (error: any) {
       this.metadataMessage = error?.error || error?.message || 'Could not load database objects.'
     } finally {
@@ -295,8 +354,13 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
   private clearObjectOptions(): void {
     this.objectOptions = []
     this.visibleObjectOptions = []
+    this.objectSearch = ''
+    this.columnOptions = []
+    this.visibleColumnOptions = []
+    this.columnsByTable.clear()
+    this.pendingColumnRequests.clear()
     this.metadataMessage = ''
-    this.metadataInfo = 'Object suggestions load on demand.'
+    this.metadataInfo = ''
   }
 
   private buildObjectIndex(response: any): string[] {
@@ -307,7 +371,6 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
     const dataRows = response?.data || []
     if (Array.isArray(dataRows)) {
       for (const item of dataRows) {
-        if (objectNames.size >= this.maxIndexedObjects) break
         if (item?.type === 'table' || item?.type === 'view') {
           this.addObjectName(objectNames, item)
         }
@@ -315,7 +378,6 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
     }
 
     return Array.from(objectNames)
-      .slice(0, this.maxIndexedObjects)
       .sort((first, second) => first.localeCompare(second))
   }
 
@@ -323,7 +385,6 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
     if (!Array.isArray(rows)) return
 
     for (const item of rows) {
-      if (objectNames.size >= this.maxIndexedObjects) return
       this.addObjectName(objectNames, item)
     }
   }
@@ -346,11 +407,126 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
     }
 
     const normalizedSearch = search.trim().toLowerCase()
+    if (normalizedSearch.length < this.minLookupChars) {
+      this.visibleObjectOptions = []
+      return
+    }
+
     const source = normalizedSearch
       ? this.objectOptions.filter((objectName) => objectName.toLowerCase().includes(normalizedSearch))
-      : this.objectOptions
+      : []
 
     this.visibleObjectOptions = source.slice(0, this.maxObjectSuggestions)
+  }
+
+  private loadColumnsForSelectedTable(value: string): void {
+    const tableName = this.resolveKnownTableName(value)
+    if (!tableName) return
+
+    void this.loadColumnsForTable(tableName)
+  }
+
+  private resolveKnownTableName(value: string): string | null {
+    const normalizedTable = this.normalizeTableNameForMetadata(value)
+    if (!normalizedTable || this.objectOptions.length === 0) return null
+
+    return this.objectOptions.find((objectName) =>
+      objectName.toLowerCase() === normalizedTable.toLowerCase()
+    ) || null
+  }
+
+  private async loadColumnsForTable(tableName: string): Promise<void> {
+    const normalizedTable = this.normalizeTableNameForMetadata(tableName)
+    if (!normalizedTable || this.columnsByTable.has(normalizedTable) || this.pendingColumnRequests.has(normalizedTable)) {
+      return
+    }
+
+    const context = this.tabInfo?.dbInfo
+    if (!context?.sgbd || !context?.version) return
+
+    this.pendingColumnRequests.add(normalizedTable)
+    this.isLoadingColumns = true
+
+    try {
+      const ensuredContext = await this.connectionContext.ensureContext(context)
+      if (this.tabInfo) {
+        this.tabInfo.dbInfo = ensuredContext
+      }
+
+      const queryString = this.connectionContext.toQueryString(ensuredContext)
+      const response: any = await this.IAPI.get(`/api/${ensuredContext.sgbd}/${ensuredContext.version}/table-columns/${encodeURIComponent(normalizedTable)}${queryString}`)
+      const columns = (response?.data || [])
+        .map((column: any) => String(column?.name || column?.NAME || '').trim())
+        .filter(Boolean)
+
+      this.columnsByTable.set(normalizedTable, columns)
+      this.refreshColumnOptions()
+    } catch (error: any) {
+      this.metadataMessage = error?.error || error?.message || 'Could not load table columns.'
+    } finally {
+      this.pendingColumnRequests.delete(normalizedTable)
+      this.isLoadingColumns = this.pendingColumnRequests.size > 0
+    }
+  }
+
+  private refreshColumnOptions(): void {
+    const options = new Set<string>()
+    this.addColumnOptions(options, this.baseTable, this.baseAlias)
+    this.joins.forEach((join) => this.addColumnOptions(options, join.table, join.alias))
+
+    this.columnOptions = Array.from(options).sort((first, second) => first.localeCompare(second))
+    this.updateVisibleColumnOptions(this.columnSearch)
+  }
+
+  private addColumnOptions(options: Set<string>, tableName: string, alias: string): void {
+    const normalizedTable = this.resolveKnownTableName(tableName) || this.normalizeTableNameForMetadata(tableName)
+    const columns = this.getCachedColumns(normalizedTable)
+    if (!columns) return
+
+    const qualifier = alias.trim() || tableName.trim()
+    columns.forEach((column) => {
+      options.add(column)
+      if (qualifier) {
+        options.add(`${qualifier}.${column}`)
+      }
+    })
+  }
+
+  private getCachedColumns(tableName: string): string[] | undefined {
+    const directMatch = this.columnsByTable.get(tableName)
+    if (directMatch) return directMatch
+
+    const normalizedTable = tableName.toLowerCase()
+    for (const [cachedTable, columns] of this.columnsByTable.entries()) {
+      if (cachedTable.toLowerCase() === normalizedTable) {
+        return columns
+      }
+    }
+
+    return undefined
+  }
+
+  private updateVisibleColumnOptions(search: string = ''): void {
+    const normalizedSearch = search.trim().toLowerCase()
+    if (normalizedSearch.length < this.minLookupChars) {
+      this.visibleColumnOptions = []
+      return
+    }
+
+    this.visibleColumnOptions = this.columnOptions
+      .filter((columnName) => columnName.toLowerCase().includes(normalizedSearch))
+      .slice(0, this.maxColumnSuggestions)
+  }
+
+  private normalizeTableNameForMetadata(value: string): string {
+    const trimmed = value.trim()
+    if (!trimmed) return ''
+
+    return trimmed
+      .split('.')
+      .pop()!
+      .replace(/^["`\[]/, '')
+      .replace(/["`\]]$/, '')
   }
 
   private buildSql(): string {
