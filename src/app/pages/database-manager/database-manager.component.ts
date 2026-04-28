@@ -43,9 +43,13 @@ export class DatabaseManagerComponent {
   settingsOpen: boolean = false
   queryAssistantOpen: boolean = false
   selectBuilderOpen: boolean = false
+  dbInfoInitialized: boolean = false
+  tableInfoInitialized: boolean = false
 
   sqlContent: string = ''
   tabInfo: any
+  dbInfoTabInfo: any
+  tableInfoTabInfo: any
 
   elementName: string = ''
 
@@ -239,64 +243,32 @@ export class DatabaseManagerComponent {
     }
 
     this.firstMessage = false
-    this.editorOpen = false
-    this.dbInfoOpen = false
-    this.tableInfoOpen = false
-    this.settingsOpen = false
-    this.queryAssistantOpen = false
-    this.selectBuilderOpen = false
+    this.tabInfo = tab
+    this.sqlContent = tab.info?.sql || ''
 
-    setTimeout(() => {
-      if (tab.type === 'sql') {
-        this.editorOpen = true
-        this.dbInfoOpen = false
-        this.tableInfoOpen = false
-        this.settingsOpen = false
-        this.queryAssistantOpen = false
-        this.selectBuilderOpen = false
-      } else if (tab.type === 'schema') {
-        this.dbInfoOpen = true
-        this.editorOpen = false
-        this.tableInfoOpen = false
-        this.settingsOpen = false
-        this.queryAssistantOpen = false
-        this.selectBuilderOpen = false
-        this.dbSchemasData = tab.info.dbInfo
-      } else if (tab.type === 'settings') {
-        this.settingsOpen = true
-        this.editorOpen = false
-        this.dbInfoOpen = false
-        this.tableInfoOpen = false
-        this.queryAssistantOpen = false
-        this.selectBuilderOpen = false
-      } else if (tab.type === 'query-assistant') {
-        this.queryAssistantOpen = true
-        this.editorOpen = false
-        this.dbInfoOpen = false
-        this.tableInfoOpen = false
-        this.settingsOpen = false
-        this.selectBuilderOpen = false
-      } else if (tab.type === 'select-builder') {
-        this.selectBuilderOpen = true
-        this.editorOpen = false
-        this.dbInfoOpen = false
-        this.tableInfoOpen = false
-        this.settingsOpen = false
-        this.queryAssistantOpen = false
-      } else {
-        this.tableInfoOpen = true
-        this.editorOpen = false
-        this.dbInfoOpen = false
-        this.settingsOpen = false
-        this.queryAssistantOpen = false
-        this.selectBuilderOpen = false
-        this.elementName = tab.info.name
-        this.tableInfoData = tab.info.info
-      }
+    this.editorOpen = tab.type === 'sql'
+    this.dbInfoOpen = tab.type === 'schema'
+    this.settingsOpen = tab.type === 'settings'
+    this.queryAssistantOpen = tab.type === 'query-assistant'
+    this.selectBuilderOpen = tab.type === 'select-builder'
+    this.tableInfoOpen = !this.editorOpen &&
+      !this.dbInfoOpen &&
+      !this.settingsOpen &&
+      !this.queryAssistantOpen &&
+      !this.selectBuilderOpen
 
-      this.tabInfo = tab
-      this.sqlContent = tab.info?.sql || ''
-    }, 1)
+    if (this.dbInfoOpen) {
+      this.dbInfoInitialized = true
+      this.dbInfoTabInfo = tab
+      this.dbSchemasData = tab.info.dbInfo
+    }
+
+    if (this.tableInfoOpen) {
+      this.tableInfoInitialized = true
+      this.tableInfoTabInfo = tab
+      this.elementName = tab.info.name
+      this.tableInfoData = tab.info.info
+    }
   }
 
   onTabClosed(): void {
