@@ -2,6 +2,7 @@ import {
   Component,
   Input,
   AfterViewInit,
+  OnDestroy,
   ViewChild,
   ElementRef,
   HostListener,
@@ -14,7 +15,7 @@ import {
 } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { AgGridAngular } from 'ag-grid-angular'
-import { ColDef, ModuleRegistry, AllCommunityModule, GridApi } from 'ag-grid-community'
+import { ColDef, ModuleRegistry, AllCommunityModule, GridApi, GridReadyEvent } from 'ag-grid-community'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
 import { LoadingComponent } from "../../modal/loading/loading.component"
@@ -29,7 +30,7 @@ ModuleRegistry.registerModules([AllCommunityModule])
   templateUrl: './fix-table-data.component.html',
   styleUrl: './fix-table-data.component.scss'
 })
-export class FixTableDataComponent {
+export class FixTableDataComponent implements AfterViewInit, OnDestroy {
   private _query: any[] = []
   private scrollTop = 0
 
@@ -51,7 +52,8 @@ export class FixTableDataComponent {
   private initialBottom = 0
   private lastScrollTop = 0
   private rowData: any = []
-  private gridApi!: GridApi
+  private gridApi?: GridApi
+  private isRestoringGridState = false
 
   scrollTimeout: any
   maxResultLines: number | null = 0
@@ -98,7 +100,12 @@ export class FixTableDataComponent {
     this.isElementVisible = true
     this.adjustTableWrapperSize()
     this.updateColumns()
+    this.restoreGridState()
     this.cdr.detectChanges()
+  }
+
+  ngOnDestroy(): void {
+    this.persistTableState()
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -181,7 +188,7 @@ export class FixTableDataComponent {
   }
 
   onBodyScroll(event: any) {
-    const bodyViewport = document.querySelector('.ag-body-viewport') as HTMLElement
+    const bodyViewport = this.getBodyViewport()
 
     if (bodyViewport) {
       const scrollTop = bodyViewport.scrollTop
@@ -198,17 +205,28 @@ export class FixTableDataComponent {
   }
 
   saveScrollPosition() {
-    const bodyViewport = document.querySelector('.ag-body-viewport') as HTMLElement
+    const bodyViewport = this.getBodyViewport()
     if (bodyViewport) {
       this.scrollTop = bodyViewport.scrollTop
     }
   }
 
   restoreScrollPosition() {
-    const bodyViewport = document.querySelector('.ag-body-viewport') as HTMLElement
+    const bodyViewport = this.getBodyViewport()
     if (bodyViewport) {
       bodyViewport.scrollTop = this.scrollTop
     }
+  }
+
+  onGridReady(event: GridReadyEvent): void {
+    this.gridApi = event.api
+    this.restoreGridState()
+  }
+
+  onGridStateChanged(): void {
+    if (this.isRestoringGridState) return
+
+    this.persistTableState()
   }
 
   private updateColumns() {
@@ -223,8 +241,8 @@ export class FixTableDataComponent {
       const maxLines: any = this.runQuery.getQueryLines()
 
       this.maxResultLines = maxLines
-      this.query = result
-      this.persistTableState()
+    this.query = result
+    this.persistTableState()
     } catch (error: any) {
       console.log(error)
     }
@@ -238,8 +256,8 @@ export class FixTableDataComponent {
     try {
       this.queryLines += 50
       const result: any = await this.runQuery.runSQL('select * from ' + this.elementName, this.queryLines, this.tabInfo?.dbInfo)
-      this.query = result
-      this.persistTableState()
+    this.query = result
+    this.persistTableState()
     } catch (error: any) {
       console.error(error)
     }
@@ -254,6 +272,7 @@ export class FixTableDataComponent {
     this.query = tableState.query || []
     this.queryLines = tableState.queryLines ?? 50
     this.maxResultLines = tableState.maxResultLines ?? 0
+    this.scrollTop = tableState.scrollTop ?? 0
 
     return this.query.length > 0
   }
@@ -261,10 +280,42 @@ export class FixTableDataComponent {
   private persistTableState(): void {
     if (!this.tabInfo) return
 
+    this.saveScrollPosition()
+
     this.tabInfo.tableDataState = {
       query: this.query,
       queryLines: this.queryLines,
-      maxResultLines: this.maxResultLines
+      maxResultLines: this.maxResultLines,
+      scrollTop: this.scrollTop,
+      filterModel: this.gridApi?.getFilterModel(),
+      columnState: this.gridApi?.getColumnState()
     }
+  }
+
+  private restoreGridState(): void {
+    const tableState = this.tabInfo?.tableDataState
+    if (!this.gridApi || !tableState) return
+
+    this.isRestoringGridState = true
+
+    setTimeout(() => {
+      if (tableState.columnState?.length) {
+        this.gridApi?.applyColumnState({
+          state: tableState.columnState,
+          applyOrder: true
+        })
+      }
+
+      if (tableState.filterModel) {
+        this.gridApi?.setFilterModel(tableState.filterModel)
+      }
+
+      this.restoreScrollPosition()
+      this.isRestoringGridState = false
+    }, 0)
+  }
+
+  private getBodyViewport(): HTMLElement | null {
+    return this.tableWrapper?.nativeElement?.querySelector('.ag-body-viewport') || null
   }
 }
