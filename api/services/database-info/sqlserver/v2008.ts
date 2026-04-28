@@ -17,7 +17,7 @@ import type {
   TableMetadataRowsResult
 } from '../../../types.js';
 
-type NamedObjectRow = QueryRow & { name: string };
+type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'procedure' };
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type: string };
 type ColumnRow = QueryRow & TableColumn;
 
@@ -86,6 +86,47 @@ class ListObjectsSQLServerV1 {
       return {
         success: false,
         message: 'Error occurred while listing database objects.',
+        error: getErrorMessage(error)
+      };
+    }
+  }
+
+  async listTableObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
+    try {
+      const selectedSchema = await SSSQLServerV1.getSelectedSchema(connectionKey);
+      if (!selectedSchema.success) {
+        throw new Error(selectedSchema.message);
+      }
+
+      const parameters: SqlServerQueryParameter[] = [
+        { name: 'schemaName', type: sql.NVarChar, value: selectedSchema.schema }
+      ];
+
+      const objects = (await this.db.executeQuery(`
+        SELECT name, type
+        FROM (
+          SELECT TABLE_NAME AS name, 'table' AS type
+          FROM INFORMATION_SCHEMA.TABLES
+          WHERE TABLE_TYPE = 'BASE TABLE'
+            AND TABLE_SCHEMA = @schemaName
+          UNION ALL
+          SELECT TABLE_NAME AS name, 'view' AS type
+          FROM INFORMATION_SCHEMA.VIEWS
+          WHERE TABLE_SCHEMA = @schemaName
+        ) objects
+        ORDER BY name
+      `, parameters, connectionKey)) as NamedObjectRow[];
+
+      const data: DatabaseObject[] = objects.map((object, index) =>
+        toNamedDatabaseObject(object, object.type === 'view' ? 'view' : 'table', index)
+      );
+
+      return { success: true, data, ...groupDatabaseObjects(data) };
+    } catch (error: unknown) {
+      console.error('Error listing table objects:', error);
+      return {
+        success: false,
+        message: 'Error occurred while listing table objects.',
         error: getErrorMessage(error)
       };
     }

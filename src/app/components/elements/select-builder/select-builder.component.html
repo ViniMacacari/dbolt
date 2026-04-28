@@ -1,0 +1,149 @@
+<div class="select-builder-container">
+    <div class="builder-panel">
+        <div class="builder-header">
+            <div>
+                <p>{{ databaseLabel }}</p>
+                <h2>Select Builder</h2>
+            </div>
+
+            <div class="builder-actions">
+                <label class="check-control">
+                    <input type="checkbox" [(ngModel)]="distinct" (ngModelChange)="onStateChange()">
+                    Distinct
+                </label>
+                <label class="check-control">
+                    <input type="checkbox" [(ngModel)]="quoteIdentifiers" (ngModelChange)="onStateChange()">
+                    Quote identifiers
+                </label>
+                <button type="button" class="secondary" (click)="copySql()" [disabled]="!canBuild()">Copy SQL</button>
+                <button type="button" (click)="openAsQuery()" [disabled]="!canBuild()">Open query</button>
+            </div>
+        </div>
+
+        <p class="metadata-status" *ngIf="isLoadingObjects">Loading objects...</p>
+        <p class="metadata-status" *ngIf="isLoadingColumns">Loading columns...</p>
+        <p class="metadata-status" *ngIf="!isLoadingObjects && metadataInfo">{{ metadataInfo }}</p>
+        <p class="metadata-status error" *ngIf="metadataMessage">{{ metadataMessage }}</p>
+
+        <datalist [id]="objectListId">
+            <option *ngFor="let objectName of visibleObjectOptions" [value]="objectName"></option>
+        </datalist>
+        <datalist [id]="columnListId">
+            <option *ngFor="let columnName of visibleColumnOptions" [value]="columnName"></option>
+        </datalist>
+
+        <div class="builder-layout">
+            <div class="builder-form">
+                <section class="builder-section">
+                    <div class="section-title">
+                        <h3>From</h3>
+                    </div>
+
+                    <div class="field-grid two">
+                        <label>
+                            <span>Table</span>
+                            <input type="text" [ngModel]="baseTable"
+                                (ngModelChange)="baseTable = $event; onBaseTableChange($event)"
+                                (focus)="onObjectLookup(baseTable)"
+                                [attr.list]="objectListId" placeholder="orders">
+                        </label>
+
+                        <label>
+                            <span>Alias</span>
+                            <input type="text" [ngModel]="baseAlias"
+                                (ngModelChange)="baseAlias = $event; onBaseAliasChange()"
+                                placeholder="o">
+                        </label>
+                    </div>
+
+                    <div class="column-add-row">
+                        <input type="text" [ngModel]="columnSearch"
+                            (ngModelChange)="columnSearch = $event; onColumnLookup($event)"
+                            (focus)="onColumnLookup(columnSearch)"
+                            (keydown.enter)="$event.preventDefault(); addColumnFromSearch()"
+                            [attr.list]="columnListId" placeholder="Search columns">
+                        <button type="button" class="section-button" (click)="addColumnFromSearch()">Add</button>
+                    </div>
+
+                    <label class="text-area-field">
+                        <span>Columns</span>
+                        <textarea [(ngModel)]="columnsText" (ngModelChange)="onStateChange()"
+                            placeholder="o.id&#10;o.created_at&#10;c.name"></textarea>
+                    </label>
+                </section>
+
+                <section class="builder-section">
+                    <div class="section-title">
+                        <h3>Joins</h3>
+                        <div class="section-actions">
+                            <button type="button" class="section-button" (click)="addJoin('JOIN')">Join</button>
+                            <button type="button" class="section-button" (click)="addJoin('LEFT JOIN')">Left join</button>
+                        </div>
+                    </div>
+
+                    <div class="empty-state" *ngIf="joins.length === 0">No joins</div>
+
+                    <div class="join-row" *ngFor="let join of joins; trackBy: trackJoin">
+                        <select [(ngModel)]="join.type" (ngModelChange)="onStateChange()">
+                            <option *ngFor="let joinType of joinTypes" [ngValue]="joinType">{{ joinType }}</option>
+                        </select>
+                        <input type="text" [ngModel]="join.table"
+                            (ngModelChange)="join.table = $event; onJoinTableChange(join)"
+                            (focus)="onObjectLookup(join.table)"
+                            [attr.list]="objectListId" placeholder="customers">
+                        <input type="text" [ngModel]="join.alias"
+                            (ngModelChange)="join.alias = $event; onJoinAliasChange()"
+                            placeholder="c">
+                        <input type="text" [(ngModel)]="join.leftField" (ngModelChange)="onStateChange()"
+                            (input)="onColumnLookup(join.leftField)" (focus)="onColumnLookup(join.leftField)"
+                            [attr.list]="columnListId" placeholder="o.customer_id">
+                        <select [(ngModel)]="join.operator" (ngModelChange)="onStateChange()">
+                            <option *ngFor="let operator of joinOperators" [ngValue]="operator">{{ operator }}</option>
+                        </select>
+                        <input type="text" [(ngModel)]="join.rightField" (ngModelChange)="onStateChange()"
+                            (input)="onColumnLookup(join.rightField)" (focus)="onColumnLookup(join.rightField)"
+                            [attr.list]="columnListId" placeholder="c.id">
+                        <button type="button" class="icon-button" title="Remove join" (click)="removeJoin(join.id)">x</button>
+                    </div>
+                </section>
+
+                <section class="builder-section">
+                    <div class="section-title">
+                        <h3>Filters</h3>
+                        <button type="button" class="section-button" (click)="addFilter()">Filter</button>
+                    </div>
+
+                    <div class="empty-state" *ngIf="filters.length === 0">No filters</div>
+
+                    <div class="filter-row" *ngFor="let filter of filters; let i = index; trackBy: trackFilter">
+                        <select [(ngModel)]="filter.connector" (ngModelChange)="onStateChange()" [disabled]="i === 0">
+                            <option *ngFor="let connector of filterConnectors" [ngValue]="connector">{{ connector }}</option>
+                        </select>
+                        <input type="text" [(ngModel)]="filter.field" (ngModelChange)="onStateChange()"
+                            (input)="onColumnLookup(filter.field)" (focus)="onColumnLookup(filter.field)"
+                            [attr.list]="columnListId"
+                            placeholder="o.status">
+                        <select [(ngModel)]="filter.operator" (ngModelChange)="onStateChange()">
+                            <option *ngFor="let operator of filterOperators" [ngValue]="operator">{{ operator }}</option>
+                        </select>
+                        <input type="text" [(ngModel)]="filter.value" (ngModelChange)="onStateChange()"
+                            [disabled]="!requiresFilterValue(filter.operator)" placeholder="open">
+                        <input type="text" [(ngModel)]="filter.valueTo" (ngModelChange)="onStateChange()"
+                            [disabled]="!requiresSecondFilterValue(filter.operator)" placeholder="end">
+                        <button type="button" class="icon-button" title="Remove filter" (click)="removeFilter(filter.id)">x</button>
+                    </div>
+                </section>
+            </div>
+
+            <aside class="preview-panel">
+                <div class="preview-header">
+                    <h3>SQL</h3>
+                    <button type="button" class="section-button" (click)="resetBuilder()">Reset</button>
+                </div>
+
+                <pre class="sql-preview">{{ generatedSql }}</pre>
+                <small *ngIf="copiedMessage">{{ copiedMessage }}</small>
+            </aside>
+        </div>
+    </div>
+</div>

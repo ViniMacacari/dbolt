@@ -1,0 +1,134 @@
+:host {
+    display: block;
+    height: 100%;
+    min-height: 0;
+    width: 100%;
+}
+
+.query-assistant-container {
+    display: flex;
+    gap: 12px;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    width: 100%;
+}
+
+.assistant-toolbar {
+    background-color: #1b1b1b;
+    border-radius: 15px;
+    flex: 0 0 110px;
+    padding: 10px;
+
+    .btn {
+        align-items: center;
+        background: transparent;
+        border: none;
+        border-radius: 8px;
+        color: #e8eaed;
+        cursor: pointer;
+        display: flex;
+        font-family: 'Nunito';
+        font-size: .9em;
+        gap: 10px;
+        padding: 7px;
+        transition: background-color 0.2s ease;
+        width: 100%;
+
+        &:hover,
+        &.active {
+            background-color: #3d3a3a;
+        }
+    }
+}
+
+.assistant-panel {
+    background-color: #1b1b1b;
+    border: 1px solid #363535;
+    border-radius: 16px;
+    color: #e8eaed;
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    overflow: auto;
+    padding: 24px;
+}
+
+.assistant-header {
+    margin-bottom: 20px;
+
+    p,
+    h2 {
+        font-family: 'Nunito';
+        margin: 0;
+    }
+
+    p {
+        color: #969696;
+        font-size: .72em;
+        font-weight: 800;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    h2 {
+        color: #e8eaed;
+        font-size: 1.35em;
+        font-weight: 800;
+        margin-top: 4px;
+    }
+}
+
+.assistant-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 320px));
+    gap: 14px;
+}
+
+.assistant-option {
+    align-items: center;
+    background: #232020;
+    border: 1px solid #353535;
+    border-radius: 12px;
+    color: #e8eaed;
+    cursor: pointer;
+    display: flex;
+    gap: 14px;
+    min-height: 82px;
+    padding: 16px;
+    text-align: left;
+    transition: background-color .2s ease, border-color .2s ease;
+
+    &:hover {
+        background: #2d2c2c;
+        border-color: rgba(115, 158, 202, 0.45);
+    }
+
+    strong,
+    small {
+        display: block;
+        font-family: 'Nunito';
+    }
+
+    strong {
+        font-size: .98em;
+        font-weight: 800;
+    }
+
+    small {
+        color: #969696;
+        font-size: .78em;
+        margin-top: 4px;
+    }
+}
+
+.option-icon {
+    align-items: center;
+    background: #1b1b1b;
+    border: 1px solid #353535;
+    border-radius: 10px;
+    display: flex;
+    flex: 0 0 44px;
+    height: 44px;
+    justify-content: center;
+}

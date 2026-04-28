@@ -1,0 +1,27 @@
+<div class="query-assistant-container">
+    <div class="assistant-toolbar">
+        <button type="button" class="btn active" (click)="openSelectBuilder()">
+            <img src="icons/code-block.png" title="Select Builder" height="15px">
+            Select
+        </button>
+    </div>
+
+    <div class="assistant-panel">
+        <div class="assistant-header">
+            <p>{{ connectionLabel }}</p>
+            <h2>Query Assistant</h2>
+        </div>
+
+        <div class="assistant-options">
+            <button type="button" class="assistant-option" (click)="openSelectBuilder()">
+                <span class="option-icon">
+                    <img src="icons/code-block.png" height="22px">
+                </span>
+                <span>
+                    <strong>Select Builder</strong>
+                    <small>SELECT, JOIN, LEFT JOIN e filtros</small>
+                </span>
+            </button>
+        </div>
+    </div>
+</div>

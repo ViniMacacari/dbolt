@@ -17,6 +17,10 @@
                 <app-table-info *ngIf="tableInfoOpen" [data]="tableInfoData" [elementName]="elementName"
                     [tabInfo]="tabInfo"></app-table-info>
                 <app-settings *ngIf="settingsOpen"></app-settings>
+                <app-query-assistant *ngIf="queryAssistantOpen" [tabInfo]="tabInfo"
+                    (selectBuilderRequested)="onSelectBuilderRequested($event)"></app-query-assistant>
+                <app-select-builder *ngIf="selectBuilderOpen" [tabInfo]="tabInfo"
+                    (queryRequested)="onBuilderQueryRequested($event)"></app-select-builder>
 
                 <app-code-editor *ngIf="editorOpen" [(sqlContent)]="sqlContent" [widthTable]="widthTable"
                     [tabInfo]="tabInfo" (sqlContentChange)="onSqlContentChange($event)"

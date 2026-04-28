@@ -115,6 +115,15 @@ class CPostgresV1 {
     }
   }
 
+  async listTableObjects(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await ListObjectsPgV1.listTableObjects(getConnectionKey(req));
+      sendServiceResult(res, result);
+    } catch (error: unknown) {
+      sendInternalError(res, error);
+    }
+  }
+
   async tableColumns(
     req: Request<TableNameParams>,
     res: Response

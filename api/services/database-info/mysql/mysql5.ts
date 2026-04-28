@@ -13,7 +13,7 @@ import type {
   TableMetadataRowsResult
 } from '../../../types.js';
 
-type NamedObjectRow = QueryRow & { name: string };
+type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'procedure' };
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type: string };
 type ColumnRow = QueryRow & TableColumn;
 
@@ -76,6 +76,45 @@ class ListObjectsMySQLV1 {
       return {
         success: false,
         message: 'Error occurred while listing database objects.',
+        error: getErrorMessage(error)
+      };
+    }
+  }
+
+  async listTableObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
+    if (this.db.getStatus(connectionKey) !== 'connected') {
+      return {
+        success: false,
+        message: 'No active connection. Ensure the database is connected before querying.'
+      };
+    }
+
+    try {
+      const objects = (await this.db.executeQuery(`
+        SELECT name, type
+        FROM (
+          SELECT TABLE_NAME AS name, 'table' AS type
+          FROM INFORMATION_SCHEMA.TABLES
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_TYPE = 'BASE TABLE'
+          UNION ALL
+          SELECT TABLE_NAME AS name, 'view' AS type
+          FROM INFORMATION_SCHEMA.VIEWS
+          WHERE TABLE_SCHEMA = DATABASE()
+        ) objects
+        ORDER BY name
+      `, [], connectionKey)) as NamedObjectRow[];
+
+      const data: DatabaseObject[] = objects.map((object, index) =>
+        toNamedDatabaseObject(object, object.type === 'view' ? 'view' : 'table', index)
+      );
+
+      return { success: true, data, ...groupDatabaseObjects(data) };
+    } catch (error: unknown) {
+      console.error('Error listing table objects:', error);
+      return {
+        success: false,
+        message: 'Error occurred while listing table objects.',
         error: getErrorMessage(error)
       };
     }

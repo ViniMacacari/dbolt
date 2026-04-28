@@ -117,6 +117,60 @@ class ListObjectsPgV1 {
     }
   }
 
+  async listTableObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
+    try {
+      const currentSchemaResult = (await this.db.executeQuery(
+        'SELECT current_schema() AS schema',
+        [],
+        connectionKey
+      )) as CurrentSchemaRow[];
+      const currentSchema = currentSchemaResult[0]?.schema;
+
+      if (!currentSchema) {
+        throw new Error('No schema selected');
+      }
+
+      const objects = (await this.db.executeQuery(
+        `
+          SELECT name, type
+          FROM (
+            SELECT
+                table_name AS name,
+                'table' AS type
+            FROM information_schema.tables
+            WHERE table_type = 'BASE TABLE' AND table_schema = $1
+            UNION ALL
+            SELECT
+                table_name AS name,
+                'view' AS type
+            FROM information_schema.views
+            WHERE table_schema = $1
+          ) objects
+          ORDER BY name
+        `,
+        [currentSchema],
+        connectionKey
+      )) as NamedObjectRow[];
+
+      const data: DatabaseObject[] = objects.map((object, index) =>
+        toNamedDatabaseObject(object, object.type === 'view' ? 'view' : 'table', index)
+      );
+
+      return {
+        success: true,
+        data,
+        ...groupDatabaseObjects(data)
+      };
+    } catch (error: unknown) {
+      console.error('Error listing table objects:', error);
+      return {
+        success: false,
+        message: 'Error occurred while listing table objects.',
+        error: getErrorMessage(error)
+      };
+    }
+  }
+
   async tableColumns(tableName: string, connectionKey?: string): Promise<TableColumnsResult> {
     try {
       const columns = (await this.db.executeQuery(

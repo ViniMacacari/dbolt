@@ -25,6 +25,9 @@ router.post('/global-version/query', (req, res) => {
 router.get('/global-version/list-objects', (req, res) => {
   void CHanaV1.listDatabaseObjects(req, res);
 });
+router.get('/global-version/list-table-objects', (req, res) => {
+  void CHanaV1.listTableObjects(req, res);
+});
 router.get('/global-version/table-columns/:tableName', (req, res) => {
   void CHanaV1.tableColumns(req, res);
 });

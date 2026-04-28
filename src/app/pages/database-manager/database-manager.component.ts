@@ -13,11 +13,13 @@ import { TableInfoComponent } from "../../components/elements/table-info/table-i
 import { ConnectionsService } from '../../services/resolve-connections/connections.service'
 import { ConnectionContextService } from '../../services/connection-context/connection-context.service'
 import { SettingsComponent } from '../../components/elements/settings/settings.component'
+import { QueryAssistantComponent } from '../../components/elements/query-assistant/query-assistant.component'
+import { SelectBuilderComponent } from '../../components/elements/select-builder/select-builder.component'
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, CodeEditorComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent],
+  imports: [SidebarComponent, TabsComponent, CodeEditorComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
@@ -39,6 +41,8 @@ export class DatabaseManagerComponent {
   tableInfoOpen: boolean = false
   editorOpen: boolean = false
   settingsOpen: boolean = false
+  queryAssistantOpen: boolean = false
+  selectBuilderOpen: boolean = false
 
   sqlContent: string = ''
   tabInfo: any
@@ -239,6 +243,8 @@ export class DatabaseManagerComponent {
     this.dbInfoOpen = false
     this.tableInfoOpen = false
     this.settingsOpen = false
+    this.queryAssistantOpen = false
+    this.selectBuilderOpen = false
 
     setTimeout(() => {
       if (tab.type === 'sql') {
@@ -246,28 +252,50 @@ export class DatabaseManagerComponent {
         this.dbInfoOpen = false
         this.tableInfoOpen = false
         this.settingsOpen = false
+        this.queryAssistantOpen = false
+        this.selectBuilderOpen = false
       } else if (tab.type === 'schema') {
         this.dbInfoOpen = true
         this.editorOpen = false
         this.tableInfoOpen = false
         this.settingsOpen = false
+        this.queryAssistantOpen = false
+        this.selectBuilderOpen = false
         this.dbSchemasData = tab.info.dbInfo
       } else if (tab.type === 'settings') {
         this.settingsOpen = true
         this.editorOpen = false
         this.dbInfoOpen = false
         this.tableInfoOpen = false
+        this.queryAssistantOpen = false
+        this.selectBuilderOpen = false
+      } else if (tab.type === 'query-assistant') {
+        this.queryAssistantOpen = true
+        this.editorOpen = false
+        this.dbInfoOpen = false
+        this.tableInfoOpen = false
+        this.settingsOpen = false
+        this.selectBuilderOpen = false
+      } else if (tab.type === 'select-builder') {
+        this.selectBuilderOpen = true
+        this.editorOpen = false
+        this.dbInfoOpen = false
+        this.tableInfoOpen = false
+        this.settingsOpen = false
+        this.queryAssistantOpen = false
       } else {
         this.tableInfoOpen = true
         this.editorOpen = false
         this.dbInfoOpen = false
         this.settingsOpen = false
+        this.queryAssistantOpen = false
+        this.selectBuilderOpen = false
         this.elementName = tab.info.name
         this.tableInfoData = tab.info.info
       }
 
       this.tabInfo = tab
-      this.sqlContent = tab.info.sql
+      this.sqlContent = tab.info?.sql || ''
     }, 1)
   }
 
@@ -276,10 +304,23 @@ export class DatabaseManagerComponent {
     this.dbInfoOpen = false
     this.tableInfoOpen = false
     this.settingsOpen = false
+    this.queryAssistantOpen = false
+    this.selectBuilderOpen = false
   }
 
   onSettingsRequested(): void {
     this.tabsComponent.openSettingsTab()
+  }
+
+  onSelectBuilderRequested(event: any): void {
+    this.tabsComponent.openSelectBuilderTab(event?.context || this.tabInfo?.dbInfo || this.selectedSchemaDB)
+  }
+
+  onBuilderQueryRequested(event: any): void {
+    this.tabsComponent.newTab('sql', {
+      sql: event.sql,
+      context: event?.context || this.tabInfo?.dbInfo || this.selectedSchemaDB
+    }, event?.name || 'Built select')
   }
 
   onSqlContentChange(content: string): void {
