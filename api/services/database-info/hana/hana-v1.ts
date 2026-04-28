@@ -19,7 +19,6 @@ type ColumnRow = QueryRow & TableColumn;
 
 class ListObjectsHanaV1 {
   private readonly db = new HanaV1();
-  private readonly maxBuilderObjects = 5000;
 
   async listDatabaseObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
     try {
@@ -78,7 +77,6 @@ class ListObjectsHanaV1 {
           WHERE SCHEMA_NAME = CURRENT_SCHEMA
         ) objects
         ORDER BY "name"
-        LIMIT ${this.maxBuilderObjects}
       `, [], connectionKey)) as NamedObjectRow[];
 
       const data: DatabaseObject[] = objects.map((object, index) =>

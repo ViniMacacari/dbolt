@@ -23,7 +23,6 @@ type ColumnRow = QueryRow & TableColumn;
 
 class ListObjectsSQLServerV1 {
   private readonly db = new SQLServerV1();
-  private readonly maxBuilderObjects = 5000;
 
   async listDatabaseObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
     try {
@@ -104,7 +103,7 @@ class ListObjectsSQLServerV1 {
       ];
 
       const objects = (await this.db.executeQuery(`
-        SELECT TOP (${this.maxBuilderObjects}) name, type
+        SELECT name, type
         FROM (
           SELECT TABLE_NAME AS name, 'table' AS type
           FROM INFORMATION_SCHEMA.TABLES

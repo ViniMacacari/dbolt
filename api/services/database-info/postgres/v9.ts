@@ -20,7 +20,6 @@ type ColumnRow = QueryRow & TableColumn;
 
 class ListObjectsPgV1 {
   private readonly db = new PgV1();
-  private readonly maxBuilderObjects = 5000;
 
   async listDatabaseObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
     try {
@@ -148,7 +147,6 @@ class ListObjectsPgV1 {
             WHERE table_schema = $1
           ) objects
           ORDER BY name
-          LIMIT ${this.maxBuilderObjects}
         `,
         [currentSchema],
         connectionKey

@@ -19,7 +19,6 @@ type ColumnRow = QueryRow & TableColumn;
 
 class ListObjectsMySQLV1 {
   private readonly db = new MySQLV1();
-  private readonly maxBuilderObjects = 5000;
 
   async listDatabaseObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
     if (this.db.getStatus(connectionKey) !== 'connected') {
@@ -104,7 +103,6 @@ class ListObjectsMySQLV1 {
           WHERE TABLE_SCHEMA = DATABASE()
         ) objects
         ORDER BY name
-        LIMIT ${this.maxBuilderObjects}
       `, [], connectionKey)) as NamedObjectRow[];
 
       const data: DatabaseObject[] = objects.map((object, index) =>
