@@ -1,34 +1,34 @@
 <div class="code-editor-container table-info-container d-flex h-100 gap-2">
     <div class="editor-toolbar d-flex h-100 align-items-center flex-column">
-        <button class="btn" [ngClass]="{ 'active': showData }" (click)="filterData()">
+        <button class="btn" [ngClass]="{ 'active': activeView === 'data' }" (click)="filterData()">
             <img src="icons/table.png" title="Data" height="15px">
             Data
         </button>
 
         <div class="separator"></div>
 
-        <button class="btn" [ngClass]="{ 'active': showColumns }" (click)="filterColumns()">
+        <button class="btn" [ngClass]="{ 'active': activeView === 'columns' }" (click)="filterColumns()">
             <img src="icons/column.png" title="Columns" height="15px">
             Columns
         </button>
 
         <div class="separator"></div>
 
-        <button class="btn" [ngClass]="{ 'active': showKeys }" (click)="filterKeys()">
+        <button class="btn" [ngClass]="{ 'active': activeView === 'keys' }" (click)="filterKeys()">
             <img src="icons/key.png" title="Keys" height="15px">
             Keys
         </button>
 
         <div class="separator"></div>
 
-        <button class="btn" [ngClass]="{ 'active': showIndexes }" (click)="filterIndexes()">
+        <button class="btn" [ngClass]="{ 'active': activeView === 'indexes' }" (click)="filterIndexes()">
             <img src="icons/index.png" title="Indexes" height="15px">
             Indexes
         </button>
 
         <div class="separator"></div>
 
-        <button class="btn" [ngClass]="{ 'active': showDDL }" (click)="filterDDL()">
+        <button class="btn" [ngClass]="{ 'active': activeView === 'ddl' }" (click)="filterDDL()">
             <img src="icons/code.png" title="DDL" height="15px">
             DDL
         </button>
@@ -47,7 +47,10 @@
                 <ag-grid-angular class="metadata-grid" [style.height]="metadataGridHeight" [rowData]="activeRows"
                     [columnDefs]="columnDefs" [defaultColDef]="defaultColDef" [domLayout]="'normal'" [rowBuffer]="30"
                     [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false" [animateRows]="false"
-                    (gridReady)="onGridReady($event)">
+                    (gridReady)="onGridReady($event)" (filterChanged)="onMetadataGridStateChanged()"
+                    (sortChanged)="onMetadataGridStateChanged()" (columnMoved)="onMetadataGridStateChanged()"
+                    (columnResized)="onMetadataGridStateChanged()" (columnVisible)="onMetadataGridStateChanged()"
+                    (columnPinned)="onMetadataGridStateChanged()">
                 </ag-grid-angular>
             </div>
 

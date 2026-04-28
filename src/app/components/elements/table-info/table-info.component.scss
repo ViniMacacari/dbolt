@@ -181,7 +181,7 @@ app-table-info,
     }
 }
 
-.editor-toolbar {
+.table-info-container .editor-toolbar {
     flex: 0 0 110px;
     background-color: #1b1b1b;
     border-radius: 15px;
@@ -212,6 +212,10 @@ app-table-info,
         height: 1px;
         border-bottom: 1px solid #3d3a3a;
     }
+}
+
+.table-info-container .editor-toolbar .btn.active {
+    background-color: #3d3a3a !important;
 }
 
 .active {

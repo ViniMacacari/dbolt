@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, HostListener, Input, OnChanges, OnInit, SimpleChanges, ViewChild, ViewEncapsulation } from '@angular/core'
+import { AfterViewInit, Component, ElementRef, HostListener, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild, ViewEncapsulation } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { AgGridAngular } from 'ag-grid-angular'
 import { AllCommunityModule, ColDef, GridApi, GridReadyEvent, ModuleRegistry } from 'ag-grid-community'
@@ -19,7 +19,7 @@ type MetadataRow = Record<string, any>
   styleUrl: './table-info.component.scss',
   encapsulation: ViewEncapsulation.None
 })
-export class TableInfoComponent implements OnInit, OnChanges, AfterViewInit {
+export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterViewInit {
   @Input() data: any
   @Input() widthTable: number = 300
   @Input() tabInfo: any
@@ -50,11 +50,13 @@ export class TableInfoComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   private gridApi?: GridApi
-  private activeView: TableInfoView = 'data'
+  activeView: TableInfoView = 'data'
+  private isRestoringGridState = false
 
   constructor(private IAPI: InternalApiService) { }
 
   ngOnInit(): void {
+    this.restoreTableInfoState()
     void this.loadTableMetadata()
   }
 
@@ -62,8 +64,16 @@ export class TableInfoComponent implements OnInit, OnChanges, AfterViewInit {
     this.queueGridResize()
   }
 
+  ngOnDestroy(): void {
+    this.persistTableInfoState()
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['elementName'] && !changes['elementName'].firstChange) {
+    if (
+      (changes['elementName'] && !changes['elementName'].firstChange) ||
+      (changes['tabInfo'] && !changes['tabInfo'].firstChange)
+    ) {
+      this.restoreTableInfoState()
       void this.loadTableMetadata()
     }
   }
@@ -95,7 +105,14 @@ export class TableInfoComponent implements OnInit, OnChanges, AfterViewInit {
 
   onGridReady(event: GridReadyEvent): void {
     this.gridApi = event.api
+    this.restoreMetadataGridState()
     this.queueGridResize()
+  }
+
+  onMetadataGridStateChanged(): void {
+    if (this.isRestoringGridState) return
+
+    this.persistTableInfoState()
   }
 
   private async loadTableMetadata(): Promise<void> {
@@ -148,6 +165,8 @@ export class TableInfoComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   private setActiveView(view: TableInfoView): void {
+    this.persistTableInfoState()
+
     this.activeView = view
     this.showData = view === 'data'
     this.showColumns = view === 'columns'
@@ -156,6 +175,7 @@ export class TableInfoComponent implements OnInit, OnChanges, AfterViewInit {
     this.showDDL = view === 'ddl'
 
     this.refreshActiveRows()
+    this.persistTableInfoState()
     this.queueGridResize()
   }
 
@@ -171,7 +191,67 @@ export class TableInfoComponent implements OnInit, OnChanges, AfterViewInit {
     }
 
     this.columnDefs = this.buildColumnDefs(this.activeRows)
+    this.gridApi?.setGridOption('columnDefs', this.columnDefs)
     this.gridApi?.setGridOption('rowData', this.activeRows)
+    this.restoreMetadataGridState()
+  }
+
+  private restoreTableInfoState(): void {
+    const tableInfoState = this.tabInfo?.tableInfoState
+    const view = tableInfoState?.activeView as TableInfoView | undefined
+
+    if (view && ['data', 'columns', 'keys', 'indexes', 'ddl'].includes(view)) {
+      this.activeView = view
+      this.showData = view === 'data'
+      this.showColumns = view === 'columns'
+      this.showKeys = view === 'keys'
+      this.showIndexes = view === 'indexes'
+      this.showDDL = view === 'ddl'
+    }
+  }
+
+  private persistTableInfoState(): void {
+    if (!this.tabInfo) return
+
+    const existingState = this.tabInfo.tableInfoState || {}
+    const gridStates = {
+      ...(existingState.gridStates || {})
+    }
+
+    if (this.gridApi && !this.showData && !this.showDDL) {
+      gridStates[this.activeView] = {
+        filterModel: this.gridApi.getFilterModel(),
+        columnState: this.gridApi.getColumnState()
+      }
+    }
+
+    this.tabInfo.tableInfoState = {
+      ...existingState,
+      activeView: this.activeView,
+      gridStates
+    }
+  }
+
+  private restoreMetadataGridState(): void {
+    if (!this.gridApi || this.showData || this.showDDL) return
+
+    const gridState = this.tabInfo?.tableInfoState?.gridStates?.[this.activeView]
+
+    this.isRestoringGridState = true
+
+    setTimeout(() => {
+      if (gridState?.columnState?.length) {
+        this.gridApi?.applyColumnState({
+          state: gridState.columnState,
+          applyOrder: true
+        })
+      }
+
+      this.gridApi?.setFilterModel(gridState?.filterModel || null)
+
+      this.isRestoringGridState = false
+      this.queueGridResize()
+    }, 0)
   }
 
   private queueGridResize(): void {
