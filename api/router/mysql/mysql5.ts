@@ -25,6 +25,9 @@ router.post('/query', (req, res) => {
 router.get('/list-objects', (req, res) => {
   void CMySQLV1.listDatabaseObjects(req, res);
 });
+router.get('/list-table-objects', (req, res) => {
+  void CMySQLV1.listTableObjects(req, res);
+});
 router.get('/table-columns/:tableName', (req, res) => {
   void CMySQLV1.tableColumns(req, res);
 });

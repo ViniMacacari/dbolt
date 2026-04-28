@@ -13,12 +13,13 @@ import type {
   TableMetadataRowsResult
 } from '../../../types.js';
 
-type NamedObjectRow = QueryRow & { name: string };
+type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'procedure' };
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type?: string };
 type ColumnRow = QueryRow & TableColumn;
 
 class ListObjectsHanaV1 {
   private readonly db = new HanaV1();
+  private readonly maxBuilderObjects = 5000;
 
   async listDatabaseObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
     try {
@@ -58,6 +59,38 @@ class ListObjectsHanaV1 {
       return {
         success: false,
         message: 'Error occurred while listing database objects.',
+        error: getErrorMessage(error)
+      };
+    }
+  }
+
+  async listTableObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
+    try {
+      const objects = (await this.db.executeQuery(`
+        SELECT "name", "type"
+        FROM (
+          SELECT TABLE_NAME AS "name", 'table' AS "type"
+          FROM PUBLIC.TABLES
+          WHERE SCHEMA_NAME = CURRENT_SCHEMA
+          UNION ALL
+          SELECT VIEW_NAME AS "name", 'view' AS "type"
+          FROM PUBLIC.VIEWS
+          WHERE SCHEMA_NAME = CURRENT_SCHEMA
+        ) objects
+        ORDER BY "name"
+        LIMIT ${this.maxBuilderObjects}
+      `, [], connectionKey)) as NamedObjectRow[];
+
+      const data: DatabaseObject[] = objects.map((object, index) =>
+        toNamedDatabaseObject(object, object.type === 'view' ? 'view' : 'table', index)
+      );
+
+      return { success: true, data, ...groupDatabaseObjects(data) };
+    } catch (error: unknown) {
+      console.error('Error listing table objects in HANA:', error);
+      return {
+        success: false,
+        message: 'Error occurred while listing table objects.',
         error: getErrorMessage(error)
       };
     }

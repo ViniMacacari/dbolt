@@ -25,6 +25,9 @@ router.post('/query', (req, res) => {
 router.get('/list-objects', (req, res) => {
   void CSQLServerV1.listObjects(req, res);
 });
+router.get('/list-table-objects', (req, res) => {
+  void CSQLServerV1.listTableObjects(req, res);
+});
 router.get('/table-columns/:tableName', (req, res) => {
   void CSQLServerV1.tableColumns(req, res);
 });
