@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, HostListener, Input, Output, EventEmitter, ViewChild, OnChanges, SimpleChanges, ViewEncapsulation } from '@angular/core'
+import { AfterViewInit, Component, ElementRef, HostListener, Input, Output, EventEmitter, ViewChild, OnChanges, OnDestroy, SimpleChanges, ViewEncapsulation } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { AgGridAngular } from 'ag-grid-angular'
 import { AllCommunityModule, ColDef, GridApi, GridReadyEvent, ModuleRegistry, RowClickedEvent } from 'ag-grid-community'
@@ -17,7 +17,7 @@ type ObjectRow = Record<string, any>
   styleUrl: './db-info.component.scss',
   encapsulation: ViewEncapsulation.None
 })
-export class DbInfoComponent implements AfterViewInit, OnChanges {
+export class DbInfoComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() data: any
   @Output() sqlContentChange = new EventEmitter<string>()
   @Output() savedName = new EventEmitter<string>()
@@ -45,6 +45,7 @@ export class DbInfoComponent implements AfterViewInit, OnChanges {
   }
 
   private gridApi?: GridApi
+  private isRestoringGridState = false
   private readonly groupConfig: Record<ObjectGroup, {
     label: string
     singular: string
@@ -73,6 +74,7 @@ export class DbInfoComponent implements AfterViewInit, OnChanges {
   }
 
   ngOnInit(): void {
+    this.restoreDbInfoState()
     this.updateColumns()
     this.refreshActiveRows()
   }
@@ -81,8 +83,17 @@ export class DbInfoComponent implements AfterViewInit, OnChanges {
     this.syncGridHeight()
   }
 
+  ngOnDestroy(): void {
+    this.persistDbInfoState()
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['data']) {
+    if (
+      (changes['data'] && !changes['data'].firstChange) ||
+      (changes['tabInfo'] && !changes['tabInfo'].firstChange)
+    ) {
+      this.restoreDbInfoState()
+      this.updateColumns()
       this.refreshActiveRows()
       this.queueGridResize()
     }
@@ -111,7 +122,14 @@ export class DbInfoComponent implements AfterViewInit, OnChanges {
 
   onGridReady(event: GridReadyEvent): void {
     this.gridApi = event.api
+    this.restoreGridState()
     this.queueGridResize()
+  }
+
+  onGridStateChanged(): void {
+    if (this.isRestoringGridState) return
+
+    this.persistDbInfoState()
   }
 
   onRowClicked(event: RowClickedEvent<ObjectRow>): void {
@@ -136,6 +154,8 @@ export class DbInfoComponent implements AfterViewInit, OnChanges {
   }
 
   private setActiveGroup(group: ObjectGroup): void {
+    this.persistDbInfoState()
+
     this.activeGroup = group
     this.showTables = group === 'tables'
     this.showViews = group === 'views'
@@ -144,11 +164,72 @@ export class DbInfoComponent implements AfterViewInit, OnChanges {
 
     this.updateColumns()
     this.refreshActiveRows()
+    this.persistDbInfoState()
     this.queueGridResize()
   }
 
   private refreshActiveRows(): void {
     this.activeRows = this.getRows(this.activeGroup).map((row, index) => this.normalizeObjectRow(row, index))
+    this.gridApi?.setGridOption('columnDefs', this.columnDefs)
+    this.gridApi?.setGridOption('rowData', this.activeRows)
+    this.restoreGridState()
+  }
+
+  private restoreDbInfoState(): void {
+    const dbInfoState = this.tabInfo?.dbInfoState
+    const group = dbInfoState?.activeGroup as ObjectGroup | undefined
+
+    if (group && ['tables', 'views', 'procedures', 'indexes'].includes(group)) {
+      this.activeGroup = group
+      this.showTables = group === 'tables'
+      this.showViews = group === 'views'
+      this.showProcedures = group === 'procedures'
+      this.showIndexes = group === 'indexes'
+    }
+  }
+
+  private persistDbInfoState(): void {
+    if (!this.tabInfo) return
+
+    const existingState = this.tabInfo.dbInfoState || {}
+    const gridStates = {
+      ...(existingState.gridStates || {})
+    }
+
+    if (this.gridApi) {
+      gridStates[this.activeGroup] = {
+        filterModel: this.gridApi.getFilterModel(),
+        columnState: this.gridApi.getColumnState()
+      }
+    }
+
+    this.tabInfo.dbInfoState = {
+      ...existingState,
+      activeGroup: this.activeGroup,
+      gridStates
+    }
+  }
+
+  private restoreGridState(): void {
+    if (!this.gridApi) return
+
+    const gridState = this.tabInfo?.dbInfoState?.gridStates?.[this.activeGroup]
+
+    this.isRestoringGridState = true
+
+    setTimeout(() => {
+      if (gridState?.columnState?.length) {
+        this.gridApi?.applyColumnState({
+          state: gridState.columnState,
+          applyOrder: true
+        })
+      }
+
+      this.gridApi?.setFilterModel(gridState?.filterModel || null)
+
+      this.isRestoringGridState = false
+      this.queueGridResize()
+    }, 0)
   }
 
   private getRows(group: ObjectGroup): ObjectRow[] {

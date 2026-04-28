@@ -90,7 +90,7 @@
     }
 }
 
-.editor-toolbar {
+.db-info-container .editor-toolbar {
     flex: 0 0 160px;
     background-color: #1b1b1b;
     border-radius: 15px;
@@ -123,6 +123,10 @@
         height: 1px;
         border-bottom: 1px solid #3d3a3a;
     }
+}
+
+.db-info-container .editor-toolbar .btn.active {
+    background-color: #3d3a3a !important;
 }
 
 .active {

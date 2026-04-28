@@ -1,27 +1,27 @@
 <div class="code-editor-container db-info-container d-flex h-100 gap-2">
     <div class="editor-toolbar d-flex align-items-center flex-column">
-        <button class="btn" [ngClass]="{ 'active': showTables }" (click)="filterTables()">
+        <button class="btn" [ngClass]="{ 'active': activeGroup === 'tables' }" (click)="filterTables()">
             <img src="icons/table.png" title="Tables" height="15px">
             Tables <small>{{ data?.tables?.length || 0 }}</small>
         </button>
 
         <div class="separator"></div>
 
-        <button class="btn" [ngClass]="{ 'active': showViews }" (click)="filterViews()">
+        <button class="btn" [ngClass]="{ 'active': activeGroup === 'views' }" (click)="filterViews()">
             <img src="icons/view.png" title="Views" height="15px">
             Views <small>{{ data?.views?.length || 0 }}</small>
         </button>
 
         <div class="separator"></div>
 
-        <button class="btn" [ngClass]="{ 'active': showProcedures }" (click)="filterProcedures()">
+        <button class="btn" [ngClass]="{ 'active': activeGroup === 'procedures' }" (click)="filterProcedures()">
             <img src="icons/procedure.png" title="Procedures" height="15px">
             Procedures <small>{{ data?.procedures?.length || 0 }}</small>
         </button>
 
         <div class="separator"></div>
 
-        <button class="btn" [ngClass]="{ 'active': showIndexes }" (click)="filterIndexes()">
+        <button class="btn" [ngClass]="{ 'active': activeGroup === 'indexes' }" (click)="filterIndexes()">
             <img src="icons/index.png" title="Indexes" height="15px">
             Indexes <small>{{ data?.indexes?.length || 0 }}</small>
         </button>
@@ -32,7 +32,10 @@
             <ag-grid-angular class="db-info-grid" [style.height]="gridHeight" [rowData]="activeRows" [columnDefs]="columnDefs"
                 [defaultColDef]="defaultColDef" [domLayout]="'normal'" [rowBuffer]="30"
                 [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false" [animateRows]="false"
-                (gridReady)="onGridReady($event)" (rowClicked)="onRowClicked($event)">
+                (gridReady)="onGridReady($event)" (filterChanged)="onGridStateChanged()"
+                (sortChanged)="onGridStateChanged()" (columnMoved)="onGridStateChanged()"
+                (columnResized)="onGridStateChanged()" (columnVisible)="onGridStateChanged()"
+                (columnPinned)="onGridStateChanged()" (rowClicked)="onRowClicked($event)">
             </ag-grid-angular>
         </div>
 
