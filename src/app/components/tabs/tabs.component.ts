@@ -124,6 +124,40 @@ export class TabsComponent {
     this.selectTab(this.tabs.length - 1)
   }
 
+  openQueryAssistantTab(): void {
+    const context = this.dbSchema.getSelectedSchemaDB()
+    const newTab: any = {
+      id: Date.now(),
+      name: 'Query Assistant',
+      type: 'query-assistant',
+      info: {},
+      dbInfo: this.createTabDbInfo(context, !context),
+      icon: 'QUERY_ASSISTANT'
+    }
+
+    this.tabs.push(newTab)
+    this.selectTab(this.tabs.length - 1)
+
+    setTimeout(() => {
+      this.dropdownVisible = false
+    }, 100)
+  }
+
+  openSelectBuilderTab(context: any = null): void {
+    const resolvedContext = context || this.getActiveTab()?.dbInfo || this.dbSchema.getSelectedSchemaDB()
+    const newTab: any = {
+      id: Date.now(),
+      name: 'Select Builder',
+      type: 'select-builder',
+      info: {},
+      dbInfo: this.createTabDbInfo(resolvedContext, !resolvedContext),
+      icon: 'SELECT_BUILDER'
+    }
+
+    this.tabs.push(newTab)
+    this.selectTab(this.tabs.length - 1)
+  }
+
   closeTab(index: number, event: MouseEvent, tab: any): void {
     event.stopPropagation()
 
@@ -165,6 +199,8 @@ export class TabsComponent {
   getTabIcon(tab: any): string {
     if (tab.icon === 'CHANGE') return 'icons/circle-unsaved.png'
     if (tab.icon === 'SETTINGS') return 'icons/settings.png'
+    if (tab.icon === 'QUERY_ASSISTANT') return 'icons/code-block.png'
+    if (tab.icon === 'SELECT_BUILDER') return 'icons/table.png'
 
     return 'icons/code.png'
   }
