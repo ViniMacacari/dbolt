@@ -296,6 +296,100 @@ input[type='number']::-webkit-outer-spin-button {
     text-align: right;
 }
 
+// AG Grid filter popups
+
+.ag-popup-child,
+.ag-menu,
+.ag-filter {
+    --ag-icon-filter: invert(100%) !important;
+    --ag-icon-font-color: #e8eaed !important;
+    background-color: #1b1b1b !important;
+    border: 1px solid #363535 !important;
+    color: #e8eaed !important;
+}
+
+.ag-popup-child {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, .35) !important;
+}
+
+.ag-popup-child .ag-filter-body,
+.ag-popup-child .ag-filter-body-wrapper,
+.ag-popup-child .ag-filter-condition,
+.ag-popup-child .ag-filter-condition-operator,
+.ag-popup-child .ag-filter-apply-panel,
+.ag-popup-child .ag-filter-wrapper,
+.ag-popup-child .ag-menu-list,
+.ag-popup-child .ag-set-filter-list,
+.ag-popup-child .ag-set-filter-item {
+    background-color: #1b1b1b !important;
+    color: #e8eaed !important;
+}
+
+.ag-popup-child .ag-filter-condition,
+.ag-popup-child .ag-filter-apply-panel {
+    border-color: #353535 !important;
+}
+
+.ag-popup-child .ag-input-field-input,
+.ag-popup-child .ag-picker-field-wrapper,
+.ag-popup-child input,
+.ag-popup-child select {
+    background-color: #292727 !important;
+    border-color: #3b3b3b !important;
+    color: #e8eaed !important;
+}
+
+.ag-popup-child .ag-input-field-input:focus,
+.ag-popup-child input:focus,
+.ag-popup-child select:focus {
+    border-color: #739eca !important;
+    box-shadow: none !important;
+}
+
+.ag-popup-child .ag-icon,
+.ag-popup-child .ag-icon::before,
+.ag-popup-child .ag-icon::after,
+.ag-popup-child .ag-input-wrapper .ag-icon,
+.ag-popup-child .ag-input-wrapper .ag-icon::before,
+.ag-popup-child .ag-input-wrapper .ag-icon::after,
+.ag-popup-child .ag-picker-field-icon,
+.ag-popup-child .ag-picker-field-icon .ag-icon,
+.ag-popup-child .ag-picker-field-icon .ag-icon::before,
+.ag-popup-child .ag-label,
+.ag-popup-child .ag-picker-field-display,
+.ag-popup-child .ag-checkbox-label {
+    color: #e8eaed !important;
+}
+
+.ag-popup-child .ag-filter-filter .ag-input-wrapper::before,
+.ag-popup-child .ag-mini-filter .ag-input-wrapper::before,
+.ag-popup-child .ag-filter-toolpanel-search .ag-input-wrapper::before {
+    filter: invert(100%) !important;
+    opacity: .66 !important;
+}
+
+.ag-popup-child .ag-input-field-input::placeholder,
+.ag-popup-child input::placeholder {
+    color: #969696 !important;
+    opacity: 1 !important;
+}
+
+.ag-popup-child .ag-list-item:hover,
+.ag-popup-child .ag-list-item.ag-active-item,
+.ag-popup-child .ag-menu-option-active {
+    background-color: #3d3a3a !important;
+}
+
+.ag-popup-child .ag-standard-button {
+    background-color: #292727 !important;
+    border: 1px solid #3b3b3b !important;
+    color: #e8eaed !important;
+}
+
+.ag-popup-child .ag-standard-button:hover {
+    background-color: #303030 !important;
+}
+
 // Table Syles
 
 .table-wrapper {
