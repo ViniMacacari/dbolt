@@ -69,6 +69,8 @@ export class TableAutocompleteSourceService {
     return [
       context.sgbd,
       context.version,
+      context.connId,
+      context.name,
       context.host,
       context.port,
       context.database,
