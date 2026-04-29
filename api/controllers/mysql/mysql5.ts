@@ -16,6 +16,7 @@ import type {
 } from '../../types.js';
 
 type TableNameParams = { tableName: string };
+type ProcedureNameParams = { procedureName: string };
 
 class CMySQLV1 {
   async testConnection(
@@ -159,6 +160,18 @@ class CMySQLV1 {
   ): Promise<void> {
     try {
       const result = await ListObjectsMySQLV1.tableDDL(req.params.tableName, getConnectionKey(req));
+      sendServiceResult(res, result);
+    } catch (error: unknown) {
+      sendInternalError(res, error);
+    }
+  }
+
+  async procedureDDL(
+    req: Request<ProcedureNameParams>,
+    res: Response
+  ): Promise<void> {
+    try {
+      const result = await ListObjectsMySQLV1.procedureDDL(req.params.procedureName, getConnectionKey(req));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);

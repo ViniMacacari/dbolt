@@ -237,6 +237,25 @@ class ListObjectsMySQLV1 {
       };
     }
   }
+
+  async procedureDDL(procedureName: string, connectionKey?: string): Promise<TableDDLResult> {
+    try {
+      const rows = (await this.db.executeQuery(
+        `SHOW CREATE PROCEDURE ${quoteIdentifier(procedureName, '`')}`,
+        [],
+        connectionKey
+      )) as QueryRow[];
+      const ddl = String(rows[0]?.['Create Procedure'] || '');
+
+      return { success: true, ddl };
+    } catch (error: unknown) {
+      return {
+        success: false,
+        message: 'Error occurred while loading procedure DDL.',
+        error: getErrorMessage(error)
+      };
+    }
+  }
 }
 
 export default new ListObjectsMySQLV1();

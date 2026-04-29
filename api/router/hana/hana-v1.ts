@@ -40,5 +40,8 @@ router.get('/global-version/table-indexes/:tableName', (req, res) => {
 router.get('/global-version/table-ddl/:tableName', (req, res) => {
   void CHanaV1.tableDDL(req, res);
 });
+router.get('/global-version/procedure-ddl/:procedureName', (req, res) => {
+  void CHanaV1.procedureDDL(req, res);
+});
 
 export default router;

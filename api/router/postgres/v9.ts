@@ -40,5 +40,8 @@ router.get('/table-indexes/:tableName', (req, res) => {
 router.get('/table-ddl/:tableName', (req, res) => {
   void CPostgresV1.tableDDL(req, res);
 });
+router.get('/procedure-ddl/:procedureName', (req, res) => {
+  void CPostgresV1.procedureDDL(req, res);
+});
 
 export default router;

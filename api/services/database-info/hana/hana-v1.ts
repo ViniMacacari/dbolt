@@ -224,6 +224,30 @@ class ListObjectsHanaV1 {
     }
   }
 
+  async procedureDDL(procedureName: string, connectionKey?: string): Promise<TableDDLResult> {
+    try {
+      const rows = (await this.db.executeQuery(
+        `
+          SELECT DEFINITION AS "ddl"
+          FROM SYS.PROCEDURES
+          WHERE SCHEMA_NAME = CURRENT_SCHEMA
+            AND PROCEDURE_NAME = ?
+        `,
+        [procedureName],
+        connectionKey
+      )) as QueryRow[];
+      const ddl = String(rows[0]?.['ddl'] || '');
+
+      return { success: true, ddl };
+    } catch (error: unknown) {
+      return {
+        success: false,
+        message: 'Error occurred while loading procedure DDL.',
+        error: getErrorMessage(error)
+      };
+    }
+  }
+
   private formatHanaColumnType(column: QueryRow): string {
     const dataType = String(column['data_type'] || '');
     if (column['length'] && ['NVARCHAR', 'VARCHAR', 'CHAR', 'NCHAR', 'VARBINARY', 'BINARY'].includes(dataType)) {

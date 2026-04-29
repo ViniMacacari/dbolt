@@ -303,6 +303,42 @@ class ListObjectsSQLServerV1 {
     }
   }
 
+  async procedureDDL(procedureName: string, connectionKey?: string): Promise<TableDDLResult> {
+    try {
+      const selectedSchema = await SSSQLServerV1.getSelectedSchema(connectionKey);
+      if (!selectedSchema.success) {
+        throw new Error(selectedSchema.message);
+      }
+
+      const parameters: SqlServerQueryParameter[] = [
+        { name: 'procedureName', type: sql.NVarChar, value: procedureName },
+        { name: 'schemaName', type: sql.NVarChar, value: selectedSchema.schema }
+      ];
+      const rows = (await this.db.executeQuery(
+        `
+          SELECT m.definition AS ddl
+          FROM sys.sql_modules m
+          INNER JOIN sys.objects o ON o.object_id = m.object_id
+          INNER JOIN sys.schemas s ON s.schema_id = o.schema_id
+          WHERE s.name = @schemaName
+            AND o.name = @procedureName
+            AND o.type IN ('P', 'PC', 'FN', 'IF', 'TF', 'FS', 'FT')
+        `,
+        parameters,
+        connectionKey
+      )) as QueryRow[];
+      const ddl = String(rows[0]?.['ddl'] || '');
+
+      return { success: true, ddl };
+    } catch (error: unknown) {
+      return {
+        success: false,
+        message: 'Error occurred while loading procedure DDL.',
+        error: getErrorMessage(error)
+      };
+    }
+  }
+
   private formatSQLServerColumnType(column: QueryRow): string {
     const dataType = String(column['data_type'] || '');
     const characterLength = column['character_maximum_length'];

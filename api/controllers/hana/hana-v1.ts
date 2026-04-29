@@ -16,6 +16,7 @@ import type {
 } from '../../types.js';
 
 type TableNameParams = { tableName: string };
+type ProcedureNameParams = { procedureName: string };
 
 class CHanaV1 {
   async testConnection(
@@ -159,6 +160,18 @@ class CHanaV1 {
   ): Promise<void> {
     try {
       const result = await ListObjectsHanaV1.tableDDL(req.params.tableName, getConnectionKey(req));
+      sendServiceResult(res, result);
+    } catch (error: unknown) {
+      sendInternalError(res, error);
+    }
+  }
+
+  async procedureDDL(
+    req: Request<ProcedureNameParams>,
+    res: Response
+  ): Promise<void> {
+    try {
+      const result = await ListObjectsHanaV1.procedureDDL(req.params.procedureName, getConnectionKey(req));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
