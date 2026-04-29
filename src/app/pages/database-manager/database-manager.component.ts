@@ -300,6 +300,43 @@ export class DatabaseManagerComponent {
     this.tabsComponent.openSettingsTab()
   }
 
+  async onSqlScriptRequested(event: any): Promise<void> {
+    LoadingComponent.show('Opening SQL script...')
+
+    try {
+      const context = await this.connectionContext.ensureContext(
+        this.connectionContext.createContext(this.normalizeContextInput(event), true)
+      )
+
+      this.selectedSchemaDB = context
+      this.dbSchemaService.setSelectedSchemaDB(context)
+
+      this.tabsComponent.newTab('sql', {
+        sql: '',
+        context
+      }, this.getSqlScriptName(context))
+    } catch (error: any) {
+      console.error(error)
+      this.toast.showToast(error?.error || error?.message || 'Could not open SQL script.', 'red')
+    } finally {
+      LoadingComponent.hide()
+    }
+  }
+
+  async onContextConnectionRequested(event: any): Promise<void> {
+    LoadingComponent.show(event?.forceReconnect ? 'Reconnecting...' : 'Connecting...')
+
+    try {
+      await this.applySelectedSchemaContext(event?.context, event?.forceReconnect)
+      this.toast.showToast(event?.forceReconnect ? 'Reconnected successfully' : 'Connected successfully', 'green')
+    } catch (error: any) {
+      console.error(error)
+      this.toast.showToast(error?.error || error?.message || 'Could not connect to database.', 'red')
+    } finally {
+      LoadingComponent.hide()
+    }
+  }
+
   onSelectBuilderRequested(event: any): void {
     this.tabsComponent.openSelectBuilderTab(event?.context || this.tabInfo?.dbInfo || this.selectedSchemaDB)
   }
@@ -349,41 +386,56 @@ export class DatabaseManagerComponent {
   }
 
   async onSelectedSchemaChanged(selectedSchemaDB: any): Promise<void> {
-    const activeTab = this.tabsComponent?.getActiveTab()
-
     try {
-      const previousContext = activeTab?.dbInfo || this.selectedSchemaDB
-      const sameConnection = this.isSameSelectedConnection(previousContext, selectedSchemaDB)
-
-      const tabContext = await this.connectionContext.ensureContext(this.connectionContext.createContext({
-        ...selectedSchemaDB,
-        connectionKey: sameConnection ? previousContext?.connectionKey : undefined
-      }, !sameConnection))
-
-      this.selectedSchemaDB = tabContext
-      this.dbSchemaService.setSelectedSchemaDB(tabContext)
-
-      if (!activeTab) {
-        return
-      }
-
-      activeTab.dbInfo = tabContext
-      activeTab.info = {
-        ...activeTab.info,
-        context: tabContext
-      }
-
-      if (activeTab.type === 'schema') {
-        await this.reloadSchemaInfoTab(activeTab, tabContext)
-      } else if (activeTab.type === 'table') {
-        this.tableInfoTabInfo = { ...activeTab }
-      } else if (activeTab.type === 'procedure') {
-        this.procedureInfoTabInfo = { ...activeTab }
-      }
+      await this.applySelectedSchemaContext(selectedSchemaDB)
     } catch (error: any) {
       console.error(error)
       this.toast.showToast(error?.error || error?.message || 'Could not change selected connection.', 'red')
     }
+  }
+
+  private async applySelectedSchemaContext(selectedSchemaDB: any, forceReconnect: boolean = false): Promise<any> {
+    const activeTab = this.tabsComponent?.getActiveTab()
+    const normalizedSelection = this.normalizeContextInput(selectedSchemaDB)
+    if (!normalizedSelection) {
+      throw new Error('No database connection selected.')
+    }
+
+    const previousContext = activeTab?.dbInfo || this.selectedSchemaDB
+    const sameConnection = this.isSameSelectedConnection(previousContext, normalizedSelection)
+    const connectionKey = normalizedSelection.connectionKey || (sameConnection ? previousContext?.connectionKey : undefined)
+
+    if (forceReconnect && connectionKey) {
+      this.connectionContext.forgetContext(connectionKey)
+    }
+
+    const tabContext = await this.connectionContext.ensureContext(this.connectionContext.createContext({
+      ...normalizedSelection,
+      connectionKey
+    }, !connectionKey), forceReconnect)
+
+    this.selectedSchemaDB = tabContext
+    this.dbSchemaService.setSelectedSchemaDB(tabContext)
+
+    if (!activeTab) {
+      return tabContext
+    }
+
+    activeTab.dbInfo = tabContext
+    activeTab.info = {
+      ...activeTab.info,
+      context: tabContext
+    }
+
+    if (activeTab.type === 'schema') {
+      await this.reloadSchemaInfoTab(activeTab, tabContext)
+    } else if (activeTab.type === 'table') {
+      this.tableInfoTabInfo = { ...activeTab }
+    } else if (activeTab.type === 'procedure') {
+      this.procedureInfoTabInfo = { ...activeTab }
+    }
+
+    return tabContext
   }
 
   private isSameSelectedConnection(previousContext: any, selectedSchemaDB: any): boolean {
@@ -426,34 +478,40 @@ export class DatabaseManagerComponent {
     LoadingComponent.show()
 
     try {
-      const context = await this.connectionContext.ensureContext(this.connectionContext.createContext({
-        database: event.database,
-        schema: event.schema,
-        sgbd: event.sgbd,
-        version: event.version,
-        name: event.name,
-        host: event.host,
-        port: event.port,
-        connId: event.connectionId
-      }))
+      const requestedContext = this.normalizeContextInput(event)
+      const context = await this.connectionContext.ensureContext(this.connectionContext.createContext(requestedContext))
 
       this.selectedSchemaDB = context
       this.dbSchemaService.setSelectedSchemaDB(context)
 
       const queryString = this.connectionContext.toQueryString(context)
-      const schemaDb: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/get-selected-schema${queryString}`)
+      const schemaDb: any = await this.IAPI.get(`/api/${context.sgbd}/${context.version}/get-selected-schema${queryString}`)
 
-      const result: any = await this.loadDatabaseObjects(context, event)
+      const result: any = await this.loadDatabaseObjects(context, requestedContext)
 
       this.dbSchemasData = result
 
-      this.tabsComponent.newTab('schema', { dbInfo: this.dbSchemasData, context }, schemaDb.schema)
+      this.tabsComponent.newTab('schema', { dbInfo: this.dbSchemasData, context }, schemaDb.schema || context.schema)
     } catch (error: any) {
       console.error(error)
       this.toast.showToast(error?.error || error?.message || 'Could not load database objects.', 'red')
     }
 
     LoadingComponent.hide()
+  }
+
+  private normalizeContextInput(context: any): any {
+    if (!context) return context
+
+    return {
+      ...context,
+      connId: context.connId || context.connectionId || context.id
+    }
+  }
+
+  private getSqlScriptName(context: any): string {
+    const target = [context?.database, context?.schema].filter(Boolean).join('.')
+    return target ? `SQL - ${target}` : 'New query'
   }
 
   openMoreInfo(event: any): void {

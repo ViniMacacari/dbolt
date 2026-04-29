@@ -1,4 +1,4 @@
-import { Component, Input, ViewChild, EventEmitter, Output } from '@angular/core'
+import { Component, Input, ViewChild, EventEmitter, Output, HostListener } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { LoadingComponent } from '../modal/loading/loading.component'
@@ -24,6 +24,8 @@ export class SidebarComponent {
   @Output() dbInfoRequested = new EventEmitter<any>()
   @Output() selectedSchemaChanged = new EventEmitter<any>()
   @Output() settingsRequested = new EventEmitter<void>()
+  @Output() sqlScriptRequested = new EventEmitter<any>()
+  @Output() contextConnectionRequested = new EventEmitter<{ context: any, forceReconnect: boolean }>()
 
   @ViewChild('toast') toast!: ToastComponent
 
@@ -35,6 +37,7 @@ export class SidebarComponent {
   clickTimeout: any = null
   quickSelectorType: 'connection' | 'database' | 'schema' | null = null
   quickSelectorFilter: string = ''
+  contextMenu: any = null
 
   constructor(
     private IAPI: InternalApiService,
@@ -174,6 +177,95 @@ export class SidebarComponent {
     this.settingsRequested.emit()
   }
 
+  @HostListener('document:click')
+  closeContextMenu(): void {
+    this.contextMenu = null
+  }
+
+  @HostListener('document:keydown.escape')
+  closeContextMenuOnEscape(): void {
+    this.contextMenu = null
+  }
+
+  openSelectedDatabaseContextMenu(event: MouseEvent): void {
+    if (!this.selectedSchemaDB?.database) return
+
+    this.openContextMenu(event, {
+      type: 'database',
+      label: this.selectedSchemaDB.database,
+      context: this.selectedSchemaDB
+    })
+  }
+
+  openSelectedSchemaContextMenu(event: MouseEvent): void {
+    if (!this.selectedSchemaDB?.schema) return
+
+    this.openContextMenu(event, {
+      type: 'schema',
+      label: this.selectedSchemaDB.schema,
+      context: this.selectedSchemaDB
+    })
+  }
+
+  openDatabaseContextMenu(connection: any, database: any, event: MouseEvent): void {
+    const selection = this.buildDatabaseSelection(connection, database)
+    if (!selection) return
+
+    this.openContextMenu(event, {
+      type: 'database',
+      label: database.database,
+      context: selection
+    })
+  }
+
+  openSchemaContextMenu(connection: any, database: any, schema: string, event: MouseEvent): void {
+    const selection = this.buildSchemaSelection(connection, database.database, schema)
+
+    this.openContextMenu(event, {
+      type: 'schema',
+      label: schema,
+      context: selection
+    })
+  }
+
+  requestNewSqlScript(event: MouseEvent): void {
+    event.stopPropagation()
+    if (!this.contextMenu?.context) return
+
+    this.sqlScriptRequested.emit(this.contextMenu.context)
+    this.contextMenu = null
+  }
+
+  requestConnection(forceReconnect: boolean, event: MouseEvent): void {
+    event.stopPropagation()
+    if (!this.contextMenu?.context) return
+
+    this.contextConnectionRequested.emit({
+      context: this.contextMenu.context,
+      forceReconnect
+    })
+    this.contextMenu = null
+  }
+
+  requestContextInfo(event: MouseEvent): void {
+    event.stopPropagation()
+    if (!this.contextMenu?.context) return
+
+    this.dbInfoRequested.emit(this.contextMenu.context)
+    this.contextMenu = null
+  }
+
+  private openContextMenu(event: MouseEvent, menu: any): void {
+    event.preventDefault()
+    event.stopPropagation()
+
+    this.contextMenu = {
+      ...menu,
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - 240)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - 210))
+    }
+  }
+
   toggleConnection(connectionId: number) {
     if (this.expandedConnections.has(connectionId)) {
       this.expandedConnections.delete(connectionId)
@@ -249,6 +341,16 @@ export class SidebarComponent {
       password: connection.password,
       user: connection.user
     }
+  }
+
+  private buildDatabaseSelection(connection: any, database: any): any | null {
+    const schema = database.schemas?.includes(this.selectedSchemaDB?.schema)
+      ? this.selectedSchemaDB.schema
+      : database.schemas?.[0]
+
+    if (!schema) return null
+
+    return this.buildSchemaSelection(connection, database.database, schema)
   }
 
   isSelectedDatabase(connection: any, database: any): boolean {
