@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core'
 import * as monaco from 'monaco-editor'
 import { AppSettingsService } from '../app-settings/app-settings.service'
 import { TableAutocompleteSourceService } from './table-autocomplete-source.service'
+import { ColumnAutocompleteItem, ColumnAutocompleteSourceService } from './column-autocomplete-source.service'
 
 interface RegisteredEditor {
   getContext: () => any
@@ -9,8 +10,24 @@ interface RegisteredEditor {
 }
 
 interface TableCompletionRequest {
+  type: 'table'
   fragment: string
   range: monaco.IRange
+}
+
+interface ColumnCompletionRequest {
+  type: 'column'
+  tableName: string
+  qualifier: string
+  fragment: string
+  range: monaco.IRange
+}
+
+type SqlCompletionRequest = TableCompletionRequest | ColumnCompletionRequest
+
+interface SqlToken {
+  value: string
+  lower: string
 }
 
 @Injectable({
@@ -20,10 +37,32 @@ export class SqlTableAutocompleteService {
   private providerDisposable?: monaco.IDisposable
   private readonly editors = new Map<string, RegisteredEditor>()
   private readonly minimumFragmentLength = 3
+  private readonly maxSuggestions = 50
+  private readonly sqlReservedWords = new Set([
+    'as',
+    'cross',
+    'full',
+    'group',
+    'having',
+    'inner',
+    'join',
+    'left',
+    'limit',
+    'offset',
+    'on',
+    'order',
+    'outer',
+    'right',
+    'select',
+    'union',
+    'with',
+    'where'
+  ])
 
   constructor(
     private settings: AppSettingsService,
-    private tableSource: TableAutocompleteSourceService
+    private tableSource: TableAutocompleteSourceService,
+    private columnSource: ColumnAutocompleteSourceService
   ) { }
 
   registerEditor(
@@ -55,7 +94,7 @@ export class SqlTableAutocompleteService {
       triggerCharacters: [' ', '_', '.'],
       provideCompletionItems: async (model, position) => {
         const editorInfo = this.editors.get(this.getModelKey(model))
-        if (!editorInfo?.isActive() || !this.settings.isTableAutocompleteEnabled()) {
+        if (!editorInfo?.isActive()) {
           return { suggestions: [] }
         }
 
@@ -64,12 +103,20 @@ export class SqlTableAutocompleteService {
           return { suggestions: [] }
         }
 
+        if (request.type === 'column') {
+          return this.provideColumnSuggestions(editorInfo, request)
+        }
+
+        if (!this.settings.isTableAutocompleteEnabled()) {
+          return { suggestions: [] }
+        }
+
         try {
           const tables = await this.tableSource.getTables(editorInfo.getContext())
           const fragment = request.fragment.toLowerCase()
           const suggestions = tables
             .filter((table) => table.name.toLowerCase().includes(fragment))
-            .slice(0, 50)
+            .slice(0, this.maxSuggestions)
             .map((table) => this.toSuggestion(table.name, request.range))
 
           return { suggestions }
@@ -84,12 +131,23 @@ export class SqlTableAutocompleteService {
   private resolveCompletionRequest(
     model: monaco.editor.ITextModel,
     position: monaco.Position
-  ): TableCompletionRequest | null {
+  ): SqlCompletionRequest | null {
     const lineText = model.getLineContent(position.lineNumber)
     const beforeCursor = lineText.slice(0, position.column - 1)
+    const textBeforePosition = model.getValueInRange({
+      startLineNumber: 1,
+      startColumn: 1,
+      endLineNumber: position.lineNumber,
+      endColumn: position.column
+    })
 
-    if (this.isInsideStringOrComment(beforeCursor)) {
+    if (this.isInsideStringOrComment(textBeforePosition)) {
       return null
+    }
+
+    const columnRequest = this.resolveColumnCompletionRequest(model, position, beforeCursor)
+    if (columnRequest) {
+      return columnRequest
     }
 
     const fragmentMatch = beforeCursor.match(/([A-Za-z0-9_$#.`"\[\]]*)$/)
@@ -106,6 +164,7 @@ export class SqlTableAutocompleteService {
     }
 
     return {
+      type: 'table',
       fragment,
       range: {
         startLineNumber: position.lineNumber,
@@ -113,6 +172,66 @@ export class SqlTableAutocompleteService {
         startColumn: position.column - rawFragment.length,
         endColumn: position.column
       }
+    }
+  }
+
+  private resolveColumnCompletionRequest(
+    model: monaco.editor.ITextModel,
+    position: monaco.Position,
+    beforeCursor: string
+  ): ColumnCompletionRequest | null {
+    const columnMatch = beforeCursor.match(/((?:[A-Za-z_$#][A-Za-z0-9_$#]*|`[^`]*`|"[^"]*"|\[[^\]]*\])\.)(([A-Za-z0-9_$#]*)?)$/)
+    if (!columnMatch) {
+      return null
+    }
+
+    const rawQualifier = columnMatch[1].slice(0, -1)
+    const rawFragment = columnMatch[2] || ''
+    const qualifier = this.normalizeIdentifier(rawQualifier)
+    if (!qualifier) {
+      return null
+    }
+
+    const aliases = this.resolveTableAliases(model, position)
+    const tableName = aliases.get(qualifier.toLowerCase())
+    if (!tableName) {
+      return null
+    }
+
+    return {
+      type: 'column',
+      tableName,
+      qualifier,
+      fragment: this.normalizeIdentifier(rawFragment),
+      range: {
+        startLineNumber: position.lineNumber,
+        endLineNumber: position.lineNumber,
+        startColumn: position.column - rawFragment.length,
+        endColumn: position.column
+      }
+    }
+  }
+
+  private async provideColumnSuggestions(
+    editorInfo: RegisteredEditor,
+    request: ColumnCompletionRequest
+  ): Promise<monaco.languages.CompletionList> {
+    if (!this.settings.isColumnAutocompleteEnabled()) {
+      return { suggestions: [] }
+    }
+
+    try {
+      const columns = await this.columnSource.getColumns(editorInfo.getContext(), request.tableName)
+      const fragment = request.fragment.toLowerCase()
+      const suggestions = columns
+        .filter((column) => !fragment || column.name.toLowerCase().includes(fragment))
+        .slice(0, this.maxSuggestions)
+        .map((column, index) => this.toColumnSuggestion(column, request, index))
+
+      return { suggestions }
+    } catch (error) {
+      console.warn('Could not load column autocomplete suggestions:', error)
+      return { suggestions: [] }
     }
   }
 
@@ -135,6 +254,22 @@ export class SqlTableAutocompleteService {
       insertText: alias ? `${tableName} ${alias}` : tableName,
       range,
       sortText: tableName.toLowerCase()
+    }
+  }
+
+  private toColumnSuggestion(
+    column: ColumnAutocompleteItem,
+    request: ColumnCompletionRequest,
+    index: number
+  ): monaco.languages.CompletionItem {
+    return {
+      label: column.name,
+      kind: monaco.languages.CompletionItemKind.Field,
+      detail: column.type ? `Column - ${column.type}` : 'Column',
+      documentation: `${request.qualifier}.${column.name}`,
+      insertText: column.name,
+      range: request.range,
+      sortText: index.toString().padStart(4, '0')
     }
   }
 
@@ -161,6 +296,200 @@ export class SqlTableAutocompleteService {
       .replace(/[`"\]]+$/, '')
   }
 
+  private resolveTableAliases(
+    model: monaco.editor.ITextModel,
+    position: monaco.Position
+  ): Map<string, string> {
+    const offset = model.getOffsetAt(position)
+    const sanitizedSql = this.replaceStringsAndComments(model.getValue())
+    const statementSql = this.extractCurrentStatement(sanitizedSql, offset)
+    const tokens = this.tokenizeSql(statementSql)
+    const aliases = new Map<string, string>()
+
+    for (let index = 0; index < tokens.length; index++) {
+      const token = tokens[index]
+
+      if (token.lower === 'from') {
+        this.collectFromAliases(tokens, index + 1, aliases)
+      }
+
+      if (token.lower === 'join') {
+        this.collectSingleTableAlias(tokens, index + 1, aliases)
+      }
+    }
+
+    return aliases
+  }
+
+  private collectFromAliases(tokens: SqlToken[], startIndex: number, aliases: Map<string, string>): void {
+    let index = startIndex
+
+    while (index < tokens.length) {
+      const token = tokens[index]
+      if (!token || this.isFromTerminator(token.lower)) {
+        return
+      }
+
+      const result = this.collectSingleTableAlias(tokens, index, aliases)
+      if (!result) {
+        index++
+        continue
+      }
+
+      index = result.nextIndex
+      if (tokens[index]?.value === ',') {
+        index++
+        continue
+      }
+
+      return
+    }
+  }
+
+  private collectSingleTableAlias(
+    tokens: SqlToken[],
+    startIndex: number,
+    aliases: Map<string, string>
+  ): { nextIndex: number } | null {
+    const tableReference = this.readIdentifierChain(tokens, startIndex)
+    if (!tableReference) {
+      return null
+    }
+
+    let nextIndex = tableReference.nextIndex
+    if (tokens[nextIndex]?.lower === 'as') {
+      nextIndex++
+    }
+
+    const tableName = this.normalizeTableNameForMetadata(tableReference.value)
+    const tableAlias = this.normalizeIdentifier(this.getIdentifierLastPart(tableReference.value))
+    this.addAlias(aliases, tableAlias, tableName)
+
+    const aliasToken = tokens[nextIndex]
+    if (aliasToken && this.isAliasToken(aliasToken)) {
+      this.addAlias(aliases, this.normalizeIdentifier(aliasToken.value), tableName)
+      nextIndex++
+    }
+
+    return { nextIndex }
+  }
+
+  private addAlias(aliases: Map<string, string>, alias: string, tableName: string): void {
+    const normalizedAlias = alias.trim().toLowerCase()
+    const normalizedTable = tableName.trim()
+    if (!normalizedAlias || !normalizedTable) return
+
+    aliases.set(normalizedAlias, normalizedTable)
+  }
+
+  private readIdentifierChain(tokens: SqlToken[], startIndex: number): { value: string, nextIndex: number } | null {
+    const firstToken = tokens[startIndex]
+    if (!this.isIdentifierToken(firstToken)) {
+      return null
+    }
+
+    const parts = [firstToken.value]
+    let index = startIndex + 1
+
+    while (tokens[index]?.value === '.' && this.isIdentifierToken(tokens[index + 1])) {
+      parts.push(tokens[index].value, tokens[index + 1].value)
+      index += 2
+    }
+
+    return { value: parts.join(''), nextIndex: index }
+  }
+
+  private isIdentifierToken(token?: SqlToken): boolean {
+    if (!token) return false
+
+    return (
+      /^[A-Za-z_$#][A-Za-z0-9_$#]*$/.test(token.value) ||
+      /^`[^`]*`$/.test(token.value) ||
+      /^"[^"]*"$/.test(token.value) ||
+      /^\[[^\]]*\]$/.test(token.value)
+    )
+  }
+
+  private isAliasToken(token: SqlToken): boolean {
+    return this.isIdentifierToken(token) && !this.sqlReservedWords.has(token.lower)
+  }
+
+  private isFromTerminator(token: string): boolean {
+    return [
+      'where',
+      'join',
+      'inner',
+      'left',
+      'right',
+      'full',
+      'cross',
+      'on',
+      'group',
+      'order',
+      'having',
+      'limit',
+      'offset',
+      'with',
+      'union'
+    ].includes(token)
+  }
+
+  private extractCurrentStatement(sql: string, offset: number): string {
+    const start = sql.lastIndexOf(';', Math.max(0, offset - 1)) + 1
+    const end = sql.indexOf(';', offset)
+
+    return sql.slice(start, end === -1 ? sql.length : end)
+  }
+
+  private tokenizeSql(sql: string): SqlToken[] {
+    const matches = sql.match(/`[^`]*`|"[^"]*"|\[[^\]]*\]|[A-Za-z_$#][A-Za-z0-9_$#]*|[.,;]/g) || []
+
+    return matches.map((value) => ({
+      value,
+      lower: this.normalizeIdentifier(value).toLowerCase()
+    }))
+  }
+
+  private normalizeTableNameForMetadata(value: string): string {
+    return this.normalizeIdentifier(this.getIdentifierLastPart(value))
+  }
+
+  private getIdentifierLastPart(value: string): string {
+    const parts: string[] = []
+    let current = ''
+    let quote: string | null = null
+
+    for (let index = 0; index < value.length; index++) {
+      const char = value[index]
+
+      if (quote) {
+        current += char
+
+        if ((quote === ']' && char === ']') || char === quote) {
+          quote = null
+        }
+        continue
+      }
+
+      if (char === '"' || char === '`' || char === '[') {
+        quote = char === '[' ? ']' : char
+        current += char
+        continue
+      }
+
+      if (char === '.') {
+        parts.push(current)
+        current = ''
+        continue
+      }
+
+      current += char
+    }
+
+    parts.push(current)
+    return parts.pop() || value
+  }
+
   private getModelKey(model: monaco.editor.ITextModel): string {
     return model.uri.toString()
   }
@@ -182,7 +511,12 @@ export class SqlTableAutocompleteService {
       const next = sql[index + 1]
 
       if (lineComment) {
-        result += ' '
+        if (current === '\n' || current === '\r') {
+          result += current
+          lineComment = false
+        } else {
+          result += ' '
+        }
         continue
       }
 
@@ -247,6 +581,9 @@ export class SqlTableAutocompleteService {
       const next = sql[index + 1]
 
       if (lineComment) {
+        if (current === '\n' || current === '\r') {
+          lineComment = false
+        }
         continue
       }
 

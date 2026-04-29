@@ -5,6 +5,7 @@ export interface AppSettings {
   defaultQueryRows: number
   connectionExpirationMinutes: number
   tableAutocompleteEnabled: boolean
+  columnAutocompleteEnabled: boolean
 }
 
 @Injectable({
@@ -15,7 +16,8 @@ export class AppSettingsService {
   private readonly fallbackSettings: AppSettings = {
     defaultQueryRows: 50,
     connectionExpirationMinutes: 30,
-    tableAutocompleteEnabled: true
+    tableAutocompleteEnabled: true,
+    columnAutocompleteEnabled: true
   }
 
   constructor(private cache: CacheManagerService) { }
@@ -45,6 +47,10 @@ export class AppSettingsService {
 
   isTableAutocompleteEnabled(): boolean {
     return this.getSettings().tableAutocompleteEnabled
+  }
+
+  isColumnAutocompleteEnabled(): boolean {
+    return this.getSettings().columnAutocompleteEnabled
   }
 
   setDefaultQueryRows(value: number): AppSettings {
@@ -82,6 +88,17 @@ export class AppSettingsService {
     return settings
   }
 
+  setColumnAutocompleteEnabled(value: boolean): AppSettings {
+    const settings = {
+      ...this.getSettings(),
+      columnAutocompleteEnabled: Boolean(value)
+    }
+
+    this.saveSettings(settings)
+
+    return settings
+  }
+
   normalizeRows(value: unknown): number {
     const parsed = Number(value)
     if (!Number.isFinite(parsed) || parsed < 1) {
@@ -104,7 +121,8 @@ export class AppSettingsService {
     return {
       defaultQueryRows: this.normalizeRows(settings?.defaultQueryRows),
       connectionExpirationMinutes: this.normalizeExpirationMinutes(settings?.connectionExpirationMinutes),
-      tableAutocompleteEnabled: settings?.tableAutocompleteEnabled ?? this.fallbackSettings.tableAutocompleteEnabled
+      tableAutocompleteEnabled: settings?.tableAutocompleteEnabled ?? this.fallbackSettings.tableAutocompleteEnabled,
+      columnAutocompleteEnabled: settings?.columnAutocompleteEnabled ?? this.fallbackSettings.columnAutocompleteEnabled
     }
   }
 

@@ -20,6 +20,7 @@ export class SettingsComponent implements OnInit {
   defaultQueryRows: number
   connectionExpirationMinutes: number
   tableAutocompleteEnabled: boolean
+  columnAutocompleteEnabled: boolean
   savedMessage: string = ''
   expirationSavedMessage: string = ''
   autocompleteSavedMessage: string = ''
@@ -43,6 +44,7 @@ export class SettingsComponent implements OnInit {
     this.defaultQueryRows = this.settings.getDefaultQueryRows()
     this.connectionExpirationMinutes = this.settings.getConnectionExpirationMinutes()
     this.tableAutocompleteEnabled = this.settings.isTableAutocompleteEnabled()
+    this.columnAutocompleteEnabled = this.settings.isColumnAutocompleteEnabled()
   }
 
   async ngOnInit(): Promise<void> {
@@ -112,9 +114,16 @@ export class SettingsComponent implements OnInit {
     this.autocompleteSavedMessage = ''
   }
 
+  onColumnAutocompleteChange(event: Event): void {
+    this.columnAutocompleteEnabled = (event.target as HTMLInputElement).checked
+    this.autocompleteSavedMessage = ''
+  }
+
   saveAutocompleteSettings(): void {
-    const settings = this.settings.setTableAutocompleteEnabled(this.tableAutocompleteEnabled)
+    let settings = this.settings.setTableAutocompleteEnabled(this.tableAutocompleteEnabled)
+    settings = this.settings.setColumnAutocompleteEnabled(this.columnAutocompleteEnabled)
     this.tableAutocompleteEnabled = settings.tableAutocompleteEnabled
+    this.columnAutocompleteEnabled = settings.columnAutocompleteEnabled
     this.autocompleteSavedMessage = 'Saved'
   }
 

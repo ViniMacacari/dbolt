@@ -71,6 +71,22 @@
                         <span></span>
                     </label>
                     <button type="button" (click)="saveAutocompleteSettings()">Save</button>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div>
+                    <h3>Column auto-complete</h3>
+                    <p>Suggests columns after a table alias, like u., using aliases declared in FROM or JOIN.</p>
+                </div>
+
+                <div class="setting-control autocomplete-toggle">
+                    <label class="toggle-control" for="column-autocomplete-enabled">
+                        <input id="column-autocomplete-enabled" type="checkbox" [checked]="columnAutocompleteEnabled"
+                            (change)="onColumnAutocompleteChange($event)">
+                        <span></span>
+                    </label>
+                    <button type="button" (click)="saveAutocompleteSettings()">Save</button>
                     <small *ngIf="autocompleteSavedMessage">{{ autocompleteSavedMessage }}</small>
                 </div>
             </div>
