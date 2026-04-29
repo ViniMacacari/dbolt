@@ -3,7 +3,8 @@
         [dbSchemas]="databasesSchemasActiveConnections" [selectedSchemaDB]="selectedSchemaDB"
         (sidebarStatusChange)="onSidebarStatusChange($event)" (dbInfoRequested)="onDbInfoRequested($event)"
         (selectedSchemaChanged)="onSelectedSchemaChanged($event)"
-        (settingsRequested)="onSettingsRequested()"></app-sidebar>
+        (settingsRequested)="onSettingsRequested()" (sqlScriptRequested)="onSqlScriptRequested($event)"
+        (contextConnectionRequested)="onContextConnectionRequested($event)"></app-sidebar>
     <div class="main-area">
         <div class="tabs pt-3 px-3">
             <app-tabs (tabSelected)="onTabSelected($event)" (tabClosed)="onTabClosed()"></app-tabs>

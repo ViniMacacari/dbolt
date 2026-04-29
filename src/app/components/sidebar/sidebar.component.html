@@ -17,11 +17,13 @@
         <img src="db-logo/{{ selectedSchemaDB?.sgbd }}.png" height="15px" width="15px">
         <p class="text-min w-100">{{ selectedSchemaDB?.sgbd }} ({{ selectedSchemaDB?.name }})</p>
     </div>
-    <div class="database" (click)="toggleQuickSelector('database', $event)">
+    <div class="database" (click)="toggleQuickSelector('database', $event)"
+        (contextmenu)="openSelectedDatabaseContextMenu($event)">
         <img src="icons/database.png" height="15px" width="15px">
         <p class="text-min w-100">{{ selectedSchemaDB?.database }}</p>
     </div>
-    <div class="schema" (click)="toggleQuickSelector('schema', $event)">
+    <div class="schema" (click)="toggleQuickSelector('schema', $event)"
+        (contextmenu)="openSelectedSchemaContextMenu($event)">
         <img src="icons/schema.png" height="15px" width="15px">
         <p class="text-min w-100">{{ selectedSchemaDB?.schema }}</p>
     </div>
@@ -47,6 +49,7 @@
                     <div class="separator"></div>
                     <div (click)="toggleDatabase(connection.id + '-' + database.database)"
                         (dblclick)="openDatabaseInfo(connection, database, $event)"
+                        (contextmenu)="openDatabaseContextMenu(connection, database, $event)"
                         class="database-row d-flex align-items-center gap-2"
                         [class.selected-database]="isSelectedDatabase(connection, database)">
                         <img src="icons/database.png" height="15px" width="15px">
@@ -86,7 +89,8 @@
                             port: connection.port,
                             password: connection.password,
                             user: connection.user
-                        })" class="schema-row d-flex align-items-center gap-2 mb-2"
+                        })" (contextmenu)="openSchemaContextMenu(connection, database, schema, $event)"
+                            class="schema-row d-flex align-items-center gap-2 mb-2"
                             [class.selected-schema]="isSelectedSchema(connection, database.database, schema)">
                             <img src="icons/schema.png" height="10px" width="10px">
                             <p class="text-min-gray">{{ schema }}</p>
@@ -100,6 +104,30 @@
 
 <app-connection *ngIf="isModalOpen" [connection]="editingConnection" (close)="closeModal()"></app-connection>
 <app-toast #toast></app-toast>
+
+<div class="context-menu" *ngIf="contextMenu" [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y"
+    (click)="$event.stopPropagation()" (contextmenu)="$event.preventDefault()">
+    <div class="context-menu-header">
+        <span>{{ contextMenu.type === 'database' ? 'Database' : 'Schema' }}</span>
+        <strong>{{ contextMenu.label }}</strong>
+    </div>
+    <button type="button" (click)="requestNewSqlScript($event)">
+        <img src="icons/code.png" height="13px" width="13px">
+        New SQL script
+    </button>
+    <button type="button" (click)="requestConnection(true, $event)">
+        <img src="icons/refresh.png" height="13px" width="13px">
+        Invalidate and reconnect
+    </button>
+    <button type="button" (click)="requestConnection(false, $event)">
+        <img src="icons/test-connection.png" height="13px" width="13px">
+        Connect
+    </button>
+    <button type="button" (click)="requestContextInfo($event)">
+        <img src="icons/database.png" height="13px" width="13px">
+        Open information
+    </button>
+</div>
 
 <div class="quick-selector-backdrop" *ngIf="quickSelectorType" (click)="closeQuickSelector()">
     <div class="quick-selector-modal" (click)="$event.stopPropagation()">
