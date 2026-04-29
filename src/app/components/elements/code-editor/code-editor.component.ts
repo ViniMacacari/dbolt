@@ -9,6 +9,7 @@ import { SaveQueryComponent } from "../../modal/save-query/save-query.component"
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
 import { AppSettingsService } from '../../../services/app-settings/app-settings.service'
+import { SqlTableAutocompleteService } from '../../../services/code-autocomplete/sql-table-autocomplete.service'
 
 @Component({
   selector: 'app-code-editor',
@@ -34,6 +35,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private editor: monaco.editor.IStandaloneCodeEditor | null = null
   private initialized = false
+  private autocompleteDisposable?: monaco.IDisposable
   private readonly defaultResultHeight = 300
   private readonly minimumResultHeight = 120
   private readonly minimumEditorHeight = 120
@@ -60,7 +62,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     private runQuery: RunQueryService,
     private IAPI: InternalApiService,
     private connectionContext: ConnectionContextService,
-    private appSettings: AppSettingsService
+    private appSettings: AppSettingsService,
+    private tableAutocomplete: SqlTableAutocompleteService
   ) { }
 
   ngAfterViewChecked(): void {
@@ -92,6 +95,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   ngOnDestroy(): void {
     this.persistQueryState()
+    this.autocompleteDisposable?.dispose()
 
     if (this.editor) {
       this.editor.dispose()
@@ -171,11 +175,18 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       folding: false,
       fontFamily: 'Nunito',
       selectionHighlight: false,
-      quickSuggestions: false,
-      suggestOnTriggerCharacters: false,
+      quickSuggestions: { other: true, comments: false, strings: false },
+      quickSuggestionsDelay: 250,
+      suggestOnTriggerCharacters: true,
       wordBasedSuggestions: 'off',
       contextmenu: false
     })
+
+    this.autocompleteDisposable = this.tableAutocomplete.registerEditor(
+      this.editor,
+      () => this.tabInfo?.dbInfo,
+      () => this.active
+    )
 
     this.editor.onDidChangeModelContent(() => {
       const value = this.editor?.getValue() || ''

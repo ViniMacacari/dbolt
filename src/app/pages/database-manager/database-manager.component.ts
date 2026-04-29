@@ -348,7 +348,7 @@ export class DatabaseManagerComponent {
     }
   }
 
-  onSelectedSchemaChanged(selectedSchemaDB: any): void {
+  async onSelectedSchemaChanged(selectedSchemaDB: any): Promise<void> {
     const activeTab = this.tabsComponent?.getActiveTab()
 
     if (!activeTab) {
@@ -357,14 +357,38 @@ export class DatabaseManagerComponent {
       return
     }
 
-    const tabContext = this.connectionContext.createContext({
-      ...selectedSchemaDB,
-      connectionKey: activeTab.dbInfo?.connectionKey
-    })
+    try {
+      const previousContext = activeTab.dbInfo
+      const sameConnection = previousContext &&
+        previousContext.connId === (selectedSchemaDB.connId || selectedSchemaDB.connectionId) &&
+        previousContext.sgbd === selectedSchemaDB.sgbd &&
+        previousContext.host === selectedSchemaDB.host &&
+        String(previousContext.port) === String(selectedSchemaDB.port)
 
-    activeTab.dbInfo = tabContext
-    this.selectedSchemaDB = tabContext
-    this.dbSchemaService.setSelectedSchemaDB(tabContext)
+      const tabContext = await this.connectionContext.ensureContext(this.connectionContext.createContext({
+        ...selectedSchemaDB,
+        connectionKey: sameConnection ? previousContext?.connectionKey : undefined
+      }, !sameConnection))
+
+      activeTab.dbInfo = tabContext
+      activeTab.info = {
+        ...activeTab.info,
+        context: tabContext
+      }
+      this.selectedSchemaDB = tabContext
+      this.dbSchemaService.setSelectedSchemaDB(tabContext)
+
+      if (activeTab.type === 'schema') {
+        await this.reloadSchemaInfoTab(activeTab, tabContext)
+      } else if (activeTab.type === 'table') {
+        this.tableInfoTabInfo = { ...activeTab }
+      } else if (activeTab.type === 'procedure') {
+        this.procedureInfoTabInfo = { ...activeTab }
+      }
+    } catch (error: any) {
+      console.error(error)
+      this.toast.showToast(error?.error || error?.message || 'Could not change selected connection.', 'red')
+    }
   }
 
   onSavedQuery(name: string, sourceTab: any = null): void {
@@ -410,25 +434,7 @@ export class DatabaseManagerComponent {
       const queryString = this.connectionContext.toQueryString(context)
       const schemaDb: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/get-selected-schema${queryString}`)
 
-      const response: any = await this.IAPI.get(`/api/${event.sgbd}/${event.version}/list-objects${queryString}`)
-      if (!response.success) {
-        throw new Error(response.message || 'Could not load database objects.')
-      }
-
-      const result: any = this.normalizeDatabaseObjects(response)
-
-      result.connection = {
-        host: event.host,
-        port: event.port,
-        database: event.database,
-        schema: event.schema,
-        sgbd: event.sgbd,
-        version: event.version,
-        user: event.user,
-        name: event.name,
-        connId: event.connectionId || event.id,
-        connectionKey: context.connectionKey
-      }
+      const result: any = await this.loadDatabaseObjects(context, event)
 
       this.dbSchemasData = result
 
@@ -466,6 +472,49 @@ export class DatabaseManagerComponent {
       sql: event?.ddl || '',
       context: event?.context || this.procedureInfoTabInfo?.dbInfo || this.selectedSchemaDB
     }, event?.name || 'Procedure')
+  }
+
+  private async reloadSchemaInfoTab(tab: any, context: any): Promise<void> {
+    try {
+      const result = await this.loadDatabaseObjects(context, context)
+
+      this.dbSchemasData = result
+      tab.info = {
+        ...tab.info,
+        dbInfo: result,
+        context
+      }
+      tab.name = context.schema || tab.name
+      this.dbInfoTabInfo = tab
+    } catch (error: any) {
+      console.error(error)
+      this.toast.showToast(error?.error || error?.message || 'Could not reload database objects.', 'red')
+    }
+  }
+
+  private async loadDatabaseObjects(context: any, source: any): Promise<any> {
+    const queryString = this.connectionContext.toQueryString(context)
+    const response: any = await this.IAPI.get(`/api/${context.sgbd}/${context.version}/list-objects${queryString}`)
+    if (!response.success) {
+      throw new Error(response.message || 'Could not load database objects.')
+    }
+
+    const result: any = this.normalizeDatabaseObjects(response)
+
+    result.connection = {
+      host: source.host || context.host,
+      port: source.port || context.port,
+      database: source.database || context.database,
+      schema: source.schema || context.schema,
+      sgbd: source.sgbd || context.sgbd,
+      version: source.version || context.version,
+      user: source.user || context.user,
+      name: source.name || context.name,
+      connId: source.connectionId || source.connId || source.id || context.connId,
+      connectionKey: context.connectionKey
+    }
+
+    return result
   }
 
   private normalizeDatabaseObjects(response: any): any {
