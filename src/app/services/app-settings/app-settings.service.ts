@@ -6,6 +6,8 @@ export interface AppSettings {
   connectionExpirationMinutes: number
   tableAutocompleteEnabled: boolean
   columnAutocompleteEnabled: boolean
+  sqlFormatterIndentSize: number
+  sqlFormatterUppercaseKeywords: boolean
 }
 
 @Injectable({
@@ -17,7 +19,9 @@ export class AppSettingsService {
     defaultQueryRows: 50,
     connectionExpirationMinutes: 30,
     tableAutocompleteEnabled: true,
-    columnAutocompleteEnabled: true
+    columnAutocompleteEnabled: true,
+    sqlFormatterIndentSize: 2,
+    sqlFormatterUppercaseKeywords: true
   }
 
   constructor(private cache: CacheManagerService) { }
@@ -51,6 +55,14 @@ export class AppSettingsService {
 
   isColumnAutocompleteEnabled(): boolean {
     return this.getSettings().columnAutocompleteEnabled
+  }
+
+  getSqlFormatterIndentSize(): number {
+    return this.getSettings().sqlFormatterIndentSize
+  }
+
+  shouldUppercaseSqlFormatterKeywords(): boolean {
+    return this.getSettings().sqlFormatterUppercaseKeywords
   }
 
   setDefaultQueryRows(value: number): AppSettings {
@@ -99,6 +111,18 @@ export class AppSettingsService {
     return settings
   }
 
+  setSqlFormatterSettings(indentSize: number, uppercaseKeywords: boolean): AppSettings {
+    const settings = {
+      ...this.getSettings(),
+      sqlFormatterIndentSize: this.normalizeIndentSize(indentSize),
+      sqlFormatterUppercaseKeywords: Boolean(uppercaseKeywords)
+    }
+
+    this.saveSettings(settings)
+
+    return settings
+  }
+
   normalizeRows(value: unknown): number {
     const parsed = Number(value)
     if (!Number.isFinite(parsed) || parsed < 1) {
@@ -117,12 +141,23 @@ export class AppSettingsService {
     return Math.floor(parsed)
   }
 
+  normalizeIndentSize(value: unknown): number {
+    const parsed = Number(value)
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      return this.fallbackSettings.sqlFormatterIndentSize
+    }
+
+    return Math.min(Math.floor(parsed), 8)
+  }
+
   private normalizeSettings(settings?: Partial<AppSettings>): AppSettings {
     return {
       defaultQueryRows: this.normalizeRows(settings?.defaultQueryRows),
       connectionExpirationMinutes: this.normalizeExpirationMinutes(settings?.connectionExpirationMinutes),
       tableAutocompleteEnabled: settings?.tableAutocompleteEnabled ?? this.fallbackSettings.tableAutocompleteEnabled,
-      columnAutocompleteEnabled: settings?.columnAutocompleteEnabled ?? this.fallbackSettings.columnAutocompleteEnabled
+      columnAutocompleteEnabled: settings?.columnAutocompleteEnabled ?? this.fallbackSettings.columnAutocompleteEnabled,
+      sqlFormatterIndentSize: this.normalizeIndentSize(settings?.sqlFormatterIndentSize),
+      sqlFormatterUppercaseKeywords: settings?.sqlFormatterUppercaseKeywords ?? this.fallbackSettings.sqlFormatterUppercaseKeywords
     }
   }
 

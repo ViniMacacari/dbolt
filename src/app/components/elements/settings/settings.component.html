@@ -55,6 +55,29 @@
                     <small *ngIf="expirationSavedMessage">{{ expirationSavedMessage }}</small>
                 </div>
             </div>
+
+            <div class="settings-card">
+                <div>
+                    <h3>Script indentation</h3>
+                    <p>Applied by the indent button in query tabs.</p>
+                </div>
+
+                <div class="setting-control formatter-control">
+                    <label for="sql-formatter-indent-size">Spaces</label>
+                    <input id="sql-formatter-indent-size" type="number" min="1" max="8" step="1"
+                        [value]="sqlFormatterIndentSize" (input)="onSqlFormatterIndentInput($event)"
+                        (keydown.enter)="saveSqlFormatterSettings()">
+                    <label class="toggle-control compact-toggle" for="sql-formatter-uppercase-keywords">
+                        <input id="sql-formatter-uppercase-keywords" type="checkbox"
+                            [checked]="sqlFormatterUppercaseKeywords"
+                            (change)="onSqlFormatterUppercaseChange($event)">
+                        <span></span>
+                    </label>
+                    <label for="sql-formatter-uppercase-keywords">Uppercase</label>
+                    <button type="button" (click)="saveSqlFormatterSettings()">Save</button>
+                    <small *ngIf="formatterSavedMessage">{{ formatterSavedMessage }}</small>
+                </div>
+            </div>
         </div>
 
         <div class="settings-stack" *ngIf="activeTab === 'autocomplete'">

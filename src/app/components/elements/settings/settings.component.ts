@@ -21,8 +21,11 @@ export class SettingsComponent implements OnInit {
   connectionExpirationMinutes: number
   tableAutocompleteEnabled: boolean
   columnAutocompleteEnabled: boolean
+  sqlFormatterIndentSize: number
+  sqlFormatterUppercaseKeywords: boolean
   savedMessage: string = ''
   expirationSavedMessage: string = ''
+  formatterSavedMessage: string = ''
   autocompleteSavedMessage: string = ''
   connectionMessage: string = ''
   connectionError: string = ''
@@ -45,6 +48,8 @@ export class SettingsComponent implements OnInit {
     this.connectionExpirationMinutes = this.settings.getConnectionExpirationMinutes()
     this.tableAutocompleteEnabled = this.settings.isTableAutocompleteEnabled()
     this.columnAutocompleteEnabled = this.settings.isColumnAutocompleteEnabled()
+    this.sqlFormatterIndentSize = this.settings.getSqlFormatterIndentSize()
+    this.sqlFormatterUppercaseKeywords = this.settings.shouldUppercaseSqlFormatterKeywords()
   }
 
   async ngOnInit(): Promise<void> {
@@ -107,6 +112,29 @@ export class SettingsComponent implements OnInit {
     const settings = this.settings.setConnectionExpirationMinutes(this.connectionExpirationMinutes)
     this.connectionExpirationMinutes = settings.connectionExpirationMinutes
     this.expirationSavedMessage = 'Saved'
+  }
+
+  onSqlFormatterIndentInput(event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value)
+    if (!Number.isFinite(value)) return
+
+    this.sqlFormatterIndentSize = Math.min(Math.max(1, Math.floor(value)), 8)
+    this.formatterSavedMessage = ''
+  }
+
+  onSqlFormatterUppercaseChange(event: Event): void {
+    this.sqlFormatterUppercaseKeywords = (event.target as HTMLInputElement).checked
+    this.formatterSavedMessage = ''
+  }
+
+  saveSqlFormatterSettings(): void {
+    const settings = this.settings.setSqlFormatterSettings(
+      this.sqlFormatterIndentSize,
+      this.sqlFormatterUppercaseKeywords
+    )
+    this.sqlFormatterIndentSize = settings.sqlFormatterIndentSize
+    this.sqlFormatterUppercaseKeywords = settings.sqlFormatterUppercaseKeywords
+    this.formatterSavedMessage = 'Saved'
   }
 
   onTableAutocompleteChange(event: Event): void {

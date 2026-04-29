@@ -10,6 +10,7 @@ import { InternalApiService } from '../../../services/requests/internal-api.serv
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
 import { AppSettingsService } from '../../../services/app-settings/app-settings.service'
 import { SqlTableAutocompleteService } from '../../../services/code-autocomplete/sql-table-autocomplete.service'
+import { SqlCodeFormatterService } from '../../../services/code-formatting/sql-code-formatter.service'
 
 @Component({
   selector: 'app-code-editor',
@@ -63,7 +64,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     private IAPI: InternalApiService,
     private connectionContext: ConnectionContextService,
     private appSettings: AppSettingsService,
-    private tableAutocomplete: SqlTableAutocompleteService
+    private tableAutocomplete: SqlTableAutocompleteService,
+    private sqlFormatter: SqlCodeFormatterService
   ) { }
 
   ngAfterViewChecked(): void {
@@ -261,6 +263,33 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   runAll(): void {
     this.runSql(this.editor?.getValue() || '')
+  }
+
+  formatCode(): void {
+    const model = this.editor?.getModel()
+    const selection = this.editor?.getSelection()
+    if (!model || !selection) return
+
+    const hasSelection = !selection.isEmpty()
+    const range = hasSelection ? selection : model.getFullModelRange()
+    const source = model.getValueInRange(range)
+    if (!source.trim()) return
+
+    const formatted = this.sqlFormatter.format(source, {
+      indentSize: this.appSettings.getSqlFormatterIndentSize(),
+      uppercaseKeywords: this.appSettings.shouldUppercaseSqlFormatterKeywords()
+    })
+
+    if (formatted === source) return
+
+    this.editor?.pushUndoStop()
+    this.editor?.executeEdits('format-sql', [{
+      range,
+      text: formatted,
+      forceMoveMarkers: true
+    }])
+    this.editor?.pushUndoStop()
+
   }
 
   async runSql(sql: string): Promise<void> {
