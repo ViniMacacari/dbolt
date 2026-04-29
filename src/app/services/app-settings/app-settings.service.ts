@@ -4,6 +4,7 @@ import { CacheManagerService } from '../cache/cache-manager.service'
 export interface AppSettings {
   defaultQueryRows: number
   connectionExpirationMinutes: number
+  tableAutocompleteEnabled: boolean
 }
 
 @Injectable({
@@ -13,7 +14,8 @@ export class AppSettingsService {
   private readonly cacheKey = 'app-settings'
   private readonly fallbackSettings: AppSettings = {
     defaultQueryRows: 50,
-    connectionExpirationMinutes: 30
+    connectionExpirationMinutes: 30,
+    tableAutocompleteEnabled: true
   }
 
   constructor(private cache: CacheManagerService) { }
@@ -21,7 +23,10 @@ export class AppSettingsService {
   getSettings(): AppSettings {
     const cachedSettings = this.cache.get<AppSettings>(this.cacheKey)
     if (cachedSettings) {
-      return cachedSettings
+      const settings = this.normalizeSettings(cachedSettings)
+      this.cache.set(this.cacheKey, settings)
+
+      return settings
     }
 
     const settings = this.normalizeSettings(this.readStoredSettings())
@@ -36,6 +41,10 @@ export class AppSettingsService {
 
   getConnectionExpirationMinutes(): number {
     return this.getSettings().connectionExpirationMinutes
+  }
+
+  isTableAutocompleteEnabled(): boolean {
+    return this.getSettings().tableAutocompleteEnabled
   }
 
   setDefaultQueryRows(value: number): AppSettings {
@@ -55,6 +64,17 @@ export class AppSettingsService {
     const settings = {
       ...this.getSettings(),
       connectionExpirationMinutes
+    }
+
+    this.saveSettings(settings)
+
+    return settings
+  }
+
+  setTableAutocompleteEnabled(value: boolean): AppSettings {
+    const settings = {
+      ...this.getSettings(),
+      tableAutocompleteEnabled: Boolean(value)
     }
 
     this.saveSettings(settings)
@@ -83,7 +103,8 @@ export class AppSettingsService {
   private normalizeSettings(settings?: Partial<AppSettings>): AppSettings {
     return {
       defaultQueryRows: this.normalizeRows(settings?.defaultQueryRows),
-      connectionExpirationMinutes: this.normalizeExpirationMinutes(settings?.connectionExpirationMinutes)
+      connectionExpirationMinutes: this.normalizeExpirationMinutes(settings?.connectionExpirationMinutes),
+      tableAutocompleteEnabled: settings?.tableAutocompleteEnabled ?? this.fallbackSettings.tableAutocompleteEnabled
     }
   }
 

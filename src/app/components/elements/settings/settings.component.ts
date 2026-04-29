@@ -6,7 +6,7 @@ import { InternalApiService } from '../../../services/requests/internal-api.serv
 import { InputListComponent } from '../input-list/input-list.component'
 import { LoadingComponent } from '../../modal/loading/loading.component'
 
-type SettingsTab = 'query' | 'connections'
+type SettingsTab = 'query' | 'connections' | 'autocomplete'
 
 @Component({
   selector: 'app-settings',
@@ -19,8 +19,10 @@ export class SettingsComponent implements OnInit {
   activeTab: SettingsTab = 'query'
   defaultQueryRows: number
   connectionExpirationMinutes: number
+  tableAutocompleteEnabled: boolean
   savedMessage: string = ''
   expirationSavedMessage: string = ''
+  autocompleteSavedMessage: string = ''
   connectionMessage: string = ''
   connectionError: string = ''
   connections: SavedConnection[] = []
@@ -40,6 +42,7 @@ export class SettingsComponent implements OnInit {
   ) {
     this.defaultQueryRows = this.settings.getDefaultQueryRows()
     this.connectionExpirationMinutes = this.settings.getConnectionExpirationMinutes()
+    this.tableAutocompleteEnabled = this.settings.isTableAutocompleteEnabled()
   }
 
   async ngOnInit(): Promise<void> {
@@ -51,7 +54,10 @@ export class SettingsComponent implements OnInit {
   }
 
   get settingsTitle(): string {
-    return this.activeTab === 'connections' ? 'Connections' : 'Query defaults'
+    if (this.activeTab === 'connections') return 'Connections'
+    if (this.activeTab === 'autocomplete') return 'Auto-complete'
+
+    return 'Query defaults'
   }
 
   get requiresDefaultDatabase(): boolean {
@@ -99,6 +105,17 @@ export class SettingsComponent implements OnInit {
     const settings = this.settings.setConnectionExpirationMinutes(this.connectionExpirationMinutes)
     this.connectionExpirationMinutes = settings.connectionExpirationMinutes
     this.expirationSavedMessage = 'Saved'
+  }
+
+  onTableAutocompleteChange(event: Event): void {
+    this.tableAutocompleteEnabled = (event.target as HTMLInputElement).checked
+    this.autocompleteSavedMessage = ''
+  }
+
+  saveAutocompleteSettings(): void {
+    const settings = this.settings.setTableAutocompleteEnabled(this.tableAutocompleteEnabled)
+    this.tableAutocompleteEnabled = settings.tableAutocompleteEnabled
+    this.autocompleteSavedMessage = 'Saved'
   }
 
   onConnectionSelected(item: { [key: string]: string | number } | null): void {
