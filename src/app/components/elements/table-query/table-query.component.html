@@ -23,9 +23,25 @@
                 (click)="close()">x</button>
         </div>
     </div>
-    <ag-grid-angular #agGrid class="ag-root" [rowData]="query" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef"
-        [domLayout]="'normal'" [rowBuffer]="20" [suppressRowVirtualisation]="false"
-        [suppressColumnVirtualisation]="false" [animateRows]="false" (firstDataRendered)="query"
-        (bodyScroll)="onBodyScroll($event)">
-    </ag-grid-angular>
+    <div class="result-body">
+        <ag-grid-angular *ngIf="!errorMessage" #agGrid class="ag-root" [rowData]="query" [columnDefs]="columnDefs"
+            [defaultColDef]="defaultColDef" [domLayout]="'normal'" [rowBuffer]="20"
+            [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false" [suppressNoRowsOverlay]="true"
+            [animateRows]="false" (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)">
+        </ag-grid-angular>
+
+        <div class="query-status loading" *ngIf="isLoading || isLoadingMore">
+            <span class="query-spinner"></span>
+            <span>{{ isLoadingMore ? 'Loading rows...' : 'Executing query...' }}</span>
+        </div>
+
+        <div class="query-status error" *ngIf="errorMessage">
+            <strong>Query error</strong>
+            <span>{{ errorMessage }}</span>
+        </div>
+
+        <div class="query-status empty" *ngIf="!isLoading && !isLoadingMore && !errorMessage && query.length === 0">
+            <span>No rows returned.</span>
+        </div>
+    </div>
 </div>

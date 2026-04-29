@@ -37,7 +37,10 @@ export class TableQueryComponent implements AfterViewInit {
   @Input() isSelectResult: boolean = false
   @Input() resultHeight: number = 300
   @Input() isExpanded: boolean = false
+  @Input() isLoading: boolean = false
   @Input() isLoadingMore: boolean = false
+  @Input() errorMessage: string = ''
+  @Input() columns: string[] = []
 
   @Output() newValuesQuery = new EventEmitter<void>()
   @Output() closeResult = new EventEmitter<void>()
@@ -99,6 +102,10 @@ export class TableQueryComponent implements AfterViewInit {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['calcWidth'] || changes['resultHeight']) {
       this.adjustTableWrapperSize()
+    }
+
+    if (changes['columns']) {
+      this.updateColumns()
     }
   }
 
@@ -235,9 +242,14 @@ export class TableQueryComponent implements AfterViewInit {
   }
 
   private updateColumns() {
+    const normalizedColumns = this.columns.filter((column) => String(column || '').trim() !== '')
+
     if (this.query.length === 0) {
-      this.columnSignature = ''
-      this.columnDefs = []
+      const signature = normalizedColumns.join('\u001F')
+      if (signature === this.columnSignature) return
+
+      this.columnSignature = signature
+      this.columnDefs = this.buildEmptyResultColumnDefs(normalizedColumns)
       return
     }
 
@@ -246,6 +258,24 @@ export class TableQueryComponent implements AfterViewInit {
 
     this.columnSignature = signature
     this.columnDefs = buildTypedColumnDefs(this.query, 90)
+  }
+
+  private buildEmptyResultColumnDefs(columns: string[]): ColDef[] {
+    if (columns.length === 0) return []
+
+    return [
+      {
+        headerName: '#',
+        valueGetter: 'node.rowIndex + 1',
+        pinned: 'left',
+        filter: false,
+        width: 90
+      },
+      ...columns.map((column) => ({
+        field: column,
+        headerName: column.trim()
+      }))
+    ]
   }
 
   private getBodyViewport(): HTMLElement | null {

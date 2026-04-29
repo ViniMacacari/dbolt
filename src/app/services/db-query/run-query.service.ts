@@ -15,6 +15,7 @@ export class RunQueryService {
   ) { }
 
   queryLines: number | null = null
+  queryColumns: string[] = []
 
   async runSQL(sql: string, lines: number | null = null, dbContext: any = null): Promise<any> {
     const selectedContext = dbContext || this.dbSchemas.getSelectedSchemaDB()
@@ -41,6 +42,7 @@ export class RunQueryService {
     })
 
     this.queryLines = response.totalRows
+    this.queryColumns = response.columns || []
 
     if (response?.result && Array.isArray(response.result)) {
       return response.result
@@ -81,5 +83,9 @@ export class RunQueryService {
 
   getQueryLines(): number | null {
     return this.queryLines
+  }
+
+  getQueryColumns(): string[] {
+    return this.queryColumns
   }
 }

@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common'
 import * as monaco from 'monaco-editor'
 import { GetDbschemaService } from '../../../services/db-info/get-dbschema.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
-import { LoadingComponent } from '../../modal/loading/loading.component'
 import { ToastComponent } from '../../toast/toast.component'
 import { TableQueryComponent } from "../table-query/table-query.component"
 import { SaveQueryComponent } from "../../modal/save-query/save-query.component"
@@ -40,6 +39,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   isSaveAsOpen: boolean = false
   cacheSql: string = ''
   queryReponse: any[] = []
+  queryColumns: string[] = []
+  queryResultOpen: boolean = false
+  isLoadingQuery: boolean = false
+  queryError: string = ''
   queryLines: number = 50
   queryFetchSize: number = 50
   queryResultHeight: number = 300
@@ -91,7 +94,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   @HostListener('window:resize')
   onWindowResize(): void {
-    if (this.queryReponse.length === 0) {
+    if (!this.queryResultOpen) {
       this.layoutEditor()
       return
     }
@@ -245,7 +248,15 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   async runSql(sql: string): Promise<void> {
     this.isLoadingMore = false
-    LoadingComponent.show()
+    this.isLoadingQuery = true
+    this.queryResultOpen = true
+    this.queryError = ''
+    this.queryReponse = []
+    this.queryColumns = []
+    this.maxResultLines = null
+    this.prepareResultLayout()
+    this.persistQueryState()
+    this.layoutEditor()
 
     try {
       this.queryFetchSize = this.normalizeQueryLimit(this.queryFetchSize)
@@ -254,16 +265,23 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
       const result: any = await this.runQuery.runSQL(sql, this.queryLines, this.tabInfo?.dbInfo)
       this.queryReponse = result
+      this.queryColumns = this.runQuery.getQueryColumns()
       this.maxResultLines = this.runQuery.getQueryLines()
       this.prepareResultLayout()
       this.persistQueryState()
       this.layoutEditor()
     } catch (error: any) {
       console.error(error)
-      this.toast.showToast(error.error, 'red')
+      this.queryError = this.getQueryErrorMessage(error)
+      this.queryReponse = []
+      this.queryColumns = []
+      this.maxResultLines = null
+      this.persistQueryState()
+      this.layoutEditor()
+    } finally {
+      this.isLoadingQuery = false
+      this.persistQueryState()
     }
-
-    LoadingComponent.hide()
   }
 
   async newValues(): Promise<void> {
@@ -272,19 +290,20 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     if (this.queryReponse.length >= this.maxResultLines) return
 
     this.isLoadingMore = true
-    LoadingComponent.show()
+    this.queryError = ''
 
     try {
       this.queryLines += this.queryFetchSize
       const result: any = await this.runQuery.runSQL(this.cacheSql, this.queryLines, this.tabInfo?.dbInfo)
       this.queryReponse = result
+      this.queryColumns = this.runQuery.getQueryColumns()
       this.persistQueryState()
     } catch (error: any) {
       console.error(error)
-      this.toast.showToast(error.error, 'red')
+      this.queryError = this.getQueryErrorMessage(error)
+      this.persistQueryState()
     } finally {
       this.isLoadingMore = false
-      LoadingComponent.hide()
     }
   }
 
@@ -343,6 +362,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   closeQueryResult(): void {
     this.queryReponse = []
+    this.queryColumns = []
+    this.queryResultOpen = false
+    this.isLoadingQuery = false
+    this.queryError = ''
     this.maxResultLines = 0
     this.queryResultExpanded = false
     this.persistQueryState()
@@ -377,6 +400,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     this.cacheSql = queryState?.cacheSql || ''
     this.queryReponse = queryState?.queryResponse || []
+    this.queryColumns = queryState?.queryColumns || []
+    this.queryError = queryState?.queryError || ''
+    this.queryResultOpen = queryState?.queryResultOpen ?? (this.queryReponse.length > 0 || !!this.queryError)
+    this.isLoadingQuery = false
     this.queryLines = queryState?.queryLines ?? defaultQueryRows
     this.queryFetchSize = queryState?.queryFetchSize ?? defaultQueryRows
     this.previousQueryResultHeight = this.normalizeResultHeight(queryState?.previousQueryResultHeight ?? this.defaultResultHeight)
@@ -394,6 +421,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.tabInfo.queryState = {
       cacheSql: this.cacheSql,
       queryResponse: this.queryReponse,
+      queryColumns: this.queryColumns,
+      queryResultOpen: this.queryResultOpen,
+      queryError: this.queryError,
       queryLines: this.queryLines,
       queryFetchSize: this.queryFetchSize,
       queryResultHeight: this.queryResultHeight,
@@ -444,5 +474,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private layoutEditor(): void {
     setTimeout(() => this.editor?.layout(), 0)
+  }
+
+  private getQueryErrorMessage(error: any): string {
+    return error?.error || error?.message || 'Could not execute query.'
   }
 }

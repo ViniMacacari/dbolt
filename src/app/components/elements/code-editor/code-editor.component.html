@@ -1,5 +1,5 @@
 <div class="code-editor-container d-flex h-100 gap-2"
-    [class.results-expanded]="queryResultExpanded && queryReponse.length > 0">
+    [class.results-expanded]="queryResultExpanded && queryResultOpen">
     <div class="editor-toolbar d-flex align-items-center flex-column">
         <button class="btn">
             <img (click)="runSelected()" src="icons/run.png" title="Run selected code" height="15px">
@@ -17,17 +17,18 @@
             <img src="icons/save_as.png" title="Save code as" height="15px">
         </button>
     </div>
-    <div #codeEditorPanel class="code-editor py-2" [class.has-results]="queryReponse.length > 0"
+    <div #codeEditorPanel class="code-editor py-2" [class.has-results]="queryResultOpen"
         [class.results-expanded]="queryResultExpanded"
         [style.--query-result-height]="queryResultHeight + 'px'">
         <div class="editor-panel">
             <div #editorContainer class="editor"></div>
         </div>
-        <div class="result-panel" *ngIf="queryReponse.length > 0">
+        <div class="result-panel" *ngIf="queryResultOpen">
             <app-table-query (newValuesQuery)="newValues()" [query]="queryReponse" [resultHeight]="queryResultHeight"
-                [calcWidth]="widthTable" [rowLimit]="queryFetchSize" [totalRows]="maxResultLines"
+                [columns]="queryColumns" [calcWidth]="widthTable" [rowLimit]="queryFetchSize" [totalRows]="maxResultLines"
                 [isSelectResult]="maxResultLines !== null && maxResultLines !== undefined"
-                [isExpanded]="queryResultExpanded" [isLoadingMore]="isLoadingMore"
+                [isExpanded]="queryResultExpanded" [isLoading]="isLoadingQuery" [isLoadingMore]="isLoadingMore"
+                [errorMessage]="queryError"
                 (rowLimitChange)="onQueryFetchSizeChange($event)" (refreshQuery)="refreshQueryWithFetchSize()"
                 (resultHeightChange)="onQueryResultHeightChange($event)"
                 (toggleExpanded)="toggleQueryResultExpanded()"
