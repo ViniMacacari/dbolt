@@ -15,11 +15,12 @@ import { ConnectionContextService } from '../../services/connection-context/conn
 import { SettingsComponent } from '../../components/elements/settings/settings.component'
 import { QueryAssistantComponent } from '../../components/elements/query-assistant/query-assistant.component'
 import { SelectBuilderComponent } from '../../components/elements/select-builder/select-builder.component'
+import { ProcedureInfoComponent } from '../../components/elements/procedure-info/procedure-info.component'
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, CodeEditorComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent],
+  imports: [SidebarComponent, TabsComponent, CodeEditorComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, ProcedureInfoComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
@@ -35,23 +36,28 @@ export class DatabaseManagerComponent {
 
   dbSchemasData: any
   tableInfoData: any
+  procedureInfoData: any
 
   firstMessage: boolean = true
   dbInfoOpen: boolean = false
   tableInfoOpen: boolean = false
+  procedureInfoOpen: boolean = false
   editorOpen: boolean = false
   settingsOpen: boolean = false
   queryAssistantOpen: boolean = false
   selectBuilderOpen: boolean = false
   dbInfoInitialized: boolean = false
   tableInfoInitialized: boolean = false
+  procedureInfoInitialized: boolean = false
 
   sqlContent: string = ''
   tabInfo: any
   dbInfoTabInfo: any
   tableInfoTabInfo: any
+  procedureInfoTabInfo: any
 
   elementName: string = ''
+  procedureElementName: string = ''
 
   widthTable: number = 0
 
@@ -251,11 +257,13 @@ export class DatabaseManagerComponent {
     this.settingsOpen = tab.type === 'settings'
     this.queryAssistantOpen = tab.type === 'query-assistant'
     this.selectBuilderOpen = tab.type === 'select-builder'
+    this.procedureInfoOpen = tab.type === 'procedure'
     this.tableInfoOpen = !this.editorOpen &&
       !this.dbInfoOpen &&
       !this.settingsOpen &&
       !this.queryAssistantOpen &&
-      !this.selectBuilderOpen
+      !this.selectBuilderOpen &&
+      !this.procedureInfoOpen
 
     if (this.dbInfoOpen) {
       this.dbInfoInitialized = true
@@ -269,12 +277,20 @@ export class DatabaseManagerComponent {
       this.elementName = tab.info.name
       this.tableInfoData = tab.info.info
     }
+
+    if (this.procedureInfoOpen) {
+      this.procedureInfoInitialized = true
+      this.procedureInfoTabInfo = tab
+      this.procedureElementName = tab.info.name
+      this.procedureInfoData = tab.info.info
+    }
   }
 
   onTabClosed(): void {
     this.editorOpen = false
     this.dbInfoOpen = false
     this.tableInfoOpen = false
+    this.procedureInfoOpen = false
     this.settingsOpen = false
     this.queryAssistantOpen = false
     this.selectBuilderOpen = false
@@ -413,12 +429,29 @@ export class DatabaseManagerComponent {
 
   openMoreInfo(event: any): void {
     const activeContext = this.tabsComponent.getActiveTab()?.dbInfo || this.selectedSchemaDB
+    const objectType = String(event.type || event.objectType || '').toLowerCase()
+
+    if (objectType === 'procedure' || objectType === 'function') {
+      this.tabsComponent.newTab('procedure', {
+        name: (event.name || event.NAME),
+        info: event.info,
+        context: activeContext
+      }, (event.name || event.NAME))
+      return
+    }
 
     this.tabsComponent.newTab('table', {
       name: (event.name || event.NAME),
       info: event.info,
       context: activeContext
     }, (event.name || event.NAME))
+  }
+
+  onProcedureEditRequested(event: any): void {
+    this.tabsComponent.newTab('sql', {
+      sql: event?.ddl || '',
+      context: event?.context || this.procedureInfoTabInfo?.dbInfo || this.selectedSchemaDB
+    }, event?.name || 'Procedure')
   }
 
   private normalizeDatabaseObjects(response: any): any {

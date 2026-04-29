@@ -17,6 +17,9 @@
                     [tabInfo]="dbInfoTabInfo" (moreInfo)="openMoreInfo($event)"></app-db-info>
                 <app-table-info *ngIf="tableInfoInitialized" [hidden]="!tableInfoOpen" [data]="tableInfoData"
                     [elementName]="elementName" [tabInfo]="tableInfoTabInfo"></app-table-info>
+                <app-procedure-info *ngIf="procedureInfoInitialized" [hidden]="!procedureInfoOpen"
+                    [data]="procedureInfoData" [elementName]="procedureElementName" [tabInfo]="procedureInfoTabInfo"
+                    (editRequested)="onProcedureEditRequested($event)"></app-procedure-info>
                 <app-settings *ngIf="settingsOpen"></app-settings>
                 <app-query-assistant *ngIf="queryAssistantOpen" [tabInfo]="tabInfo"
                     (selectBuilderRequested)="onSelectBuilderRequested($event)"></app-query-assistant>

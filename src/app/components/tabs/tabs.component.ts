@@ -201,6 +201,7 @@ export class TabsComponent {
     if (tab.icon === 'SETTINGS') return 'icons/settings.png'
     if (tab.icon === 'QUERY_ASSISTANT') return 'icons/code-block.png'
     if (tab.icon === 'SELECT_BUILDER') return 'icons/table.png'
+    if (tab.type === 'procedure') return 'icons/procedure.png'
 
     return 'icons/code.png'
   }
