@@ -26,9 +26,11 @@
                 <app-select-builder *ngIf="selectBuilderOpen" [tabInfo]="tabInfo"
                     (queryRequested)="onBuilderQueryRequested($event)"></app-select-builder>
 
-                <app-code-editor *ngIf="editorOpen" [(sqlContent)]="sqlContent" [widthTable]="widthTable"
-                    [tabInfo]="tabInfo" (sqlContentChange)="onSqlContentChange($event)"
-                    (savedName)="onSavedQuery($event)" (savedQuery)="onExistingSavedQuery($event)"></app-code-editor>
+                <app-code-editor *ngFor="let tab of openTabs; trackBy: trackTabByIdentity"
+                    [hidden]="!isActiveSqlTab(tab)" [active]="isActiveSqlTab(tab)" [sqlContent]="tab.info?.sql || ''"
+                    [widthTable]="widthTable" [tabInfo]="tab" (sqlContentChange)="onSqlContentChange($event, tab)"
+                    (savedName)="onSavedQuery($event, tab)" (savedQuery)="onExistingSavedQuery($event)">
+                </app-code-editor>
             </div>
         </div>
     </div>

@@ -24,10 +24,12 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   @Output() savedQuery = new EventEmitter<any>()
   @Input() widthTable: number = 300
   @Input() tabInfo: any
+  @Input() active: boolean = false
 
   @ViewChild('editorContainer') editorContainer!: ElementRef
   @ViewChild('codeEditorPanel') codeEditorPanel!: ElementRef<HTMLDivElement>
   @ViewChild(ToastComponent) toast!: ToastComponent
+  @ViewChild(TableQueryComponent) tableQuery?: TableQueryComponent
   @ViewChild(SaveQueryComponent) saveConnection!: SaveQueryComponent
 
   private editor: monaco.editor.IStandaloneCodeEditor | null = null
@@ -77,6 +79,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['tabInfo']) {
       this.restoreQueryState()
+    }
+
+    if (changes['active'] && changes['active'].currentValue) {
+      this.refreshVisibleLayout()
     }
 
     if (this.editor && this.sqlContent !== this.editor.getValue()) {
@@ -474,6 +480,18 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private layoutEditor(): void {
     setTimeout(() => this.editor?.layout(), 0)
+  }
+
+  private refreshVisibleLayout(): void {
+    setTimeout(() => {
+      this.editor?.layout()
+      this.tableQuery?.refreshVisibleGrid()
+
+      window.requestAnimationFrame(() => {
+        this.editor?.layout()
+        this.tableQuery?.refreshVisibleGrid()
+      })
+    }, 0)
   }
 
   private getQueryErrorMessage(error: any): string {

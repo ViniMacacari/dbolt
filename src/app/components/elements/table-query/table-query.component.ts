@@ -209,6 +209,12 @@ export class TableQueryComponent implements AfterViewInit {
     this.closeResult.emit()
   }
 
+  refreshVisibleGrid(): void {
+    window.requestAnimationFrame(() => {
+      this.agGrid?.api?.refreshCells({ force: false })
+    })
+  }
+
   onBodyScroll(event: any) {
     if (this.isLoadingMore || !this.canLoadMore()) return
 
@@ -218,6 +224,7 @@ export class TableQueryComponent implements AfterViewInit {
       const scrollTop = bodyViewport.scrollTop
       const scrollHeight = bodyViewport.scrollHeight
       const clientHeight = bodyViewport.clientHeight
+      this.scrollTop = scrollTop
 
       const tolerance = 5
 

@@ -311,13 +311,23 @@ export class DatabaseManagerComponent {
     }, event?.name || 'Built select')
   }
 
-  onSqlContentChange(content: string): void {
+  get openTabs(): any[] {
+    return (this.tabsComponent?.tabs || []).filter((tab: any) => tab?.type === 'sql')
+  }
+
+  isActiveSqlTab(tab: any): boolean {
+    return tab?.type === 'sql' && this.tabsComponent?.getActiveTab() === tab
+  }
+
+  trackTabByIdentity(index: number, tab: any): any {
+    return tab
+  }
+
+  onSqlContentChange(content: string, sourceTab: any = null): void {
     this.sqlContent = content
 
-    if (this.tabsComponent.activeTab !== null) {
-      this.tabsComponent.tabs[this.tabsComponent.activeTab].info.sql = content
-
-      const tab = this.tabsComponent.tabs[this.tabsComponent.activeTab]
+    const tab = sourceTab || this.tabsComponent.getActiveTab()
+    if (tab) {
       tab.info.sql = content
       const currentSql = tab.info.sql || ''
       const originalSql = tab.originalContent || ''
@@ -357,13 +367,17 @@ export class DatabaseManagerComponent {
     this.dbSchemaService.setSelectedSchemaDB(tabContext)
   }
 
-  onSavedQuery(name: string): void {
+  onSavedQuery(name: string, sourceTab: any = null): void {
+    const tab = sourceTab || this.tabsComponent.getActiveTab()
+    const sql = tab?.info?.sql || this.sqlContent
+
     this.tabsComponent.newSavedTab('sql', {
       id: Date.now(),
-      info: { sql: this.sqlContent },
-      originalContent: this.sqlContent,
+      info: { sql },
+      originalContent: sql,
       icon: 'CODE',
-      name: name
+      name: name,
+      context: tab?.dbInfo || this.selectedSchemaDB
     })
   }
 
