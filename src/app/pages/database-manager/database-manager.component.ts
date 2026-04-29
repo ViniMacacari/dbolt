@@ -15,11 +15,12 @@ import { ConnectionContextService } from '../../services/connection-context/conn
 import { SettingsComponent } from '../../components/elements/settings/settings.component'
 import { QueryAssistantComponent } from '../../components/elements/query-assistant/query-assistant.component'
 import { SelectBuilderComponent } from '../../components/elements/select-builder/select-builder.component'
+import { ProcedureInfoComponent } from '../../components/elements/procedure-info/procedure-info.component'
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, CodeEditorComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent],
+  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
