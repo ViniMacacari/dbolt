@@ -351,32 +351,27 @@ export class DatabaseManagerComponent {
   async onSelectedSchemaChanged(selectedSchemaDB: any): Promise<void> {
     const activeTab = this.tabsComponent?.getActiveTab()
 
-    if (!activeTab) {
-      this.selectedSchemaDB = selectedSchemaDB
-      this.dbSchemaService.setSelectedSchemaDB(selectedSchemaDB)
-      return
-    }
-
     try {
-      const previousContext = activeTab.dbInfo
-      const sameConnection = previousContext &&
-        previousContext.connId === (selectedSchemaDB.connId || selectedSchemaDB.connectionId) &&
-        previousContext.sgbd === selectedSchemaDB.sgbd &&
-        previousContext.host === selectedSchemaDB.host &&
-        String(previousContext.port) === String(selectedSchemaDB.port)
+      const previousContext = activeTab?.dbInfo || this.selectedSchemaDB
+      const sameConnection = this.isSameSelectedConnection(previousContext, selectedSchemaDB)
 
       const tabContext = await this.connectionContext.ensureContext(this.connectionContext.createContext({
         ...selectedSchemaDB,
         connectionKey: sameConnection ? previousContext?.connectionKey : undefined
       }, !sameConnection))
 
+      this.selectedSchemaDB = tabContext
+      this.dbSchemaService.setSelectedSchemaDB(tabContext)
+
+      if (!activeTab) {
+        return
+      }
+
       activeTab.dbInfo = tabContext
       activeTab.info = {
         ...activeTab.info,
         context: tabContext
       }
-      this.selectedSchemaDB = tabContext
-      this.dbSchemaService.setSelectedSchemaDB(tabContext)
 
       if (activeTab.type === 'schema') {
         await this.reloadSchemaInfoTab(activeTab, tabContext)
@@ -389,6 +384,20 @@ export class DatabaseManagerComponent {
       console.error(error)
       this.toast.showToast(error?.error || error?.message || 'Could not change selected connection.', 'red')
     }
+  }
+
+  private isSameSelectedConnection(previousContext: any, selectedSchemaDB: any): boolean {
+    if (!previousContext || !selectedSchemaDB) return false
+
+    const previousConnectionId = previousContext.connId || previousContext.connectionId
+    const selectedConnectionId = selectedSchemaDB.connId || selectedSchemaDB.connectionId
+    if (previousConnectionId && selectedConnectionId) {
+      return String(previousConnectionId) === String(selectedConnectionId)
+    }
+
+    return previousContext.sgbd === selectedSchemaDB.sgbd &&
+      previousContext.host === selectedSchemaDB.host &&
+      String(previousContext.port) === String(selectedSchemaDB.port)
   }
 
   onSavedQuery(name: string, sourceTab: any = null): void {

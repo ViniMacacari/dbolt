@@ -200,7 +200,9 @@ export class SidebarComponent {
     if (!this.dbSchemas || !this.dbSchemas.data) return []
     return this.dbSchemas.data.filter(
       (item: any) =>
-        item.host === connection.host && item.port === connection.port
+        item.host === connection.host &&
+        String(item.port) === String(connection.port) &&
+        item.sgbd === connection.database
     )
   }
 
@@ -225,7 +227,7 @@ export class SidebarComponent {
 
   private getSelectedSavedConnection(): any {
     return this.connections.find((connection) =>
-      connection.id === this.selectedSchemaDB?.connId ||
+      String(connection.id) === String(this.selectedSchemaDB?.connId || this.selectedSchemaDB?.connectionId) ||
       (
         connection.host === this.selectedSchemaDB?.host &&
         String(connection.port) === String(this.selectedSchemaDB?.port) &&
