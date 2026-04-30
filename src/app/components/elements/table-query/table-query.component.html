@@ -21,6 +21,10 @@
                 </button>
 
                 <ng-container *ngIf="editingEnabled">
+                    <button type="button" class="result-icon-button" title="Add row"
+                        [disabled]="isApplyingEdits" (click)="addRow()">
+                        <img src="icons/add.png" height="13px" width="13px">
+                    </button>
                     <button type="button" class="result-icon-button" title="Apply changes"
                         [disabled]="!hasPendingChanges() || isApplyingEdits" (click)="applyPendingChanges()">
                         <img src="icons/save.png" height="13px" width="13px">
@@ -72,7 +76,8 @@
             <span>{{ errorMessage }}</span>
         </div>
 
-        <div class="query-status empty" *ngIf="!isLoading && !isLoadingMore && !errorMessage && query.length === 0">
+        <div class="query-status empty"
+            *ngIf="!isLoading && !isLoadingMore && !errorMessage && displayRows.length === 0">
             <span>No rows returned.</span>
         </div>
     </div>

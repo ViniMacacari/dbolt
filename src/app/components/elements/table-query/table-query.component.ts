@@ -89,8 +89,10 @@ export class TableQueryComponent implements AfterViewInit {
   private resultColumnsByField = new Map<string, EditableColumnMeta>()
   private pendingUpdates = new Map<number, Map<string, any>>()
   private pendingDeletes = new Set<number>()
+  private pendingInserts = new Map<number, Map<string, any>>()
   private selectedRows = new Set<number>()
   private editableTable: EditableTableTarget | null = null
+  private nextInsertRowId = -1
 
   scrollTimeout: any
 
@@ -107,7 +109,8 @@ export class TableQueryComponent implements AfterViewInit {
     resizable: true
   }
   rowClassRules = {
-    'dbolt-row-delete-preview': (params: any) => this.pendingDeletes.has(this.getRowId(params.data))
+    'dbolt-row-delete-preview': (params: any) => this.pendingDeletes.has(this.getRowId(params.data)),
+    'dbolt-row-insert-preview': (params: any) => this.isInsertRow(this.getRowId(params.data))
   }
 
   constructor(
@@ -265,8 +268,7 @@ export class TableQueryComponent implements AfterViewInit {
     return this.isSelectResult &&
       !this.editMetadataLoading &&
       !!this.editableTable &&
-      this.editableColumnsByField.size > 0 &&
-      this.query.length > 0
+      this.resultColumnsByField.size > 0
   }
 
   startEditing(): void {
@@ -289,6 +291,11 @@ export class TableQueryComponent implements AfterViewInit {
     if (!this.editingEnabled || this.selectedRows.size === 0) return
 
     this.selectedRows.forEach((rowId) => {
+      if (this.isInsertRow(rowId)) {
+        this.removeInsertedRow(rowId)
+        return
+      }
+
       this.pendingDeletes.add(rowId)
       this.pendingUpdates.delete(rowId)
     })
@@ -296,12 +303,40 @@ export class TableQueryComponent implements AfterViewInit {
     this.refreshVisibleGrid()
   }
 
+  addRow(): void {
+    if (!this.editingEnabled || !this.editableTable || this.resultColumnsByField.size === 0) return
+
+    const rowId = this.nextInsertRowId--
+    const newRow = this.getVisibleFields().reduce((row: any, field) => {
+      row[field] = null
+      return row
+    }, {})
+
+    this.displayRowIds.set(newRow, rowId)
+    this.pendingInserts.set(rowId, new Map<string, any>())
+    this.displayRows = [...this.displayRows, newRow]
+    this.scrollTop = Number.MAX_SAFE_INTEGER
+    this.updateColumns()
+
+    window.requestAnimationFrame(() => {
+      const rowIndex = this.displayRows.length - 1
+      const firstEditableField = this.getVisibleFields().find((field) => this.resultColumnsByField.has(field))
+
+      this.agGrid?.api?.ensureIndexVisible(rowIndex, 'bottom')
+      this.agGrid?.api?.refreshCells({ force: true })
+
+      if (firstEditableField) {
+        this.agGrid?.api?.startEditingCell({ rowIndex, colKey: firstEditableField })
+      }
+    })
+  }
+
   hasPendingChanges(): boolean {
-    return this.pendingDeletes.size > 0 || this.pendingUpdates.size > 0
+    return this.pendingDeletes.size > 0 || this.pendingUpdates.size > 0 || this.pendingInserts.size > 0
   }
 
   getPendingChangeCount(): number {
-    return this.pendingDeletes.size + this.pendingUpdates.size
+    return this.pendingDeletes.size + this.pendingUpdates.size + this.pendingInserts.size
   }
 
   getSelectedRowCount(): number {
@@ -423,21 +458,21 @@ export class TableQueryComponent implements AfterViewInit {
       const field = columnDef.field
       if (!field) return columnDef
 
-      const editableMeta = this.editableColumnsByField.get(field)
       const existingCellClass = columnDef.cellClass
       const existingClassRules = columnDef.cellClassRules || {}
 
       return {
         ...columnDef,
-        editable: () => this.editingEnabled && !!editableMeta,
+        editable: (params: any) => this.editingEnabled && !!this.getEditableMetaForCell(params.data, field),
         valueSetter: (params: any) => this.setEditableCellValue(params, field),
         cellClass: existingCellClass,
         cellClassRules: {
           ...existingClassRules,
           'dbolt-cell-edited': (params: any) => this.isCellEdited(params.data, field),
-          'dbolt-cell-readonly': () => this.editingEnabled && !editableMeta
+          'dbolt-cell-readonly': (params: any) => this.editingEnabled && !this.getEditableMetaForCell(params.data, field)
         },
-        tooltipValueGetter: () => {
+        tooltipValueGetter: (params: any) => {
+          const editableMeta = this.getEditableMetaForCell(params.data, field)
           if (!this.editingEnabled) return null
           if (!editableMeta) return 'Read-only in result editor'
           return `Type: ${editableMeta.type}`
@@ -472,8 +507,8 @@ export class TableQueryComponent implements AfterViewInit {
         const input = document.createElement('input')
         input.type = 'checkbox'
         input.checked = this.selectedRows.has(rowId)
-        input.disabled = this.pendingDeletes.has(rowId)
-        input.title = this.pendingDeletes.has(rowId) ? 'Pending delete' : 'Select row'
+        input.disabled = this.pendingDeletes.has(rowId) && !this.isInsertRow(rowId)
+        input.title = input.disabled ? 'Pending delete' : 'Select row'
         input.addEventListener('click', (event) => {
           event.stopPropagation()
           this.toggleSelectedRow(rowId, input.checked)
@@ -554,16 +589,12 @@ export class TableQueryComponent implements AfterViewInit {
       }
 
       const editableColumns = columnMetas.filter((column) => !column.primaryKey)
-      if (editableColumns.length === 0) {
-        this.editCapabilityMessage = 'No editable table columns are present in this result.'
-        this.updateColumns()
-        return
-      }
-
       this.editableTable = target
       columnMetas.forEach((column) => this.resultColumnsByField.set(column.resultField, column))
       editableColumns.forEach((column) => this.editableColumnsByField.set(column.resultField, column))
-      this.editCapabilityMessage = ''
+      this.editCapabilityMessage = editableColumns.length === 0
+        ? 'Existing rows are read-only; add row is available.'
+        : ''
       this.updateColumns()
     } catch (error: any) {
       console.error(error)
@@ -633,7 +664,7 @@ export class TableQueryComponent implements AfterViewInit {
   }
 
   private setEditableCellValue(params: any, field: string): boolean {
-    const meta = this.editableColumnsByField.get(field)
+    const meta = this.getEditableMetaForCell(params.data, field)
     if (!this.editingEnabled || !meta) return false
 
     const rowId = this.getRowId(params.data)
@@ -647,6 +678,12 @@ export class TableQueryComponent implements AfterViewInit {
 
     this.editErrorMessage = ''
     params.data[field] = parsed.value
+
+    if (this.isInsertRow(rowId)) {
+      this.pendingInserts.get(rowId)?.set(field, parsed.value)
+      window.requestAnimationFrame(() => this.agGrid?.api?.refreshCells({ force: false }))
+      return true
+    }
 
     const originalValue = this.query[rowId]?.[field]
     let rowUpdates = this.pendingUpdates.get(rowId)
@@ -667,6 +704,14 @@ export class TableQueryComponent implements AfterViewInit {
 
     window.requestAnimationFrame(() => this.agGrid?.api?.refreshCells({ force: false }))
     return true
+  }
+
+  private getEditableMetaForCell(row: any, field: string): EditableColumnMeta | null {
+    if (this.isInsertRow(this.getRowId(row))) {
+      return this.resultColumnsByField.get(field) || null
+    }
+
+    return this.editableColumnsByField.get(field) || null
   }
 
   private parseEditableValue(value: any, meta: EditableColumnMeta): { valid: boolean, value?: any, message?: string } {
@@ -722,6 +767,10 @@ export class TableQueryComponent implements AfterViewInit {
     const tableName = this.editableTable?.qualifiedName
     if (!tableName) return statements
 
+    this.pendingInserts.forEach((values) => {
+      statements.push(this.buildInsertStatement(tableName, values))
+    })
+
     this.pendingUpdates.forEach((updates, rowId) => {
       if (updates.size === 0 || this.pendingDeletes.has(rowId)) return
 
@@ -744,6 +793,28 @@ export class TableQueryComponent implements AfterViewInit {
     })
 
     return statements
+  }
+
+  private buildInsertStatement(tableName: string, values: Map<string, any>): string {
+    const columns = Array.from(values.entries())
+      .map(([field, value]) => {
+        const meta = this.resultColumnsByField.get(field)
+        if (!meta) return null
+
+        return {
+          column: this.quoteIdentifier(meta.name),
+          value: this.toSqlLiteral(value, meta)
+        }
+      })
+      .filter(Boolean) as Array<{ column: string, value: string }>
+
+    if (columns.length === 0) {
+      return this.dbContext?.sgbd === 'MySQL'
+        ? `INSERT INTO ${tableName} () VALUES ()`
+        : `INSERT INTO ${tableName} DEFAULT VALUES`
+    }
+
+    return `INSERT INTO ${tableName} (${columns.map((item) => item.column).join(', ')}) VALUES (${columns.map((item) => item.value).join(', ')})`
   }
 
   private buildPrimaryKeyWhere(rowId: number): string {
@@ -798,11 +869,15 @@ export class TableQueryComponent implements AfterViewInit {
   }
 
   private isCellEdited(row: any, field: string): boolean {
-    return this.pendingUpdates.get(this.getRowId(row))?.has(field) || false
+    const rowId = this.getRowId(row)
+
+    return this.pendingUpdates.get(rowId)?.has(field) ||
+      this.pendingInserts.get(rowId)?.has(field) ||
+      false
   }
 
   private toggleSelectedRow(rowId: number, selected: boolean): void {
-    if (rowId < 0) return
+    if (!Number.isFinite(rowId)) return
 
     if (selected) {
       this.selectedRows.add(rowId)
@@ -825,8 +900,15 @@ export class TableQueryComponent implements AfterViewInit {
   private resetEditPreview(): void {
     this.pendingUpdates.clear()
     this.pendingDeletes.clear()
+    this.pendingInserts.clear()
     this.selectedRows.clear()
+    this.nextInsertRowId = -1
     this.editErrorMessage = ''
+  }
+
+  private removeInsertedRow(rowId: number): void {
+    this.pendingInserts.delete(rowId)
+    this.displayRows = this.displayRows.filter((row) => this.getRowId(row) !== rowId)
   }
 
   private getVisibleFields(): string[] {
@@ -838,7 +920,11 @@ export class TableQueryComponent implements AfterViewInit {
   }
 
   private getRowId(row: any): number {
-    return this.displayRowIds.get(row) ?? -1
+    return this.displayRowIds.get(row) ?? Number.NaN
+  }
+
+  private isInsertRow(rowId: number): boolean {
+    return Number.isFinite(rowId) && rowId < 0 && this.pendingInserts.has(rowId)
   }
 
   private valuesMatch(left: any, right: any, meta: EditableColumnMeta): boolean {

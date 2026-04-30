@@ -96,6 +96,11 @@
         text-decoration: line-through;
     }
 
+    .dbolt-row-insert-preview .ag-cell {
+        background-color: rgba(106, 153, 78, .16) !important;
+        box-shadow: inset 2px 0 0 #8fbc6a;
+    }
+
     .dbolt-row-selector-cell {
         align-items: center;
         display: flex;
