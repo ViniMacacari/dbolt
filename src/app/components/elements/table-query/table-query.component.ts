@@ -117,6 +117,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   private initialTop = 0
   private initialBottom = 0
   private lastScrollTop = 0
+  private loadMoreRequestPending = false
   private rowData: any = []
   private columnSignature = ''
   private viewportRefreshTimeout: any
@@ -254,6 +255,10 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['isLoadingMore'] && changes['isLoadingMore'].currentValue === false) {
+      this.loadMoreRequestPending = false
+    }
+
     if (changes['calcWidth'] || changes['resultHeight']) {
       this.adjustTableWrapperSize()
     }
@@ -345,8 +350,9 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   }
 
   newValues() {
-    if (this.isLoadingMore || !this.canLoadMore()) return
+    if (this.isLoadingMore || this.loadMoreRequestPending || !this.canLoadMore()) return
 
+    this.loadMoreRequestPending = true
     this.saveScrollPosition()
     this.newValuesQuery.emit()
   }
@@ -642,13 +648,16 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       const scrollTop = bodyViewport.scrollTop
       const scrollHeight = bodyViewport.scrollHeight
       const clientHeight = bodyViewport.clientHeight
+      const isScrollingDown = scrollTop > this.lastScrollTop
       this.scrollTop = scrollTop
 
       const tolerance = 5
 
-      if (scrollTop + clientHeight >= scrollHeight - tolerance) {
+      if (isScrollingDown && scrollTop + clientHeight >= scrollHeight - tolerance) {
         this.newValues()
       }
+
+      this.lastScrollTop = scrollTop
     }
   }
 
@@ -1605,7 +1614,10 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   }
 
   private canLoadMore(): boolean {
-    return false
+    if (!this.isSelectResult || this.editingEnabled) return false
+    if (this.totalRows === null || this.totalRows === undefined) return false
+
+    return this.query.length < this.totalRows
   }
 
   private formatRowCount(value: number): string {
