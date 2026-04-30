@@ -14,11 +14,10 @@
                 <button type="button" (click)="applyRowLimit()">Apply</button>
             </div>
 
-            <button type="button" class="copy-all-button" *ngIf="hasSelectedFullRows()"
-                title="Copy all columns from selected rows" (click)="copySelectedRowsData()">
+            <button type="button" class="select-all-button" *ngIf="canSelectAllRows()"
+                title="Select all loaded rows" (click)="selectAllRows()">
                 <img src="icons/table.png" height="13px" width="13px">
-                Copy all
-                <small>{{ getSelectedFullRowCount() }}</small>
+                Select all
             </button>
 
             <div class="edit-actions" *ngIf="isSelectResult">

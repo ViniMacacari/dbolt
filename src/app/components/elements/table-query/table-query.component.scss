@@ -391,7 +391,7 @@
     }
 }
 
-.copy-all-button {
+.select-all-button {
     align-items: center;
     background: #292727;
     border: 1px solid rgba(115, 158, 202, .28);
@@ -411,18 +411,6 @@
         background: #334052;
     }
 
-    small {
-        align-items: center;
-        background: rgba(216, 233, 251, .12);
-        border-radius: 7px;
-        color: #e8eaed;
-        display: inline-flex;
-        font-size: .85em;
-        height: 18px;
-        justify-content: center;
-        min-width: 18px;
-        padding: 0 5px;
-    }
 }
 
 .edit-message {

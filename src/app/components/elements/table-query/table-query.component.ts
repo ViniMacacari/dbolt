@@ -414,13 +414,6 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     await this.runSelectionExport((payload) => this.resultExport.copyTable(payload))
   }
 
-  async copySelectedRowsData(): Promise<void> {
-    const payload = this.getFullRowSelectionPayload()
-    if (!payload) return
-
-    await this.runPayloadExport(payload, (exportPayload) => this.resultExport.copyData(exportPayload))
-  }
-
   exportSelectedXlsx(): void {
     const payload = this.getSelectionPayload()
     if (!payload) return
@@ -527,6 +520,33 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   getSelectedFullRowCount(): number {
     return this.getSelectedFullRowIds().length
+  }
+
+  canSelectAllRows(): boolean {
+    const loadedRowCount = this.getDisplayRowIds().length
+
+    return loadedRowCount > 0 &&
+      this.hasSelectedFullRows() &&
+      this.getSelectedFullRowCount() < loadedRowCount
+  }
+
+  selectAllRows(): void {
+    const fields = this.getVisibleFields()
+    const rowIds = this.getDisplayRowIds()
+    if (fields.length === 0 || rowIds.length === 0) return
+
+    this.copyErrorMessage = ''
+    this.cellSelectionMenu = null
+    this.selectedCellKeys.clear()
+
+    rowIds.forEach((rowId) => {
+      fields.forEach((field) => this.selectedCellKeys.add(this.cellKey(rowId, field)))
+    })
+
+    this.selectionAnchor = { rowId: rowIds[0], field: fields[0] }
+    this.selectionEnd = { rowId: rowIds[rowIds.length - 1], field: fields[fields.length - 1] }
+    this.isSelectingCells = false
+    this.refreshVisibleGrid()
   }
 
   async applyPendingChanges(): Promise<void> {
@@ -670,20 +690,6 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     const fields = this.getSelectedFields()
     const rowIds = this.getSelectedRowIds()
-    if (fields.length === 0 || rowIds.length === 0) return null
-
-    return {
-      columns: fields,
-      rows: rowIds.map((rowId) => {
-        const row = this.getDisplayRowById(rowId)
-        return fields.map((field) => row?.[field])
-      })
-    }
-  }
-
-  private getFullRowSelectionPayload(): QueryResultExportPayload | null {
-    const fields = this.getVisibleFields()
-    const rowIds = this.getSelectedFullRowIds()
     if (fields.length === 0 || rowIds.length === 0) return null
 
     return {
