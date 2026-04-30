@@ -14,6 +14,13 @@
                 <button type="button" (click)="applyRowLimit()">Apply</button>
             </div>
 
+            <button type="button" class="copy-all-button" *ngIf="hasSelectedFullRows()"
+                title="Copy all columns from selected rows" (click)="copySelectedRowsData()">
+                <img src="icons/table.png" height="13px" width="13px">
+                Copy all
+                <small>{{ getSelectedFullRowCount() }}</small>
+            </button>
+
             <div class="edit-actions" *ngIf="isSelectResult">
                 <button type="button" class="result-icon-button" title="Edit result rows" *ngIf="!editingEnabled"
                     [disabled]="!canStartEditing()" (click)="startEditing()">
@@ -73,9 +80,9 @@
         <div class="cell-selection-menu" *ngIf="cellSelectionMenu" [style.left.px]="cellSelectionMenu.x"
             [style.top.px]="cellSelectionMenu.y" (click)="$event.stopPropagation()"
             (contextmenu)="$event.preventDefault()">
-            <button type="button" (click)="copySelectedData()">Copiar dados</button>
-            <button type="button" (click)="copySelectedTable()">Copiar para tabela</button>
-            <button type="button" (click)="exportSelectedXlsx()">Exportar para XLSX</button>
+            <button type="button" (click)="copySelectedData()">Copy</button>
+            <button type="button" (click)="copySelectedTable()">Copy to table</button>
+            <button type="button" (click)="exportSelectedXlsx()">Export to XLSX</button>
         </div>
 
         <div class="query-status loading" *ngIf="isLoading || isLoadingMore || isApplyingEdits">

@@ -86,6 +86,18 @@
         border: 1px solid #747474 !important;
     }
 
+    .dbolt-row-index-cell {
+        cursor: pointer;
+        font-weight: 800;
+        text-align: center;
+    }
+
+    .dbolt-row-index-selected {
+        background-color: rgba(115, 158, 202, .32) !important;
+        box-shadow: inset 3px 0 0 #d8e9fb;
+        color: #ffffff;
+    }
+
     .dbolt-cell-edited {
         background-color: rgba(115, 158, 202, .18) !important;
         box-shadow: inset 0 -2px 0 #739eca;
@@ -376,6 +388,40 @@
         font-size: .72em;
         font-weight: 800;
         white-space: nowrap;
+    }
+}
+
+.copy-all-button {
+    align-items: center;
+    background: #292727;
+    border: 1px solid rgba(115, 158, 202, .28);
+    border-radius: 9px;
+    color: #d8e9fb;
+    cursor: pointer;
+    display: flex;
+    font-family: 'Nunito';
+    font-size: .72em;
+    font-weight: 800;
+    gap: 7px;
+    height: 28px;
+    padding: 0 10px;
+    white-space: nowrap;
+
+    &:hover {
+        background: #334052;
+    }
+
+    small {
+        align-items: center;
+        background: rgba(216, 233, 251, .12);
+        border-radius: 7px;
+        color: #e8eaed;
+        display: inline-flex;
+        font-size: .85em;
+        height: 18px;
+        justify-content: center;
+        min-width: 18px;
+        padding: 0 5px;
     }
 }
 

@@ -61,6 +61,7 @@ interface CellSelectionContextMenu {
   encapsulation: ViewEncapsulation.None
 })
 export class TableQueryComponent implements AfterViewInit, OnDestroy {
+  private readonly rowIndexColumnId = '__dbolt_row_index__'
   private _query: any[] = []
   private scrollTop = 0
 
@@ -351,9 +352,19 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   onGridCellMouseDown(event: any): void {
     const mouseEvent = event.event as MouseEvent
-    const field = event.colDef?.field
-    if (mouseEvent?.button !== 0 || !field || !event.data) return
+    if (mouseEvent?.button !== 0 || !event.data) return
     if (this.isTextEditingTarget(mouseEvent.target)) return
+
+    if (this.isRowIndexColumnEvent(event)) {
+      mouseEvent.preventDefault()
+      this.copyErrorMessage = ''
+      this.cellSelectionMenu = null
+      this.selectEntireRow(event.data, mouseEvent.ctrlKey || mouseEvent.metaKey)
+      return
+    }
+
+    const field = event.colDef?.field
+    if (!field) return
 
     const point = this.getSelectionPoint(event.data, field)
     if (!point) return
@@ -401,6 +412,13 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   async copySelectedTable(): Promise<void> {
     await this.runSelectionExport((payload) => this.resultExport.copyTable(payload))
+  }
+
+  async copySelectedRowsData(): Promise<void> {
+    const payload = this.getFullRowSelectionPayload()
+    if (!payload) return
+
+    await this.runPayloadExport(payload, (exportPayload) => this.resultExport.copyData(exportPayload))
   }
 
   exportSelectedXlsx(): void {
@@ -501,6 +519,14 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   getSelectedRowCount(): number {
     return this.selectedRows.size
+  }
+
+  hasSelectedFullRows(): boolean {
+    return this.getSelectedFullRowIds().length > 0
+  }
+
+  getSelectedFullRowCount(): number {
+    return this.getSelectedFullRowIds().length
   }
 
   async applyPendingChanges(): Promise<void> {
@@ -620,6 +646,15 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     const payload = this.getSelectionPayload()
     if (!payload) return
 
+    await this.runPayloadExport(payload, action)
+  }
+
+  private async runPayloadExport(
+    payload: QueryResultExportPayload,
+    action: (payload: QueryResultExportPayload) => Promise<void>
+  ): Promise<void> {
+    if (payload.rows.length === 0 || payload.columns.length === 0) return
+
     try {
       this.copyErrorMessage = ''
       await action(payload)
@@ -635,6 +670,20 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     const fields = this.getSelectedFields()
     const rowIds = this.getSelectedRowIds()
+    if (fields.length === 0 || rowIds.length === 0) return null
+
+    return {
+      columns: fields,
+      rows: rowIds.map((rowId) => {
+        const row = this.getDisplayRowById(rowId)
+        return fields.map((field) => row?.[field])
+      })
+    }
+  }
+
+  private getFullRowSelectionPayload(): QueryResultExportPayload | null {
+    const fields = this.getVisibleFields()
+    const rowIds = this.getSelectedFullRowIds()
     if (fields.length === 0 || rowIds.length === 0) return null
 
     return {
@@ -704,6 +753,15 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     return this.selectedCellKeys.has(this.cellKey(this.getRowId(row), field))
   }
 
+  private isRowFullySelected(row: any): boolean {
+    const rowId = this.getRowId(row)
+    const fields = this.getVisibleFields()
+
+    return Number.isFinite(rowId) &&
+      fields.length > 0 &&
+      fields.every((field) => this.selectedCellKeys.has(this.cellKey(rowId, field)))
+  }
+
   private isSelectionAnchor(row: any, field: string): boolean {
     return this.selectionAnchor?.rowId === this.getRowId(row) && this.selectionAnchor?.field === field
   }
@@ -723,6 +781,49 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   private cellKey(rowId: number, field: string): string {
     return `${rowId}\u001F${field}`
+  }
+
+  private selectEntireRow(row: any, additive = false): void {
+    const rowId = this.getRowId(row)
+    const fields = this.getVisibleFields()
+    if (!Number.isFinite(rowId) || fields.length === 0) return
+
+    const rowWasSelected = this.isRowFullySelected(row)
+    if (!additive) {
+      this.selectedCellKeys.clear()
+    }
+
+    if (additive && rowWasSelected) {
+      fields.forEach((field) => this.selectedCellKeys.delete(this.cellKey(rowId, field)))
+      if (this.selectedCellKeys.size === 0) {
+        this.selectionAnchor = null
+        this.selectionEnd = null
+      }
+    } else {
+      fields.forEach((field) => this.selectedCellKeys.add(this.cellKey(rowId, field)))
+      this.selectionAnchor = { rowId, field: fields[0] }
+      this.selectionEnd = { rowId, field: fields[fields.length - 1] }
+    }
+
+    this.isSelectingCells = false
+    this.refreshVisibleGrid()
+  }
+
+  private getSelectedFullRowIds(): number[] {
+    const fields = this.getVisibleFields()
+    if (fields.length === 0) return []
+
+    return this.getDisplayRowIds().filter((rowId) =>
+      fields.every((field) => this.selectedCellKeys.has(this.cellKey(rowId, field)))
+    )
+  }
+
+  private isRowIndexColumnEvent(event: any): boolean {
+    return event?.column?.getColId?.() === this.rowIndexColumnId ||
+      (
+        event?.colDef?.headerName === '#' &&
+        !event?.colDef?.field
+      )
   }
 
   private isCopyShortcut(event: KeyboardEvent): boolean {
@@ -782,10 +883,14 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     return [
       {
+        colId: this.rowIndexColumnId,
         headerName: '#',
         valueGetter: 'node.rowIndex + 1',
         pinned: 'left',
         filter: false,
+        sortable: false,
+        resizable: false,
+        suppressMovable: true,
         width: 90
       },
       ...columns.map((column) => ({
@@ -798,7 +903,9 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   private decorateColumnDefs(columnDefs: ColDef[]): ColDef[] {
     const decoratedColumns = columnDefs.map((columnDef) => {
       const field = columnDef.field
-      if (!field) return columnDef
+      if (!field) {
+        return this.decorateIndexColumnDef(columnDef)
+      }
 
       const existingCellClass = columnDef.cellClass
       const existingClassRules = columnDef.cellClassRules || {}
@@ -832,6 +939,25 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       this.buildSelectionColumnDef(),
       ...decoratedColumns
     ]
+  }
+
+  private decorateIndexColumnDef(columnDef: ColDef): ColDef {
+    if (columnDef.headerName !== '#') return columnDef
+
+    return {
+      ...columnDef,
+      colId: this.rowIndexColumnId,
+      sortable: false,
+      filter: false,
+      resizable: false,
+      suppressMovable: true,
+      cellClass: ['dbolt-row-index-cell'],
+      cellClassRules: {
+        ...(columnDef.cellClassRules || {}),
+        'dbolt-row-index-selected': (params: any) => this.isRowFullySelected(params.data)
+      },
+      tooltipValueGetter: () => 'Select row'
+    }
   }
 
   private buildSelectionColumnDef(): ColDef {
@@ -1264,6 +1390,8 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   }
 
   private getRowId(row: any): number {
+    if (!row) return Number.NaN
+
     return this.displayRowIds.get(row) ?? Number.NaN
   }
 
