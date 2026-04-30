@@ -479,19 +479,28 @@ export class DatabaseManagerComponent {
 
     try {
       const requestedContext = this.normalizeContextInput(event)
-      const context = await this.connectionContext.ensureContext(this.connectionContext.createContext(requestedContext))
-
-      this.selectedSchemaDB = context
-      this.dbSchemaService.setSelectedSchemaDB(context)
+      let context = await this.connectionContext.ensureContext(this.connectionContext.createContext(requestedContext))
 
       const queryString = this.connectionContext.toQueryString(context)
       const schemaDb: any = await this.IAPI.get(`/api/${context.sgbd}/${context.version}/get-selected-schema${queryString}`)
+      if (schemaDb?.success === false) {
+        throw new Error(schemaDb.message || schemaDb.error || 'Could not resolve selected schema.')
+      }
+
+      context = {
+        ...context,
+        database: schemaDb?.database || context.database,
+        schema: schemaDb?.schema || context.schema
+      }
+
+      this.selectedSchemaDB = context
+      this.dbSchemaService.setSelectedSchemaDB(context)
 
       const result: any = await this.loadDatabaseObjects(context, requestedContext)
 
       this.dbSchemasData = result
 
-      this.tabsComponent.newTab('schema', { dbInfo: this.dbSchemasData, context }, schemaDb.schema || context.schema)
+      this.tabsComponent.newTab('schema', { dbInfo: this.dbSchemasData, context }, this.getDbInfoTabName(context))
     } catch (error: any) {
       console.error(error)
       this.toast.showToast(error?.error || error?.message || 'Could not load database objects.', 'red')
@@ -512,6 +521,13 @@ export class DatabaseManagerComponent {
   private getSqlScriptName(context: any): string {
     const target = [context?.database, context?.schema].filter(Boolean).join('.')
     return target ? `SQL - ${target}` : 'New query'
+  }
+
+  private getDbInfoTabName(context: any): string {
+    const schema = context?.schema && context.schema !== 'mysql' ? context.schema : ''
+    const target = [context?.database, schema].filter(Boolean).join('.')
+
+    return target || context?.schema || 'Database info'
   }
 
   openMoreInfo(event: any): void {

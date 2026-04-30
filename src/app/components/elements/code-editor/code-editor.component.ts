@@ -53,6 +53,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   queryResultHeight: number = 300
   previousQueryResultHeight: number = 300
   queryResultExpanded: boolean = false
+  queryResultIsSelect: boolean = false
   isLoadingMore: boolean = false
   maxResultLines: number | null = 0
 
@@ -308,6 +309,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       this.queryFetchSize = this.normalizeQueryLimit(this.queryFetchSize)
       this.queryLines = this.queryFetchSize
       this.cacheSql = sql
+      this.queryResultIsSelect = this.isReadOnlySelectSql(sql)
 
       const result: any = await this.runQuery.runSQL(sql, this.queryLines, this.tabInfo?.dbInfo)
       this.queryReponse = result
@@ -414,6 +416,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.queryError = ''
     this.maxResultLines = 0
     this.queryResultExpanded = false
+    this.queryResultIsSelect = false
     this.persistQueryState()
     this.layoutEditor()
   }
@@ -454,6 +457,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.queryFetchSize = queryState?.queryFetchSize ?? defaultQueryRows
     this.previousQueryResultHeight = this.normalizeResultHeight(queryState?.previousQueryResultHeight ?? this.defaultResultHeight)
     this.queryResultExpanded = queryState?.queryResultExpanded ?? false
+    this.queryResultIsSelect = queryState?.queryResultIsSelect ?? this.isReadOnlySelectSql(this.cacheSql)
     this.queryResultHeight = this.queryResultExpanded
       ? this.getExpandedResultHeight()
       : this.normalizeResultHeight(queryState?.queryResultHeight ?? this.defaultResultHeight)
@@ -475,8 +479,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       queryResultHeight: this.queryResultHeight,
       previousQueryResultHeight: this.previousQueryResultHeight,
       queryResultExpanded: this.queryResultExpanded,
+      queryResultIsSelect: this.queryResultIsSelect,
       maxResultLines: this.maxResultLines
     }
+  }
+
+  private isReadOnlySelectSql(sql: string): boolean {
+    return /^\s*(?:\/\*[\s\S]*?\*\/\s*|--[^\n]*\n\s*)*(?:with\b[\s\S]+?\bselect\b|select\b)/i.test(sql || '')
   }
 
   private normalizeQueryLimit(size: number): number {
