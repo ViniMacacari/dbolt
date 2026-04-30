@@ -1,5 +1,6 @@
 import HanaV1 from '../../../models/hana/hana-v1.js';
 import { getErrorMessage } from '../../../utils/errors.js';
+import { normalizeIdentifier, quoteSafeIdentifier } from '../../../utils/sql-identifiers.js';
 
 import type {
   QueryRow,
@@ -8,6 +9,7 @@ import type {
 } from '../../../types.js';
 
 type CurrentSchemaRow = QueryRow & { schema: string };
+type SchemaExistsRow = QueryRow & { schema_name: string };
 
 class SSchemaHanaV1 {
   private readonly db = new HanaV1();
@@ -28,13 +30,24 @@ class SSchemaHanaV1 {
 
   async setSchema(schemaName: string, connectionKey?: string): Promise<ConnectionServiceResult> {
     try {
-      if (!schemaName) {
-        throw new Error('Schema name is required');
+      const normalizedSchemaName = normalizeIdentifier(schemaName, 'Schema name');
+      const schemaExists = (await this.db.executeQuery(
+        `
+          SELECT SCHEMA_NAME AS "schema_name"
+          FROM SYS.SCHEMAS
+          WHERE SCHEMA_NAME = ?
+        `,
+        [normalizedSchemaName],
+        connectionKey
+      )) as SchemaExistsRow[];
+
+      if (schemaExists.length === 0) {
+        throw new Error(`Schema "${normalizedSchemaName}" does not exist`);
       }
 
-      await this.db.executeQuery(`SET SCHEMA ${schemaName}`, [], connectionKey);
+      await this.db.executeQuery(`SET SCHEMA ${quoteSafeIdentifier(normalizedSchemaName, '"', 'Schema name')}`, [], connectionKey);
 
-      return { success: true, message: `Schema changed to ${schemaName}` };
+      return { success: true, message: `Schema changed to ${normalizedSchemaName}` };
     } catch (error: unknown) {
       throw new Error(`Failed to set schema: ${getErrorMessage(error)}`);
     }
