@@ -15,11 +15,12 @@ import {
 } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { AgGridAngular } from 'ag-grid-angular'
-import { ColDef, ModuleRegistry, AllCommunityModule } from 'ag-grid-community'
+import { ColDef, ModuleRegistry, AllCommunityModule, IDatasource } from 'ag-grid-community'
 import { buildTypedColumnDefs } from '../../../utils/grid-column-formatting'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
+import { QueryResultGridDataSourceService } from '../../../services/query-result-grid/query-result-grid-data-source.service'
 import {
   QueryResultExportPayload,
   QueryResultExportService
@@ -62,6 +63,7 @@ interface CellSelectionContextMenu {
 })
 export class TableQueryComponent implements AfterViewInit, OnDestroy {
   private readonly rowIndexColumnId = '__dbolt_row_index__'
+  private readonly infiniteRowThreshold = 5000
   private _query: any[] = []
   private scrollTop = 0
 
@@ -140,6 +142,11 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   columnDefs: ColDef[] = []
   displayRows: any[] = []
+  gridDataSource: IDatasource | undefined = undefined
+  useInfiniteRowModel = false
+  readonly infiniteCacheBlockSize = 250
+  readonly infiniteMaxBlocksInCache = 8
+  readonly infiniteBlockLoadDebounceMillis = 25
   selectedFullRowCount = 0
   canSelectAllLoadedRows = false
   editingEnabled = false
@@ -149,11 +156,17 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   copyErrorMessage = ''
   cellSelectionMenu: CellSelectionContextMenu | null = null
   isApplyingEdits = false
-  defaultColDef: ColDef = {
+  private readonly clientDefaultColDef: ColDef = {
     sortable: true,
     filter: true,
     resizable: true
   }
+  private readonly infiniteDefaultColDef: ColDef = {
+    sortable: false,
+    filter: false,
+    resizable: true
+  }
+  defaultColDef: ColDef = this.clientDefaultColDef
   rowClassRules = {
     'dbolt-row-delete-preview': (params: any) => this.pendingDeletes.has(this.getRowId(params.data)),
     'dbolt-row-insert-preview': (params: any) => this.isInsertRow(this.getRowId(params.data))
@@ -165,6 +178,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     private IAPI: InternalApiService,
     private connectionContext: ConnectionContextService,
     private runQuery: RunQueryService,
+    private gridDataSourceService: QueryResultGridDataSourceService,
     private resultExport: QueryResultExportService
   ) { }
 
@@ -175,6 +189,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.resetCellSelection()
     this.resetEditPreview()
     this.rebuildDisplayRows(false)
+    this.syncGridRowModel()
     this.updateColumns()
     this.refreshEditCapability()
     this.queueViewportRefresh()
@@ -248,6 +263,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     if (changes['executedSql'] || changes['dbContext'] || changes['isSelectResult']) {
       this.resetEditPreview()
+      this.syncGridRowModel()
       this.refreshEditCapability()
       this.updateColumns()
     }
@@ -452,6 +468,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.editErrorMessage = ''
     this.rebuildDisplayRows(true)
     this.resetCellSelection()
+    this.syncGridRowModel()
     this.updateColumns()
   }
 
@@ -459,6 +476,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.editingEnabled = false
     this.resetEditPreview()
     this.rebuildDisplayRows(false)
+    this.syncGridRowModel()
     this.updateColumns()
     this.refreshVisibleGrid(true)
   }
@@ -1419,6 +1437,22 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.pendingInserts.delete(rowId)
     this.displayRows = this.displayRows.filter((row) => this.getRowId(row) !== rowId)
     this.refreshSelectionSummary()
+  }
+
+  private syncGridRowModel(): void {
+    this.useInfiniteRowModel = this.shouldUseInfiniteRowModel()
+    this.defaultColDef = this.useInfiniteRowModel
+      ? this.infiniteDefaultColDef
+      : this.clientDefaultColDef
+    this.gridDataSource = this.useInfiniteRowModel
+      ? this.gridDataSourceService.create(this.displayRows)
+      : undefined
+  }
+
+  private shouldUseInfiniteRowModel(): boolean {
+    return this.isSelectResult &&
+      !this.editingEnabled &&
+      this.query.length >= this.infiniteRowThreshold
   }
 
   private getVisibleFields(): string[] {
