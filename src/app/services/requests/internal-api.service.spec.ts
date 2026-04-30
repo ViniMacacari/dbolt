@@ -11,7 +11,16 @@ describe('InternalApiService', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: HttpClient, useValue: {} },
-        { provide: InternalSessionTokenService, useValue: { getToken: () => Promise.resolve('test-token') } }
+        {
+          provide: InternalSessionTokenService,
+          useValue: {
+            getSession: () => Promise.resolve({
+              baseUrl: 'http://127.0.0.1:47953',
+              token: 'test-token',
+              tokenHeader: 'x-dbolt-session-token'
+            })
+          }
+        }
       ]
     });
     service = TestBed.inject(InternalApiService);

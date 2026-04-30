@@ -3,7 +3,11 @@ export {};
 declare global {
   interface Window {
     dboltInternalApi?: {
-      getSessionToken(): Promise<string>;
+      getSession(): Promise<{
+        baseUrl: string;
+        token: string;
+        tokenHeader: string;
+      }>;
     };
   }
 }

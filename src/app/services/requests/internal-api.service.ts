@@ -8,8 +8,6 @@ import { InternalSessionTokenService } from './internal-session-token.service'
   providedIn: 'root'
 })
 export class InternalApiService {
-  private readonly baseUrl: string = 'http://127.0.0.1:47953'
-
   constructor(
     private http: HttpClient,
     private sessionToken: InternalSessionTokenService
@@ -17,7 +15,8 @@ export class InternalApiService {
 
   async get<T>(url: string): Promise<T> {
     try {
-      return await firstValueFrom(this.http.get<T>(this.baseUrl + url, await this.requestOptions()))
+      const options = await this.requestOptions()
+      return await firstValueFrom(this.http.get<T>(options.baseUrl + url, { headers: options.headers }))
     } catch (error) {
       throw this.handleError(error)
     }
@@ -25,7 +24,8 @@ export class InternalApiService {
 
   async post<T>(url: string, body: any): Promise<T> {
     try {
-      return await firstValueFrom(this.http.post<T>(this.baseUrl + url, body, await this.requestOptions()))
+      const options = await this.requestOptions()
+      return await firstValueFrom(this.http.post<T>(options.baseUrl + url, body, { headers: options.headers }))
     } catch (error) {
       throw this.handleError(error)
     }
@@ -33,7 +33,8 @@ export class InternalApiService {
 
   async put<T>(url: string, body: any): Promise<T> {
     try {
-      return await firstValueFrom(this.http.put<T>(this.baseUrl + url, body, await this.requestOptions()))
+      const options = await this.requestOptions()
+      return await firstValueFrom(this.http.put<T>(options.baseUrl + url, body, { headers: options.headers }))
     } catch (error) {
       throw this.handleError(error)
     }
@@ -41,7 +42,8 @@ export class InternalApiService {
 
   async patch<T>(url: string, body: any): Promise<T> {
     try {
-      return await firstValueFrom(this.http.patch<T>(this.baseUrl + url, body, await this.requestOptions()))
+      const options = await this.requestOptions()
+      return await firstValueFrom(this.http.patch<T>(options.baseUrl + url, body, { headers: options.headers }))
     } catch (error) {
       throw this.handleError(error)
     }
@@ -49,16 +51,20 @@ export class InternalApiService {
 
   async delete<T>(url: string): Promise<T> {
     try {
-      return await firstValueFrom(this.http.delete<T>(this.baseUrl + url, await this.requestOptions()))
+      const options = await this.requestOptions()
+      return await firstValueFrom(this.http.delete<T>(options.baseUrl + url, { headers: options.headers }))
     } catch (error) {
       throw this.handleError(error)
     }
   }
 
-  private async requestOptions(): Promise<{ headers: HttpHeaders }> {
+  private async requestOptions(): Promise<{ baseUrl: string; headers: HttpHeaders }> {
+    const session = await this.sessionToken.getSession()
+
     return {
+      baseUrl: session.baseUrl,
       headers: new HttpHeaders({
-        'x-dbolt-session-token': await this.sessionToken.getToken()
+        [session.tokenHeader]: session.token
       })
     }
   }
