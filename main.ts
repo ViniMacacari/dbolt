@@ -8,7 +8,7 @@ import {
   getInternalApiSessionToken
 } from './api/services/security/internal-session-token.js';
 
-const { app, BrowserWindow, ipcMain } = require('electron') as typeof import('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron') as typeof import('electron');
 const appRoot = path.resolve(__dirname, '..');
 const angularIndexPath = path.join(
   appRoot,
@@ -19,6 +19,7 @@ const angularIndexPath = path.join(
 );
 const angularRendererBaseUrl = pathToFileURL(`${path.dirname(angularIndexPath)}${path.sep}`).href;
 const INTERNAL_API_SESSION_CHANNEL = 'dbolt:internal-api-session';
+const ORIGINAL_REPOSITORY_URL = 'https://github.com/ViniMacacari/dbolt';
 
 let win: InstanceType<typeof BrowserWindow> | null = null;
 
@@ -91,7 +92,13 @@ function createWindow(): void {
     win?.webContents.setZoomFactor(1.0);
   });
 
-  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url === ORIGINAL_REPOSITORY_URL) {
+      void shell.openExternal(url);
+    }
+
+    return { action: 'deny' };
+  });
 
   win.webContents.on('will-navigate', (event, url) => {
     if (!isTrustedRendererUrl(url)) {

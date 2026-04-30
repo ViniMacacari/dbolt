@@ -1,0 +1,166 @@
+:host {
+    display: block;
+    height: 100%;
+    min-height: 0;
+    width: 100%;
+}
+
+.help-page {
+    background: #131313;
+    color: #e8eaed;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding: 24px;
+    width: 100%;
+}
+
+.help-shell {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+    row-gap: 18px;
+    width: 100%;
+}
+
+.help-header {
+    align-items: center;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+}
+
+.title-block {
+    min-width: 0;
+
+    h1,
+    p {
+        font-family: 'Nunito';
+        margin: 0;
+    }
+
+    h1 {
+        color: #e8eaed;
+        font-size: 1.15em;
+        font-weight: 800;
+    }
+
+    p {
+        color: #b8b8b9;
+        font-size: .86em;
+        margin-top: 3px;
+    }
+}
+
+.help-actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+}
+
+.repo-link,
+.back-button {
+    align-items: center;
+    background: #000;
+    border: 1px solid #232020;
+    border-radius: 10px;
+    color: #e8eaed;
+    cursor: pointer;
+    display: inline-flex;
+    font-family: 'Nunito';
+    font-size: .78em;
+    font-weight: 800;
+    gap: 8px;
+    height: 40px;
+    justify-content: center;
+    padding: 0 14px;
+    text-decoration: none;
+
+    &:hover {
+        background: #232020;
+    }
+}
+
+.help-content {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.help-section {
+    background: #000;
+    border: 1px solid #181818;
+    border-radius: 18px;
+    min-width: 0;
+    padding: 20px;
+
+    h2,
+    p,
+    li {
+        font-family: 'Nunito';
+    }
+
+    h2 {
+        color: #e8eaed;
+        font-size: .98em;
+        font-weight: 850;
+        margin: 0 0 10px;
+    }
+
+    p {
+        color: #b8b8b9;
+        font-size: .82em;
+        line-height: 1.45;
+        margin: 0 0 14px;
+    }
+
+    ul {
+        display: grid;
+        gap: 10px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    li {
+        color: #b8b8b9;
+        font-size: .8em;
+        line-height: 1.42;
+        padding-left: 14px;
+        position: relative;
+
+        &::before {
+            background: #739eca;
+            border-radius: 50%;
+            content: '';
+            height: 5px;
+            left: 0;
+            position: absolute;
+            top: .58em;
+            width: 5px;
+        }
+    }
+}
+
+@media (max-width: 900px) {
+    .help-page {
+        padding: 14px 16px;
+    }
+
+    .help-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .help-actions {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+    }
+
+    .help-content {
+        grid-template-columns: 1fr;
+    }
+}
