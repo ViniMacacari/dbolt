@@ -11,6 +11,7 @@ import {
   trimStatementTerminator
 } from '../../../utils/sql-query.js';
 import { buildCommandResult } from '../../../utils/query-command-result.js';
+import { quoteSqlServerIdentifier } from '../../../utils/sql-identifiers.js';
 
 import type {
   QueryExecutionResult,
@@ -119,13 +120,14 @@ class SQuerySQLServerV1 {
 
     const regex = /(?:from|join)\s+([\w\d]+(?:\.[\w\d]+)?)(\s+[as]?\s+\w+)?/gi;
     const cteNames = this.getCteNames(sql);
+    const quotedCurrentSchema = quoteSqlServerIdentifier(currentSchema, 'Schema name');
 
     return sql.replace(regex, (match, table: string) => {
       if (table.includes('.') || cteNames.has(table.toLowerCase())) {
         return match;
       }
 
-      return match.replace(table, `${currentSchema}.${table}`);
+      return match.replace(table, `${quotedCurrentSchema}.${table}`);
     });
   }
 
