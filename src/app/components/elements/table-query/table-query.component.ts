@@ -370,6 +370,16 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.closeResult.emit()
   }
 
+  getRowsSummary(): string {
+    const loadedRows = this.query.length
+
+    if (this.totalRows !== null && this.totalRows !== undefined && loadedRows < this.totalRows) {
+      return `${this.formatRowCount(loadedRows)} loaded of ${this.formatRowCount(this.totalRows)} rows`
+    }
+
+    return `${this.formatRowCount(loadedRows)} rows`
+  }
+
   releaseData(): void {
     this.agGrid?.api?.setGridOption('datasource', undefined)
     this.agGrid?.api?.setGridOption('rowData', [])
@@ -1595,8 +1605,10 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   }
 
   private canLoadMore(): boolean {
-    if (this.editingEnabled || this.hasPendingChanges()) return false
+    return false
+  }
 
-    return !this.isSelectResult || this.totalRows === null || this.query.length < this.totalRows
+  private formatRowCount(value: number): string {
+    return Number(value || 0).toLocaleString('en-US')
   }
 }

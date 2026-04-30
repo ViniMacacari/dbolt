@@ -46,8 +46,8 @@ class SQuerySQLServerV1 {
       console.warn('Unable to count SQL Server query rows. Running main query without total row count.', error);
     }
 
-    if (rowLimit && !this.hasLimitClause(executableSql)) {
-      executableSql = this.addPaginationToQuery(executableSql, rowLimit);
+    if (rowLimit) {
+      executableSql = this.limitQueryResult(executableSql, rowLimit);
     }
 
     const result = await this.db.executeQuery(executableSql, [], connectionKey);
@@ -80,6 +80,17 @@ class SQuerySQLServerV1 {
 
   addPaginationToQuery(sql: string, maxLines: number): string {
     return addSqlServerTopClause(trimStatementTerminator(sql), maxLines);
+  }
+
+  limitQueryResult(sql: string, maxLines: number): string {
+    const trimmedSql = trimStatementTerminator(sql);
+
+    if (!this.hasLimitClause(trimmedSql)) {
+      return this.addPaginationToQuery(trimmedSql, maxLines);
+    }
+
+    const { prefix, mainSql } = splitCtePrefix(trimmedSql);
+    return `${prefix} SELECT TOP (${Math.max(0, Math.floor(maxLines))}) * FROM (\n${trimStatementTerminator(mainSql)}\n) AS limited_query_result`;
   }
 
   addTotalRowCountQuery(sql: string): string {

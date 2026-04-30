@@ -4,11 +4,11 @@
         <div class="result-actions">
             <div class="result-title">
                 <span>Results</span>
-                <small *ngIf="isSelectResult && totalRows !== null">{{ totalRows }} rows</small>
+                <small *ngIf="isSelectResult">{{ getRowsSummary() }}</small>
             </div>
 
             <div class="row-limit" *ngIf="isSelectResult">
-                <label for="query-row-limit">Rows</label>
+                <label for="query-row-limit">Max rows</label>
                 <input id="query-row-limit" type="number" min="1" step="1" [value]="rowLimit"
                     (input)="onRowLimitInput($event)" (keydown.enter)="applyRowLimit()">
                 <button type="button" (click)="applyRowLimit()">Apply</button>
