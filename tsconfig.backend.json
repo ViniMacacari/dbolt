@@ -20,6 +20,7 @@
   },
   "include": [
     "main.ts",
+    "preload.ts",
     "api/**/*.ts"
   ],
   "exclude": [

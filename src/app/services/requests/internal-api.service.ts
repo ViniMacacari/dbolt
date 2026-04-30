@@ -1,18 +1,22 @@
 import { Injectable } from '@angular/core'
-import { HttpClient, HttpErrorResponse } from '@angular/common/http'
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http'
 import { firstValueFrom } from 'rxjs'
+
+import { InternalSessionTokenService } from './internal-session-token.service'
 
 @Injectable({
   providedIn: 'root'
 })
 export class InternalApiService {
-  private baseUrl: string = 'http://localhost:47953'
-
-  constructor(private http: HttpClient) { }
+  constructor(
+    private http: HttpClient,
+    private sessionToken: InternalSessionTokenService
+  ) { }
 
   async get<T>(url: string): Promise<T> {
     try {
-      return await firstValueFrom(this.http.get<T>(this.baseUrl + url))
+      const options = await this.requestOptions()
+      return await firstValueFrom(this.http.get<T>(options.baseUrl + url, { headers: options.headers }))
     } catch (error) {
       throw this.handleError(error)
     }
@@ -20,7 +24,8 @@ export class InternalApiService {
 
   async post<T>(url: string, body: any): Promise<T> {
     try {
-      return await firstValueFrom(this.http.post<T>(this.baseUrl + url, body))
+      const options = await this.requestOptions()
+      return await firstValueFrom(this.http.post<T>(options.baseUrl + url, body, { headers: options.headers }))
     } catch (error) {
       throw this.handleError(error)
     }
@@ -28,7 +33,8 @@ export class InternalApiService {
 
   async put<T>(url: string, body: any): Promise<T> {
     try {
-      return await firstValueFrom(this.http.put<T>(this.baseUrl + url, body))
+      const options = await this.requestOptions()
+      return await firstValueFrom(this.http.put<T>(options.baseUrl + url, body, { headers: options.headers }))
     } catch (error) {
       throw this.handleError(error)
     }
@@ -36,7 +42,8 @@ export class InternalApiService {
 
   async patch<T>(url: string, body: any): Promise<T> {
     try {
-      return await firstValueFrom(this.http.patch<T>(this.baseUrl + url, body))
+      const options = await this.requestOptions()
+      return await firstValueFrom(this.http.patch<T>(options.baseUrl + url, body, { headers: options.headers }))
     } catch (error) {
       throw this.handleError(error)
     }
@@ -44,9 +51,21 @@ export class InternalApiService {
 
   async delete<T>(url: string): Promise<T> {
     try {
-      return await firstValueFrom(this.http.delete<T>(this.baseUrl + url))
+      const options = await this.requestOptions()
+      return await firstValueFrom(this.http.delete<T>(options.baseUrl + url, { headers: options.headers }))
     } catch (error) {
       throw this.handleError(error)
+    }
+  }
+
+  private async requestOptions(): Promise<{ baseUrl: string; headers: HttpHeaders }> {
+    const session = await this.sessionToken.getSession()
+
+    return {
+      baseUrl: session.baseUrl,
+      headers: new HttpHeaders({
+        [session.tokenHeader]: session.token
+      })
     }
   }
 
