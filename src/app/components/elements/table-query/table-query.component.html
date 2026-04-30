@@ -84,8 +84,11 @@
         </div>
 
         <div class="query-status error" *ngIf="errorMessage">
-            <strong>Query error</strong>
-            <span>{{ errorMessage }}</span>
+            <div class="query-error-header">
+                <strong>Query error</strong>
+                <button type="button" (click)="copyQueryError($event)">Copy</button>
+            </div>
+            <span class="query-error-message">{{ errorMessage }}</span>
         </div>
 
         <div class="query-status empty"

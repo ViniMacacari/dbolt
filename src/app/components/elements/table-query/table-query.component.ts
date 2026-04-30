@@ -2,6 +2,7 @@ import {
   Component,
   Input,
   AfterViewInit,
+  OnDestroy,
   ViewChild,
   ElementRef,
   HostListener,
@@ -59,7 +60,7 @@ interface CellSelectionContextMenu {
   styleUrls: ['./table-query.component.scss'],
   encapsulation: ViewEncapsulation.None
 })
-export class TableQueryComponent implements AfterViewInit {
+export class TableQueryComponent implements AfterViewInit, OnDestroy {
   private _query: any[] = []
   private scrollTop = 0
 
@@ -85,6 +86,25 @@ export class TableQueryComponent implements AfterViewInit {
 
   @ViewChild('tableWrapper') tableWrapper!: ElementRef<HTMLDivElement>
   @ViewChild('agGrid') agGrid!: AgGridAngular
+  @ViewChild('agGrid', { read: ElementRef })
+  set agGridElementRef(element: ElementRef<HTMLElement> | undefined) {
+    const nextElement = element?.nativeElement || null
+    if (this.gridHostElement === nextElement) return
+
+    this.unbindGridContextMenuListener()
+    this.gridHostElement = nextElement
+
+    if (!nextElement) return
+
+    const listener = (event: Event) => {
+      this.zone.run(() => this.onGridNativeContextMenu(event as MouseEvent))
+    }
+
+    nextElement.addEventListener('contextmenu', listener, true)
+    this.removeGridContextMenuListener = () => {
+      nextElement.removeEventListener('contextmenu', listener, true)
+    }
+  }
 
   isElementVisible = false
   private resizeTimeout: any
@@ -111,6 +131,8 @@ export class TableQueryComponent implements AfterViewInit {
   private selectionAnchor: CellSelectionPoint | null = null
   private selectionEnd: CellSelectionPoint | null = null
   private isSelectingCells = false
+  private gridHostElement: HTMLElement | null = null
+  private removeGridContextMenuListener: (() => void) | null = null
 
   scrollTimeout: any
 
@@ -184,7 +206,12 @@ export class TableQueryComponent implements AfterViewInit {
       return
     }
 
-    if (!this.isCopyShortcut(event) || !this.isEventInsideTable(event) || this.isTextEditingTarget(event.target)) {
+    if (
+      !this.isCopyShortcut(event) ||
+      !this.isEventInsideTable(event) ||
+      this.isTextEditingTarget(event.target) ||
+      this.hasTextSelection()
+    ) {
       return
     }
 
@@ -200,6 +227,10 @@ export class TableQueryComponent implements AfterViewInit {
     this.adjustTableWrapperSize()
     this.updateColumns()
     this.cdr.detectChanges()
+  }
+
+  ngOnDestroy(): void {
+    this.unbindGridContextMenuListener()
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -342,6 +373,7 @@ export class TableQueryComponent implements AfterViewInit {
     const field = event.colDef?.field
     const point = field && event.data ? this.getSelectionPoint(event.data, field) : null
     if (!point) return
+    if (this.selectionEnd?.rowId === point.rowId && this.selectionEnd?.field === point.field) return
 
     this.selectionEnd = point
     this.updateSelectedCells()
@@ -353,23 +385,14 @@ export class TableQueryComponent implements AfterViewInit {
     const field = event.colDef?.field
     if (!mouseEvent || !field || !event.data) return
 
-    mouseEvent.preventDefault()
-    mouseEvent.stopPropagation()
+    this.openCellSelectionMenu(event.data, field, mouseEvent)
+  }
 
-    const point = this.getSelectionPoint(event.data, field)
-    if (!point) return
+  onGridNativeContextMenu(event: MouseEvent): void {
+    const context = this.getNativeCellContext(event)
+    if (!context) return
 
-    if (!this.isCellSelectedByPoint(point)) {
-      this.selectionAnchor = point
-      this.selectionEnd = point
-      this.updateSelectedCells()
-      this.refreshVisibleGrid()
-    }
-
-    this.cellSelectionMenu = {
-      x: Math.max(8, Math.min(mouseEvent.clientX, window.innerWidth - 190)),
-      y: Math.max(8, Math.min(mouseEvent.clientY, window.innerHeight - 145))
-    }
+    this.openCellSelectionMenu(context.row, context.field, event)
   }
 
   async copySelectedData(): Promise<void> {
@@ -386,6 +409,19 @@ export class TableQueryComponent implements AfterViewInit {
 
     this.resultExport.exportXlsx(payload, 'query-result-selection.xlsx')
     this.cellSelectionMenu = null
+  }
+
+  async copyQueryError(event: MouseEvent): Promise<void> {
+    event.stopPropagation()
+    if (!this.errorMessage) return
+
+    try {
+      this.copyErrorMessage = ''
+      await this.resultExport.copyText(this.errorMessage)
+    } catch (error: any) {
+      console.error(error)
+      this.copyErrorMessage = error?.message || 'Could not copy query error.'
+    }
   }
 
   canStartEditing(): boolean {
@@ -408,7 +444,7 @@ export class TableQueryComponent implements AfterViewInit {
     this.resetEditPreview()
     this.rebuildDisplayRows()
     this.updateColumns()
-    this.refreshVisibleGrid()
+    this.refreshVisibleGrid(true)
   }
 
   markSelectedRowsForDelete(): void {
@@ -424,7 +460,7 @@ export class TableQueryComponent implements AfterViewInit {
       this.pendingUpdates.delete(rowId)
     })
     this.selectedRows.clear()
-    this.refreshVisibleGrid()
+    this.refreshVisibleGrid(true)
   }
 
   addRow(): void {
@@ -491,10 +527,12 @@ export class TableQueryComponent implements AfterViewInit {
     }
   }
 
-  refreshVisibleGrid(): void {
+  refreshVisibleGrid(redrawRows = false): void {
     window.requestAnimationFrame(() => {
       this.agGrid?.api?.refreshCells({ force: false })
-      this.agGrid?.api?.redrawRows()
+      if (redrawRows) {
+        this.agGrid?.api?.redrawRows()
+      }
     })
   }
 
@@ -529,6 +567,53 @@ export class TableQueryComponent implements AfterViewInit {
     if (bodyViewport) {
       bodyViewport.scrollTop = this.scrollTop
     }
+  }
+
+  private openCellSelectionMenu(row: any, field: string, event: MouseEvent): void {
+    if (!row || !field) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    event.stopImmediatePropagation()
+
+    const point = this.getSelectionPoint(row, field)
+    if (!point) return
+
+    if (!this.isCellSelectedByPoint(point)) {
+      this.selectionAnchor = point
+      this.selectionEnd = point
+      this.updateSelectedCells()
+      this.refreshVisibleGrid()
+    }
+
+    this.cellSelectionMenu = {
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - 190)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - 145))
+    }
+  }
+
+  private getNativeCellContext(event: MouseEvent): { row: any, field: string } | null {
+    const target = event.target as HTMLElement | null
+    const cellElement = target?.closest('.ag-cell[col-id]') as HTMLElement | null
+    const rowElement = cellElement?.closest('.ag-row') as HTMLElement | null
+    const field = cellElement?.getAttribute('col-id') || ''
+    const rowIndex = Number(rowElement?.getAttribute('row-index'))
+
+    if (!cellElement || !rowElement || !field || !Number.isFinite(rowIndex)) return null
+    if (!this.getVisibleFields().includes(field)) return null
+
+    const displayedRow = this.agGrid?.api?.getDisplayedRowAtIndex(rowIndex)
+    if (!displayedRow?.data) return null
+
+    return {
+      row: displayedRow.data,
+      field
+    }
+  }
+
+  private unbindGridContextMenuListener(): void {
+    this.removeGridContextMenuListener?.()
+    this.removeGridContextMenuListener = null
   }
 
   private async runSelectionExport(action: (payload: QueryResultExportPayload) => Promise<void>): Promise<void> {
@@ -647,6 +732,10 @@ export class TableQueryComponent implements AfterViewInit {
   private isEventInsideTable(event: Event): boolean {
     const target = event.target as Node | null
     return !!target && !!this.tableWrapper?.nativeElement?.contains(target)
+  }
+
+  private hasTextSelection(): boolean {
+    return (window.getSelection()?.toString() || '').length > 0
   }
 
   private isTextEditingTarget(target: EventTarget | null): boolean {
