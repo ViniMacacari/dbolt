@@ -1,0 +1,30 @@
+<main class="help-page">
+    <section class="help-shell">
+        <header class="help-header">
+            <div class="title-block">
+                <h1>DBolt Help</h1>
+                <p>App usage, common questions, and driver behavior.</p>
+            </div>
+
+            <div class="help-actions">
+                <a class="repo-link" [href]="repositoryUrl" target="_blank" rel="noopener noreferrer">
+                    Original repo
+                </a>
+                <button type="button" class="back-button" (click)="goHome()">
+                    <img src="icons/home.png" height="14px" width="14px">
+                    Home
+                </button>
+            </div>
+        </header>
+
+        <section class="help-content">
+            <article class="help-section" *ngFor="let section of sections">
+                <h2>{{ section.title }}</h2>
+                <p *ngIf="section.description">{{ section.description }}</p>
+                <ul>
+                    <li *ngFor="let item of section.items">{{ item }}</li>
+                </ul>
+            </article>
+        </section>
+    </section>
+</main>

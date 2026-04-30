@@ -63,6 +63,10 @@ export class OpenPageComponent {
     this.isModalOpen = true
   }
 
+  openHelp(): void {
+    this.router.navigate(['/help'])
+  }
+
   async closeModal() {
     await this.loadConnections()
     this.isModalOpen = false

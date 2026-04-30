@@ -99,6 +99,7 @@
 }
 
 .new-button,
+.help-button,
 .open-button {
     align-items: center;
     background: #000;
@@ -553,6 +554,10 @@
     }
 
     .new-button {
+        padding: 0 12px;
+    }
+
+    .help-button {
         padding: 0 12px;
     }
 
