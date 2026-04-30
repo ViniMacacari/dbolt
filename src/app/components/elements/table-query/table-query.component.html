@@ -14,6 +14,37 @@
                 <button type="button" (click)="applyRowLimit()">Apply</button>
             </div>
 
+            <div class="edit-actions" *ngIf="isSelectResult">
+                <button type="button" class="result-icon-button" title="Edit result rows" *ngIf="!editingEnabled"
+                    [disabled]="!canStartEditing()" (click)="startEditing()">
+                    <img src="icons/edit.png" height="13px" width="13px">
+                </button>
+
+                <ng-container *ngIf="editingEnabled">
+                    <button type="button" class="result-icon-button" title="Apply changes"
+                        [disabled]="!hasPendingChanges() || isApplyingEdits" (click)="applyPendingChanges()">
+                        <img src="icons/save.png" height="13px" width="13px">
+                    </button>
+                    <button type="button" class="result-icon-button" title="Cancel changes"
+                        [disabled]="isApplyingEdits" (click)="cancelEditing()">
+                        <img src="icons/close.png" height="13px" width="13px">
+                    </button>
+                    <button type="button" class="result-icon-button danger" title="Preview row delete"
+                        [disabled]="getSelectedRowCount() === 0 || isApplyingEdits"
+                        (click)="markSelectedRowsForDelete()">
+                        <img src="icons/delete.png" height="13px" width="13px">
+                    </button>
+                    <small *ngIf="hasPendingChanges()">{{ getPendingChangeCount() }} pending</small>
+                </ng-container>
+            </div>
+
+            <small class="edit-message" *ngIf="isSelectResult && !editingEnabled && editCapabilityMessage">
+                {{ editCapabilityMessage }}
+            </small>
+            <small class="edit-message error" *ngIf="editErrorMessage">
+                {{ editErrorMessage }}
+            </small>
+
             <button type="button" class="toggle-result-size"
                 [attr.aria-label]="isExpanded ? 'Restore results' : 'Expand results'"
                 [title]="isExpanded ? 'Restore results' : 'Expand results'" (click)="toggleResultSize()">
@@ -24,15 +55,16 @@
         </div>
     </div>
     <div class="result-body">
-        <ag-grid-angular *ngIf="!errorMessage" #agGrid class="ag-root" [rowData]="query" [columnDefs]="columnDefs"
+        <ag-grid-angular *ngIf="!errorMessage" #agGrid class="ag-root" [rowData]="displayRows" [columnDefs]="columnDefs"
             [defaultColDef]="defaultColDef" [domLayout]="'normal'" [rowBuffer]="20"
             [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false" [suppressNoRowsOverlay]="true"
-            [animateRows]="false" (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)">
+            [animateRows]="false" [rowClassRules]="rowClassRules" (firstDataRendered)="query"
+            (bodyScroll)="onBodyScroll($event)">
         </ag-grid-angular>
 
-        <div class="query-status loading" *ngIf="isLoading || isLoadingMore">
+        <div class="query-status loading" *ngIf="isLoading || isLoadingMore || isApplyingEdits">
             <span class="query-spinner"></span>
-            <span>{{ isLoadingMore ? 'Loading rows...' : 'Executing query...' }}</span>
+            <span>{{ isApplyingEdits ? 'Applying changes...' : (isLoadingMore ? 'Loading rows...' : 'Executing query...') }}</span>
         </div>
 
         <div class="query-status error" *ngIf="errorMessage">

@@ -80,6 +80,34 @@
 
         border: 1px solid #747474 !important;
     }
+
+    .dbolt-cell-edited {
+        background-color: rgba(115, 158, 202, .18) !important;
+        box-shadow: inset 0 -2px 0 #739eca;
+    }
+
+    .dbolt-cell-readonly {
+        opacity: .72;
+    }
+
+    .dbolt-row-delete-preview .ag-cell {
+        background-color: rgba(157, 68, 68, .18) !important;
+        color: #ffcdcd;
+        text-decoration: line-through;
+    }
+
+    .dbolt-row-selector-cell {
+        align-items: center;
+        display: flex;
+        justify-content: center;
+
+        input {
+            accent-color: #739eca;
+            cursor: pointer;
+            height: 14px;
+            width: 14px;
+        }
+    }
 }
 
 .query-status {
@@ -252,6 +280,60 @@
         &:hover {
             background: #334052;
         }
+    }
+}
+
+.edit-actions {
+    align-items: center;
+    display: flex;
+    gap: 6px;
+
+    small {
+        color: #9fbede;
+        font-family: 'Nunito';
+        font-size: .72em;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+}
+
+.edit-message {
+    color: #969696;
+    font-family: 'Nunito';
+    font-size: .7em;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &.error {
+        color: #ffb4b4;
+    }
+}
+
+.result-icon-button {
+    align-items: center;
+    background: #292727;
+    border: none;
+    border-radius: 9px;
+    color: #969696;
+    cursor: pointer;
+    display: flex;
+    height: 28px;
+    justify-content: center;
+    width: 30px;
+
+    &:hover:not(:disabled) {
+        background: #334052;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: .45;
+    }
+
+    &.danger:hover:not(:disabled) {
+        background: #543030;
     }
 }
 

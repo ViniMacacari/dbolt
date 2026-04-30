@@ -26,7 +26,7 @@
         <div class="result-panel" *ngIf="queryResultOpen">
             <app-table-query (newValuesQuery)="newValues()" [query]="queryReponse" [resultHeight]="queryResultHeight"
                 [columns]="queryColumns" [calcWidth]="widthTable" [rowLimit]="queryFetchSize" [totalRows]="maxResultLines"
-                [isSelectResult]="maxResultLines !== null && maxResultLines !== undefined"
+                [isSelectResult]="queryResultIsSelect" [executedSql]="cacheSql" [dbContext]="tabInfo?.dbInfo"
                 [isExpanded]="queryResultExpanded" [isLoading]="isLoadingQuery" [isLoadingMore]="isLoadingMore"
                 [errorMessage]="queryError"
                 (rowLimitChange)="onQueryFetchSizeChange($event)" (refreshQuery)="refreshQueryWithFetchSize()"
