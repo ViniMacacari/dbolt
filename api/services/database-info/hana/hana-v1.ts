@@ -127,18 +127,14 @@ class ListObjectsHanaV1 {
             CASE
               WHEN c.IS_PRIMARY_KEY = 'TRUE' THEN 'PRIMARY KEY'
               WHEN c.IS_UNIQUE_KEY = 'TRUE' THEN 'UNIQUE'
-              ELSE c.CONSTRAINT_TYPE
+              ELSE 'CONSTRAINT'
             END AS "type",
-            cc.COLUMN_NAME AS "column_name",
-            cc.POSITION AS "ordinal_position"
+            c.COLUMN_NAME AS "column_name",
+            c.POSITION AS "ordinal_position"
           FROM SYS.CONSTRAINTS c
-          LEFT JOIN SYS.CONSTRAINT_COLUMNS cc
-            ON cc.SCHEMA_NAME = c.SCHEMA_NAME
-            AND cc.TABLE_NAME = c.TABLE_NAME
-            AND cc.CONSTRAINT_NAME = c.CONSTRAINT_NAME
           WHERE c.SCHEMA_NAME = CURRENT_SCHEMA
             AND c.TABLE_NAME = ?
-          ORDER BY c.CONSTRAINT_NAME, cc.POSITION
+          ORDER BY c.CONSTRAINT_NAME, c.POSITION
         `,
         [tableName.toUpperCase()],
         connectionKey
