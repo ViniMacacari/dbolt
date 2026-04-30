@@ -250,6 +250,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.unbindGridContextMenuListener()
+    this.releaseData()
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -367,6 +368,27 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   close(): void {
     this.closeResult.emit()
+  }
+
+  releaseData(): void {
+    this.agGrid?.api?.setGridOption('datasource', undefined)
+    this.agGrid?.api?.setGridOption('rowData', [])
+    this._query = []
+    this.displayRows = []
+    this.gridDataSource = undefined
+    this.rowData = []
+    this.displayRowIds = new WeakMap<any, number>()
+    this.pendingUpdates.clear()
+    this.pendingDeletes.clear()
+    this.pendingInserts.clear()
+    this.selectedRows.clear()
+    this.editableColumnsByField.clear()
+    this.resultColumnsByField.clear()
+    this.selectedCellKeys.clear()
+    this.selectedFullRowIds = []
+    this.selectedFullRowCount = 0
+    this.canSelectAllLoadedRows = false
+    this.cellSelectionMenu = null
   }
 
   onGridCellMouseDown(event: any): void {
