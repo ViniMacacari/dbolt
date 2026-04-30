@@ -15,11 +15,12 @@ import {
 } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { AgGridAngular } from 'ag-grid-angular'
-import { ColDef, ModuleRegistry, AllCommunityModule } from 'ag-grid-community'
+import { ColDef, ModuleRegistry, AllCommunityModule, IDatasource } from 'ag-grid-community'
 import { buildTypedColumnDefs } from '../../../utils/grid-column-formatting'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
+import { QueryResultGridDataSourceService } from '../../../services/query-result-grid/query-result-grid-data-source.service'
 import {
   QueryResultExportPayload,
   QueryResultExportService
@@ -62,6 +63,7 @@ interface CellSelectionContextMenu {
 })
 export class TableQueryComponent implements AfterViewInit, OnDestroy {
   private readonly rowIndexColumnId = '__dbolt_row_index__'
+  private readonly infiniteRowThreshold = 5000
   private _query: any[] = []
   private scrollTop = 0
 
@@ -134,11 +136,19 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   private isSelectingCells = false
   private gridHostElement: HTMLElement | null = null
   private removeGridContextMenuListener: (() => void) | null = null
+  private selectedFullRowIds: number[] = []
 
   scrollTimeout: any
 
   columnDefs: ColDef[] = []
   displayRows: any[] = []
+  gridDataSource: IDatasource | undefined = undefined
+  useInfiniteRowModel = false
+  readonly infiniteCacheBlockSize = 250
+  readonly infiniteMaxBlocksInCache = 8
+  readonly infiniteBlockLoadDebounceMillis = 25
+  selectedFullRowCount = 0
+  canSelectAllLoadedRows = false
   editingEnabled = false
   editMetadataLoading = false
   editCapabilityMessage = ''
@@ -146,11 +156,17 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   copyErrorMessage = ''
   cellSelectionMenu: CellSelectionContextMenu | null = null
   isApplyingEdits = false
-  defaultColDef: ColDef = {
+  private readonly clientDefaultColDef: ColDef = {
     sortable: true,
     filter: true,
     resizable: true
   }
+  private readonly infiniteDefaultColDef: ColDef = {
+    sortable: false,
+    filter: false,
+    resizable: true
+  }
+  defaultColDef: ColDef = this.clientDefaultColDef
   rowClassRules = {
     'dbolt-row-delete-preview': (params: any) => this.pendingDeletes.has(this.getRowId(params.data)),
     'dbolt-row-insert-preview': (params: any) => this.isInsertRow(this.getRowId(params.data))
@@ -162,6 +178,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     private IAPI: InternalApiService,
     private connectionContext: ConnectionContextService,
     private runQuery: RunQueryService,
+    private gridDataSourceService: QueryResultGridDataSourceService,
     private resultExport: QueryResultExportService
   ) { }
 
@@ -171,7 +188,8 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this._query = value || []
     this.resetCellSelection()
     this.resetEditPreview()
-    this.rebuildDisplayRows()
+    this.rebuildDisplayRows(false)
+    this.syncGridRowModel()
     this.updateColumns()
     this.refreshEditCapability()
     this.queueViewportRefresh()
@@ -232,6 +250,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.unbindGridContextMenuListener()
+    this.releaseData()
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -245,6 +264,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     if (changes['executedSql'] || changes['dbContext'] || changes['isSelectResult']) {
       this.resetEditPreview()
+      this.syncGridRowModel()
       this.refreshEditCapability()
       this.updateColumns()
     }
@@ -350,6 +370,37 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.closeResult.emit()
   }
 
+  getRowsSummary(): string {
+    const loadedRows = this.query.length
+
+    if (this.totalRows !== null && this.totalRows !== undefined && loadedRows < this.totalRows) {
+      return `${this.formatRowCount(loadedRows)} loaded of ${this.formatRowCount(this.totalRows)} rows`
+    }
+
+    return `${this.formatRowCount(loadedRows)} rows`
+  }
+
+  releaseData(): void {
+    this.agGrid?.api?.setGridOption('datasource', undefined)
+    this.agGrid?.api?.setGridOption('rowData', [])
+    this._query = []
+    this.displayRows = []
+    this.gridDataSource = undefined
+    this.rowData = []
+    this.displayRowIds = new WeakMap<any, number>()
+    this.pendingUpdates.clear()
+    this.pendingDeletes.clear()
+    this.pendingInserts.clear()
+    this.selectedRows.clear()
+    this.editableColumnsByField.clear()
+    this.resultColumnsByField.clear()
+    this.selectedCellKeys.clear()
+    this.selectedFullRowIds = []
+    this.selectedFullRowCount = 0
+    this.canSelectAllLoadedRows = false
+    this.cellSelectionMenu = null
+  }
+
   onGridCellMouseDown(event: any): void {
     const mouseEvent = event.event as MouseEvent
     if (mouseEvent?.button !== 0 || !event.data) return
@@ -447,13 +498,17 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     this.editingEnabled = true
     this.editErrorMessage = ''
+    this.rebuildDisplayRows(true)
+    this.resetCellSelection()
+    this.syncGridRowModel()
     this.updateColumns()
   }
 
   cancelEditing(): void {
     this.editingEnabled = false
     this.resetEditPreview()
-    this.rebuildDisplayRows()
+    this.rebuildDisplayRows(false)
+    this.syncGridRowModel()
     this.updateColumns()
     this.refreshVisibleGrid(true)
   }
@@ -486,6 +541,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.displayRowIds.set(newRow, rowId)
     this.pendingInserts.set(rowId, new Map<string, any>())
     this.displayRows = [...this.displayRows, newRow]
+    this.refreshSelectionSummary()
     this.scrollTop = Number.MAX_SAFE_INTEGER
     this.updateColumns()
 
@@ -515,19 +571,11 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   }
 
   hasSelectedFullRows(): boolean {
-    return this.getSelectedFullRowIds().length > 0
+    return this.selectedFullRowCount > 0
   }
 
   getSelectedFullRowCount(): number {
-    return this.getSelectedFullRowIds().length
-  }
-
-  canSelectAllRows(): boolean {
-    const loadedRowCount = this.getDisplayRowIds().length
-
-    return loadedRowCount > 0 &&
-      this.hasSelectedFullRows() &&
-      this.getSelectedFullRowCount() < loadedRowCount
+    return this.selectedFullRowCount
   }
 
   selectAllRows(): void {
@@ -545,6 +593,9 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     this.selectionAnchor = { rowId: rowIds[0], field: fields[0] }
     this.selectionEnd = { rowId: rowIds[rowIds.length - 1], field: fields[fields.length - 1] }
+    this.selectedFullRowIds = rowIds
+    this.selectedFullRowCount = rowIds.length
+    this.canSelectAllLoadedRows = false
     this.isSelectingCells = false
     this.refreshVisibleGrid()
   }
@@ -710,7 +761,10 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   private updateSelectedCells(): void {
     this.selectedCellKeys.clear()
-    if (!this.selectionAnchor || !this.selectionEnd) return
+    if (!this.selectionAnchor || !this.selectionEnd) {
+      this.refreshSelectionSummary()
+      return
+    }
 
     const rowIds = this.getDisplayRowIds()
     const fields = this.getVisibleFields()
@@ -719,7 +773,10 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     const anchorFieldIndex = fields.indexOf(this.selectionAnchor.field)
     const endFieldIndex = fields.indexOf(this.selectionEnd.field)
 
-    if (anchorRowIndex < 0 || endRowIndex < 0 || anchorFieldIndex < 0 || endFieldIndex < 0) return
+    if (anchorRowIndex < 0 || endRowIndex < 0 || anchorFieldIndex < 0 || endFieldIndex < 0) {
+      this.refreshSelectionSummary()
+      return
+    }
 
     const rowStart = Math.min(anchorRowIndex, endRowIndex)
     const rowEnd = Math.max(anchorRowIndex, endRowIndex)
@@ -731,6 +788,8 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
         this.selectedCellKeys.add(this.cellKey(rowId, field))
       })
     })
+
+    this.refreshSelectionSummary()
   }
 
   private getSelectedFields(): string[] {
@@ -783,6 +842,9 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.isSelectingCells = false
     this.cellSelectionMenu = null
     this.copyErrorMessage = ''
+    this.selectedFullRowIds = []
+    this.selectedFullRowCount = 0
+    this.canSelectAllLoadedRows = false
   }
 
   private cellKey(rowId: number, field: string): string {
@@ -812,16 +874,29 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     }
 
     this.isSelectingCells = false
+    this.refreshSelectionSummary()
     this.refreshVisibleGrid()
   }
 
   private getSelectedFullRowIds(): number[] {
-    const fields = this.getVisibleFields()
-    if (fields.length === 0) return []
+    return this.selectedFullRowIds
+  }
 
-    return this.getDisplayRowIds().filter((rowId) =>
+  private refreshSelectionSummary(): void {
+    const fields = this.getVisibleFields()
+    if (fields.length === 0 || this.selectedCellKeys.size === 0) {
+      this.selectedFullRowIds = []
+      this.selectedFullRowCount = 0
+      this.canSelectAllLoadedRows = false
+      return
+    }
+
+    this.selectedFullRowIds = this.getDisplayRowIds().filter((rowId) =>
       fields.every((field) => this.selectedCellKeys.has(this.cellKey(rowId, field)))
     )
+    this.selectedFullRowCount = this.selectedFullRowIds.length
+    this.canSelectAllLoadedRows = this.selectedFullRowCount > 0 &&
+      this.selectedFullRowCount < this.displayRows.length
   }
 
   private isRowIndexColumnEvent(event: any): boolean {
@@ -1364,13 +1439,21 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.refreshVisibleGrid()
   }
 
-  private rebuildDisplayRows(): void {
+  private rebuildDisplayRows(copyRows: boolean = false): void {
     this.displayRowIds = new WeakMap<any, number>()
-    this.displayRows = this.query.map((row, index) => {
-      const displayRow = { ...row }
-      this.displayRowIds.set(displayRow, index)
-      return displayRow
-    })
+    this.displayRows = copyRows
+      ? this.query.map((row, index) => {
+        const displayRow = { ...row }
+        this.displayRowIds.set(displayRow, index)
+        return displayRow
+      })
+      : this.query
+
+    if (!copyRows) {
+      this.displayRows.forEach((row, index) => this.displayRowIds.set(row, index))
+    }
+
+    this.refreshSelectionSummary()
   }
 
   private resetEditPreview(): void {
@@ -1385,6 +1468,23 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   private removeInsertedRow(rowId: number): void {
     this.pendingInserts.delete(rowId)
     this.displayRows = this.displayRows.filter((row) => this.getRowId(row) !== rowId)
+    this.refreshSelectionSummary()
+  }
+
+  private syncGridRowModel(): void {
+    this.useInfiniteRowModel = this.shouldUseInfiniteRowModel()
+    this.defaultColDef = this.useInfiniteRowModel
+      ? this.infiniteDefaultColDef
+      : this.clientDefaultColDef
+    this.gridDataSource = this.useInfiniteRowModel
+      ? this.gridDataSourceService.create(this.displayRows)
+      : undefined
+  }
+
+  private shouldUseInfiniteRowModel(): boolean {
+    return this.isSelectResult &&
+      !this.editingEnabled &&
+      this.query.length >= this.infiniteRowThreshold
   }
 
   private getVisibleFields(): string[] {
@@ -1505,8 +1605,10 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   }
 
   private canLoadMore(): boolean {
-    if (this.editingEnabled || this.hasPendingChanges()) return false
+    return false
+  }
 
-    return !this.isSelectResult || this.totalRows === null || this.query.length < this.totalRows
+  private formatRowCount(value: number): string {
+    return Number(value || 0).toLocaleString('en-US')
   }
 }

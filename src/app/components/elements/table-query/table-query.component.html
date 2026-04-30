@@ -4,17 +4,17 @@
         <div class="result-actions">
             <div class="result-title">
                 <span>Results</span>
-                <small *ngIf="isSelectResult && totalRows !== null">{{ totalRows }} rows</small>
+                <small *ngIf="isSelectResult">{{ getRowsSummary() }}</small>
             </div>
 
             <div class="row-limit" *ngIf="isSelectResult">
-                <label for="query-row-limit">Rows</label>
+                <label for="query-row-limit">Max rows</label>
                 <input id="query-row-limit" type="number" min="1" step="1" [value]="rowLimit"
                     (input)="onRowLimitInput($event)" (keydown.enter)="applyRowLimit()">
                 <button type="button" (click)="applyRowLimit()">Apply</button>
             </div>
 
-            <button type="button" class="select-all-button" *ngIf="canSelectAllRows()"
+            <button type="button" class="select-all-button" *ngIf="canSelectAllLoadedRows"
                 title="Select all loaded rows" (click)="selectAllRows()">
                 <img src="icons/table.png" height="13px" width="13px">
                 Select all
@@ -68,13 +68,30 @@
         </div>
     </div>
     <div class="result-body">
-        <ag-grid-angular *ngIf="!errorMessage" #agGrid class="ag-root" [rowData]="displayRows" [columnDefs]="columnDefs"
-            [defaultColDef]="defaultColDef" [domLayout]="'normal'" [rowBuffer]="20"
-            [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false" [suppressNoRowsOverlay]="true"
-            [animateRows]="false" [rowClassRules]="rowClassRules" (firstDataRendered)="query"
-            (bodyScroll)="onBodyScroll($event)" (cellMouseDown)="onGridCellMouseDown($event)"
-            (cellMouseOver)="onGridCellMouseOver($event)" (cellContextMenu)="onGridCellContextMenu($event)">
-        </ag-grid-angular>
+        <ng-container *ngIf="!errorMessage">
+            <ag-grid-angular *ngIf="useInfiniteRowModel; else clientSideGrid" #agGrid class="ag-root"
+                [columnDefs]="columnDefs" [defaultColDef]="defaultColDef" [domLayout]="'normal'"
+                [rowModelType]="'infinite'" [datasource]="gridDataSource"
+                [cacheBlockSize]="infiniteCacheBlockSize" [maxBlocksInCache]="infiniteMaxBlocksInCache"
+                [maxConcurrentDatasourceRequests]="1" [blockLoadDebounceMillis]="infiniteBlockLoadDebounceMillis"
+                [rowBuffer]="20" [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false"
+                [suppressNoRowsOverlay]="true" [animateRows]="false" [rowClassRules]="rowClassRules"
+                (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)"
+                (cellMouseDown)="onGridCellMouseDown($event)" (cellMouseOver)="onGridCellMouseOver($event)"
+                (cellContextMenu)="onGridCellContextMenu($event)">
+            </ag-grid-angular>
+
+            <ng-template #clientSideGrid>
+                <ag-grid-angular #agGrid class="ag-root" [rowData]="displayRows" [columnDefs]="columnDefs"
+                    [defaultColDef]="defaultColDef" [domLayout]="'normal'" [rowBuffer]="20"
+                    [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false"
+                    [suppressNoRowsOverlay]="true" [animateRows]="false" [rowClassRules]="rowClassRules"
+                    (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)"
+                    (cellMouseDown)="onGridCellMouseDown($event)" (cellMouseOver)="onGridCellMouseOver($event)"
+                    (cellContextMenu)="onGridCellContextMenu($event)">
+                </ag-grid-angular>
+            </ng-template>
+        </ng-container>
 
         <div class="cell-selection-menu" *ngIf="cellSelectionMenu" [style.left.px]="cellSelectionMenu.x"
             [style.top.px]="cellSelectionMenu.y" (click)="$event.stopPropagation()"

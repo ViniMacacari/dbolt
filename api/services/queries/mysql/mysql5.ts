@@ -38,8 +38,8 @@ class SQueryMySQLV1 {
 
     let executableSql = trimStatementTerminator(sql);
 
-    if (rowLimit && !this.hasLimitClause(executableSql) && isSelectQuery) {
-      executableSql = this.addLimitToQuery(executableSql, rowLimit);
+    if (rowLimit && isSelectQuery) {
+      executableSql = this.limitQueryResult(executableSql, rowLimit);
     }
 
     const result = await this.db.executeQuery(executableSql, [], connectionKey);
@@ -81,6 +81,17 @@ class SQueryMySQLV1 {
 
   addLimitToQuery(sql: string, maxLines: number): string {
     return addLimitClause(sql, maxLines);
+  }
+
+  limitQueryResult(sql: string, maxLines: number): string {
+    const trimmedSql = trimStatementTerminator(sql);
+
+    if (!this.hasLimitClause(trimmedSql)) {
+      return this.addLimitToQuery(trimmedSql, maxLines);
+    }
+
+    const { prefix, mainSql } = splitCtePrefix(trimmedSql);
+    return `${prefix} SELECT * FROM (\n${trimStatementTerminator(mainSql)}\n) AS limited_query_result\nLIMIT ${Math.max(0, Math.floor(maxLines))}`;
   }
 
   getCountQuery(sql: string): string {

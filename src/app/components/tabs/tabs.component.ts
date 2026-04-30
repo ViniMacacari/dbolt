@@ -166,28 +166,40 @@ export class TabsComponent {
     if (tab.icon === 'CHANGE') {
       this.showYNModal = true
     } else {
-      this.tabs.splice(index, 1)
-
-      if (this.tabs.length === 0) {
-        this.activeTab = null
-        this.tabClosed.emit()
-      } else {
-        const newActiveTab = Math.min(index, this.tabs.length - 1)
-        this.selectTab(newActiveTab)
-      }
+      this.closeTabAt(index)
     }
   }
 
   confirmTabClose(): void {
     this.showYNModal = false
-    this.tabs.splice(this.confirmToClose, 1)
+    this.closeTabAt(this.confirmToClose)
+  }
+
+  private closeTabAt(index: number): void {
+    const tab = this.tabs[index]
+    this.releaseTabResources(tab)
+    this.tabs.splice(index, 1)
 
     if (this.tabs.length === 0) {
       this.activeTab = null
       this.tabClosed.emit()
     } else {
-    const newActiveTab = Math.min(this.confirmToClose, this.tabs.length - 1)
-    this.selectTab(newActiveTab)
+      const newActiveTab = Math.min(index, this.tabs.length - 1)
+      this.selectTab(newActiveTab)
+    }
+  }
+
+  private releaseTabResources(tab: any): void {
+    if (!tab) return
+
+    tab.closing = true
+
+    if (tab.queryState) {
+      tab.queryState.queryResponse = []
+      tab.queryState.queryColumns = []
+      tab.queryState.queryError = ''
+      tab.queryState.queryResultOpen = false
+      tab.queryState.maxResultLines = 0
     }
   }
 

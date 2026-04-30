@@ -97,7 +97,12 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   ngOnDestroy(): void {
-    this.persistQueryState()
+    if (this.tabInfo?.closing) {
+      this.releaseQueryMemory()
+    } else {
+      this.persistQueryState()
+    }
+
     this.autocompleteDisposable?.dispose()
 
     if (this.editor) {
@@ -409,16 +414,30 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   closeQueryResult(): void {
+    this.releaseQueryMemory()
+    this.persistQueryState()
+    this.layoutEditor()
+  }
+
+  private releaseQueryMemory(): void {
+    this.tableQuery?.releaseData()
     this.queryReponse = []
     this.queryColumns = []
     this.queryResultOpen = false
     this.isLoadingQuery = false
+    this.isLoadingMore = false
     this.queryError = ''
     this.maxResultLines = 0
     this.queryResultExpanded = false
     this.queryResultIsSelect = false
-    this.persistQueryState()
-    this.layoutEditor()
+
+    if (this.tabInfo?.queryState) {
+      this.tabInfo.queryState.queryResponse = []
+      this.tabInfo.queryState.queryColumns = []
+      this.tabInfo.queryState.queryResultOpen = false
+      this.tabInfo.queryState.queryError = ''
+      this.tabInfo.queryState.maxResultLines = 0
+    }
   }
 
   onQueryResultHeightChange(height: number): void {
