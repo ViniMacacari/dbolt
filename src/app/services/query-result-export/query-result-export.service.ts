@@ -9,6 +9,10 @@ export interface QueryResultExportPayload {
   providedIn: 'root'
 })
 export class QueryResultExportService {
+  async copyText(text: string): Promise<void> {
+    await this.writeTextToClipboard(text)
+  }
+
   async copyData(payload: QueryResultExportPayload): Promise<void> {
     await this.writeTextToClipboard(this.toTsv(payload.rows))
   }
