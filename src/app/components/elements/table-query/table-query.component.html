@@ -14,7 +14,7 @@
                 <button type="button" (click)="applyRowLimit()">Apply</button>
             </div>
 
-            <button type="button" class="select-all-button" *ngIf="canSelectAllRows()"
+            <button type="button" class="select-all-button" *ngIf="canSelectAllLoadedRows"
                 title="Select all loaded rows" (click)="selectAllRows()">
                 <img src="icons/table.png" height="13px" width="13px">
                 Select all

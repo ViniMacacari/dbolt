@@ -134,11 +134,14 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   private isSelectingCells = false
   private gridHostElement: HTMLElement | null = null
   private removeGridContextMenuListener: (() => void) | null = null
+  private selectedFullRowIds: number[] = []
 
   scrollTimeout: any
 
   columnDefs: ColDef[] = []
   displayRows: any[] = []
+  selectedFullRowCount = 0
+  canSelectAllLoadedRows = false
   editingEnabled = false
   editMetadataLoading = false
   editCapabilityMessage = ''
@@ -171,7 +174,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this._query = value || []
     this.resetCellSelection()
     this.resetEditPreview()
-    this.rebuildDisplayRows()
+    this.rebuildDisplayRows(false)
     this.updateColumns()
     this.refreshEditCapability()
     this.queueViewportRefresh()
@@ -447,13 +450,15 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     this.editingEnabled = true
     this.editErrorMessage = ''
+    this.rebuildDisplayRows(true)
+    this.resetCellSelection()
     this.updateColumns()
   }
 
   cancelEditing(): void {
     this.editingEnabled = false
     this.resetEditPreview()
-    this.rebuildDisplayRows()
+    this.rebuildDisplayRows(false)
     this.updateColumns()
     this.refreshVisibleGrid(true)
   }
@@ -486,6 +491,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.displayRowIds.set(newRow, rowId)
     this.pendingInserts.set(rowId, new Map<string, any>())
     this.displayRows = [...this.displayRows, newRow]
+    this.refreshSelectionSummary()
     this.scrollTop = Number.MAX_SAFE_INTEGER
     this.updateColumns()
 
@@ -515,19 +521,11 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   }
 
   hasSelectedFullRows(): boolean {
-    return this.getSelectedFullRowIds().length > 0
+    return this.selectedFullRowCount > 0
   }
 
   getSelectedFullRowCount(): number {
-    return this.getSelectedFullRowIds().length
-  }
-
-  canSelectAllRows(): boolean {
-    const loadedRowCount = this.getDisplayRowIds().length
-
-    return loadedRowCount > 0 &&
-      this.hasSelectedFullRows() &&
-      this.getSelectedFullRowCount() < loadedRowCount
+    return this.selectedFullRowCount
   }
 
   selectAllRows(): void {
@@ -545,6 +543,9 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     this.selectionAnchor = { rowId: rowIds[0], field: fields[0] }
     this.selectionEnd = { rowId: rowIds[rowIds.length - 1], field: fields[fields.length - 1] }
+    this.selectedFullRowIds = rowIds
+    this.selectedFullRowCount = rowIds.length
+    this.canSelectAllLoadedRows = false
     this.isSelectingCells = false
     this.refreshVisibleGrid()
   }
@@ -710,7 +711,10 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   private updateSelectedCells(): void {
     this.selectedCellKeys.clear()
-    if (!this.selectionAnchor || !this.selectionEnd) return
+    if (!this.selectionAnchor || !this.selectionEnd) {
+      this.refreshSelectionSummary()
+      return
+    }
 
     const rowIds = this.getDisplayRowIds()
     const fields = this.getVisibleFields()
@@ -719,7 +723,10 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     const anchorFieldIndex = fields.indexOf(this.selectionAnchor.field)
     const endFieldIndex = fields.indexOf(this.selectionEnd.field)
 
-    if (anchorRowIndex < 0 || endRowIndex < 0 || anchorFieldIndex < 0 || endFieldIndex < 0) return
+    if (anchorRowIndex < 0 || endRowIndex < 0 || anchorFieldIndex < 0 || endFieldIndex < 0) {
+      this.refreshSelectionSummary()
+      return
+    }
 
     const rowStart = Math.min(anchorRowIndex, endRowIndex)
     const rowEnd = Math.max(anchorRowIndex, endRowIndex)
@@ -731,6 +738,8 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
         this.selectedCellKeys.add(this.cellKey(rowId, field))
       })
     })
+
+    this.refreshSelectionSummary()
   }
 
   private getSelectedFields(): string[] {
@@ -783,6 +792,9 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.isSelectingCells = false
     this.cellSelectionMenu = null
     this.copyErrorMessage = ''
+    this.selectedFullRowIds = []
+    this.selectedFullRowCount = 0
+    this.canSelectAllLoadedRows = false
   }
 
   private cellKey(rowId: number, field: string): string {
@@ -812,16 +824,29 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     }
 
     this.isSelectingCells = false
+    this.refreshSelectionSummary()
     this.refreshVisibleGrid()
   }
 
   private getSelectedFullRowIds(): number[] {
-    const fields = this.getVisibleFields()
-    if (fields.length === 0) return []
+    return this.selectedFullRowIds
+  }
 
-    return this.getDisplayRowIds().filter((rowId) =>
+  private refreshSelectionSummary(): void {
+    const fields = this.getVisibleFields()
+    if (fields.length === 0 || this.selectedCellKeys.size === 0) {
+      this.selectedFullRowIds = []
+      this.selectedFullRowCount = 0
+      this.canSelectAllLoadedRows = false
+      return
+    }
+
+    this.selectedFullRowIds = this.getDisplayRowIds().filter((rowId) =>
       fields.every((field) => this.selectedCellKeys.has(this.cellKey(rowId, field)))
     )
+    this.selectedFullRowCount = this.selectedFullRowIds.length
+    this.canSelectAllLoadedRows = this.selectedFullRowCount > 0 &&
+      this.selectedFullRowCount < this.displayRows.length
   }
 
   private isRowIndexColumnEvent(event: any): boolean {
@@ -1364,13 +1389,21 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.refreshVisibleGrid()
   }
 
-  private rebuildDisplayRows(): void {
+  private rebuildDisplayRows(copyRows: boolean = false): void {
     this.displayRowIds = new WeakMap<any, number>()
-    this.displayRows = this.query.map((row, index) => {
-      const displayRow = { ...row }
-      this.displayRowIds.set(displayRow, index)
-      return displayRow
-    })
+    this.displayRows = copyRows
+      ? this.query.map((row, index) => {
+        const displayRow = { ...row }
+        this.displayRowIds.set(displayRow, index)
+        return displayRow
+      })
+      : this.query
+
+    if (!copyRows) {
+      this.displayRows.forEach((row, index) => this.displayRowIds.set(row, index))
+    }
+
+    this.refreshSelectionSummary()
   }
 
   private resetEditPreview(): void {
@@ -1385,6 +1418,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   private removeInsertedRow(rowId: number): void {
     this.pendingInserts.delete(rowId)
     this.displayRows = this.displayRows.filter((row) => this.getRowId(row) !== rowId)
+    this.refreshSelectionSummary()
   }
 
   private getVisibleFields(): string[] {
