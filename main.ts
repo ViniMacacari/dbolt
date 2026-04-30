@@ -2,8 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import { pathToFileURL } from 'url';
 
-import './api/server.js';
-import { getInternalApiSessionToken } from './api/services/security/internal-session-token.js';
+import { getInternalApiBaseUrl, internalApiReady } from './api/server.js';
+import {
+  INTERNAL_API_TOKEN_HEADER,
+  getInternalApiSessionToken
+} from './api/services/security/internal-session-token.js';
 
 const { app, BrowserWindow, ipcMain } = require('electron') as typeof import('electron');
 const appRoot = path.resolve(__dirname, '..');
@@ -15,7 +18,7 @@ const angularIndexPath = path.join(
   'index.html'
 );
 const angularRendererBaseUrl = pathToFileURL(`${path.dirname(angularIndexPath)}${path.sep}`).href;
-const INTERNAL_API_TOKEN_CHANNEL = 'dbolt:internal-api-token';
+const INTERNAL_API_SESSION_CHANNEL = 'dbolt:internal-api-session';
 
 let win: InstanceType<typeof BrowserWindow> | null = null;
 
@@ -40,14 +43,20 @@ function isTrustedRendererUrl(rawUrl: string): boolean {
   }
 }
 
-ipcMain.handle(INTERNAL_API_TOKEN_CHANNEL, (event) => {
+ipcMain.handle(INTERNAL_API_SESSION_CHANNEL, async (event) => {
   const senderUrl = event.senderFrame?.url || event.sender.getURL();
 
   if (!isTrustedRendererUrl(senderUrl)) {
     throw new Error('Untrusted renderer cannot access the internal API token.');
   }
 
-  return getInternalApiSessionToken();
+  await internalApiReady;
+
+  return {
+    baseUrl: getInternalApiBaseUrl(),
+    token: getInternalApiSessionToken(),
+    tokenHeader: INTERNAL_API_TOKEN_HEADER
+  };
 });
 
 function createWindow(): void {
@@ -60,7 +69,7 @@ function createWindow(): void {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      devTools: true
+      devTools: !app.isPackaged
     },
     autoHideMenuBar: true,
     resizable: true
