@@ -48,6 +48,9 @@
             <small class="edit-message error" *ngIf="editErrorMessage">
                 {{ editErrorMessage }}
             </small>
+            <small class="edit-message error" *ngIf="copyErrorMessage">
+                {{ copyErrorMessage }}
+            </small>
 
             <button type="button" class="toggle-result-size"
                 [attr.aria-label]="isExpanded ? 'Restore results' : 'Expand results'"
@@ -63,8 +66,17 @@
             [defaultColDef]="defaultColDef" [domLayout]="'normal'" [rowBuffer]="20"
             [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false" [suppressNoRowsOverlay]="true"
             [animateRows]="false" [rowClassRules]="rowClassRules" (firstDataRendered)="query"
-            (bodyScroll)="onBodyScroll($event)">
+            (bodyScroll)="onBodyScroll($event)" (cellMouseDown)="onGridCellMouseDown($event)"
+            (cellMouseOver)="onGridCellMouseOver($event)" (cellContextMenu)="onGridCellContextMenu($event)">
         </ag-grid-angular>
+
+        <div class="cell-selection-menu" *ngIf="cellSelectionMenu" [style.left.px]="cellSelectionMenu.x"
+            [style.top.px]="cellSelectionMenu.y" (click)="$event.stopPropagation()"
+            (contextmenu)="$event.preventDefault()">
+            <button type="button" (click)="copySelectedData()">Copiar dados</button>
+            <button type="button" (click)="copySelectedTable()">Copiar para tabela</button>
+            <button type="button" (click)="exportSelectedXlsx()">Exportar para XLSX</button>
+        </div>
 
         <div class="query-status loading" *ngIf="isLoading || isLoadingMore || isApplyingEdits">
             <span class="query-spinner"></span>

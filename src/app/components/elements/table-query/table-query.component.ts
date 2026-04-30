@@ -19,6 +19,10 @@ import { buildTypedColumnDefs } from '../../../utils/grid-column-formatting'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
+import {
+  QueryResultExportPayload,
+  QueryResultExportService
+} from '../../../services/query-result-export/query-result-export.service'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
@@ -35,6 +39,16 @@ interface EditableColumnMeta {
 interface EditableTableTarget {
   tableName: string
   qualifiedName: string
+}
+
+interface CellSelectionPoint {
+  rowId: number
+  field: string
+}
+
+interface CellSelectionContextMenu {
+  x: number
+  y: number
 }
 
 @Component({
@@ -93,6 +107,10 @@ export class TableQueryComponent implements AfterViewInit {
   private selectedRows = new Set<number>()
   private editableTable: EditableTableTarget | null = null
   private nextInsertRowId = -1
+  private selectedCellKeys = new Set<string>()
+  private selectionAnchor: CellSelectionPoint | null = null
+  private selectionEnd: CellSelectionPoint | null = null
+  private isSelectingCells = false
 
   scrollTimeout: any
 
@@ -102,6 +120,8 @@ export class TableQueryComponent implements AfterViewInit {
   editMetadataLoading = false
   editCapabilityMessage = ''
   editErrorMessage = ''
+  copyErrorMessage = ''
+  cellSelectionMenu: CellSelectionContextMenu | null = null
   isApplyingEdits = false
   defaultColDef: ColDef = {
     sortable: true,
@@ -118,13 +138,15 @@ export class TableQueryComponent implements AfterViewInit {
     private cdr: ChangeDetectorRef,
     private IAPI: InternalApiService,
     private connectionContext: ConnectionContextService,
-    private runQuery: RunQueryService
+    private runQuery: RunQueryService,
+    private resultExport: QueryResultExportService
   ) { }
 
   @Input()
   set query(value: any[]) {
     this.saveScrollPosition()
     this._query = value || []
+    this.resetCellSelection()
     this.resetEditPreview()
     this.rebuildDisplayRows()
     this.updateColumns()
@@ -139,6 +161,38 @@ export class TableQueryComponent implements AfterViewInit {
   onResize() {
     clearTimeout(this.resizeTimeout)
     this.resizeTimeout = setTimeout(() => this.adjustTableWrapperSize(), 100)
+  }
+
+  @HostListener('document:mouseup')
+  onDocumentMouseUp(): void {
+    this.isSelectingCells = false
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement
+    if (!target.closest('.cell-selection-menu')) {
+      this.cellSelectionMenu = null
+    }
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onDocumentKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      this.cellSelectionMenu = null
+      this.isSelectingCells = false
+      return
+    }
+
+    if (!this.isCopyShortcut(event) || !this.isEventInsideTable(event) || this.isTextEditingTarget(event.target)) {
+      return
+    }
+
+    const payload = this.getSelectionPayload()
+    if (!payload || payload.rows.length === 0) return
+
+    event.preventDefault()
+    this.copySelectedData()
   }
 
   ngAfterViewInit(): void {
@@ -262,6 +316,76 @@ export class TableQueryComponent implements AfterViewInit {
 
   close(): void {
     this.closeResult.emit()
+  }
+
+  onGridCellMouseDown(event: any): void {
+    const mouseEvent = event.event as MouseEvent
+    const field = event.colDef?.field
+    if (mouseEvent?.button !== 0 || !field || !event.data) return
+    if (this.isTextEditingTarget(mouseEvent.target)) return
+
+    const point = this.getSelectionPoint(event.data, field)
+    if (!point) return
+
+    this.copyErrorMessage = ''
+    this.cellSelectionMenu = null
+    this.isSelectingCells = true
+    this.selectionAnchor = point
+    this.selectionEnd = point
+    this.updateSelectedCells()
+    this.refreshVisibleGrid()
+  }
+
+  onGridCellMouseOver(event: any): void {
+    if (!this.isSelectingCells) return
+
+    const field = event.colDef?.field
+    const point = field && event.data ? this.getSelectionPoint(event.data, field) : null
+    if (!point) return
+
+    this.selectionEnd = point
+    this.updateSelectedCells()
+    this.refreshVisibleGrid()
+  }
+
+  onGridCellContextMenu(event: any): void {
+    const mouseEvent = event.event as MouseEvent
+    const field = event.colDef?.field
+    if (!mouseEvent || !field || !event.data) return
+
+    mouseEvent.preventDefault()
+    mouseEvent.stopPropagation()
+
+    const point = this.getSelectionPoint(event.data, field)
+    if (!point) return
+
+    if (!this.isCellSelectedByPoint(point)) {
+      this.selectionAnchor = point
+      this.selectionEnd = point
+      this.updateSelectedCells()
+      this.refreshVisibleGrid()
+    }
+
+    this.cellSelectionMenu = {
+      x: Math.max(8, Math.min(mouseEvent.clientX, window.innerWidth - 190)),
+      y: Math.max(8, Math.min(mouseEvent.clientY, window.innerHeight - 145))
+    }
+  }
+
+  async copySelectedData(): Promise<void> {
+    await this.runSelectionExport((payload) => this.resultExport.copyData(payload))
+  }
+
+  async copySelectedTable(): Promise<void> {
+    await this.runSelectionExport((payload) => this.resultExport.copyTable(payload))
+  }
+
+  exportSelectedXlsx(): void {
+    const payload = this.getSelectionPayload()
+    if (!payload) return
+
+    this.resultExport.exportXlsx(payload, 'query-result-selection.xlsx')
+    this.cellSelectionMenu = null
   }
 
   canStartEditing(): boolean {
@@ -407,6 +531,135 @@ export class TableQueryComponent implements AfterViewInit {
     }
   }
 
+  private async runSelectionExport(action: (payload: QueryResultExportPayload) => Promise<void>): Promise<void> {
+    const payload = this.getSelectionPayload()
+    if (!payload) return
+
+    try {
+      this.copyErrorMessage = ''
+      await action(payload)
+      this.cellSelectionMenu = null
+    } catch (error: any) {
+      console.error(error)
+      this.copyErrorMessage = error?.message || 'Could not copy selected cells.'
+    }
+  }
+
+  private getSelectionPayload(): QueryResultExportPayload | null {
+    if (this.selectedCellKeys.size === 0) return null
+
+    const fields = this.getSelectedFields()
+    const rowIds = this.getSelectedRowIds()
+    if (fields.length === 0 || rowIds.length === 0) return null
+
+    return {
+      columns: fields,
+      rows: rowIds.map((rowId) => {
+        const row = this.getDisplayRowById(rowId)
+        return fields.map((field) => row?.[field])
+      })
+    }
+  }
+
+  private getSelectionPoint(row: any, field: string): CellSelectionPoint | null {
+    const rowId = this.getRowId(row)
+    if (!Number.isFinite(rowId) || !this.getVisibleFields().includes(field)) return null
+
+    return { rowId, field }
+  }
+
+  private updateSelectedCells(): void {
+    this.selectedCellKeys.clear()
+    if (!this.selectionAnchor || !this.selectionEnd) return
+
+    const rowIds = this.getDisplayRowIds()
+    const fields = this.getVisibleFields()
+    const anchorRowIndex = rowIds.indexOf(this.selectionAnchor.rowId)
+    const endRowIndex = rowIds.indexOf(this.selectionEnd.rowId)
+    const anchorFieldIndex = fields.indexOf(this.selectionAnchor.field)
+    const endFieldIndex = fields.indexOf(this.selectionEnd.field)
+
+    if (anchorRowIndex < 0 || endRowIndex < 0 || anchorFieldIndex < 0 || endFieldIndex < 0) return
+
+    const rowStart = Math.min(anchorRowIndex, endRowIndex)
+    const rowEnd = Math.max(anchorRowIndex, endRowIndex)
+    const fieldStart = Math.min(anchorFieldIndex, endFieldIndex)
+    const fieldEnd = Math.max(anchorFieldIndex, endFieldIndex)
+
+    rowIds.slice(rowStart, rowEnd + 1).forEach((rowId) => {
+      fields.slice(fieldStart, fieldEnd + 1).forEach((field) => {
+        this.selectedCellKeys.add(this.cellKey(rowId, field))
+      })
+    })
+  }
+
+  private getSelectedFields(): string[] {
+    return this.getVisibleFields().filter((field) =>
+      this.getDisplayRowIds().some((rowId) => this.selectedCellKeys.has(this.cellKey(rowId, field)))
+    )
+  }
+
+  private getSelectedRowIds(): number[] {
+    return this.getDisplayRowIds().filter((rowId) =>
+      this.getVisibleFields().some((field) => this.selectedCellKeys.has(this.cellKey(rowId, field)))
+    )
+  }
+
+  private getDisplayRowIds(): number[] {
+    return this.displayRows
+      .map((row) => this.getRowId(row))
+      .filter((rowId) => Number.isFinite(rowId))
+  }
+
+  private getDisplayRowById(rowId: number): any {
+    return this.displayRows.find((row) => this.getRowId(row) === rowId)
+  }
+
+  private isCellSelected(row: any, field: string): boolean {
+    return this.selectedCellKeys.has(this.cellKey(this.getRowId(row), field))
+  }
+
+  private isSelectionAnchor(row: any, field: string): boolean {
+    return this.selectionAnchor?.rowId === this.getRowId(row) && this.selectionAnchor?.field === field
+  }
+
+  private isCellSelectedByPoint(point: CellSelectionPoint): boolean {
+    return this.selectedCellKeys.has(this.cellKey(point.rowId, point.field))
+  }
+
+  private resetCellSelection(): void {
+    this.selectedCellKeys.clear()
+    this.selectionAnchor = null
+    this.selectionEnd = null
+    this.isSelectingCells = false
+    this.cellSelectionMenu = null
+    this.copyErrorMessage = ''
+  }
+
+  private cellKey(rowId: number, field: string): string {
+    return `${rowId}\u001F${field}`
+  }
+
+  private isCopyShortcut(event: KeyboardEvent): boolean {
+    return (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c'
+  }
+
+  private isEventInsideTable(event: Event): boolean {
+    const target = event.target as Node | null
+    return !!target && !!this.tableWrapper?.nativeElement?.contains(target)
+  }
+
+  private isTextEditingTarget(target: EventTarget | null): boolean {
+    const element = target as HTMLElement | null
+    if (!element) return false
+
+    const tagName = element.tagName?.toLowerCase()
+    return tagName === 'input' ||
+      tagName === 'textarea' ||
+      element.isContentEditable ||
+      !!element.closest('.ag-cell-inline-editing')
+  }
+
   private updateColumns() {
     const normalizedColumns = this.columns.filter((column) => String(column || '').trim() !== '')
 
@@ -469,6 +722,8 @@ export class TableQueryComponent implements AfterViewInit {
         cellClassRules: {
           ...existingClassRules,
           'dbolt-cell-edited': (params: any) => this.isCellEdited(params.data, field),
+          'dbolt-cell-selected': (params: any) => this.isCellSelected(params.data, field),
+          'dbolt-cell-selection-anchor': (params: any) => this.isSelectionAnchor(params.data, field),
           'dbolt-cell-readonly': (params: any) => this.editingEnabled && !this.getEditableMetaForCell(params.data, field)
         },
         tooltipValueGetter: (params: any) => {
