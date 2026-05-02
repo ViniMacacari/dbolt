@@ -20,6 +20,7 @@
     "backend": "npm run backend:meta && concurrently -k -n TSC,SERVER -c yellow,cyan \"npm:backend:tsc\" \"npm:backend:server\"",
     "dev:browser": "npm run backend:meta && concurrently -k -n TSC,API,WEB -c yellow,cyan,green \"npm:backend:tsc\" \"npm:backend:server:browser\" \"npm:frontend\"",
     "start": "npm run build:frontend:electron && npm run build:backend && node scripts/run-electron.cjs .",
+    "start:linux": "npm run start",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
@@ -27,7 +28,9 @@
     "build-angular": "ng build",
     "electron-pack": "electron-packager . dbolt --platform=win32 --arch=x64 --out=dist --overwrite --asar",
     "build-installer": "electron-builder",
-    "dbolt": "npm run build:frontend:electron && npm run build:backend && npm run build-installer"
+    "dbolt": "npm run build:frontend:electron && npm run build:backend && npm run build-installer",
+    "build-installer:linux": "electron-builder --linux AppImage deb rpm && node scripts/organize-linux-artifacts.cjs",
+    "dbolt:linux": "npm run build:frontend:electron && npm run build:backend && npm run build-installer:linux"
   },
   "build": {
     "appId": "com.dbolt.app",
@@ -44,6 +47,15 @@
     "win": {
       "target": "nsis",
       "icon": "./public/favicon.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
+      "icon": "./public/icons/dbolt-square.png",
+      "category": "Development"
     },
     "nsis": {
       "oneClick": false,
