@@ -78,6 +78,27 @@
                     <small *ngIf="formatterSavedMessage">{{ formatterSavedMessage }}</small>
                 </div>
             </div>
+
+            <div class="settings-card">
+                <div>
+                    <h3>SQL highlight</h3>
+                    <p>Configure each SQL token color in query tabs.</p>
+                </div>
+
+                <div class="setting-control highlight-control">
+                    <div class="color-grid">
+                        <label class="color-control" *ngFor="let field of sqlHighlightColorFields"
+                            [attr.for]="'sql-highlight-' + field.key">
+                            <span>{{ field.label }}</span>
+                            <input [id]="'sql-highlight-' + field.key" type="color"
+                                [value]="sqlHighlightColors[field.key]"
+                                (input)="onSqlHighlightColorInput(field.key, $event)">
+                        </label>
+                    </div>
+                    <button type="button" (click)="saveSqlHighlightSettings()">Save</button>
+                    <small *ngIf="highlightSavedMessage">{{ highlightSavedMessage }}</small>
+                </div>
+            </div>
         </div>
 
         <div class="settings-stack" *ngIf="activeTab === 'autocomplete'">
