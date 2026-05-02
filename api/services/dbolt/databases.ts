@@ -55,6 +55,18 @@ class Databases {
           }
         ],
         active: true
+      },
+      {
+        id: 5,
+        database: 'SQLite',
+        versions: [
+          {
+            name: 'v3',
+            service: 'sqlite-v3',
+            date: '2026-05-02'
+          }
+        ],
+        active: true
       }
     ];
   }
