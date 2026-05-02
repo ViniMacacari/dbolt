@@ -30,8 +30,9 @@
     "devserver": "nodemon dist-electron/api/server.js",
     "build-angular": "ng build",
     "electron-pack": "electron-packager . dbolt --platform=win32 --arch=x64 --out=dist --overwrite --asar",
-    "build-installer": "electron-builder",
-    "dbolt": "npm run build:frontend:electron && npm run build:backend && npm run build-installer",
+    "build-installer": "electron-builder --win nsis",
+    "build-installer:windows": "electron-builder --win nsis",
+    "dbolt": "npm run build:frontend:electron && npm run build:backend && npm run build-installer:windows",
     "build-installer:linux": "node scripts/build-linux-installers.cjs",
     "dbolt:linux": "npm run build:frontend:electron && npm run build:backend && npm run build-installer:linux"
   },
