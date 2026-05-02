@@ -5,6 +5,7 @@
             <div class="result-title">
                 <span>Results</span>
                 <small *ngIf="isSelectResult">{{ getRowsSummary() }}</small>
+                <small *ngIf="getExecutionTimeSummary()">{{ getExecutionTimeSummary() }}</small>
             </div>
 
             <div class="row-limit" *ngIf="isSelectResult">
