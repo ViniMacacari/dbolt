@@ -2,7 +2,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
-const ENCRYPTED_VALUE_PREFIX = 'dbolt+dpapi:v1:';
+const DPAPI_ENCRYPTED_VALUE_PREFIX = 'dbolt+dpapi:v1:';
+const PLAINTEXT_ENCRYPTED_VALUE_PREFIX = 'dbolt+plain:v1:';
 const DPAPI_ENTROPY = 'dbolt-credential-storage';
 const POWERSHELL_EXECUTABLE = 'powershell.exe';
 
@@ -39,7 +40,11 @@ class SecureStorageService {
       return [];
     }
 
-    this.ensureSupportedPlatform();
+    if (!this.supportsWindowsDpapi()) {
+      return values.map((value) =>
+        `${PLAINTEXT_ENCRYPTED_VALUE_PREFIX}${Buffer.from(value, 'utf8').toString('base64')}`
+      );
+    }
 
     const plaintextBase64Values = values.map((value) =>
       Buffer.from(value, 'utf8').toString('base64')
@@ -49,7 +54,7 @@ class SecureStorageService {
     );
 
     return encryptedBase64Values.map(
-      (encryptedBase64) => `${ENCRYPTED_VALUE_PREFIX}${encryptedBase64}`
+      (encryptedBase64) => `${DPAPI_ENCRYPTED_VALUE_PREFIX}${encryptedBase64}`
     );
   }
 
@@ -59,30 +64,44 @@ class SecureStorageService {
     }
 
     const decryptedValues = [...values];
-    const encryptedIndexes: number[] = [];
-    const encryptedBase64Values: string[] = [];
+    const windowsEncryptedIndexes: number[] = [];
+    const windowsEncryptedBase64Values: string[] = [];
 
     values.forEach((value, index) => {
-      if (!this.isEncrypted(value)) {
+      if (this.isPlaintextEncrypted(value)) {
+        decryptedValues[index] = Buffer.from(
+          value.slice(PLAINTEXT_ENCRYPTED_VALUE_PREFIX.length),
+          'base64'
+        ).toString('utf8');
         return;
       }
 
-      encryptedIndexes.push(index);
-      encryptedBase64Values.push(value.slice(ENCRYPTED_VALUE_PREFIX.length));
+      if (!this.isWindowsEncrypted(value)) {
+        return;
+      }
+
+      windowsEncryptedIndexes.push(index);
+      windowsEncryptedBase64Values.push(
+        value.slice(DPAPI_ENCRYPTED_VALUE_PREFIX.length)
+      );
     });
 
-    if (encryptedBase64Values.length === 0) {
+    if (windowsEncryptedBase64Values.length === 0) {
       return decryptedValues;
     }
 
-    this.ensureSupportedPlatform();
+    if (!this.supportsWindowsDpapi()) {
+      throw new Error(
+        'Windows-encrypted credentials can only be decrypted on Windows.'
+      );
+    }
 
     const plaintextBase64Values = await this.unprotectBase64Values(
-      encryptedBase64Values
+      windowsEncryptedBase64Values
     );
 
     plaintextBase64Values.forEach((plaintextBase64, resultIndex) => {
-      const valueIndex = encryptedIndexes[resultIndex];
+      const valueIndex = windowsEncryptedIndexes[resultIndex];
 
       if (valueIndex === undefined) {
         return;
@@ -98,15 +117,19 @@ class SecureStorageService {
   }
 
   isEncrypted(value: string): boolean {
-    return value.startsWith(ENCRYPTED_VALUE_PREFIX);
+    return this.isWindowsEncrypted(value) || this.isPlaintextEncrypted(value);
   }
 
-  private ensureSupportedPlatform(): void {
-    if (process.platform !== 'win32') {
-      throw new Error(
-        'Secure credential storage is currently supported only on Windows.'
-      );
-    }
+  private isWindowsEncrypted(value: string): boolean {
+    return value.startsWith(DPAPI_ENCRYPTED_VALUE_PREFIX);
+  }
+
+  private isPlaintextEncrypted(value: string): boolean {
+    return value.startsWith(PLAINTEXT_ENCRYPTED_VALUE_PREFIX);
+  }
+
+  private supportsWindowsDpapi(): boolean {
+    return process.platform === 'win32';
   }
 
   private async protectBase64Values(values: string[]): Promise<string[]> {
