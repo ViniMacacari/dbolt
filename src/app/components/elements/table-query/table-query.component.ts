@@ -76,6 +76,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   @Input() isLoading: boolean = false
   @Input() isLoadingMore: boolean = false
   @Input() errorMessage: string = ''
+  @Input() executionTimeMs: number | null = null
   @Input() columns: string[] = []
   @Input() executedSql: string = ''
   @Input() dbContext: any
@@ -384,6 +385,16 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     }
 
     return `${this.formatRowCount(loadedRows)} rows`
+  }
+
+  getExecutionTimeSummary(): string {
+    if (this.executionTimeMs === null || this.executionTimeMs === undefined) return ''
+
+    if (this.executionTimeMs < 1000) {
+      return `${Math.max(1, Math.round(this.executionTimeMs))} ms`
+    }
+
+    return `${(this.executionTimeMs / 1000).toFixed(2)} s`
   }
 
   releaseData(): void {
