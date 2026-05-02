@@ -23,6 +23,11 @@ const ORIGINAL_REPOSITORY_URL = 'https://github.com/ViniMacacari/dbolt';
 
 let win: InstanceType<typeof BrowserWindow> | null = null;
 
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('no-sandbox');
+  app.commandLine.appendSwitch('disable-setuid-sandbox');
+}
+
 function isTrustedRendererUrl(rawUrl: string): boolean {
   try {
     const parsedUrl = new URL(rawUrl);
