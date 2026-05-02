@@ -53,6 +53,10 @@ export class EditConnectionComponent {
     return this._sgbd
   }
 
+  get isSQLite(): boolean {
+    return this.sgbd === 'SQLite'
+  }
+
   set sgbd(value: string) {
     this._sgbd = value
     this.sgbdVersion = ''
@@ -65,7 +69,7 @@ export class EditConnectionComponent {
       this.databaseInput.clearInput()
       this.connectionConfig = {
         host: '',
-        port: null,
+        port: item['name'].toString() === 'SQLite' ? 0 : null,
         user: '',
         password: ''
       }
@@ -106,15 +110,23 @@ export class EditConnectionComponent {
     this.close.emit()
   }
 
+  getDatabaseLogoPath(): string {
+    return this.isSQLite ? 'icons/database.png' : `db-logo/${this.sgbd}.png`
+  }
+
+  getHostPlaceholder(): string {
+    return this.isSQLite ? 'Database file path' : 'Host'
+  }
+
   async testConnection(): Promise<void> {
     LoadingComponent.show()
 
     try {
       const result: any = await this.IAPI.post(`/api/${this.sgbd}/${this.sgbdVersion}/test-connection`, {
         host: this.connectionConfig.host,
-        port: this.connectionConfig.port,
-        user: this.connectionConfig.user,
-        password: this.connectionConfig.password
+        port: this.connectionConfig.port || 0,
+        user: this.connectionConfig.user || '',
+        password: this.connectionConfig.password || ''
       })
 
       setTimeout(() => {
@@ -140,9 +152,9 @@ export class EditConnectionComponent {
     try {
       await this.IAPI.post(`/api/${this.sgbd}/${this.sgbdVersion}/test-connection`, {
         host: this.connectionConfig.host,
-        port: this.connectionConfig.port,
-        user: this.connectionConfig.user,
-        password: this.connectionConfig.password
+        port: this.connectionConfig.port || 0,
+        user: this.connectionConfig.user || '',
+        password: this.connectionConfig.password || ''
       })
 
       await this.connectionsService.createConnection({
@@ -150,9 +162,9 @@ export class EditConnectionComponent {
         database: this.sgbd,
         version: this.sgbdVersion,
         host: this.connectionConfig.host,
-        port: this.connectionConfig.port,
-        user: this.connectionConfig.user,
-        password: this.connectionConfig.password
+        port: this.connectionConfig.port || 0,
+        user: this.connectionConfig.user || '',
+        password: this.connectionConfig.password || ''
       })
 
       setTimeout(() => {

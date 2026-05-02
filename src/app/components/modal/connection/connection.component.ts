@@ -63,6 +63,10 @@ export class ConnectionComponent {
     return this._sgbd
   }
 
+  get isSQLite(): boolean {
+    return this.sgbd === 'SQLite'
+  }
+
   set sgbd(value: string) {
     this._sgbd = value
     this.sgbdVersion = ''
@@ -75,7 +79,7 @@ export class ConnectionComponent {
       this.databaseInput.clearInput()
       this.connectionConfig = {
         host: '',
-        port: null,
+        port: this.isSQLite ? 0 : null,
         user: '',
         password: ''
       }
@@ -90,7 +94,7 @@ export class ConnectionComponent {
 
       this.connectionConfig = {
         host: '',
-        port: null,
+        port: item['name'].toString() === 'SQLite' ? 0 : null,
         user: '',
         password: ''
       }
@@ -116,15 +120,23 @@ export class ConnectionComponent {
     this.close.emit()
   }
 
+  getDatabaseLogoPath(): string {
+    return this.isSQLite ? 'icons/database.png' : `db-logo/${this.sgbd}.png`
+  }
+
+  getHostPlaceholder(): string {
+    return this.isSQLite ? 'Database file path' : 'Host'
+  }
+
   async testConnection(): Promise<void> {
     LoadingComponent.show()
 
     try {
       const result: any = await this.IAPI.post(`/api/${this.sgbd}/${this.sgbdVersion}/test-connection`, {
         host: this.connectionConfig.host,
-        port: this.connectionConfig.port,
-        user: this.connectionConfig.user,
-        password: this.connectionConfig.password
+        port: this.connectionConfig.port || 0,
+        user: this.connectionConfig.user || '',
+        password: this.connectionConfig.password || ''
       })
 
       if (result?.success === false) {
@@ -154,9 +166,9 @@ export class ConnectionComponent {
     try {
       const result: any = await this.IAPI.post(`/api/${this.sgbd}/${this.sgbdVersion}/test-connection`, {
         host: this.connectionConfig.host,
-        port: this.connectionConfig.port,
-        user: this.connectionConfig.user,
-        password: this.connectionConfig.password
+        port: this.connectionConfig.port || 0,
+        user: this.connectionConfig.user || '',
+        password: this.connectionConfig.password || ''
       })
 
       if (result?.success === false) {
@@ -168,9 +180,9 @@ export class ConnectionComponent {
         database: this.sgbd,
         version: this.sgbdVersion,
         host: this.connectionConfig.host,
-        port: this.connectionConfig.port,
-        user: this.connectionConfig.user,
-        password: this.connectionConfig.password,
+        port: this.connectionConfig.port || 0,
+        user: this.connectionConfig.user || '',
+        password: this.connectionConfig.password || '',
         defaultDatabase: this.connection?.defaultDatabase,
         defaultSchema: this.connection?.defaultSchema
       }
@@ -209,9 +221,9 @@ export class ConnectionComponent {
     this.sgbdVersion = connection.version
     this.connectionConfig = {
       host: connection.host,
-      port: connection.port,
-      user: connection.user,
-      password: connection.password
+      port: connection.port || 0,
+      user: connection.user || '',
+      password: connection.password || ''
     }
     const selectedDatabase = this.dataList.find((db: any) => db.name === connection.database)
     this.versionList = selectedDatabase?.versions.map((version: any) => ({
