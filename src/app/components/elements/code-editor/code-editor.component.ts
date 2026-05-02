@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewChecked, OnDestroy, OnChanges, SimpleChanges, HostListener } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import * as monaco from 'monaco-editor'
+import { Subscription } from 'rxjs'
 import { GetDbschemaService } from '../../../services/db-info/get-dbschema.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
 import { ToastComponent } from '../../toast/toast.component'
@@ -8,9 +9,11 @@ import { TableQueryComponent } from "../table-query/table-query.component"
 import { SaveQueryComponent } from "../../modal/save-query/save-query.component"
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
-import { AppSettingsService } from '../../../services/app-settings/app-settings.service'
+import { AppSettingsService, SqlHighlightColors } from '../../../services/app-settings/app-settings.service'
 import { SqlTableAutocompleteService } from '../../../services/code-autocomplete/sql-table-autocomplete.service'
 import { SqlCodeFormatterService } from '../../../services/code-formatting/sql-code-formatter.service'
+
+let sqlTokenizerConfigured = false
 
 @Component({
   selector: 'app-code-editor',
@@ -37,6 +40,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private editor: monaco.editor.IStandaloneCodeEditor | null = null
   private initialized = false
   private autocompleteDisposable?: monaco.IDisposable
+  private settingsSubscription?: Subscription
   private readonly defaultResultHeight = 300
   private readonly minimumResultHeight = 120
   private readonly minimumEditorHeight = 120
@@ -67,7 +71,11 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     private appSettings: AppSettingsService,
     private tableAutocomplete: SqlTableAutocompleteService,
     private sqlFormatter: SqlCodeFormatterService
-  ) { }
+  ) {
+    this.settingsSubscription = this.appSettings.settingsChanges$.subscribe((settings) => {
+      this.applySqlHighlightTheme(settings.sqlHighlightColors)
+    })
+  }
 
   ngAfterViewChecked(): void {
     if (!this.initialized && this.editorContainer?.nativeElement) {
@@ -104,6 +112,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     }
 
     this.autocompleteDisposable?.dispose()
+    this.settingsSubscription?.unsubscribe()
 
     if (this.editor) {
       this.editor.dispose()
@@ -128,44 +137,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   private initializeEditor(): void {
-    monaco.editor.defineTheme('custom-dark', {
-      base: 'vs-dark',
-      inherit: true,
-      rules: [
-        { token: 'keyword', foreground: '739eca', fontStyle: 'bold' },
-        { token: 'keyword.sql', foreground: '739eca', fontStyle: 'bold' },
-        { token: 'keyword.operator', foreground: '739eca', fontStyle: 'bold' },
-        { token: 'string', foreground: 'e5e887' },
-        { token: 'string.escape', foreground: 'ff79c6' },
-        { token: 'keyword.operator', foreground: 'badedc' },
-        { token: 'string.sql', foreground: 'cac580' },
-        { token: 'number', foreground: 'd996ff' },
-        { token: 'identifier', foreground: 'e8e7e6' },
-        { token: 'function.sql', foreground: 'f1e02d' },
-        { token: 'variable', foreground: 'c7859c' },
-        { token: 'type', foreground: 'c7859c' },
-        { token: 'entity.name.function', foreground: 'f1e02d' },
-        { token: 'support.function', foreground: 'f1e02d' },
-        { token: 'string.invalid', foreground: 'e5e887', fontStyle: 'underline' }
-      ],
-      colors: {
-        'editor.background': '#00000000',
-        'editor.foreground': '#f8f8f2',
-        'editorLineNumber.foreground': '#6272a4',
-        'editorLineNumber.activeForeground': '#ffffff',
-        'editorCursor.foreground': '#ffffff',
-        'editorGutter.background': '#00000000',
-        'editorLineHighlightBorder': '#00000000',
-        'editorLineHighlightBackground': '#00000000',
-        'editorWidget.border': '#00000000',
-        'focusBorder': '#00000000'
-      }
-    })
+    this.configureSqlLanguage()
+    this.defineSqlHighlightTheme(this.appSettings.getSqlHighlightColors())
 
     this.editor = monaco.editor.create(this.editorContainer.nativeElement, {
       value: this.sqlContent || '',
       language: 'sql',
-      theme: 'custom-dark',
+      theme: 'dbolt-sql-configurable',
       automaticLayout: true,
       minimap: { enabled: false },
       lineNumbers: 'on',
@@ -196,15 +174,123 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       () => this.active
     )
 
-    this.editor.onDidChangeModelContent(() => {
-      const value = this.editor?.getValue() || ''
-      if (value !== this.sqlContent) {
-        this.sqlContent = value
-        this.sqlContentChange.emit(value)
+    this.initializeEditorEvents()
+  }
+
+  private configureSqlLanguage(): void {
+    if (sqlTokenizerConfigured) return
+
+    monaco.languages.setMonarchTokensProvider('sql', {
+      ignoreCase: true,
+      defaultToken: 'identifier',
+      keywords: [
+        'add', 'all', 'alter', 'and', 'any', 'as', 'asc', 'authorization', 'backup', 'begin',
+        'between', 'break', 'by', 'cascade', 'case', 'check', 'close', 'clustered', 'coalesce',
+        'collate', 'column', 'commit', 'constraint', 'continue', 'create', 'cross', 'current',
+        'current_date', 'current_time', 'current_timestamp', 'cursor', 'database', 'declare',
+        'default', 'delete', 'desc', 'distinct', 'drop', 'else', 'end', 'escape', 'except',
+        'exec', 'execute', 'exists', 'fetch', 'for', 'foreign', 'from', 'full', 'go', 'grant',
+        'group', 'having', 'if', 'in', 'index', 'inner', 'insert', 'intersect', 'into', 'is',
+        'join', 'key', 'left', 'like', 'limit', 'not', 'null', 'offset', 'on', 'open', 'or',
+        'order', 'outer', 'over', 'primary', 'procedure', 'references', 'right', 'rollback',
+        'rownum', 'schema', 'select', 'set', 'table', 'then', 'to', 'top', 'transaction',
+        'truncate', 'union', 'unique', 'update', 'use', 'values', 'view', 'when', 'where',
+        'while', 'with'
+      ],
+      types: [
+        'bigint', 'binary', 'bit', 'blob', 'boolean', 'char', 'clob', 'date', 'datetime',
+        'datetime2', 'decimal', 'double', 'float', 'image', 'int', 'integer', 'json',
+        'longtext', 'money', 'nchar', 'ntext', 'numeric', 'nvarchar', 'real', 'serial',
+        'smallint', 'smallmoney', 'text', 'time', 'timestamp', 'tinyint', 'uniqueidentifier',
+        'uuid', 'varbinary', 'varchar', 'xml'
+      ],
+      tokenizer: {
+        root: [
+          [/--.*$/, 'comment'],
+          [/\/\*/, 'comment', '@comment'],
+          [/'(?:''|[^'])*'/, 'string'],
+          [/"(?:""|[^"])*"/, 'identifier'],
+          [/`(?:``|[^`])*`/, 'identifier'],
+          [/\[(?:\]\]|[^\]])*\]/, 'identifier'],
+          [/\b\d+(?:\.\d+)?\b/, 'number'],
+          [/@[a-zA-Z_][\w$#]*/, 'variable'],
+          [/[a-zA-Z_][\w$#]*(?=\s*\()/, {
+            cases: {
+              '@keywords': 'keyword',
+              '@types': 'type',
+              '@default': 'function'
+            }
+          }],
+          [/[a-zA-Z_][\w$#]*/, {
+            cases: {
+              '@keywords': 'keyword',
+              '@types': 'type',
+              '@default': 'identifier'
+            }
+          }],
+          [/[<>!~?:&|+\-*\/%^=]+/, 'operator'],
+          [/[;,.]/, 'delimiter'],
+          [/[()]/, 'delimiter']
+        ],
+        comment: [
+          [/[^/*]+/, 'comment'],
+          [/\*\//, 'comment', '@pop'],
+          [/[/*]/, 'comment']
+        ]
       }
     })
 
-    this.initializeEditorEvents()
+    sqlTokenizerConfigured = true
+  }
+
+  private defineSqlHighlightTheme(colors: SqlHighlightColors): void {
+    const normalizedColors = this.appSettings.normalizeSqlHighlightColors(colors)
+
+    const transparentEditorColors = {
+      'editor.background': '#00000000',
+      'editorGutter.background': '#00000000',
+      'editorLineHighlightBorder': '#00000000',
+      'editorLineHighlightBackground': '#00000000',
+      'editorWidget.border': '#00000000',
+      'focusBorder': '#00000000'
+    }
+
+    monaco.editor.defineTheme('dbolt-sql-configurable', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'keyword', foreground: this.toMonacoColor(normalizedColors.keyword), fontStyle: 'bold' },
+        { token: 'function', foreground: this.toMonacoColor(normalizedColors.function), fontStyle: 'bold' },
+        { token: 'identifier', foreground: this.toMonacoColor(normalizedColors.identifier) },
+        { token: 'string', foreground: this.toMonacoColor(normalizedColors.string) },
+        { token: 'number', foreground: this.toMonacoColor(normalizedColors.number) },
+        { token: 'comment', foreground: this.toMonacoColor(normalizedColors.comment), fontStyle: 'italic' },
+        { token: 'operator', foreground: this.toMonacoColor(normalizedColors.operator), fontStyle: 'bold' },
+        { token: 'type', foreground: this.toMonacoColor(normalizedColors.type) },
+        { token: 'variable', foreground: this.toMonacoColor(normalizedColors.variable) },
+        { token: 'delimiter', foreground: this.toMonacoColor(normalizedColors.delimiter) }
+      ],
+      colors: {
+        ...transparentEditorColors,
+        'editor.foreground': normalizedColors.identifier,
+        'editorLineNumber.foreground': '#858585',
+        'editorLineNumber.activeForeground': '#c6c6c6',
+        'editorCursor.foreground': '#ffffff',
+        'editor.selectionBackground': '#264f78',
+        'editor.inactiveSelectionBackground': '#3a3d41'
+      }
+    })
+  }
+
+  private applySqlHighlightTheme(colors: SqlHighlightColors): void {
+    if (!this.editor) return
+
+    this.defineSqlHighlightTheme(colors)
+    monaco.editor.setTheme('dbolt-sql-configurable')
+  }
+
+  private toMonacoColor(color: string): string {
+    return color.replace('#', '')
   }
 
   private initializeEditorEvents(): void {
