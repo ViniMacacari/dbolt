@@ -2,7 +2,10 @@
   "name": "dbolt",
   "version": "0.3.0",
   "description": "DBOLT Database Manager - Manage your databases with ease",
-  "author": "Vinícius Macacari de Almeida",
+  "author": {
+    "name": "Vinícius Macacari de Almeida",
+    "email": "macacarivinicius@gmail.com"
+  },
   "main": "dist-electron/main.js",
   "scripts": {
     "ng": "ng",
@@ -29,18 +32,19 @@
     "electron-pack": "electron-packager . dbolt --platform=win32 --arch=x64 --out=dist --overwrite --asar",
     "build-installer": "electron-builder",
     "dbolt": "npm run build:frontend:electron && npm run build:backend && npm run build-installer",
-    "build-installer:linux": "electron-builder --linux AppImage deb rpm && node scripts/organize-linux-artifacts.cjs",
+    "build-installer:linux": "node scripts/build-linux-installers.cjs",
     "dbolt:linux": "npm run build:frontend:electron && npm run build:backend && npm run build-installer:linux"
   },
   "build": {
     "appId": "com.dbolt.app",
     "productName": "DBOLT Database Manager",
+    "executableName": "dbolt",
     "directories": {
       "output": "dist/installer"
     },
     "files": [
       "dist-electron/**/*",
-      "dist/**/*",
+      "dist/dbolt/**/*",
       "node_modules/**/*",
       "public/**/*"
     ],
@@ -54,8 +58,18 @@
         "deb",
         "rpm"
       ],
-      "icon": "./public/icons/dbolt-square.png",
-      "category": "Development"
+      "icon": "./build/linux-icons",
+      "category": "Development",
+      "executableArgs": [
+        "--no-sandbox",
+        "--disable-setuid-sandbox"
+      ]
+    },
+    "deb": {
+      "afterInstall": "scripts/linux-after-install.tpl"
+    },
+    "rpm": {
+      "afterInstall": "scripts/linux-after-install.tpl"
     },
     "nsis": {
       "oneClick": false,
