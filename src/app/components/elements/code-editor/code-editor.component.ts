@@ -60,6 +60,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   queryResultIsSelect: boolean = false
   isLoadingMore: boolean = false
   maxResultLines: number | null = 0
+  queryExecutionTimeMs: number | null = null
 
   dataSave: any = {}
 
@@ -392,6 +393,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.queryReponse = []
     this.queryColumns = []
     this.maxResultLines = null
+    this.queryExecutionTimeMs = null
     this.prepareResultLayout()
     this.persistQueryState()
     this.layoutEditor()
@@ -402,7 +404,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       this.cacheSql = sql
       this.queryResultIsSelect = this.isReadOnlySelectSql(sql)
 
+      const queryStart = performance.now()
       const result: any = await this.runQuery.runSQL(sql, this.queryLines, this.tabInfo?.dbInfo)
+      this.queryExecutionTimeMs = performance.now() - queryStart
       this.queryReponse = result
       this.queryColumns = this.runQuery.getQueryColumns()
       this.maxResultLines = this.runQuery.getQueryLines()
@@ -415,6 +419,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       this.queryReponse = []
       this.queryColumns = []
       this.maxResultLines = null
+      this.queryExecutionTimeMs = null
       this.persistQueryState()
       this.layoutEditor()
     } finally {
@@ -433,7 +438,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     try {
       this.queryLines += this.queryFetchSize
+      const queryStart = performance.now()
       const result: any = await this.runQuery.runSQL(this.cacheSql, this.queryLines, this.tabInfo?.dbInfo)
+      this.queryExecutionTimeMs = performance.now() - queryStart
       this.queryReponse = result
       this.queryColumns = this.runQuery.getQueryColumns()
       this.persistQueryState()
@@ -514,6 +521,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.isLoadingMore = false
     this.queryError = ''
     this.maxResultLines = 0
+    this.queryExecutionTimeMs = null
     this.queryResultExpanded = false
     this.queryResultIsSelect = false
 
@@ -523,6 +531,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       this.tabInfo.queryState.queryResultOpen = false
       this.tabInfo.queryState.queryError = ''
       this.tabInfo.queryState.maxResultLines = 0
+      this.tabInfo.queryState.queryExecutionTimeMs = null
     }
   }
 
@@ -567,6 +576,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       ? this.getExpandedResultHeight()
       : this.normalizeResultHeight(queryState?.queryResultHeight ?? this.defaultResultHeight)
     this.maxResultLines = queryState?.maxResultLines ?? 0
+    this.queryExecutionTimeMs = queryState?.queryExecutionTimeMs ?? null
     this.layoutEditor()
   }
 
@@ -585,7 +595,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       previousQueryResultHeight: this.previousQueryResultHeight,
       queryResultExpanded: this.queryResultExpanded,
       queryResultIsSelect: this.queryResultIsSelect,
-      maxResultLines: this.maxResultLines
+      maxResultLines: this.maxResultLines,
+      queryExecutionTimeMs: this.queryExecutionTimeMs
     }
   }
 

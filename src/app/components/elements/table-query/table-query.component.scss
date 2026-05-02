@@ -314,10 +314,21 @@
     }
 
     small {
+        align-items: center;
         color: #969696;
+        display: inline-flex;
         font-family: 'Nunito';
         font-size: .72em;
         white-space: nowrap;
+
+        & + small::before {
+            background: #575757;
+            border-radius: 50%;
+            content: '';
+            height: 3px;
+            margin-right: 8px;
+            width: 3px;
+        }
     }
 }
 
