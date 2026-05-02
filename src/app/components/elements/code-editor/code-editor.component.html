@@ -28,7 +28,7 @@
                 [columns]="queryColumns" [calcWidth]="widthTable" [rowLimit]="queryFetchSize" [totalRows]="maxResultLines"
                 [isSelectResult]="queryResultIsSelect" [executedSql]="cacheSql" [dbContext]="tabInfo?.dbInfo"
                 [isExpanded]="queryResultExpanded" [isLoading]="isLoadingQuery" [isLoadingMore]="isLoadingMore"
-                [errorMessage]="queryError"
+                [errorMessage]="queryError" [executionTimeMs]="queryExecutionTimeMs"
                 (rowLimitChange)="onQueryFetchSizeChange($event)" (refreshQuery)="refreshQueryWithFetchSize()"
                 (resultHeightChange)="onQueryResultHeightChange($event)"
                 (toggleExpanded)="toggleQueryResultExpanded()"
