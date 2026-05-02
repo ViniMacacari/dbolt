@@ -11,6 +11,7 @@ import hanaV1 from './router/hana/hana-v1.js';
 import pgV9 from './router/postgres/v9.js';
 import mysql5 from './router/mysql/mysql5.js';
 import sqlserver2008 from './router/sqlserver/v2008.js';
+import sqliteV3 from './router/sqlite/v3.js';
 import {
   INTERNAL_API_TOKEN_HEADER,
   getInternalApiSessionToken
@@ -51,6 +52,7 @@ class InternalServer {
     this.app.use('/api/Postgres/v9', pgV9);
     this.app.use('/api/MySQL/v5', mysql5);
     this.app.use('/api/SqlServer/2008', sqlserver2008);
+    this.app.use('/api/SQLite/v3', sqliteV3);
 
     const server = this.app.listen(PORT, INTERNAL_API_HOST, () => {
       console.log(`App listening on ${getInternalApiBaseUrl(server)}`);

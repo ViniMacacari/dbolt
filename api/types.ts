@@ -1,6 +1,6 @@
 import type { ISqlType } from 'mssql';
 
-export type SupportedDatabase = 'Hana' | 'Postgres' | 'MySQL' | 'SqlServer';
+export type SupportedDatabase = 'Hana' | 'Postgres' | 'MySQL' | 'SqlServer' | 'SQLite';
 export type ConnectionStatus = 'connected' | 'disconnected';
 export type NumericLike = number | `${number}`;
 
