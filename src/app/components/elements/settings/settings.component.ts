@@ -1,12 +1,17 @@
 import { CommonModule } from '@angular/common'
 import { Component, OnInit } from '@angular/core'
-import { AppSettingsService } from '../../../services/app-settings/app-settings.service'
+import {
+  AppSettingsService,
+  SqlHighlightColorKey,
+  SqlHighlightColors,
+  SqlHighlightMode
+} from '../../../services/app-settings/app-settings.service'
 import { ConnectionsService, SavedConnection } from '../../../services/resolve-connections/connections.service'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { InputListComponent } from '../input-list/input-list.component'
 import { LoadingComponent } from '../../modal/loading/loading.component'
 
-type SettingsTab = 'query' | 'connections' | 'autocomplete'
+type SettingsTab = 'query' | 'connections' | 'autocomplete' | 'highlight'
 
 @Component({
   selector: 'app-settings',
@@ -23,9 +28,25 @@ export class SettingsComponent implements OnInit {
   columnAutocompleteEnabled: boolean
   sqlFormatterIndentSize: number
   sqlFormatterUppercaseKeywords: boolean
+  sqlHighlightMode: SqlHighlightMode
+  sqlHighlightColors: SqlHighlightColors
+  readonly sqlHighlightOptions: { value: SqlHighlightMode, label: string }[]
+  readonly sqlHighlightColorFields: { key: SqlHighlightColorKey, label: string }[] = [
+    { key: 'keyword', label: 'Keyword' },
+    { key: 'function', label: 'Function' },
+    { key: 'identifier', label: 'Identifier' },
+    { key: 'string', label: 'String' },
+    { key: 'number', label: 'Number' },
+    { key: 'comment', label: 'Comment' },
+    { key: 'operator', label: 'Operator' },
+    { key: 'type', label: 'Type' },
+    { key: 'variable', label: 'Variable' },
+    { key: 'delimiter', label: 'Delimiter' }
+  ]
   savedMessage: string = ''
   expirationSavedMessage: string = ''
   formatterSavedMessage: string = ''
+  highlightSavedMessage: string = ''
   autocompleteSavedMessage: string = ''
   connectionMessage: string = ''
   connectionError: string = ''
@@ -50,6 +71,9 @@ export class SettingsComponent implements OnInit {
     this.columnAutocompleteEnabled = this.settings.isColumnAutocompleteEnabled()
     this.sqlFormatterIndentSize = this.settings.getSqlFormatterIndentSize()
     this.sqlFormatterUppercaseKeywords = this.settings.shouldUppercaseSqlFormatterKeywords()
+    this.sqlHighlightMode = this.settings.getSqlHighlightMode()
+    this.sqlHighlightColors = this.settings.getSqlHighlightColors()
+    this.sqlHighlightOptions = this.settings.sqlHighlightOptions
   }
 
   async ngOnInit(): Promise<void> {
@@ -63,8 +87,13 @@ export class SettingsComponent implements OnInit {
   get settingsTitle(): string {
     if (this.activeTab === 'connections') return 'Connections'
     if (this.activeTab === 'autocomplete') return 'Auto-complete'
+    if (this.activeTab === 'highlight') return 'SQL highlight'
 
     return 'Query defaults'
+  }
+
+  get isCustomSqlHighlight(): boolean {
+    return this.sqlHighlightMode === 'custom'
   }
 
   get requiresDefaultDatabase(): boolean {
@@ -135,6 +164,37 @@ export class SettingsComponent implements OnInit {
     this.sqlFormatterIndentSize = settings.sqlFormatterIndentSize
     this.sqlFormatterUppercaseKeywords = settings.sqlFormatterUppercaseKeywords
     this.formatterSavedMessage = 'Saved'
+  }
+
+  onSqlHighlightColorInput(key: SqlHighlightColorKey, event: Event): void {
+    this.sqlHighlightColors = {
+      ...this.sqlHighlightColors,
+      [key]: (event.target as HTMLInputElement).value
+    }
+    this.sqlHighlightMode = 'custom'
+    this.highlightSavedMessage = ''
+  }
+
+  onSqlHighlightModeSelected(item: { [key: string]: string | number } | null): void {
+    if (!item) return
+
+    this.sqlHighlightMode = this.settings.normalizeSqlHighlightMode(item['value'])
+
+    if (this.sqlHighlightMode !== 'custom') {
+      this.sqlHighlightColors = this.settings.getSqlHighlightPresetColors(this.sqlHighlightMode)
+    }
+
+    this.highlightSavedMessage = ''
+  }
+
+  saveSqlHighlightSettings(): void {
+    const settings = this.sqlHighlightMode === 'custom'
+      ? this.settings.setSqlHighlightColors(this.sqlHighlightColors)
+      : this.settings.setSqlHighlightMode(this.sqlHighlightMode)
+
+    this.sqlHighlightMode = settings.sqlHighlightMode
+    this.sqlHighlightColors = settings.sqlHighlightColors
+    this.highlightSavedMessage = 'Saved'
   }
 
   onTableAutocompleteChange(event: Event): void {

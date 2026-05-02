@@ -13,6 +13,8 @@ export class InputListComponent implements OnChanges {
   @Output() itemSelected = new EventEmitter<{ [key: string]: string | number } | null>()
   @Input() list: { [key: string]: string | number }[] = []
   @Input() displayKey: string = 'name'
+  @Input() valueKey: string = 'id'
+  @Input() selectedValue: string | number | null = null
   @Input() width: string = '300px'
   @Input() placeholder: string = ''
 
@@ -26,6 +28,15 @@ export class InputListComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['list'] && changes['list'].currentValue) {
       this.updateFilteredList()
+    }
+
+    if (
+      changes['list'] ||
+      changes['selectedValue'] ||
+      changes['valueKey'] ||
+      changes['displayKey']
+    ) {
+      this.syncSelectedItem()
     }
   }
 
@@ -77,5 +88,17 @@ export class InputListComponent implements OnChanges {
     this.filteredList = this.list.filter(item =>
       item[this.displayKey]?.toString().toLowerCase().includes(query)
     )
+  }
+
+  private syncSelectedItem(): void {
+    if (this.selectedValue === null || this.selectedValue === undefined) return
+    if (this.selectedItem?.[this.valueKey] === this.selectedValue) return
+
+    const selectedItem = this.list.find(item => item[this.valueKey] === this.selectedValue)
+    if (!selectedItem) return
+
+    this.selectedItem = selectedItem
+    this.searchValue = selectedItem[this.displayKey]?.toString() || ''
+    this.updateFilteredList()
   }
 }

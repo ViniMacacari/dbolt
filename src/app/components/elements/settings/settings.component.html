@@ -16,6 +16,12 @@
             <img src="icons/code-block.png" title="Auto-complete" height="15px">
             Suggest
         </button>
+
+        <button type="button" class="btn" [ngClass]="{ 'active': activeTab === 'highlight' }"
+            (click)="selectTab('highlight')">
+            <img src="icons/star.png" title="Highlight" height="15px">
+            Highlight
+        </button>
     </div>
 
     <div class="settings-panel">
@@ -76,6 +82,47 @@
                     <label for="sql-formatter-uppercase-keywords">Uppercase</label>
                     <button type="button" (click)="saveSqlFormatterSettings()">Save</button>
                     <small *ngIf="formatterSavedMessage">{{ formatterSavedMessage }}</small>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="settings-stack" *ngIf="activeTab === 'highlight'">
+            <div class="settings-card">
+                <div>
+                    <h3>SQL highlight theme</h3>
+                    <p>Choose a built-in SQL palette or switch to Custom to edit each token color.</p>
+                </div>
+
+                <div class="setting-control highlight-theme-control">
+                    <label>Theme</label>
+                    <app-input-list [list]="sqlHighlightOptions" [displayKey]="'label'" [valueKey]="'value'"
+                        [selectedValue]="sqlHighlightMode" [width]="'220px'" [placeholder]="'Select theme'"
+                        (itemSelected)="onSqlHighlightModeSelected($event)">
+                    </app-input-list>
+                    <button type="button" (click)="saveSqlHighlightSettings()">Save</button>
+                    <small *ngIf="highlightSavedMessage">{{ highlightSavedMessage }}</small>
+                </div>
+            </div>
+
+            <div class="settings-card" *ngIf="isCustomSqlHighlight">
+                <div>
+                    <h3>Custom colors</h3>
+                    <p>Applies to SQL tokens such as SELECT, max(), id, strings and comments.</p>
+                </div>
+
+                <div class="setting-control highlight-control">
+                    <div class="color-grid">
+                        <label class="color-control" *ngFor="let field of sqlHighlightColorFields"
+                            [attr.for]="'sql-highlight-' + field.key">
+                            <span>{{ field.label }}</span>
+                            <input [id]="'sql-highlight-' + field.key" type="color"
+                                [value]="sqlHighlightColors[field.key]"
+                                (input)="onSqlHighlightColorInput(field.key, $event)">
+                        </label>
+                    </div>
+                    <button type="button" (click)="saveSqlHighlightSettings()">Save</button>
+                    <small *ngIf="highlightSavedMessage">{{ highlightSavedMessage }}</small>
                 </div>
             </div>
         </div>
