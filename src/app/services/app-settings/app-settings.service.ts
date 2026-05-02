@@ -16,6 +16,7 @@ export interface SqlHighlightColors {
 }
 
 export type SqlHighlightColorKey = keyof SqlHighlightColors
+export type SqlHighlightMode = 'dbolt-dark' | 'dbolt-high-contrast' | 'classic-sql' | 'custom'
 
 export interface AppSettings {
   defaultQueryRows: number
@@ -24,6 +25,7 @@ export interface AppSettings {
   columnAutocompleteEnabled: boolean
   sqlFormatterIndentSize: number
   sqlFormatterUppercaseKeywords: boolean
+  sqlHighlightMode: SqlHighlightMode
   sqlHighlightColors: SqlHighlightColors
 }
 
@@ -39,7 +41,17 @@ export class AppSettingsService {
     columnAutocompleteEnabled: true,
     sqlFormatterIndentSize: 2,
     sqlFormatterUppercaseKeywords: true,
-    sqlHighlightColors: {
+    sqlHighlightMode: 'dbolt-dark',
+    sqlHighlightColors: this.getSqlHighlightPresetColors('dbolt-dark')
+  }
+  readonly sqlHighlightOptions: { value: SqlHighlightMode, label: string }[] = [
+    { value: 'dbolt-dark', label: 'DBOLT Dark' },
+    { value: 'dbolt-high-contrast', label: 'DBOLT High Contrast' },
+    { value: 'classic-sql', label: 'Classic SQL' },
+    { value: 'custom', label: 'Custom' }
+  ]
+  private readonly sqlHighlightPresets: Record<Exclude<SqlHighlightMode, 'custom'>, SqlHighlightColors> = {
+    'dbolt-dark': {
       keyword: '#739eca',
       function: '#f1e02d',
       identifier: '#e8e7e6',
@@ -50,6 +62,30 @@ export class AppSettingsService {
       type: '#c7859c',
       variable: '#c7859c',
       delimiter: '#c9d1d9'
+    },
+    'dbolt-high-contrast': {
+      keyword: '#4cc9f0',
+      function: '#ffbe0b',
+      identifier: '#ffffff',
+      string: '#80ed99',
+      number: '#ff99c8',
+      comment: '#a8b3cf',
+      operator: '#f8f8f2',
+      type: '#fb5607',
+      variable: '#f72585',
+      delimiter: '#e8eaed'
+    },
+    'classic-sql': {
+      keyword: '#569cd6',
+      function: '#dcdcaa',
+      identifier: '#d4d4d4',
+      string: '#ce9178',
+      number: '#b5cea8',
+      comment: '#6a9955',
+      operator: '#d4d4d4',
+      type: '#4ec9b0',
+      variable: '#c586c0',
+      delimiter: '#d4d4d4'
     }
   }
   private readonly settingsChangedSubject = new Subject<AppSettings>()
@@ -98,6 +134,10 @@ export class AppSettingsService {
 
   getSqlHighlightColors(): SqlHighlightColors {
     return this.getSettings().sqlHighlightColors
+  }
+
+  getSqlHighlightMode(): SqlHighlightMode {
+    return this.getSettings().sqlHighlightMode
   }
 
   setDefaultQueryRows(value: number): AppSettings {
@@ -161,7 +201,24 @@ export class AppSettingsService {
   setSqlHighlightColors(value: Partial<SqlHighlightColors>): AppSettings {
     const settings = {
       ...this.getSettings(),
+      sqlHighlightMode: 'custom' as SqlHighlightMode,
       sqlHighlightColors: this.normalizeSqlHighlightColors(value)
+    }
+
+    this.saveSettings(settings)
+
+    return settings
+  }
+
+  setSqlHighlightMode(value: unknown): AppSettings {
+    const sqlHighlightMode = this.normalizeSqlHighlightMode(value)
+    const currentSettings = this.getSettings()
+    const settings = {
+      ...currentSettings,
+      sqlHighlightMode,
+      sqlHighlightColors: sqlHighlightMode === 'custom'
+        ? currentSettings.sqlHighlightColors
+        : this.getSqlHighlightPresetColors(sqlHighlightMode)
     }
 
     this.saveSettings(settings)
@@ -213,7 +270,48 @@ export class AppSettingsService {
     }
   }
 
+  normalizeSqlHighlightMode(value: unknown): SqlHighlightMode {
+    if (
+      value === 'dbolt-dark' ||
+      value === 'dbolt-high-contrast' ||
+      value === 'classic-sql' ||
+      value === 'custom'
+    ) {
+      return value
+    }
+
+    return this.fallbackSettings.sqlHighlightMode
+  }
+
+  getSqlHighlightPresetColors(mode: Exclude<SqlHighlightMode, 'custom'>): SqlHighlightColors {
+    const preset = this.sqlHighlightPresets?.[mode]
+    if (preset) return { ...preset }
+
+    return {
+      keyword: '#739eca',
+      function: '#f1e02d',
+      identifier: '#e8e7e6',
+      string: '#cac580',
+      number: '#d996ff',
+      comment: '#7f8c98',
+      operator: '#badedc',
+      type: '#c7859c',
+      variable: '#c7859c',
+      delimiter: '#c9d1d9'
+    }
+  }
+
   private normalizeSettings(settings?: Partial<AppSettings>): AppSettings {
+    const storedMode = settings?.sqlHighlightMode
+    const sqlHighlightMode = storedMode
+      ? this.normalizeSqlHighlightMode(storedMode)
+      : settings?.sqlHighlightColors
+        ? 'custom'
+        : this.fallbackSettings.sqlHighlightMode
+    const sqlHighlightColors = sqlHighlightMode === 'custom'
+      ? this.normalizeSqlHighlightColors(settings?.sqlHighlightColors)
+      : this.getSqlHighlightPresetColors(sqlHighlightMode)
+
     return {
       defaultQueryRows: this.normalizeRows(settings?.defaultQueryRows),
       connectionExpirationMinutes: this.normalizeExpirationMinutes(settings?.connectionExpirationMinutes),
@@ -221,7 +319,8 @@ export class AppSettingsService {
       columnAutocompleteEnabled: settings?.columnAutocompleteEnabled ?? this.fallbackSettings.columnAutocompleteEnabled,
       sqlFormatterIndentSize: this.normalizeIndentSize(settings?.sqlFormatterIndentSize),
       sqlFormatterUppercaseKeywords: settings?.sqlFormatterUppercaseKeywords ?? this.fallbackSettings.sqlFormatterUppercaseKeywords,
-      sqlHighlightColors: this.normalizeSqlHighlightColors(settings?.sqlHighlightColors)
+      sqlHighlightMode,
+      sqlHighlightColors
     }
   }
 
