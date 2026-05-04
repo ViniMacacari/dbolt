@@ -64,6 +64,24 @@
 
             <div class="settings-card">
                 <div>
+                    <h3>SQL syntax validation</h3>
+                    <p>Underlines syntax errors in query tabs while editing.</p>
+                </div>
+
+                <div class="setting-control autocomplete-toggle">
+                    <label class="toggle-control" for="sql-syntax-validation-enabled">
+                        <input id="sql-syntax-validation-enabled" type="checkbox"
+                            [checked]="sqlSyntaxValidationEnabled"
+                            (change)="onSqlSyntaxValidationChange($event)">
+                        <span></span>
+                    </label>
+                    <button type="button" (click)="saveSqlSyntaxValidationSettings()">Save</button>
+                    <small *ngIf="syntaxValidationSavedMessage">{{ syntaxValidationSavedMessage }}</small>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div>
                     <h3>Script indentation</h3>
                     <p>Applied by the indent button in query tabs.</p>
                 </div>
