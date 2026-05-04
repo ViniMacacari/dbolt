@@ -312,16 +312,38 @@
         margin-top: 2px;
     }
 
-    em {
+    em,
+    button {
         color: #d8e9fb;
         font-size: .72em;
         font-style: normal;
         font-weight: 850;
     }
 
+    button {
+        background: #1b1b1b;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: 'Nunito';
+        height: 28px;
+        padding: 0 9px;
+
+        &:hover {
+            background: #303030;
+        }
+    }
+
     &:hover {
         background: #1b1b1b;
     }
+}
+
+.version-actions {
+    align-items: center;
+    display: flex;
+    flex: 0 0 auto;
+    gap: 8px;
 }
 
 .empty-history,

@@ -67,14 +67,22 @@
                             <small>{{ formatDate(query.updatedAt) }}</small>
                         </div>
 
-                        <button type="button" class="version-item" *ngFor="let version of getQueryVersions(query)"
-                            (click)="restoreVersion(query, version, $event)">
+                        <div class="version-item" *ngFor="let version of getQueryVersions(query)"
+                            (click)="compareVersion(query, version, $event)">
                             <span>
                                 <strong>Version {{ version.id }}</strong>
                                 <small>{{ formatDate(version.changedAt) }}</small>
                             </span>
-                            <em>Restore</em>
-                        </button>
+                            <span class="version-actions">
+                                <em>Compare</em>
+                                <button type="button" (click)="openVersionCopy(query, version, $event)">
+                                    Edit copy
+                                </button>
+                                <button type="button" (click)="restoreVersion(query, version, $event)">
+                                    Restore
+                                </button>
+                            </span>
+                        </div>
                         <small class="empty-history" *ngIf="getQueryVersions(query).length === 0">
                             No saved versions yet
                         </small>

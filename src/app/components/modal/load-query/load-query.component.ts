@@ -5,6 +5,11 @@ import { InternalApiService } from '../../../services/requests/internal-api.serv
 import { InputListComponent } from "../../elements/input-list/input-list.component"
 import { ToastComponent } from "../../toast/toast.component"
 import { QuerySaveService, SavedQuery, SavedQueryVersion } from '../../../services/query-save/query-save.service'
+import {
+  QueryLibraryBreadcrumbPart,
+  QueryLibraryNavigatorService,
+  QueryLibraryView
+} from '../../../services/query-library/query-library-navigator.service'
 
 @Component({
   selector: 'app-load-query',
@@ -16,6 +21,7 @@ import { QuerySaveService, SavedQuery, SavedQueryVersion } from '../../../servic
 export class LoadQueryComponent {
   @Output() close = new EventEmitter<void>()
   @Output() open = new EventEmitter<any>()
+  @Output() compare = new EventEmitter<any>()
   @Input() data: any = {}
   @ViewChild('database') databaseInput!: InputListComponent
   @ViewChild('version') versionInput!: InputListComponent
@@ -29,11 +35,19 @@ export class LoadQueryComponent {
   versionsByQueryId: Record<number, SavedQueryVersion[]> = {}
   expandedHistoryQueryId: number | null = null
   currentFolderPath: string = ''
+  view: QueryLibraryView = {
+    folders: [],
+    queries: [],
+    breadcrumbParts: [],
+    currentFolderLabel: 'Queries',
+    hasVisibleItems: false
+  }
   private _sgbd: string = ''
 
   constructor(
     private IAPI: InternalApiService,
-    private querySave: QuerySaveService
+    private querySave: QuerySaveService,
+    private navigator: QueryLibraryNavigatorService
   ) { }
 
   async ngOnInit(): Promise<void> {
@@ -68,18 +82,11 @@ export class LoadQueryComponent {
   }
 
   applyFilters(): void {
-    const database = this._sgbd.toLowerCase()
-    const queryName = this.queryName.toLowerCase()
-    const currentFolderPath = this.currentFolderPath.toLowerCase()
-
-    this.queries = this.originalQueries.filter(query => {
-      const queryDatabase = String(query.dbSchema?.sgbd || '').toLowerCase()
-      const queryFolderPath = String(query.folderPath || '').toLowerCase()
-
-      return (!database || queryDatabase.includes(database)) &&
-        (!queryName || query.name.toLowerCase().includes(queryName)) &&
-        queryFolderPath === currentFolderPath
+    this.view = this.navigator.buildView(this.originalQueries, this.folders, this.currentFolderPath, {
+      database: this._sgbd,
+      queryName: this.queryName
     })
+    this.queries = this.view.queries
   }
 
   async loadQuery(query: SavedQuery): Promise<void> {
@@ -126,10 +133,27 @@ export class LoadQueryComponent {
       this.replaceQuery(restoredQuery)
       this.versionsByQueryId[query.id] = await this.querySave.loadVersions(query.id)
       this.toast.showToast('Query version restored successfully', 'green')
-      this.open.emit(restoredQuery)
     } catch (error: any) {
       this.toast.showToast(error?.error || error?.message || 'Could not restore query version', 'red')
     }
+  }
+
+  compareVersion(query: SavedQuery, version: SavedQueryVersion, event: MouseEvent): void {
+    event.stopPropagation()
+    this.compare.emit({ query, version })
+  }
+
+  openVersionCopy(query: SavedQuery, version: SavedQueryVersion, event: MouseEvent): void {
+    event.stopPropagation()
+    this.open.emit({
+      name: `${query.name} - version ${version.id}`,
+      type: 'sql',
+      sql: version.sql,
+      dbSchema: version.dbSchema || query.dbSchema,
+      folderPath: query.folderPath || '',
+      versioningEnabled: false,
+      persisted: false
+    })
   }
 
   formatQueryPath(query: SavedQuery): string {
@@ -145,7 +169,7 @@ export class LoadQueryComponent {
   }
 
   openFolder(folderName: string): void {
-    this.currentFolderPath = this.joinPath(this.currentFolderPath, folderName)
+    this.currentFolderPath = this.navigator.enterFolder(this.currentFolderPath, folderName)
     this.expandedHistoryQueryId = null
     this.applyFilters()
   }
@@ -153,9 +177,7 @@ export class LoadQueryComponent {
   goBack(): void {
     if (!this.currentFolderPath) return
 
-    const parts = this.currentFolderPath.split('/')
-    parts.pop()
-    this.currentFolderPath = parts.join('/')
+    this.currentFolderPath = this.navigator.parentFolder(this.currentFolderPath)
     this.expandedHistoryQueryId = null
     this.applyFilters()
   }
@@ -167,17 +189,11 @@ export class LoadQueryComponent {
   }
 
   get currentFolderLabel(): string {
-    return this.currentFolderPath || 'Queries'
+    return this.view.currentFolderLabel
   }
 
-  get breadcrumbParts(): Array<{ label: string, path: string }> {
-    if (!this.currentFolderPath) return []
-
-    const parts = this.currentFolderPath.split('/')
-    return parts.map((label, index) => ({
-      label,
-      path: parts.slice(0, index + 1).join('/')
-    }))
+  get breadcrumbParts(): QueryLibraryBreadcrumbPart[] {
+    return this.view.breadcrumbParts
   }
 
   openBreadcrumb(path: string): void {
@@ -187,43 +203,15 @@ export class LoadQueryComponent {
   }
 
   getVisibleFolders(): string[] {
-    const allFolders = new Set([
-      ...this.folders,
-      ...this.originalQueries
-        .map(query => query.folderPath || '')
-        .filter(Boolean)
-    ])
-    const folderNames = new Set<string>()
-
-    for (const folderPath of allFolders) {
-      const normalizedPath = this.querySave.normalizeFolderPath(folderPath)
-      if (!normalizedPath) continue
-
-      const relativePath = this.currentFolderPath
-        ? normalizedPath.startsWith(`${this.currentFolderPath}/`)
-          ? normalizedPath.slice(this.currentFolderPath.length + 1)
-          : ''
-        : normalizedPath
-
-      const folderName = relativePath.split('/')[0]
-      if (folderName) {
-        folderNames.add(folderName)
-      }
-    }
-
-    return [...folderNames].sort((left, right) => left.localeCompare(right))
+    return this.view.folders
   }
 
   hasVisibleItems(): boolean {
-    return this.getVisibleFolders().length > 0 || this.queries.length > 0
+    return this.view.hasVisibleItems
   }
 
   private replaceQuery(query: SavedQuery): void {
     this.originalQueries = this.originalQueries.map(item => item.id === query.id ? query : item)
     this.applyFilters()
-  }
-
-  private joinPath(basePath: string, folderName: string): string {
-    return [basePath, folderName].filter(Boolean).join('/')
   }
 }
