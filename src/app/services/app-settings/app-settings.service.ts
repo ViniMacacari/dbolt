@@ -21,6 +21,7 @@ export type SqlHighlightMode = 'dbolt-dark' | 'dbolt-high-contrast' | 'classic-s
 export interface AppSettings {
   defaultQueryRows: number
   connectionExpirationMinutes: number
+  sqlSyntaxValidationEnabled: boolean
   tableAutocompleteEnabled: boolean
   columnAutocompleteEnabled: boolean
   autoQuoteCapitalizedColumns: boolean
@@ -38,6 +39,7 @@ export class AppSettingsService {
   private readonly fallbackSettings: AppSettings = {
     defaultQueryRows: 50,
     connectionExpirationMinutes: 30,
+    sqlSyntaxValidationEnabled: true,
     tableAutocompleteEnabled: true,
     columnAutocompleteEnabled: true,
     autoQuoteCapitalizedColumns: true,
@@ -118,6 +120,10 @@ export class AppSettingsService {
     return this.getSettings().connectionExpirationMinutes
   }
 
+  isSqlSyntaxValidationEnabled(): boolean {
+    return this.getSettings().sqlSyntaxValidationEnabled
+  }
+
   isTableAutocompleteEnabled(): boolean {
     return this.getSettings().tableAutocompleteEnabled
   }
@@ -163,6 +169,17 @@ export class AppSettingsService {
     const settings = {
       ...this.getSettings(),
       connectionExpirationMinutes
+    }
+
+    this.saveSettings(settings)
+
+    return settings
+  }
+
+  setSqlSyntaxValidationEnabled(value: boolean): AppSettings {
+    const settings = {
+      ...this.getSettings(),
+      sqlSyntaxValidationEnabled: Boolean(value)
     }
 
     this.saveSettings(settings)
@@ -332,6 +349,7 @@ export class AppSettingsService {
     return {
       defaultQueryRows: this.normalizeRows(settings?.defaultQueryRows),
       connectionExpirationMinutes: this.normalizeExpirationMinutes(settings?.connectionExpirationMinutes),
+      sqlSyntaxValidationEnabled: settings?.sqlSyntaxValidationEnabled ?? this.fallbackSettings.sqlSyntaxValidationEnabled,
       tableAutocompleteEnabled: settings?.tableAutocompleteEnabled ?? this.fallbackSettings.tableAutocompleteEnabled,
       columnAutocompleteEnabled: settings?.columnAutocompleteEnabled ?? this.fallbackSettings.columnAutocompleteEnabled,
       autoQuoteCapitalizedColumns: settings?.autoQuoteCapitalizedColumns ?? this.fallbackSettings.autoQuoteCapitalizedColumns,

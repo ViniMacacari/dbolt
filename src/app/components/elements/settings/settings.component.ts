@@ -24,6 +24,7 @@ export class SettingsComponent implements OnInit {
   activeTab: SettingsTab = 'query'
   defaultQueryRows: number
   connectionExpirationMinutes: number
+  sqlSyntaxValidationEnabled: boolean
   tableAutocompleteEnabled: boolean
   columnAutocompleteEnabled: boolean
   autoQuoteCapitalizedColumns: boolean
@@ -46,6 +47,7 @@ export class SettingsComponent implements OnInit {
   ]
   savedMessage: string = ''
   expirationSavedMessage: string = ''
+  syntaxValidationSavedMessage: string = ''
   formatterSavedMessage: string = ''
   highlightSavedMessage: string = ''
   autocompleteSavedMessage: string = ''
@@ -68,6 +70,7 @@ export class SettingsComponent implements OnInit {
   ) {
     this.defaultQueryRows = this.settings.getDefaultQueryRows()
     this.connectionExpirationMinutes = this.settings.getConnectionExpirationMinutes()
+    this.sqlSyntaxValidationEnabled = this.settings.isSqlSyntaxValidationEnabled()
     this.tableAutocompleteEnabled = this.settings.isTableAutocompleteEnabled()
     this.columnAutocompleteEnabled = this.settings.isColumnAutocompleteEnabled()
     this.autoQuoteCapitalizedColumns = this.settings.shouldAutoQuoteCapitalizedColumns()
@@ -143,6 +146,17 @@ export class SettingsComponent implements OnInit {
     const settings = this.settings.setConnectionExpirationMinutes(this.connectionExpirationMinutes)
     this.connectionExpirationMinutes = settings.connectionExpirationMinutes
     this.expirationSavedMessage = 'Saved'
+  }
+
+  onSqlSyntaxValidationChange(event: Event): void {
+    this.sqlSyntaxValidationEnabled = (event.target as HTMLInputElement).checked
+    this.syntaxValidationSavedMessage = ''
+  }
+
+  saveSqlSyntaxValidationSettings(): void {
+    const settings = this.settings.setSqlSyntaxValidationEnabled(this.sqlSyntaxValidationEnabled)
+    this.sqlSyntaxValidationEnabled = settings.sqlSyntaxValidationEnabled
+    this.syntaxValidationSavedMessage = 'Saved'
   }
 
   onSqlFormatterIndentInput(event: Event): void {
