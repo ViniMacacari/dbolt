@@ -7,12 +7,12 @@ import { RunQueryService } from '../../../services/db-query/run-query.service'
 import { ToastComponent } from '../../toast/toast.component'
 import { TableQueryComponent } from "../table-query/table-query.component"
 import { SaveQueryComponent } from "../../modal/save-query/save-query.component"
-import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
 import { AppSettingsService, SqlHighlightColors } from '../../../services/app-settings/app-settings.service'
 import { SqlTableAutocompleteService } from '../../../services/code-autocomplete/sql-table-autocomplete.service'
 import { SqlCodeFormatterService } from '../../../services/code-formatting/sql-code-formatter.service'
 import { SqlSyntaxMonacoMarkersService } from '../../../services/sql-validation/sql-syntax-monaco-markers.service'
+import { QuerySaveService, SavedQuery, SavedQueryInput } from '../../../services/query-save/query-save.service'
 
 let sqlTokenizerConfigured = false
 
@@ -26,7 +26,7 @@ let sqlTokenizerConfigured = false
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChanges {
   @Input() sqlContent: string = ''
   @Output() sqlContentChange = new EventEmitter<string>()
-  @Output() savedName = new EventEmitter<string>()
+  @Output() savedName = new EventEmitter<SavedQuery>()
   @Output() savedQuery = new EventEmitter<any>()
   @Input() widthTable: number = 300
   @Input() tabInfo: any
@@ -69,12 +69,12 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   constructor(
     private dbSchemas: GetDbschemaService,
     private runQuery: RunQueryService,
-    private IAPI: InternalApiService,
     private connectionContext: ConnectionContextService,
     private appSettings: AppSettingsService,
     private tableAutocomplete: SqlTableAutocompleteService,
     private sqlFormatter: SqlCodeFormatterService,
-    private sqlSyntaxMarkers: SqlSyntaxMonacoMarkersService
+    private sqlSyntaxMarkers: SqlSyntaxMonacoMarkersService,
+    private querySave: QuerySaveService
   ) {
     this.settingsSubscription = this.appSettings.settingsChanges$.subscribe((settings) => {
       this.applySqlHighlightTheme(settings.sqlHighlightColors)
@@ -468,34 +468,44 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     this.dataSave = {
       sql: this.editor?.getValue() || '',
-      dataDbSchema: this.connectionContext.withoutRuntimeFields(dbSchemas)
+      dataDbSchema: this.connectionContext.withoutRuntimeFields(dbSchemas),
+      name: this.tabInfo?.persisted ? this.getCopyQueryName(this.tabInfo?.name) : '',
+      folderPath: this.tabInfo?.folderPath || '',
+      versioningEnabled: Boolean(this.tabInfo?.versioningEnabled)
     }
   }
 
-  async savedSaveAs(name: any): Promise<void> {
-    this.savedName.emit(name)
+  async savedSaveAs(savedQuery: SavedQuery): Promise<void> {
+    this.applySavedQueryToTab(savedQuery)
+    this.savedName.emit(savedQuery)
+    this.savedQuery.emit(savedQuery)
   }
 
   async saveQuery(): Promise<void> {
+    if (!this.tabInfo?.persisted) {
+      await this.saveAs()
+      return
+    }
+
     try {
       const dbSchemas = this.tabInfo?.dbInfo || await this.dbSchemas.getSelectedSchemaDB()
+      const sql = this.editor?.getValue() || ''
+      const payload = this.buildSavedQueryPayload(sql, dbSchemas)
 
-      this.dataSave = {
-        id: this.tabInfo?.id,
-        name: this.tabInfo?.name,
-        type: 'sql',
-        sql: this.editor?.getValue() || '',
-        originalContent: this.editor?.getValue() || '',
-        icon: 'CODE',
-        dbSchema: this.connectionContext.withoutRuntimeFields(dbSchemas)
-      }
+      const updatedQuery = await this.querySave.updateQuery(Number(this.tabInfo.id), payload)
 
-      await this.IAPI.put('/api/query/' + this.tabInfo.id, this.dataSave)
-
-      this.savedQuery.emit(this.dataSave)
+      this.applySavedQueryToTab(updatedQuery)
+      this.savedQuery.emit(updatedQuery)
       this.toast.showToast('Saved successfully ', 'green')
     } catch (error: any) {
-      this.saveAs()
+      console.error(error)
+
+      if (this.isQueryNotFoundError(error)) {
+        await this.saveAs()
+        return
+      }
+
+      this.toast.showToast(error?.error || error?.message || 'Could not save query', 'red')
     }
   }
 
@@ -669,5 +679,49 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private getQueryErrorMessage(error: any): string {
     return error?.error || error?.message || 'Could not execute query.'
+  }
+
+  private buildSavedQueryPayload(sql: string, dbSchemas: any): SavedQueryInput {
+    return {
+      name: this.tabInfo?.name || 'Untitled query',
+      type: 'sql',
+      sql,
+      dbSchema: this.connectionContext.withoutRuntimeFields(dbSchemas),
+      folderPath: this.tabInfo?.folderPath || '',
+      versioningEnabled: Boolean(this.tabInfo?.versioningEnabled)
+    }
+  }
+
+  private applySavedQueryToTab(savedQuery: SavedQuery): void {
+    if (!this.tabInfo) return
+
+    this.tabInfo.id = savedQuery.id
+    this.tabInfo.name = savedQuery.name
+    this.tabInfo.info = {
+      ...this.tabInfo.info,
+      sql: savedQuery.sql
+    }
+    this.tabInfo.originalContent = savedQuery.sql
+    this.tabInfo.dbInfo = savedQuery.dbSchema || this.tabInfo.dbInfo
+    this.tabInfo.folderPath = savedQuery.folderPath || ''
+    this.tabInfo.versioningEnabled = Boolean(savedQuery.versioningEnabled)
+    this.tabInfo.updatedAt = savedQuery.updatedAt
+    this.tabInfo.createdAt = savedQuery.createdAt
+    this.tabInfo.versions = savedQuery.versions || []
+    this.tabInfo.persisted = true
+    this.tabInfo.icon = 'CODE'
+  }
+
+  private isQueryNotFoundError(error: any): boolean {
+    const message = String(error?.error || error?.message || '').toLowerCase()
+    return message.includes('not found')
+  }
+
+  private getCopyQueryName(name: string): string {
+    const baseName = String(name || 'Untitled query').trim()
+    const suffix = ' copy'
+    const maxBaseLength = this.querySave.maxQueryNameLength - suffix.length
+
+    return `${baseName.substring(0, maxBaseLength)}${suffix}`
   }
 }
