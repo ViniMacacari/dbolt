@@ -23,12 +23,12 @@ export class LoadQueryComponent {
 
   dataList: any = []
   queryName: string = ''
-  folderPath: string = ''
   queries: SavedQuery[] = []
   originalQueries: SavedQuery[] = []
   folders: string[] = []
   versionsByQueryId: Record<number, SavedQueryVersion[]> = {}
   expandedHistoryQueryId: number | null = null
+  currentFolderPath: string = ''
   private _sgbd: string = ''
 
   constructor(
@@ -39,8 +39,8 @@ export class LoadQueryComponent {
   async ngOnInit(): Promise<void> {
     try {
       this.originalQueries = await this.querySave.loadQueries()
-      this.queries = this.originalQueries
       this.folders = await this.querySave.loadFolders()
+      this.applyFilters()
 
       const result: any = await this.IAPI.get('/api/databases/avaliable')
       this.dataList = result.map((item: { id: number, database: string, versions: any[] }) => ({
@@ -62,11 +62,6 @@ export class LoadQueryComponent {
     this.applyFilters()
   }
 
-  onFolderPathChanged(value: string): void {
-    this.folderPath = value
-    this.applyFilters()
-  }
-
   onDatabaseSelected(item: { [key: string]: string | number } | null): void {
     this._sgbd = item ? item?.['name'] as string : ''
     this.applyFilters()
@@ -75,7 +70,7 @@ export class LoadQueryComponent {
   applyFilters(): void {
     const database = this._sgbd.toLowerCase()
     const queryName = this.queryName.toLowerCase()
-    const folderPath = this.querySave.normalizeFolderPath(this.folderPath).toLowerCase()
+    const currentFolderPath = this.currentFolderPath.toLowerCase()
 
     this.queries = this.originalQueries.filter(query => {
       const queryDatabase = String(query.dbSchema?.sgbd || '').toLowerCase()
@@ -83,7 +78,7 @@ export class LoadQueryComponent {
 
       return (!database || queryDatabase.includes(database)) &&
         (!queryName || query.name.toLowerCase().includes(queryName)) &&
-        (!folderPath || queryFolderPath.startsWith(folderPath))
+        queryFolderPath === currentFolderPath
     })
   }
 
@@ -95,7 +90,7 @@ export class LoadQueryComponent {
     try {
       await this.querySave.deleteQuery(query.id)
       this.originalQueries = this.originalQueries.filter((item: { id: number }) => item.id !== query.id)
-      this.queries = this.queries.filter((item: { id: number }) => item.id !== query.id)
+      this.applyFilters()
       this.toast.showToast('Query deleted successfully', 'green')
     } catch (error: any) {
       this.toast.showToast(error?.error || error?.message || 'Could not delete query', 'red')
@@ -149,8 +144,86 @@ export class LoadQueryComponent {
     return this.versionsByQueryId[query.id] || []
   }
 
+  openFolder(folderName: string): void {
+    this.currentFolderPath = this.joinPath(this.currentFolderPath, folderName)
+    this.expandedHistoryQueryId = null
+    this.applyFilters()
+  }
+
+  goBack(): void {
+    if (!this.currentFolderPath) return
+
+    const parts = this.currentFolderPath.split('/')
+    parts.pop()
+    this.currentFolderPath = parts.join('/')
+    this.expandedHistoryQueryId = null
+    this.applyFilters()
+  }
+
+  goRoot(): void {
+    this.currentFolderPath = ''
+    this.expandedHistoryQueryId = null
+    this.applyFilters()
+  }
+
+  get currentFolderLabel(): string {
+    return this.currentFolderPath || 'Queries'
+  }
+
+  get breadcrumbParts(): Array<{ label: string, path: string }> {
+    if (!this.currentFolderPath) return []
+
+    const parts = this.currentFolderPath.split('/')
+    return parts.map((label, index) => ({
+      label,
+      path: parts.slice(0, index + 1).join('/')
+    }))
+  }
+
+  openBreadcrumb(path: string): void {
+    this.currentFolderPath = path
+    this.expandedHistoryQueryId = null
+    this.applyFilters()
+  }
+
+  getVisibleFolders(): string[] {
+    const allFolders = new Set([
+      ...this.folders,
+      ...this.originalQueries
+        .map(query => query.folderPath || '')
+        .filter(Boolean)
+    ])
+    const folderNames = new Set<string>()
+
+    for (const folderPath of allFolders) {
+      const normalizedPath = this.querySave.normalizeFolderPath(folderPath)
+      if (!normalizedPath) continue
+
+      const relativePath = this.currentFolderPath
+        ? normalizedPath.startsWith(`${this.currentFolderPath}/`)
+          ? normalizedPath.slice(this.currentFolderPath.length + 1)
+          : ''
+        : normalizedPath
+
+      const folderName = relativePath.split('/')[0]
+      if (folderName) {
+        folderNames.add(folderName)
+      }
+    }
+
+    return [...folderNames].sort((left, right) => left.localeCompare(right))
+  }
+
+  hasVisibleItems(): boolean {
+    return this.getVisibleFolders().length > 0 || this.queries.length > 0
+  }
+
   private replaceQuery(query: SavedQuery): void {
     this.originalQueries = this.originalQueries.map(item => item.id === query.id ? query : item)
-    this.queries = this.queries.map(item => item.id === query.id ? query : item)
+    this.applyFilters()
+  }
+
+  private joinPath(basePath: string, folderName: string): string {
+    return [basePath, folderName].filter(Boolean).join('/')
   }
 }

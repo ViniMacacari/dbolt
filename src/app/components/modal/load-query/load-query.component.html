@@ -1,49 +1,93 @@
 <div class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h5 class="title text-center w-100">Load a query file</h5>
-        </div>
-        <div class="modal-body">
-            <div class="d-flex w-100 gap-3">
-                <input [(ngModel)]="queryName" type="text" class="input-page"
-                    placeholder="Search your query" (ngModelChange)="validateQueryName($event)" />
-                <app-input-list #database [list]="dataList" [displayKey]="'name'" [width]="'211.2px'"
-                    (itemSelected)="onDatabaseSelected($event)"
-                    [placeholder]="'Choose the database type'"></app-input-list>
+            <div>
+                <h5 class="title">Load a query file</h5>
+                <div class="breadcrumb">
+                    <button type="button" (click)="goRoot()">Queries</button>
+                    <ng-container *ngFor="let part of breadcrumbParts">
+                        <span>/</span>
+                        <button type="button" (click)="openBreadcrumb(part.path)">{{ part.label }}</button>
+                    </ng-container>
+                </div>
             </div>
-            <input [(ngModel)]="folderPath" type="text" class="input-page folder-filter"
-                placeholder="Filter by folder" list="load-query-folders"
-                (ngModelChange)="onFolderPathChanged($event)" />
-            <datalist id="load-query-folders">
-                <option *ngFor="let folder of folders" [value]="folder"></option>
-            </datalist>
+        </div>
 
-            <div class="queries">
+        <div class="modal-body">
+            <div class="toolbar">
+                <button type="button" class="nav-button" [disabled]="!currentFolderPath" (click)="goBack()">
+                    Back
+                </button>
+                <input [(ngModel)]="queryName" type="text" class="input-page"
+                    placeholder="Search files in this folder" (ngModelChange)="validateQueryName($event)" />
+                <app-input-list #database [list]="dataList" [displayKey]="'name'" [width]="'220px'"
+                    (itemSelected)="onDatabaseSelected($event)"
+                    [placeholder]="'Database'"></app-input-list>
+            </div>
+
+            <div class="folder-title">
+                <img src="icons/folder.png" height="18px">
+                <strong>{{ currentFolderLabel }}</strong>
+            </div>
+
+            <div class="queries" *ngIf="hasVisibleItems()">
+                <button type="button" class="folder-item" *ngFor="let folder of getVisibleFolders()"
+                    (click)="openFolder(folder)">
+                    <img src="icons/folder.png" height="22px">
+                    <span>{{ folder }}</span>
+                </button>
+
                 <div class="query-item" *ngFor="let query of queries">
                     <div class="query-main" (click)="loadQuery(query)">
                         <img src="db-logo/{{ query.dbSchema?.sgbd }}.png" height="18px">
                         <span>
                             <h2 class="subtitle">{{ query.name }}</h2>
-                            <small *ngIf="query.folderPath">{{ formatQueryPath(query) }}</small>
                             <small *ngIf="query.updatedAt">Updated: {{ formatDate(query.updatedAt) }}</small>
+                            <small *ngIf="query.versioningEnabled || (query.versions?.length || 0) > 0">
+                                {{ (query.versions?.length || 0) }} saved version{{ (query.versions?.length || 0) === 1 ? '' : 's' }}
+                            </small>
                         </span>
                     </div>
                     <button class="history-button" *ngIf="query.versioningEnabled || (query.versions?.length || 0) > 0"
                         (click)="toggleHistory(query, $event)">
-                        History
+                        Versions
                     </button>
-                    <img src="icons/delete.png" height="15px" (click)="deleteQuery(query)">
+                    <button type="button" class="icon-button" title="Delete query" (click)="deleteQuery(query)">
+                        <img src="icons/delete.png" height="15px">
+                    </button>
 
-                    <div class="version-list" *ngIf="expandedHistoryQueryId === query.id">
-                        <button type="button" *ngFor="let version of getQueryVersions(query)"
+                    <div class="version-panel" *ngIf="expandedHistoryQueryId === query.id">
+                        <div class="version-header">
+                            <strong>Version history</strong>
+                            <small>{{ query.name }}</small>
+                        </div>
+
+                        <div class="version-current">
+                            <span>Current file</span>
+                            <small>{{ formatDate(query.updatedAt) }}</small>
+                        </div>
+
+                        <button type="button" class="version-item" *ngFor="let version of getQueryVersions(query)"
                             (click)="restoreVersion(query, version, $event)">
-                            Restore {{ formatDate(version.changedAt) }}
+                            <span>
+                                <strong>Version {{ version.id }}</strong>
+                                <small>{{ formatDate(version.changedAt) }}</small>
+                            </span>
+                            <em>Restore</em>
                         </button>
-                        <small *ngIf="getQueryVersions(query).length === 0">No saved versions yet</small>
+                        <small class="empty-history" *ngIf="getQueryVersions(query).length === 0">
+                            No saved versions yet
+                        </small>
                     </div>
                 </div>
             </div>
+
+            <div class="empty-state" *ngIf="!hasVisibleItems()">
+                <img src="icons/folder-code.png" height="28px">
+                <span>No files in this folder</span>
+            </div>
         </div>
+
         <div class="modal-footer">
             <button class="btn-cancel" (click)="onClose()">Cancel</button>
         </div>
