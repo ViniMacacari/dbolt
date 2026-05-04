@@ -452,26 +452,35 @@ export class DatabaseManagerComponent {
       String(previousContext.port) === String(selectedSchemaDB.port)
   }
 
-  onSavedQuery(name: string, sourceTab: any = null): void {
-    const tab = sourceTab || this.tabsComponent.getActiveTab()
-    const sql = tab?.info?.sql || this.sqlContent
-
-    this.tabsComponent.newSavedTab('sql', {
-      id: Date.now(),
-      info: { sql },
-      originalContent: sql,
-      icon: 'CODE',
-      name: name,
-      context: tab?.dbInfo || this.selectedSchemaDB
-    })
+  onSavedQuery(savedQuery: any, sourceTab: any = null): void {
+    this.applySavedQueryToTab(savedQuery, sourceTab)
   }
 
   onExistingSavedQuery(savedTab: any): void {
-    const tab = this.tabsComponent.tabs.find(t => t.id === savedTab.id)
+    this.applySavedQueryToTab(savedTab)
+  }
 
-    if (tab) {
-      tab.icon = 'CODE'
+  private applySavedQueryToTab(savedQuery: any, sourceTab: any = null): void {
+    if (!savedQuery) return
+
+    const tab = sourceTab || this.tabsComponent.tabs.find(t => t.id === savedQuery.id) || this.tabsComponent.getActiveTab()
+    if (!tab) return
+
+    tab.id = savedQuery.id || tab.id
+    tab.name = savedQuery.name || tab.name
+    tab.info = {
+      ...tab.info,
+      sql: savedQuery.sql ?? tab.info?.sql ?? this.sqlContent
     }
+    tab.originalContent = tab.info.sql || ''
+    tab.dbInfo = savedQuery.dbSchema || tab.dbInfo
+    tab.folderPath = savedQuery.folderPath || ''
+    tab.versioningEnabled = Boolean(savedQuery.versioningEnabled)
+    tab.createdAt = savedQuery.createdAt
+    tab.updatedAt = savedQuery.updatedAt
+    tab.versions = savedQuery.versions || []
+    tab.persisted = Boolean(savedQuery.id)
+    tab.icon = 'CODE'
   }
 
   async onDbInfoRequested(event: any): Promise<void> {
