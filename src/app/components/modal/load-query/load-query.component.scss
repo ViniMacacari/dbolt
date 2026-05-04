@@ -162,6 +162,7 @@
     grid-template-columns: minmax(0, 1fr) auto 34px;
     min-height: 60px;
     padding: 8px 10px;
+    max-height: auto;
 
     &:hover {
         background-color: #151515;
