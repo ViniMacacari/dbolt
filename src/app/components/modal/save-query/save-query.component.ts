@@ -3,6 +3,11 @@ import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 import { ToastComponent } from "../../toast/toast.component"
 import { QuerySaveService, SavedQuery } from '../../../services/query-save/query-save.service'
+import {
+  QueryLibraryBreadcrumbPart,
+  QueryLibraryNavigatorService,
+  QueryLibraryView
+} from '../../../services/query-library/query-library-navigator.service'
 
 @Component({
   selector: 'app-save-query',
@@ -23,8 +28,18 @@ export class SaveQueryComponent {
   currentFolderPath: string = ''
   newFolderName: string = ''
   creatingFolder: boolean = false
+  view: QueryLibraryView = {
+    folders: [],
+    queries: [],
+    breadcrumbParts: [],
+    currentFolderLabel: 'Queries',
+    hasVisibleItems: false
+  }
 
-  constructor(private querySave: QuerySaveService) { }
+  constructor(
+    private querySave: QuerySaveService,
+    private navigator: QueryLibraryNavigatorService
+  ) { }
 
   get maxQueryNameLength(): number {
     return this.querySave.maxQueryNameLength
@@ -37,8 +52,10 @@ export class SaveQueryComponent {
 
     try {
       this.folders = await this.querySave.loadFolders()
+      this.refreshFolderView()
     } catch (error) {
       console.warn('Could not load query folders:', error)
+      this.refreshFolderView()
     }
   }
 
@@ -80,29 +97,30 @@ export class SaveQueryComponent {
   }
 
   openFolder(folderName: string): void {
-    this.currentFolderPath = this.joinPath(this.currentFolderPath, folderName)
+    this.currentFolderPath = this.navigator.enterFolder(this.currentFolderPath, folderName)
     this.creatingFolder = false
+    this.refreshFolderView()
   }
 
   goBack(): void {
     if (!this.currentFolderPath) return
 
-    const parts = this.currentFolderPath.split('/')
-    parts.pop()
-    this.currentFolderPath = parts.join('/')
+    this.currentFolderPath = this.navigator.parentFolder(this.currentFolderPath)
     this.creatingFolder = false
+    this.refreshFolderView()
   }
 
   goRoot(): void {
     this.currentFolderPath = ''
     this.creatingFolder = false
+    this.refreshFolderView()
   }
 
   createFolder(): void {
     const folderName = this.newFolderName.trim()
     if (!folderName) return
 
-    const newPath = this.joinPath(this.currentFolderPath, folderName)
+    const newPath = this.navigator.enterFolder(this.currentFolderPath, folderName)
     if (!this.folders.includes(newPath)) {
       this.folders = [...this.folders, newPath].sort((left, right) => left.localeCompare(right))
     }
@@ -110,50 +128,31 @@ export class SaveQueryComponent {
     this.currentFolderPath = newPath
     this.newFolderName = ''
     this.creatingFolder = false
+    this.refreshFolderView()
   }
 
   get currentFolderLabel(): string {
-    return this.currentFolderPath || 'Queries'
+    return this.view.currentFolderLabel
   }
 
-  get breadcrumbParts(): Array<{ label: string, path: string }> {
-    if (!this.currentFolderPath) return []
-
-    const parts = this.currentFolderPath.split('/')
-    return parts.map((label, index) => ({
-      label,
-      path: parts.slice(0, index + 1).join('/')
-    }))
+  get breadcrumbParts(): QueryLibraryBreadcrumbPart[] {
+    return this.view.breadcrumbParts
   }
 
   openBreadcrumb(path: string): void {
     this.currentFolderPath = path
     this.creatingFolder = false
+    this.refreshFolderView()
   }
 
   getVisibleFolders(): string[] {
-    const folderNames = new Set<string>()
-
-    for (const folderPath of this.folders) {
-      const normalizedPath = this.querySave.normalizeFolderPath(folderPath)
-      if (!normalizedPath) continue
-
-      const relativePath = this.currentFolderPath
-        ? normalizedPath.startsWith(`${this.currentFolderPath}/`)
-          ? normalizedPath.slice(this.currentFolderPath.length + 1)
-          : ''
-        : normalizedPath
-
-      const folderName = relativePath.split('/')[0]
-      if (folderName) {
-        folderNames.add(folderName)
-      }
-    }
-
-    return [...folderNames].sort((left, right) => left.localeCompare(right))
+    return this.view.folders
   }
 
-  private joinPath(basePath: string, folderName: string): string {
-    return [basePath, folderName].filter(Boolean).join('/')
+  private refreshFolderView(): void {
+    this.view = this.navigator.buildView([], this.folders, this.currentFolderPath, {
+      database: '',
+      queryName: ''
+    })
   }
 }
