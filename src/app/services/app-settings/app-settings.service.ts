@@ -23,6 +23,7 @@ export interface AppSettings {
   connectionExpirationMinutes: number
   tableAutocompleteEnabled: boolean
   columnAutocompleteEnabled: boolean
+  autoQuoteCapitalizedColumns: boolean
   sqlFormatterIndentSize: number
   sqlFormatterUppercaseKeywords: boolean
   sqlHighlightMode: SqlHighlightMode
@@ -39,6 +40,7 @@ export class AppSettingsService {
     connectionExpirationMinutes: 30,
     tableAutocompleteEnabled: true,
     columnAutocompleteEnabled: true,
+    autoQuoteCapitalizedColumns: true,
     sqlFormatterIndentSize: 2,
     sqlFormatterUppercaseKeywords: true,
     sqlHighlightMode: 'dbolt-dark',
@@ -124,6 +126,10 @@ export class AppSettingsService {
     return this.getSettings().columnAutocompleteEnabled
   }
 
+  shouldAutoQuoteCapitalizedColumns(): boolean {
+    return this.getSettings().autoQuoteCapitalizedColumns
+  }
+
   getSqlFormatterIndentSize(): number {
     return this.getSettings().sqlFormatterIndentSize
   }
@@ -179,6 +185,17 @@ export class AppSettingsService {
     const settings = {
       ...this.getSettings(),
       columnAutocompleteEnabled: Boolean(value)
+    }
+
+    this.saveSettings(settings)
+
+    return settings
+  }
+
+  setAutoQuoteCapitalizedColumns(value: boolean): AppSettings {
+    const settings = {
+      ...this.getSettings(),
+      autoQuoteCapitalizedColumns: Boolean(value)
     }
 
     this.saveSettings(settings)
@@ -317,6 +334,7 @@ export class AppSettingsService {
       connectionExpirationMinutes: this.normalizeExpirationMinutes(settings?.connectionExpirationMinutes),
       tableAutocompleteEnabled: settings?.tableAutocompleteEnabled ?? this.fallbackSettings.tableAutocompleteEnabled,
       columnAutocompleteEnabled: settings?.columnAutocompleteEnabled ?? this.fallbackSettings.columnAutocompleteEnabled,
+      autoQuoteCapitalizedColumns: settings?.autoQuoteCapitalizedColumns ?? this.fallbackSettings.autoQuoteCapitalizedColumns,
       sqlFormatterIndentSize: this.normalizeIndentSize(settings?.sqlFormatterIndentSize),
       sqlFormatterUppercaseKeywords: settings?.sqlFormatterUppercaseKeywords ?? this.fallbackSettings.sqlFormatterUppercaseKeywords,
       sqlHighlightMode,

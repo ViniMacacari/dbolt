@@ -160,6 +160,24 @@
                     <small *ngIf="autocompleteSavedMessage">{{ autocompleteSavedMessage }}</small>
                 </div>
             </div>
+
+            <div class="settings-card">
+                <div>
+                    <h3>Capitalized column quotes</h3>
+                    <p>Wraps names like "MyColumn" in double quotes, while "MYCOLUMN" and "myColumn" stay unchanged.</p>
+                </div>
+
+                <div class="setting-control autocomplete-toggle">
+                    <label class="toggle-control" for="auto-quote-capitalized-columns">
+                        <input id="auto-quote-capitalized-columns" type="checkbox"
+                            [checked]="autoQuoteCapitalizedColumns"
+                            (change)="onAutoQuoteCapitalizedColumnsChange($event)">
+                        <span></span>
+                    </label>
+                    <button type="button" (click)="saveAutocompleteSettings()">Save</button>
+                    <small *ngIf="autocompleteSavedMessage">{{ autocompleteSavedMessage }}</small>
+                </div>
+            </div>
         </div>
 
         <div class="settings-card connections-settings-card" *ngIf="activeTab === 'connections'">
