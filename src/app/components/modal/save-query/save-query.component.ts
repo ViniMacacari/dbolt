@@ -1,10 +1,8 @@
 import { Component, EventEmitter, Output, Input, ViewChild } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
-import { InternalApiService } from '../../../services/requests/internal-api.service'
-import { InputListComponent } from "../../elements/input-list/input-list.component"
-import { LoadingComponent } from '../loading/loading.component'
 import { ToastComponent } from "../../toast/toast.component"
+import { QuerySaveService, SavedQuery } from '../../../services/query-save/query-save.service'
 
 @Component({
   selector: 'app-save-query',
@@ -15,26 +13,40 @@ import { ToastComponent } from "../../toast/toast.component"
 })
 export class SaveQueryComponent {
   @Output() close = new EventEmitter<void>()
-  @Output() saved = new EventEmitter<any>()
+  @Output() saved = new EventEmitter<SavedQuery>()
   @Input() data: any = {}
-  @ViewChild('database') databaseInput!: InputListComponent
-  @ViewChild('version') versionInput!: InputListComponent
   @ViewChild(ToastComponent) toast!: ToastComponent
 
-  dataList: any = []
   queryName: string = ''
+  folderPath: string = ''
+  versioningEnabled: boolean = false
+  folders: string[] = []
 
-  private _sgbd: string = ''
+  constructor(private querySave: QuerySaveService) { }
 
-  constructor(private IAPI: InternalApiService) { }
+  get maxQueryNameLength(): number {
+    return this.querySave.maxQueryNameLength
+  }
+
+  async ngOnInit(): Promise<void> {
+    this.queryName = this.data?.name || ''
+    this.folderPath = this.data?.folderPath || ''
+    this.versioningEnabled = Boolean(this.data?.versioningEnabled)
+
+    try {
+      this.folders = await this.querySave.loadFolders()
+    } catch (error) {
+      console.warn('Could not load query folders:', error)
+    }
+  }
 
   onClose() {
     this.close.emit()
   }
 
   validateQueryName(value: string): void {
-    if (value.length > 20) {
-      this.queryName = value.substring(0, 20)
+    if (value.length > this.maxQueryNameLength) {
+      this.queryName = value.substring(0, this.maxQueryNameLength)
     } else {
       this.queryName = value
     }
@@ -42,23 +54,26 @@ export class SaveQueryComponent {
 
   async saveQuery(): Promise<void> {
     try {
-      await this.IAPI.post('/api/query/new', {
-        name: this.queryName,
+      const name = this.queryName.trim()
+      if (!name) {
+        this.toast.showToast('Query name cannot be empty', 'red')
+        return
+      }
+
+      const savedQuery = await this.querySave.createQuery({
+        name,
         type: "sql",
         sql: this.data.sql,
-        dbSchema: this.data.dataDbSchema
+        dbSchema: this.data.dataDbSchema,
+        folderPath: this.querySave.normalizeFolderPath(this.folderPath),
+        versioningEnabled: this.versioningEnabled
       })
 
-      this.saved.emit({
-        name: this.queryName,
-        type: "sql",
-        sql: this.data.sql,
-        dbSchema: this.data.dataDbSchema
-      })
+      this.saved.emit(savedQuery)
       this.close.emit()
     } catch (error: any) {
       console.error(error)
-      this.toast.showToast(error.error, 'red')
+      this.toast.showToast(error?.error || error?.message || 'Could not save query', 'red')
     }
   }
 }

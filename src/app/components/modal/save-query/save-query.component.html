@@ -5,8 +5,23 @@
         </div>
         <div class="modal-body">
             <h2 class="subtitle">Query name</h2>
-            <input [(ngModel)]="queryName" type="text" maxlength="20" class="input-page"
+            <input [(ngModel)]="queryName" type="text" [attr.maxlength]="maxQueryNameLength" class="input-page"
                 placeholder="Name your query" (ngModelChange)="validateQueryName($event)" />
+            <small class="field-hint">{{ queryName.length }}/{{ maxQueryNameLength }}</small>
+
+            <div class="my-3"></div>
+
+            <h2 class="subtitle">Folder</h2>
+            <input [(ngModel)]="folderPath" type="text" class="input-page" placeholder="Folder/subfolder"
+                list="query-folders" />
+            <datalist id="query-folders">
+                <option *ngFor="let folder of folders" [value]="folder"></option>
+            </datalist>
+
+            <label class="option-row">
+                <input [(ngModel)]="versioningEnabled" type="checkbox" />
+                <span>Save with version history</span>
+            </label>
         </div>
         <div class="modal-footer">
             <button class="btn-cancel" (click)="onClose()">Cancel</button>
