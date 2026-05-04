@@ -329,6 +329,7 @@ export class SettingsComponent implements OnInit {
         name: this.selectedConnection.name,
         database: this.selectedConnection.database,
         version: this.selectedConnection.version,
+        databaseVersion: this.selectedConnection.databaseVersion,
         host: this.selectedConnection.host,
         port: this.selectedConnection.port,
         user: this.selectedConnection.user,
