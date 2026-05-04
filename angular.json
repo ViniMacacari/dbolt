@@ -28,6 +28,13 @@
             },
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
+            "allowedCommonJsDependencies": [
+              "big-integer",
+              "node-sql-parser/build/mysql",
+              "node-sql-parser/build/postgresql",
+              "node-sql-parser/build/sqlite",
+              "node-sql-parser/build/transactsql"
+            ],
             "assets": [
               {
                 "glob": "**/*",
