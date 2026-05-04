@@ -1,28 +1,71 @@
 <div class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h5 class="title text-center w-100">Create a query file</h5>
+            <h5 class="title">Create a query file</h5>
         </div>
+
         <div class="modal-body">
-            <h2 class="subtitle">Query name</h2>
-            <input [(ngModel)]="queryName" type="text" [attr.maxlength]="maxQueryNameLength" class="input-page"
-                placeholder="Name your query" (ngModelChange)="validateQueryName($event)" />
-            <small class="field-hint">{{ queryName.length }}/{{ maxQueryNameLength }}</small>
+            <div class="field-group">
+                <label>Query name</label>
+                <input [(ngModel)]="queryName" type="text" [attr.maxlength]="maxQueryNameLength" class="input-page"
+                    placeholder="Name your query" (ngModelChange)="validateQueryName($event)" />
+                <small class="field-hint">{{ queryName.length }}/{{ maxQueryNameLength }}</small>
+            </div>
 
-            <div class="my-3"></div>
+            <section class="folder-picker">
+                <div class="folder-header">
+                    <div>
+                        <label>Save in</label>
+                        <div class="breadcrumb">
+                            <button type="button" (click)="goRoot()">Queries</button>
+                            <ng-container *ngFor="let part of breadcrumbParts">
+                                <span>/</span>
+                                <button type="button" (click)="openBreadcrumb(part.path)">{{ part.label }}</button>
+                            </ng-container>
+                        </div>
+                    </div>
+                    <button type="button" class="nav-button" [disabled]="!currentFolderPath" (click)="goBack()">
+                        Back
+                    </button>
+                </div>
 
-            <h2 class="subtitle">Folder</h2>
-            <input [(ngModel)]="folderPath" type="text" class="input-page" placeholder="Folder/subfolder"
-                list="query-folders" />
-            <datalist id="query-folders">
-                <option *ngFor="let folder of folders" [value]="folder"></option>
-            </datalist>
+                <div class="folder-current">
+                    <img src="icons/folder.png" height="18px">
+                    <strong>{{ currentFolderLabel }}</strong>
+                </div>
 
-            <label class="option-row">
-                <input [(ngModel)]="versioningEnabled" type="checkbox" />
-                <span>Save with version history</span>
+                <div class="folder-grid">
+                    <button type="button" class="folder-item" *ngFor="let folder of getVisibleFolders()"
+                        (click)="openFolder(folder)">
+                        <img src="icons/folder.png" height="20px">
+                        <span>{{ folder }}</span>
+                    </button>
+
+                    <button type="button" class="folder-item create-folder" *ngIf="!creatingFolder"
+                        (click)="creatingFolder = true">
+                        <img src="icons/add.png" height="16px">
+                        <span>New folder</span>
+                    </button>
+                </div>
+
+                <div class="new-folder-row" *ngIf="creatingFolder">
+                    <input [(ngModel)]="newFolderName" type="text" class="input-page" placeholder="Folder name" />
+                    <button type="button" class="btn-page-2" (click)="createFolder()">Create</button>
+                </div>
+            </section>
+
+            <label class="version-toggle">
+                <span>
+                    <strong>Version history</strong>
+                    <small>Keep a snapshot every time this query is saved.</small>
+                </span>
+                <span class="toggle-control">
+                    <input [(ngModel)]="versioningEnabled" type="checkbox" />
+                    <i></i>
+                </span>
             </label>
         </div>
+
         <div class="modal-footer">
             <button class="btn-cancel" (click)="onClose()">Cancel</button>
             <button class="btn-page" (click)="saveQuery()">Save</button>
