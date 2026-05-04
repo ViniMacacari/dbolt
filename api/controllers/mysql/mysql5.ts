@@ -5,6 +5,7 @@ import LSMySQL1 from '../../services/lists/mysql/mysql5.js';
 import SSMySQLV1 from '../../services/schemas/mysql/mysql5.js';
 import SQueryMySQLV1 from '../../services/queries/mysql/mysql5.js';
 import ListObjectsMySQLV1 from '../../services/database-info/mysql/mysql5.js';
+import DatabaseVersionService from '../../services/database-version/database-version.js';
 import { sendBadRequest, sendInternalError, sendServiceResult } from '../../utils/http.js';
 import { getConnectionKey } from '../../utils/request-context.js';
 
@@ -65,6 +66,20 @@ class CMySQLV1 {
       console.error('Controller error:', error);
       sendInternalError(res, error);
     }
+  }
+
+  async databaseVersion(
+    req: Request<Record<string, never>, unknown, DatabaseConnectionConfig & ConnectionContextPayload>,
+    res: Response
+  ): Promise<void> {
+    const { connectionKey, ...config } = req.body;
+    if (!config.host || !config.user || !config.password) {
+      sendBadRequest(res, 'Invalid configuration');
+      return;
+    }
+
+    const result = await DatabaseVersionService.mysql(config);
+    sendServiceResult(res, result);
   }
 
   async getSelectedDatabase(req: Request, res: Response): Promise<void> {

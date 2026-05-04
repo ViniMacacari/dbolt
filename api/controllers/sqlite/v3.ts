@@ -5,6 +5,7 @@ import LSQLiteV3 from '../../services/lists/sqlite/v3.js';
 import SSSQLiteV3 from '../../services/schemas/sqlite/v3.js';
 import SQuerySQLiteV3 from '../../services/queries/sqlite/v3.js';
 import ListObjectsSQLiteV3 from '../../services/database-info/sqlite/v3.js';
+import DatabaseVersionService from '../../services/database-version/database-version.js';
 import { sendBadRequest, sendInternalError, sendServiceResult } from '../../utils/http.js';
 import { getConnectionKey } from '../../utils/request-context.js';
 
@@ -65,6 +66,20 @@ class CSQLiteV3 {
       console.error('Controller error:', error);
       sendInternalError(res, error);
     }
+  }
+
+  async databaseVersion(
+    req: Request<Record<string, never>, unknown, Partial<DatabaseConnectionConfig> & ConnectionContextPayload>,
+    res: Response
+  ): Promise<void> {
+    const { connectionKey, ...config } = req.body;
+    if (!config.host && !config.database) {
+      sendBadRequest(res, 'SQLite database file path is required');
+      return;
+    }
+
+    const result = await DatabaseVersionService.sqlite(config);
+    sendServiceResult(res, result);
   }
 
   async getSelectedDatabase(req: Request, res: Response): Promise<void> {

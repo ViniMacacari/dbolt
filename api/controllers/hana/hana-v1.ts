@@ -5,6 +5,7 @@ import LSHanaV1 from '../../services/lists/hana/hana-v1.js';
 import SSchemaHanaV1 from '../../services/schemas/hana/hana-v1.js';
 import SQuerysHana from '../../services/queries/hana/hana-v1.js';
 import ListObjectsHanaV1 from '../../services/database-info/hana/hana-v1.js';
+import DatabaseVersionService from '../../services/database-version/database-version.js';
 import { sendBadRequest, sendInternalError, sendServiceResult } from '../../utils/http.js';
 import { getConnectionKey } from '../../utils/request-context.js';
 
@@ -55,6 +56,20 @@ class CHanaV1 {
       console.error('Controller error:', error);
       sendInternalError(res, error);
     }
+  }
+
+  async databaseVersion(
+    req: Request<Record<string, never>, unknown, HanaConnectionConfig & ConnectionContextPayload>,
+    res: Response
+  ): Promise<void> {
+    const { connectionKey, ...config } = req.body;
+    if (!config.host || !config.port || !config.user || !config.password) {
+      sendBadRequest(res, 'Invalid configuration');
+      return;
+    }
+
+    const result = await DatabaseVersionService.hana(config);
+    sendServiceResult(res, result);
   }
 
   async listDatabasesAndSchemas(req: Request, res: Response): Promise<void> {
