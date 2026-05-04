@@ -166,6 +166,64 @@ export class TabsComponent {
     this.selectTab(this.tabs.length - 1)
   }
 
+  openSavedQueryTab(query: any): void {
+    const existingIndex = this.tabs.findIndex(tab =>
+      tab.type === 'sql' &&
+      tab.persisted &&
+      Number(tab.id) === Number(query.id)
+    )
+
+    if (existingIndex >= 0) {
+      const existingTab = this.tabs[existingIndex]
+      if (existingTab.icon !== 'CHANGE') {
+        this.applySavedQueryToTab(existingTab, query)
+      }
+      this.selectTab(existingIndex)
+      this.dropdownVisible = false
+      return
+    }
+
+    const newTab = {
+      type: query.type || 'sql',
+      info: {}
+    }
+
+    this.applySavedQueryToTab(newTab, query)
+    this.tabs.push(newTab)
+    this.selectTab(this.tabs.length - 1)
+    this.dropdownVisible = false
+  }
+
+  openQueryVersionCompareTab(event: any): void {
+    const query = event?.query
+    const version = event?.version
+    if (!query || !version) return
+
+    const compareTabId = `compare-${query.id}-${version.id}`
+    const existingIndex = this.tabs.findIndex(tab => tab.id === compareTabId)
+
+    if (existingIndex >= 0) {
+      this.selectTab(existingIndex)
+      this.showLoadQuery = false
+      this.dropdownVisible = false
+      return
+    }
+
+    this.tabs.push({
+      id: compareTabId,
+      name: `${query.name} v${version.id}`,
+      type: 'query-compare',
+      info: {
+        query,
+        version
+      },
+      icon: 'COMPARE'
+    })
+    this.selectTab(this.tabs.length - 1)
+    this.showLoadQuery = false
+    this.dropdownVisible = false
+  }
+
   closeTab(index: number, event: MouseEvent, tab: any): void {
     event.stopPropagation()
 
@@ -221,6 +279,7 @@ export class TabsComponent {
     if (tab.icon === 'SETTINGS') return 'icons/settings.png'
     if (tab.icon === 'QUERY_ASSISTANT') return 'icons/code-block.png'
     if (tab.icon === 'SELECT_BUILDER') return 'icons/table.png'
+    if (tab.icon === 'COMPARE' || tab.type === 'query-compare') return 'icons/ddl.png'
     if (tab.type === 'procedure') return 'icons/procedure.png'
 
     return 'icons/code.png'
@@ -237,32 +296,15 @@ export class TabsComponent {
   onOpenLoadQuery(event: any): void {
     this.showLoadQuery = false
 
-    const newTab: any = {
-      id: event.id,
-      name: event.name,
-      type: event.type,
-      info: {
-        sql: event.sql
-      },
-      originalContent: event.sql,
-      dbInfo: this.createTabDbInfo(event.dbSchema, !event.dbSchema),
-      folderPath: event.folderPath || '',
-      versioningEnabled: Boolean(event.versioningEnabled),
-      updatedAt: event.updatedAt,
-      createdAt: event.createdAt,
-      versions: event.versions || [],
-      icon: 'CODE',
-      persisted: true
+    if (event?.persisted === false || !event?.id) {
+      this.newTab('sql', {
+        sql: event?.sql || '',
+        context: event?.dbSchema
+      }, event?.name || 'Query version')
+      return
     }
 
-    this.idTabs += 1
-
-    this.tabs.push(newTab)
-
-    setTimeout(() => {
-      this.selectTab(this.tabs.length - 1)
-      this.dropdownVisible = false
-    }, 0)
+    this.openSavedQueryTab(event)
   }
 
   private updateActiveTab(oldIndex: number, newIndex: number): void {
@@ -302,5 +344,24 @@ export class TabsComponent {
 
   onCloseLoadQuery(event: any): void {
     this.showLoadQuery = false
+  }
+
+  private applySavedQueryToTab(tab: any, query: any): void {
+    tab.id = query.id
+    tab.name = query.name
+    tab.type = query.type || 'sql'
+    tab.info = {
+      ...tab.info,
+      sql: query.sql
+    }
+    tab.originalContent = query.sql
+    tab.dbInfo = this.createTabDbInfo(query.dbSchema, !query.dbSchema)
+    tab.folderPath = query.folderPath || ''
+    tab.versioningEnabled = Boolean(query.versioningEnabled)
+    tab.updatedAt = query.updatedAt
+    tab.createdAt = query.createdAt
+    tab.versions = query.versions || []
+    tab.icon = 'CODE'
+    tab.persisted = Boolean(query.id)
   }
 }
