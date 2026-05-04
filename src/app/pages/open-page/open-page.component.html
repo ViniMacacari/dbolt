@@ -38,7 +38,10 @@
                     <img src="db-logo/{{ connection.database }}.png" height="30px" width="30px">
                     <span>
                         <strong>{{ connection.name }}</strong>
-                        <small>{{ connection.database }}, Driver: {{ connection.version }}</small>
+                        <small>
+                            {{ connection.database }}
+                            <ng-container *ngIf="connection.databaseVersion">, Version: {{ connection.databaseVersion }}</ng-container>
+                        </small>
                     </span>
                 </button>
             </aside>
@@ -59,8 +62,9 @@
                 </div>
 
                 <div class="stage-copy">
-                    <p>{{ selectedConnection.database }} {{ selectedConnection.version }}</p>
+                    <p>{{ selectedConnection.database }}</p>
                     <h2>{{ selectedConnection.name }}</h2>
+                    <span *ngIf="selectedConnection.databaseVersion">Version: {{ selectedConnection.databaseVersion }}</span>
                     <span>{{ selectedConnection.host }}:{{ selectedConnection.port }}</span>
                 </div>
 
@@ -92,6 +96,7 @@
                 </span>
                 <img src="db-logo/{{ connection.database }}.png" height="54px" width="54px">
                 <strong>{{ connection.name }}</strong>
+                <small *ngIf="connection.databaseVersion">Version: {{ connection.databaseVersion }}</small>
                 <small>{{ connection.host }}:{{ connection.port }}</small>
             </button>
         </section>
