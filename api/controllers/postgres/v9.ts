@@ -5,6 +5,7 @@ import LSPg1 from '../../services/lists/postgres/v9.js';
 import SSPgV1 from '../../services/schemas/postgres/v9.js';
 import SQueryPgV1 from '../../services/queries/postgres/v9.js';
 import ListObjectsPgV1 from '../../services/database-info/postgres/v9.js';
+import DatabaseVersionService from '../../services/database-version/database-version.js';
 import { sendBadRequest, sendInternalError, sendServiceResult } from '../../utils/http.js';
 import { getConnectionKey } from '../../utils/request-context.js';
 
@@ -68,6 +69,20 @@ class CPostgresV1 {
       console.error('Controller error:', error);
       sendInternalError(res, error);
     }
+  }
+
+  async databaseVersion(
+    req: Request<Record<string, never>, unknown, DatabaseConnectionConfig & ConnectionContextPayload>,
+    res: Response
+  ): Promise<void> {
+    const { connectionKey, ...config } = req.body;
+    if (!config.host || !config.port || !config.user || !config.password) {
+      sendBadRequest(res, 'Invalid configuration');
+      return;
+    }
+
+    const result = await DatabaseVersionService.postgres(config);
+    sendServiceResult(res, result);
   }
 
   async getSelectedSchema(req: Request, res: Response): Promise<void> {

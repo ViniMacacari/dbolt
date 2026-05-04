@@ -5,6 +5,7 @@ import LSSQLServer1 from '../../services/lists/sqlserver/v2008.js';
 import SSSQLServerV1 from '../../services/schemas/sqlserver/v2008.js';
 import SQuerySQLServerV1 from '../../services/queries/sqlserver/v2008.js';
 import ListObjectsSQLServerV1 from '../../services/database-info/sqlserver/v2008.js';
+import DatabaseVersionService from '../../services/database-version/database-version.js';
 import { sendBadRequest, sendInternalError, sendServiceResult } from '../../utils/http.js';
 import { getConnectionKey } from '../../utils/request-context.js';
 
@@ -65,6 +66,20 @@ class CSQLServerV1 {
       console.error('Controller error:', error);
       sendInternalError(res, error);
     }
+  }
+
+  async databaseVersion(
+    req: Request<Record<string, never>, unknown, SqlServerConnectionConfig & ConnectionContextPayload>,
+    res: Response
+  ): Promise<void> {
+    const { connectionKey, ...config } = req.body;
+    if (!config.host || !config.port || !config.user || !config.password) {
+      sendBadRequest(res, 'Invalid configuration');
+      return;
+    }
+
+    const result = await DatabaseVersionService.sqlServer(config);
+    sendServiceResult(res, result);
   }
 
   async getSelectedSchema(req: Request, res: Response): Promise<void> {

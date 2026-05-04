@@ -7,6 +7,7 @@ import { LoadingComponent } from '../loading/loading.component'
 import { ToastComponent } from "../../toast/toast.component"
 import { ConnectionsService } from '../../../services/resolve-connections/connections.service'
 import type { SavedConnection } from '../../../services/resolve-connections/connections.service'
+import { DatabaseVersionService } from '../../../services/database-version/database-version.service'
 
 @Component({
   selector: 'app-connection',
@@ -38,7 +39,8 @@ export class ConnectionComponent {
 
   constructor(
     private IAPI: InternalApiService,
-    private connectionsService: ConnectionsService
+    private connectionsService: ConnectionsService,
+    private databaseVersion: DatabaseVersionService
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
@@ -132,12 +134,10 @@ export class ConnectionComponent {
     LoadingComponent.show()
 
     try {
-      const result: any = await this.IAPI.post(`/api/${this.sgbd}/${this.sgbdVersion}/test-connection`, {
-        host: this.connectionConfig.host,
-        port: this.connectionConfig.port || 0,
-        user: this.connectionConfig.user || '',
-        password: this.connectionConfig.password || ''
-      })
+      const result: any = await this.IAPI.post(
+        `/api/${this.sgbd}/${this.sgbdVersion}/test-connection`,
+        this.getConnectionConfigPayload()
+      )
 
       if (result?.success === false) {
         throw new Error(result.error || result.message || 'Connection failed')
@@ -164,25 +164,27 @@ export class ConnectionComponent {
     LoadingComponent.show()
 
     try {
-      const result: any = await this.IAPI.post(`/api/${this.sgbd}/${this.sgbdVersion}/test-connection`, {
-        host: this.connectionConfig.host,
-        port: this.connectionConfig.port || 0,
-        user: this.connectionConfig.user || '',
-        password: this.connectionConfig.password || ''
-      })
+      const connectionConfig = this.getConnectionConfigPayload()
+      const result: any = await this.IAPI.post(
+        `/api/${this.sgbd}/${this.sgbdVersion}/test-connection`,
+        connectionConfig
+      )
 
       if (result?.success === false) {
         throw new Error(result.error || result.message || 'Connection failed')
       }
 
+      const databaseVersion = await this.databaseVersion.detectDatabaseVersion(
+        this.sgbd,
+        this.sgbdVersion,
+        connectionConfig
+      )
       const connectionPayload = {
         name: this.connectionName,
         database: this.sgbd,
         version: this.sgbdVersion,
-        host: this.connectionConfig.host,
-        port: this.connectionConfig.port || 0,
-        user: this.connectionConfig.user || '',
-        password: this.connectionConfig.password || '',
+        databaseVersion,
+        ...connectionConfig,
         defaultDatabase: this.connection?.defaultDatabase,
         defaultSchema: this.connection?.defaultSchema
       }
@@ -204,6 +206,15 @@ export class ConnectionComponent {
         LoadingComponent.hide()
         this.toast.showToast(error?.error || error?.message || 'Connection could not be saved', 'red')
       }, 500)
+    }
+  }
+
+  private getConnectionConfigPayload(): { host: string, port: string | number, user: string, password: string } {
+    return {
+      host: this.connectionConfig.host,
+      port: this.connectionConfig.port || 0,
+      user: this.connectionConfig.user || '',
+      password: this.connectionConfig.password || ''
     }
   }
 

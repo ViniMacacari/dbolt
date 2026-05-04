@@ -10,6 +10,9 @@ router.post('/test-connection', (req, res) => {
 router.post('/connect', (req, res) => {
   void CPostgresV1.connection(req, res);
 });
+router.post('/database-version', (req, res) => {
+  void CPostgresV1.databaseVersion(req, res);
+});
 router.get('/list-databases-and-schemas', (req, res) => {
   void CPostgresV1.listDatabasesAndSchemas(req, res);
 });

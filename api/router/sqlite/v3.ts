@@ -10,6 +10,9 @@ router.post('/test-connection', (req, res) => {
 router.post('/connect', (req, res) => {
   void CSQLiteV3.connection(req, res);
 });
+router.post('/database-version', (req, res) => {
+  void CSQLiteV3.databaseVersion(req, res);
+});
 router.get('/list-databases-and-schemas', (req, res) => {
   void CSQLiteV3.listDatabases(req, res);
 });

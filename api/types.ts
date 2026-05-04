@@ -61,6 +61,7 @@ export interface SavedConnectionInput extends DatabaseConnectionConfig {
   name: string;
   database: SupportedDatabase;
   version: string;
+  databaseVersion?: string;
   defaultDatabase?: string;
   defaultSchema?: string;
 }
@@ -181,6 +182,7 @@ export type ServiceResult<T extends object = Record<never, never>> =
   | ServiceFailure;
 
 export type ConnectionServiceResult = ServiceResult;
+export type DatabaseVersionResult = ServiceResult<{ version: string }>;
 export type QueryExecutionResult = ServiceResult<QueryExecutionPayload>;
 export type SavedEntityResult<T> = ServiceResult<{ data: T }>;
 export type DatabaseSchemaListResult = ServiceResult<{ data: DatabaseSchemaEntry[] }>;
@@ -231,6 +233,7 @@ export function isSavedConnection(value: unknown): value is SavedConnection {
     (typeof value['port'] === 'string' || typeof value['port'] === 'number') &&
     typeof value['user'] === 'string' &&
     typeof value['password'] === 'string' &&
+    (value['databaseVersion'] === undefined || typeof value['databaseVersion'] === 'string') &&
     (value['defaultDatabase'] === undefined || typeof value['defaultDatabase'] === 'string') &&
     (value['defaultSchema'] === undefined || typeof value['defaultSchema'] === 'string')
   );

@@ -4,7 +4,7 @@
             <div class="title-block">
                 <h1>
                     DBolt Database Manager
-                    <span *ngIf="appVersion">v{{ appVersion }}</span>
+                    <span *ngIf="appVersion">{{ appVersion }}</span>
                 </h1>
                 <p>Choose your database</p>
             </div>
@@ -32,13 +32,18 @@
 
         <section class="focus-layout" *ngIf="viewMode === 'focus' && connections.length > 0">
             <aside class="connection-rail">
-                <button type="button" class="rail-item" *ngFor="let connection of connections; trackBy: trackConnectionById"
+                <button type="button" class="rail-item"
+                    *ngFor="let connection of connections; trackBy: trackConnectionById"
                     [class.active]="selectedConnection?.id === connection.id" (click)="selectConnection(connection)"
                     (dblclick)="onCardClick(connection.id)">
                     <img src="db-logo/{{ connection.database }}.png" height="30px" width="30px">
                     <span>
                         <strong>{{ connection.name }}</strong>
-                        <small>{{ connection.database }}, Driver: {{ connection.version }}</small>
+                        <small>
+                            {{ connection.database }}
+                            <ng-container *ngIf="connection.databaseVersion"> {{ connection.databaseVersion
+                                }}</ng-container>
+                        </small>
                     </span>
                 </button>
             </aside>
@@ -59,9 +64,11 @@
                 </div>
 
                 <div class="stage-copy">
-                    <p>{{ selectedConnection.database }} {{ selectedConnection.version }}</p>
+                    <p>{{ selectedConnection.database }}</p>
                     <h2>{{ selectedConnection.name }}</h2>
-                    <span>{{ selectedConnection.host }}:{{ selectedConnection.port }}</span>
+                    <span *ngIf="selectedConnection.databaseVersion">Version: {{ selectedConnection.databaseVersion
+                        }}</span>
+                    <span>IP: {{ selectedConnection.host }}:{{ selectedConnection.port }}</span>
                 </div>
 
                 <dl class="stage-meta">
@@ -82,7 +89,8 @@
         </section>
 
         <section class="matrix-layout" *ngIf="viewMode === 'matrix' && connections.length > 0">
-            <button type="button" class="matrix-item" *ngFor="let connection of connections; trackBy: trackConnectionById"
+            <button type="button" class="matrix-item"
+                *ngFor="let connection of connections; trackBy: trackConnectionById"
                 (click)="onCardClick(connection.id)">
                 <span class="matrix-actions">
                     <img src="icons/edit.png" title="Edit connection" height="14px" width="14px"
@@ -92,6 +100,7 @@
                 </span>
                 <img src="db-logo/{{ connection.database }}.png" height="54px" width="54px">
                 <strong>{{ connection.name }}</strong>
+                <small *ngIf="connection.databaseVersion">Version: {{ connection.databaseVersion }}</small>
                 <small>{{ connection.host }}:{{ connection.port }}</small>
             </button>
         </section>

@@ -7,6 +7,7 @@ export interface SavedConnection {
   name: string
   database: string
   version: string
+  databaseVersion?: string
   host: string
   port: string | number
   user: string

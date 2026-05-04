@@ -10,6 +10,9 @@ router.post('/global-version/test-connection', (req, res) => {
 router.post('/global-version/connect', (req, res) => {
   void CHanaV1.connection(req, res);
 });
+router.post('/global-version/database-version', (req, res) => {
+  void CHanaV1.databaseVersion(req, res);
+});
 router.get('/global-version/list-databases-and-schemas', (req, res) => {
   void CHanaV1.listDatabasesAndSchemas(req, res);
 });

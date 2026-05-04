@@ -51,6 +51,7 @@ class InternalServer {
     this.app.use('/api/Hana', hanaV1);
     this.app.use('/api/Postgres/v9', pgV9);
     this.app.use('/api/MySQL/v5', mysql5);
+    this.app.use('/api/SqlServer/default-version', sqlserver2008);
     this.app.use('/api/SqlServer/2008', sqlserver2008);
     this.app.use('/api/SQLite/v3', sqliteV3);
 
