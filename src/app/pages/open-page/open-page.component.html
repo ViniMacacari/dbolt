@@ -32,7 +32,8 @@
 
         <section class="focus-layout" *ngIf="viewMode === 'focus' && connections.length > 0">
             <aside class="connection-rail">
-                <button type="button" class="rail-item" *ngFor="let connection of connections; trackBy: trackConnectionById"
+                <button type="button" class="rail-item"
+                    *ngFor="let connection of connections; trackBy: trackConnectionById"
                     [class.active]="selectedConnection?.id === connection.id" (click)="selectConnection(connection)"
                     (dblclick)="onCardClick(connection.id)">
                     <img src="db-logo/{{ connection.database }}.png" height="30px" width="30px">
@@ -40,7 +41,8 @@
                         <strong>{{ connection.name }}</strong>
                         <small>
                             {{ connection.database }}
-                            <ng-container *ngIf="connection.databaseVersion">, Version: {{ connection.databaseVersion }}</ng-container>
+                            <ng-container *ngIf="connection.databaseVersion"> {{ connection.databaseVersion
+                                }}</ng-container>
                         </small>
                     </span>
                 </button>
@@ -64,8 +66,9 @@
                 <div class="stage-copy">
                     <p>{{ selectedConnection.database }}</p>
                     <h2>{{ selectedConnection.name }}</h2>
-                    <span *ngIf="selectedConnection.databaseVersion">Version: {{ selectedConnection.databaseVersion }}</span>
-                    <span>{{ selectedConnection.host }}:{{ selectedConnection.port }}</span>
+                    <span *ngIf="selectedConnection.databaseVersion">Version: {{ selectedConnection.databaseVersion
+                        }}</span>
+                    <span>IP: {{ selectedConnection.host }}:{{ selectedConnection.port }}</span>
                 </div>
 
                 <dl class="stage-meta">
@@ -86,7 +89,8 @@
         </section>
 
         <section class="matrix-layout" *ngIf="viewMode === 'matrix' && connections.length > 0">
-            <button type="button" class="matrix-item" *ngFor="let connection of connections; trackBy: trackConnectionById"
+            <button type="button" class="matrix-item"
+                *ngFor="let connection of connections; trackBy: trackConnectionById"
                 (click)="onCardClick(connection.id)">
                 <span class="matrix-actions">
                     <img src="icons/edit.png" title="Edit connection" height="14px" width="14px"
