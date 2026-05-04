@@ -1,0 +1,31 @@
+<section class="compare-page" *ngIf="query && version">
+    <header class="compare-header">
+        <div>
+            <p>{{ query.folderPath || 'Queries' }}</p>
+            <h2>{{ query.name }}</h2>
+            <span>Current file vs Version {{ version.id }} saved {{ formatDate(version.changedAt) }}</span>
+        </div>
+
+        <div class="compare-actions">
+            <button type="button" (click)="editCurrent()">Edit current</button>
+            <button type="button" (click)="editVersionCopy()">Edit version copy</button>
+            <button type="button" class="restore-button" (click)="restoreVersion()">Restore version</button>
+        </div>
+    </header>
+
+    <div class="diff-summary">
+        <span class="added">+{{ diff.added }} added</span>
+        <span class="removed">-{{ diff.removed }} removed</span>
+        <span>{{ diff.unchanged }} unchanged</span>
+    </div>
+
+    <div class="diff-table">
+        <div class="diff-line" *ngFor="let line of diff.lines" [class.added]="line.type === 'added'"
+            [class.removed]="line.type === 'removed'" [class.unchanged]="line.type === 'unchanged'">
+            <span class="line-number">{{ line.oldLine || '' }}</span>
+            <span class="line-number">{{ line.newLine || '' }}</span>
+            <span class="line-marker">{{ line.type === 'added' ? '+' : line.type === 'removed' ? '-' : '' }}</span>
+            <code>{{ line.text || ' ' }}</code>
+        </div>
+    </div>
+</section>

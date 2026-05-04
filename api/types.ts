@@ -86,10 +86,24 @@ export interface SavedQueryInput {
   type: string;
   sql: string;
   dbSchema?: SavedQueryDbSchema;
+  folderPath?: string;
+  versioningEnabled?: boolean;
 }
 
 export interface SavedQuery extends SavedQueryInput {
   id: number;
+  createdAt?: string;
+  updatedAt?: string;
+  versions?: SavedQueryVersion[];
+}
+
+export interface SavedQueryVersion {
+  id: number;
+  changedAt: string;
+  name: string;
+  sql: string;
+  folderPath?: string;
+  dbSchema?: SavedQueryDbSchema;
 }
 
 export interface DatabaseVersionInfo {
@@ -185,6 +199,7 @@ export type ConnectionServiceResult = ServiceResult;
 export type DatabaseVersionResult = ServiceResult<{ version: string }>;
 export type QueryExecutionResult = ServiceResult<QueryExecutionPayload>;
 export type SavedEntityResult<T> = ServiceResult<{ data: T }>;
+export type SavedQueryVersionsResult = ServiceResult<{ data: SavedQueryVersion[] }>;
 export type DatabaseSchemaListResult = ServiceResult<{ data: DatabaseSchemaEntry[] }>;
 export type DatabaseObjectsResult = ServiceResult<{ data: DatabaseObject[] } & GroupedDatabaseObjects>;
 export type TableColumnsResult = ServiceResult<{ data: TableColumn[] }>;
@@ -257,6 +272,26 @@ export function isSavedQuery(value: unknown): value is SavedQuery {
     typeof value['name'] === 'string' &&
     typeof value['type'] === 'string' &&
     typeof value['sql'] === 'string' &&
+    (value['folderPath'] === undefined || typeof value['folderPath'] === 'string') &&
+    (value['versioningEnabled'] === undefined || typeof value['versioningEnabled'] === 'boolean') &&
+    (value['createdAt'] === undefined || typeof value['createdAt'] === 'string') &&
+    (value['updatedAt'] === undefined || typeof value['updatedAt'] === 'string') &&
+    (value['versions'] === undefined || (Array.isArray(value['versions']) && value['versions'].every(isSavedQueryVersion))) &&
+    (value['dbSchema'] === undefined || isSavedQueryDbSchema(value['dbSchema']))
+  );
+}
+
+export function isSavedQueryVersion(value: unknown): value is SavedQueryVersion {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value['id'] === 'number' &&
+    typeof value['changedAt'] === 'string' &&
+    typeof value['name'] === 'string' &&
+    typeof value['sql'] === 'string' &&
+    (value['folderPath'] === undefined || typeof value['folderPath'] === 'string') &&
     (value['dbSchema'] === undefined || isSavedQueryDbSchema(value['dbSchema']))
   );
 }

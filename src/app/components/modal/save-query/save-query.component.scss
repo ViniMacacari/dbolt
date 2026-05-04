@@ -1,92 +1,289 @@
 .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    align-items: center;
     background-color: rgba(67, 67, 67, 0.5);
     display: flex;
+    height: 100%;
     justify-content: center;
-    align-items: center;
+    left: 0;
+    position: fixed;
+    top: 0;
+    width: 100%;
     z-index: 1050;
 }
 
 .modal-content {
+    animation: fadeIn 0.2s ease;
     background-color: #0b0b0b;
-    width: 90%;
-    max-width: 500px;
-    border-radius: 25px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-    animation: fadeIn 0.3s ease;
-
-    padding: 2px 15px;
+    border: 1px solid #1f1f1f;
+    border-radius: 22px;
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.38);
+    max-width: 620px;
+    padding: 0;
+    width: min(92vw, 620px);
 }
 
 .modal-header {
-    display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 15px;
-    border-bottom: 1px solid #0b0b0b;
-}
+    border-bottom: 1px solid #202020;
+    display: flex;
+    padding: 22px 28px 18px;
 
-.modal-title {
-    margin: 0;
-    font-size: 18px;
-    font-weight: bold;
-}
-
-.close-btn {
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
+    .title {
+        margin: 0;
+        text-align: left;
+    }
 }
 
 .modal-body {
-    padding: 15px;
+    display: grid;
+    gap: 20px;
+    padding: 22px 28px;
+}
+
+.field-group,
+.folder-picker {
+    display: grid;
+    gap: 8px;
+}
+
+label,
+.folder-header label {
+    color: #b8b8b9;
+    font-family: 'Nunito';
+    font-size: .78em;
+    font-weight: 850;
+}
+
+.field-hint {
+    color: #8d8d8d;
+    display: block;
+    font-family: 'Nunito';
+    font-size: .72em;
+    text-align: right;
+}
+
+.folder-picker {
+    background: #080808;
+    border: 1px solid #202020;
+    border-radius: 16px;
+    padding: 14px;
+}
+
+.folder-header,
+.folder-current,
+.new-folder-row,
+.version-toggle {
+    align-items: center;
+    display: flex;
+}
+
+.folder-header {
+    justify-content: space-between;
+}
+
+.breadcrumb {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 6px;
+
+    button,
+    span {
+        color: #969696;
+        font-family: 'Nunito';
+        font-size: .76em;
+        font-weight: 800;
+    }
+
+    button {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+
+        &:hover {
+            color: #e8eaed;
+        }
+    }
+}
+
+.nav-button,
+.folder-item {
+    border: none;
+    color: #e8eaed;
+    cursor: pointer;
+    font-family: 'Nunito';
+}
+
+.nav-button {
+    background: #1b1b1b;
+    border-radius: 11px;
+    font-size: .74em;
+    font-weight: 850;
+    height: 34px;
+    padding: 0 12px;
+
+    &:disabled {
+        color: #5f5f5f;
+        cursor: default;
+    }
+
+    &:not(:disabled):hover {
+        background: #303030;
+    }
+}
+
+.folder-current {
+    border-bottom: 1px solid #202020;
+    color: #e8eaed;
+    font-family: 'Nunito';
+    gap: 9px;
+    padding: 10px 0;
+}
+
+.folder-grid {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    min-height: 50px;
+}
+
+.folder-item {
+    align-items: center;
+    background: #131313;
+    border-radius: 12px;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 24px minmax(0, 1fr);
+    height: 44px;
+    padding: 0 12px;
+    text-align: left;
+
+    span {
+        font-size: .8em;
+        font-weight: 850;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &:hover {
+        background: #242424;
+    }
+}
+
+.create-folder {
+    border: 1px dashed #3b3b3b;
+}
+
+.new-folder-row {
+    gap: 10px;
+    margin-top: 4px;
+
+    .input-page {
+        height: 42px;
+    }
+}
+
+.version-toggle {
+    background: #131313;
+    border: 1px solid #242424;
+    border-radius: 16px;
+    cursor: pointer;
+    justify-content: space-between;
+    padding: 14px;
+
+    strong,
+    small {
+        display: block;
+        font-family: 'Nunito';
+    }
+
+    strong {
+        color: #e8eaed;
+        font-size: .88em;
+        font-weight: 850;
+    }
+
+    small {
+        color: #969696;
+        font-size: .72em;
+        margin-top: 2px;
+    }
+}
+
+.toggle-control {
+    display: inline-flex;
+    height: 28px;
+    position: relative;
+    width: 52px;
+
+    input {
+        height: 1px;
+        opacity: 0;
+        position: absolute;
+        width: 1px;
+    }
+
+    i {
+        background: #292727;
+        border: 1px solid #3b3b3b;
+        border-radius: 999px;
+        inset: 0;
+        position: absolute;
+        transition: background-color .2s ease, border-color .2s ease;
+
+        &::before {
+            background: #969696;
+            border-radius: 50%;
+            content: '';
+            height: 20px;
+            left: 4px;
+            position: absolute;
+            top: 3px;
+            transition: transform .2s ease, background-color .2s ease;
+            width: 20px;
+        }
+    }
+
+    input:checked + i {
+        background: #2b3340;
+        border-color: rgba(115, 158, 202, 0.55);
+
+        &::before {
+            background: #d8e9fb;
+            transform: translateX(23px);
+        }
+    }
 }
 
 .modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    padding: 15px;
-    border-top: 1px solid #2d2d2d;
-}
-
-.btn {
-    padding: 10px 20px;
-    border: none;
-    cursor: pointer;
-    border-radius: 5px;
-}
-
-.btn-primary {
-    background-color: #007bff;
-    color: white;
-}
-
-.btn-secondary {
-    background-color: #6c757d;
-    color: white;
-}
-
-.img-test {
-    display: flex;
-    justify-content: center;
     align-items: center;
+    border-top: 1px solid #202020;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 16px 28px;
+}
 
-    margin-bottom: 8px;
-    width: 50px;
+@media (max-width: 620px) {
+    .folder-header,
+    .new-folder-row,
+    .version-toggle {
+        align-items: stretch;
+        flex-direction: column;
+    }
 }
 
 @keyframes fadeIn {
     from {
         opacity: 0;
+        transform: translateY(6px);
     }
 
     to {
         opacity: 1;
+        transform: translateY(0);
     }
 }

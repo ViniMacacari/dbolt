@@ -26,6 +26,9 @@
                     (selectBuilderRequested)="onSelectBuilderRequested($event)"></app-query-assistant>
                 <app-select-builder *ngIf="selectBuilderOpen" [tabInfo]="tabInfo"
                     (queryRequested)="onBuilderQueryRequested($event)"></app-select-builder>
+                <app-query-version-compare *ngIf="queryCompareOpen" [tabInfo]="tabInfo"
+                    (editRequested)="onCompareEditRequested($event)"
+                    (restoreRequested)="onCompareRestoreRequested($event)"></app-query-version-compare>
 
                 <app-code-editor *ngFor="let tab of openTabs; trackBy: trackTabByIdentity"
                     [hidden]="!isActiveSqlTab(tab)" [active]="isActiveSqlTab(tab)" [sqlContent]="tab.info?.sql || ''"

@@ -1,10 +1,13 @@
 import { Component, EventEmitter, Output, Input, ViewChild } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
-import { InternalApiService } from '../../../services/requests/internal-api.service'
-import { InputListComponent } from "../../elements/input-list/input-list.component"
-import { LoadingComponent } from '../loading/loading.component'
 import { ToastComponent } from "../../toast/toast.component"
+import { QuerySaveService, SavedQuery } from '../../../services/query-save/query-save.service'
+import {
+  QueryLibraryBreadcrumbPart,
+  QueryLibraryNavigatorService,
+  QueryLibraryView
+} from '../../../services/query-library/query-library-navigator.service'
 
 @Component({
   selector: 'app-save-query',
@@ -15,26 +18,54 @@ import { ToastComponent } from "../../toast/toast.component"
 })
 export class SaveQueryComponent {
   @Output() close = new EventEmitter<void>()
-  @Output() saved = new EventEmitter<any>()
+  @Output() saved = new EventEmitter<SavedQuery>()
   @Input() data: any = {}
-  @ViewChild('database') databaseInput!: InputListComponent
-  @ViewChild('version') versionInput!: InputListComponent
   @ViewChild(ToastComponent) toast!: ToastComponent
 
-  dataList: any = []
   queryName: string = ''
+  versioningEnabled: boolean = false
+  folders: string[] = []
+  currentFolderPath: string = ''
+  newFolderName: string = ''
+  creatingFolder: boolean = false
+  view: QueryLibraryView = {
+    folders: [],
+    queries: [],
+    breadcrumbParts: [],
+    currentFolderLabel: 'Queries',
+    hasVisibleItems: false
+  }
 
-  private _sgbd: string = ''
+  constructor(
+    private querySave: QuerySaveService,
+    private navigator: QueryLibraryNavigatorService
+  ) { }
 
-  constructor(private IAPI: InternalApiService) { }
+  get maxQueryNameLength(): number {
+    return this.querySave.maxQueryNameLength
+  }
+
+  async ngOnInit(): Promise<void> {
+    this.queryName = this.data?.name || ''
+    this.currentFolderPath = this.querySave.normalizeFolderPath(this.data?.folderPath || '')
+    this.versioningEnabled = Boolean(this.data?.versioningEnabled)
+
+    try {
+      this.folders = await this.querySave.loadFolders()
+      this.refreshFolderView()
+    } catch (error) {
+      console.warn('Could not load query folders:', error)
+      this.refreshFolderView()
+    }
+  }
 
   onClose() {
     this.close.emit()
   }
 
   validateQueryName(value: string): void {
-    if (value.length > 20) {
-      this.queryName = value.substring(0, 20)
+    if (value.length > this.maxQueryNameLength) {
+      this.queryName = value.substring(0, this.maxQueryNameLength)
     } else {
       this.queryName = value
     }
@@ -42,23 +73,86 @@ export class SaveQueryComponent {
 
   async saveQuery(): Promise<void> {
     try {
-      await this.IAPI.post('/api/query/new', {
-        name: this.queryName,
+      const name = this.queryName.trim()
+      if (!name) {
+        this.toast.showToast('Query name cannot be empty', 'red')
+        return
+      }
+
+      const savedQuery = await this.querySave.createQuery({
+        name,
         type: "sql",
         sql: this.data.sql,
-        dbSchema: this.data.dataDbSchema
+        dbSchema: this.data.dataDbSchema,
+        folderPath: this.currentFolderPath,
+        versioningEnabled: this.versioningEnabled
       })
 
-      this.saved.emit({
-        name: this.queryName,
-        type: "sql",
-        sql: this.data.sql,
-        dbSchema: this.data.dataDbSchema
-      })
+      this.saved.emit(savedQuery)
       this.close.emit()
     } catch (error: any) {
       console.error(error)
-      this.toast.showToast(error.error, 'red')
+      this.toast.showToast(error?.error || error?.message || 'Could not save query', 'red')
     }
+  }
+
+  openFolder(folderName: string): void {
+    this.currentFolderPath = this.navigator.enterFolder(this.currentFolderPath, folderName)
+    this.creatingFolder = false
+    this.refreshFolderView()
+  }
+
+  goBack(): void {
+    if (!this.currentFolderPath) return
+
+    this.currentFolderPath = this.navigator.parentFolder(this.currentFolderPath)
+    this.creatingFolder = false
+    this.refreshFolderView()
+  }
+
+  goRoot(): void {
+    this.currentFolderPath = ''
+    this.creatingFolder = false
+    this.refreshFolderView()
+  }
+
+  createFolder(): void {
+    const folderName = this.newFolderName.trim()
+    if (!folderName) return
+
+    const newPath = this.navigator.enterFolder(this.currentFolderPath, folderName)
+    if (!this.folders.includes(newPath)) {
+      this.folders = [...this.folders, newPath].sort((left, right) => left.localeCompare(right))
+    }
+
+    this.currentFolderPath = newPath
+    this.newFolderName = ''
+    this.creatingFolder = false
+    this.refreshFolderView()
+  }
+
+  get currentFolderLabel(): string {
+    return this.view.currentFolderLabel
+  }
+
+  get breadcrumbParts(): QueryLibraryBreadcrumbPart[] {
+    return this.view.breadcrumbParts
+  }
+
+  openBreadcrumb(path: string): void {
+    this.currentFolderPath = path
+    this.creatingFolder = false
+    this.refreshFolderView()
+  }
+
+  getVisibleFolders(): string[] {
+    return this.view.folders
+  }
+
+  private refreshFolderView(): void {
+    this.view = this.navigator.buildView([], this.folders, this.currentFolderPath, {
+      database: '',
+      queryName: ''
+    })
   }
 }

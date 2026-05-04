@@ -16,11 +16,13 @@ import { SettingsComponent } from '../../components/elements/settings/settings.c
 import { QueryAssistantComponent } from '../../components/elements/query-assistant/query-assistant.component'
 import { SelectBuilderComponent } from '../../components/elements/select-builder/select-builder.component'
 import { ProcedureInfoComponent } from '../../components/elements/procedure-info/procedure-info.component'
+import { QueryVersionCompareComponent } from '../../components/elements/query-version-compare/query-version-compare.component'
+import { QuerySaveService } from '../../services/query-save/query-save.service'
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent],
+  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
@@ -46,6 +48,7 @@ export class DatabaseManagerComponent {
   settingsOpen: boolean = false
   queryAssistantOpen: boolean = false
   selectBuilderOpen: boolean = false
+  queryCompareOpen: boolean = false
   dbInfoInitialized: boolean = false
   tableInfoInitialized: boolean = false
   procedureInfoInitialized: boolean = false
@@ -66,7 +69,8 @@ export class DatabaseManagerComponent {
     private route: ActivatedRoute,
     private dbSchemaService: GetDbschemaService,
     private connectionsService: ConnectionsService,
-    private connectionContext: ConnectionContextService
+    private connectionContext: ConnectionContextService,
+    private querySave: QuerySaveService
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
@@ -257,12 +261,14 @@ export class DatabaseManagerComponent {
     this.settingsOpen = tab.type === 'settings'
     this.queryAssistantOpen = tab.type === 'query-assistant'
     this.selectBuilderOpen = tab.type === 'select-builder'
+    this.queryCompareOpen = tab.type === 'query-compare'
     this.procedureInfoOpen = tab.type === 'procedure'
     this.tableInfoOpen = !this.editorOpen &&
       !this.dbInfoOpen &&
       !this.settingsOpen &&
       !this.queryAssistantOpen &&
       !this.selectBuilderOpen &&
+      !this.queryCompareOpen &&
       !this.procedureInfoOpen
 
     if (this.dbInfoOpen) {
@@ -294,6 +300,7 @@ export class DatabaseManagerComponent {
     this.settingsOpen = false
     this.queryAssistantOpen = false
     this.selectBuilderOpen = false
+    this.queryCompareOpen = false
   }
 
   onSettingsRequested(): void {
@@ -452,26 +459,60 @@ export class DatabaseManagerComponent {
       String(previousContext.port) === String(selectedSchemaDB.port)
   }
 
-  onSavedQuery(name: string, sourceTab: any = null): void {
-    const tab = sourceTab || this.tabsComponent.getActiveTab()
-    const sql = tab?.info?.sql || this.sqlContent
-
-    this.tabsComponent.newSavedTab('sql', {
-      id: Date.now(),
-      info: { sql },
-      originalContent: sql,
-      icon: 'CODE',
-      name: name,
-      context: tab?.dbInfo || this.selectedSchemaDB
-    })
+  onSavedQuery(savedQuery: any, sourceTab: any = null): void {
+    this.applySavedQueryToTab(savedQuery, sourceTab)
   }
 
   onExistingSavedQuery(savedTab: any): void {
-    const tab = this.tabsComponent.tabs.find(t => t.id === savedTab.id)
+    this.applySavedQueryToTab(savedTab)
+  }
 
-    if (tab) {
-      tab.icon = 'CODE'
+  onCompareEditRequested(event: any): void {
+    if (event?.source === 'current') {
+      this.tabsComponent.openSavedQueryTab(event.query)
+      return
     }
+
+    this.tabsComponent.newTab('sql', {
+      sql: event?.version?.sql || '',
+      context: event?.version?.dbSchema || event?.query?.dbSchema || this.selectedSchemaDB
+    }, `${event?.query?.name || 'Query'} - version ${event?.version?.id || ''}`)
+  }
+
+  async onCompareRestoreRequested(event: any): Promise<void> {
+    try {
+      const restoredQuery = await this.querySave.restoreVersion(event.query.id, event.version.id)
+      this.tabsComponent.openSavedQueryTab(restoredQuery)
+      this.toast.showToast('Query version restored successfully', 'green')
+    } catch (error: any) {
+      this.toast.showToast(error?.error || error?.message || 'Could not restore query version', 'red')
+    }
+  }
+
+  private applySavedQueryToTab(savedQuery: any, sourceTab: any = null): void {
+    if (!savedQuery) return
+
+    const activeTab = this.tabsComponent.getActiveTab()
+    const tab = sourceTab ||
+      this.tabsComponent.tabs.find(t => t.id === savedQuery.id && t.type === 'sql') ||
+      (activeTab?.type === 'sql' ? activeTab : null)
+    if (!tab) return
+
+    tab.id = savedQuery.id || tab.id
+    tab.name = savedQuery.name || tab.name
+    tab.info = {
+      ...tab.info,
+      sql: savedQuery.sql ?? tab.info?.sql ?? this.sqlContent
+    }
+    tab.originalContent = tab.info.sql || ''
+    tab.dbInfo = savedQuery.dbSchema || tab.dbInfo
+    tab.folderPath = savedQuery.folderPath || ''
+    tab.versioningEnabled = Boolean(savedQuery.versioningEnabled)
+    tab.createdAt = savedQuery.createdAt
+    tab.updatedAt = savedQuery.updatedAt
+    tab.versions = savedQuery.versions || []
+    tab.persisted = Boolean(savedQuery.id)
+    tab.icon = 'CODE'
   }
 
   async onDbInfoRequested(event: any): Promise<void> {

@@ -1,13 +1,13 @@
 import QueryStorage from '../../utils/query-storage.js';
 import { getErrorMessage } from '../../utils/errors.js';
 
-import type { SavedQuery, StoredQueriesResult } from '../../types.js';
+import type { SavedQuery, SavedQueryVersion, StoredQueriesResult } from '../../types.js';
 
 class LoadQueries {
   async getAllQueries(): Promise<StoredQueriesResult> {
     try {
       const queries = await QueryStorage.readQueriesFile();
-      console.log('All queries loaded successfully:', queries);
+      console.log(`All queries loaded successfully: ${queries.length}`);
       return queries;
     } catch (error: unknown) {
       console.error('Error loading queries:', error);
@@ -45,11 +45,38 @@ class LoadQueries {
         return null;
       }
 
-      console.log(`Query with ID "${id}" loaded successfully:`, query);
+      console.log(`Query with ID "${id}" loaded successfully.`);
       return query;
     } catch (error: unknown) {
       console.error(`Error fetching query with ID "${id}":`, error);
       throw new Error(getErrorMessage(error, 'Failed to fetch query by ID'));
+    }
+  }
+
+  async getFolders(): Promise<string[]> {
+    try {
+      return await QueryStorage.getFolders();
+    } catch (error: unknown) {
+      console.error('Error loading query folders:', error);
+      throw new Error(getErrorMessage(error, 'Failed to load query folders'));
+    }
+  }
+
+  async getQueryVersions(id: number): Promise<SavedQueryVersion[]> {
+    try {
+      return await QueryStorage.getQueryVersions(id);
+    } catch (error: unknown) {
+      console.error(`Error loading versions for query with ID "${id}":`, error);
+      throw new Error(getErrorMessage(error, 'Failed to load query versions'));
+    }
+  }
+
+  async getQueryVersionById(id: number, versionId: number): Promise<SavedQueryVersion | null> {
+    try {
+      return await QueryStorage.getQueryVersionById(id, versionId);
+    } catch (error: unknown) {
+      console.error(`Error loading version "${versionId}" for query with ID "${id}":`, error);
+      throw new Error(getErrorMessage(error, 'Failed to load query version'));
     }
   }
 

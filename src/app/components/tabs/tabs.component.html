@@ -33,7 +33,7 @@
     </div>
 </div>
 
-<app-load-query *ngIf="showLoadQuery" (open)="onOpenLoadQuery($event)"
+<app-load-query *ngIf="showLoadQuery" (open)="onOpenLoadQuery($event)" (compare)="openQueryVersionCompareTab($event)"
     (close)="onCloseLoadQuery($event)"></app-load-query>
 <app-yes-no-modal *ngIf="showYNModal" [title]="titleYN" [message]="messageYN" (closeAction)="showYNModal = false"
     (continueAction)="confirmTabClose()"></app-yes-no-modal>
