@@ -61,7 +61,8 @@ export class TabsComponent {
       info: info,
       originalContent: info.sql || '',
       dbInfo: this.createTabDbInfo(info.context, !info.context),
-      icon: 'CODE'
+      icon: 'CODE',
+      persisted: false
     }
 
     this.idTabs += 1
@@ -75,16 +76,23 @@ export class TabsComponent {
   }
 
   newSavedTab(type: string, info: any): void {
+    const savedQuery = info.query || info
     const newTab: any = {
-      id: Date.now(),
-      name: info.name.name,
+      id: savedQuery.id || Date.now(),
+      name: savedQuery.name || info.name?.name || 'Saved query',
       type: type,
       info: {
-        sql: info.info.sql
+        sql: savedQuery.sql || info.info?.sql || ''
       },
-      dbInfo: this.createTabDbInfo(info.context, !info.context),
-      originalSql: info.info.sql,
-      icon: 'CODE'
+      dbInfo: this.createTabDbInfo(savedQuery.dbSchema || info.context, !(savedQuery.dbSchema || info.context)),
+      originalContent: savedQuery.sql || info.info?.sql || '',
+      folderPath: savedQuery.folderPath || '',
+      versioningEnabled: Boolean(savedQuery.versioningEnabled),
+      updatedAt: savedQuery.updatedAt,
+      createdAt: savedQuery.createdAt,
+      versions: savedQuery.versions || [],
+      icon: 'CODE',
+      persisted: Boolean(savedQuery.id)
     }
 
     this.idTabs += 1
@@ -237,8 +245,14 @@ export class TabsComponent {
         sql: event.sql
       },
       originalContent: event.sql,
-      dbInfo: this.createTabDbInfo(null, true),
-      icon: 'CODE'
+      dbInfo: this.createTabDbInfo(event.dbSchema, !event.dbSchema),
+      folderPath: event.folderPath || '',
+      versioningEnabled: Boolean(event.versioningEnabled),
+      updatedAt: event.updatedAt,
+      createdAt: event.createdAt,
+      versions: event.versions || [],
+      icon: 'CODE',
+      persisted: true
     }
 
     this.idTabs += 1
