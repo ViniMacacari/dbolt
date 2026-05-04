@@ -12,6 +12,7 @@ import { ConnectionContextService } from '../../../services/connection-context/c
 import { AppSettingsService, SqlHighlightColors } from '../../../services/app-settings/app-settings.service'
 import { SqlTableAutocompleteService } from '../../../services/code-autocomplete/sql-table-autocomplete.service'
 import { SqlCodeFormatterService } from '../../../services/code-formatting/sql-code-formatter.service'
+import { SqlSyntaxMonacoMarkersService } from '../../../services/sql-validation/sql-syntax-monaco-markers.service'
 
 let sqlTokenizerConfigured = false
 
@@ -40,6 +41,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private editor: monaco.editor.IStandaloneCodeEditor | null = null
   private initialized = false
   private autocompleteDisposable?: monaco.IDisposable
+  private syntaxValidationDisposable?: monaco.IDisposable
   private settingsSubscription?: Subscription
   private readonly defaultResultHeight = 300
   private readonly minimumResultHeight = 120
@@ -71,7 +73,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     private connectionContext: ConnectionContextService,
     private appSettings: AppSettingsService,
     private tableAutocomplete: SqlTableAutocompleteService,
-    private sqlFormatter: SqlCodeFormatterService
+    private sqlFormatter: SqlCodeFormatterService,
+    private sqlSyntaxMarkers: SqlSyntaxMonacoMarkersService
   ) {
     this.settingsSubscription = this.appSettings.settingsChanges$.subscribe((settings) => {
       this.applySqlHighlightTheme(settings.sqlHighlightColors)
@@ -113,6 +116,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     }
 
     this.autocompleteDisposable?.dispose()
+    this.syntaxValidationDisposable?.dispose()
     this.settingsSubscription?.unsubscribe()
 
     if (this.editor) {
@@ -173,6 +177,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       this.editor,
       () => this.tabInfo?.dbInfo,
       () => this.active
+    )
+    this.syntaxValidationDisposable = this.sqlSyntaxMarkers.registerEditor(
+      this.editor,
+      () => this.tabInfo?.dbInfo
     )
 
     this.initializeEditorEvents()
