@@ -40,21 +40,38 @@ export class SqlTableAutocompleteService {
   private readonly maxSuggestions = 50
   private readonly sqlReservedWords = new Set([
     'as',
+    'by',
+    'case',
     'cross',
+    'delete',
+    'distinct',
+    'else',
+    'end',
+    'from',
     'full',
     'group',
     'having',
     'inner',
+    'insert',
+    'into',
     'join',
     'left',
     'limit',
+    'not',
     'offset',
     'on',
+    'or',
     'order',
     'outer',
     'right',
     'select',
+    'set',
+    'then',
+    'top',
     'union',
+    'update',
+    'values',
+    'when',
     'with',
     'where'
   ])
@@ -79,10 +96,14 @@ export class SqlTableAutocompleteService {
 
     const modelKey = this.getModelKey(model)
     this.editors.set(modelKey, { getContext, isActive })
+    const autoQuoteDisposable = editor.onDidChangeModelContent((event) => {
+      this.autoQuoteTypedColumn(editor, getContext, isActive, event)
+    })
 
     return {
       dispose: () => {
         this.editors.delete(modelKey)
+        autoQuoteDisposable.dispose()
       }
     }
   }
@@ -221,12 +242,13 @@ export class SqlTableAutocompleteService {
     }
 
     try {
-      const columns = await this.columnSource.getColumns(editorInfo.getContext(), request.tableName)
+      const context = editorInfo.getContext()
+      const columns = await this.columnSource.getColumns(context, request.tableName)
       const fragment = request.fragment.toLowerCase()
       const suggestions = columns
         .filter((column) => !fragment || column.name.toLowerCase().includes(fragment))
         .slice(0, this.maxSuggestions)
-        .map((column, index) => this.toColumnSuggestion(column, request, index))
+        .map((column, index) => this.toColumnSuggestion(column, request, index, context))
 
       return { suggestions }
     } catch (error) {
@@ -260,17 +282,206 @@ export class SqlTableAutocompleteService {
   private toColumnSuggestion(
     column: ColumnAutocompleteItem,
     request: ColumnCompletionRequest,
-    index: number
+    index: number,
+    context: any
   ): monaco.languages.CompletionItem {
     return {
       label: column.name,
       kind: monaco.languages.CompletionItemKind.Field,
       detail: column.type ? `Column - ${column.type}` : 'Column',
       documentation: `${request.qualifier}.${column.name}`,
-      insertText: column.name,
+      insertText: this.getColumnInsertText(column.name, context),
       range: request.range,
       sortText: index.toString().padStart(4, '0')
     }
+  }
+
+  private autoQuoteTypedColumn(
+    editor: monaco.editor.IStandaloneCodeEditor,
+    getContext: () => any,
+    isActive: () => boolean,
+    event: monaco.editor.IModelContentChangedEvent
+  ): void {
+    const commitChange = this.getAutoQuoteCommitChange(event)
+
+    if (!isActive() || !commitChange) return
+
+    const context = getContext()
+    if (!this.settings.shouldAutoQuoteCapitalizedColumns() || !this.supportsDoubleQuotedIdentifiers(context)) {
+      return
+    }
+
+    const model = editor.getModel()
+    if (!model) return
+
+    const identifier = this.resolveIdentifierBeforeCommit(
+      model,
+      commitChange.range.startLineNumber,
+      commitChange.range.startColumn
+    )
+    if (!identifier) return
+
+    if (
+      !this.shouldQuoteCapitalizedIdentifier(identifier.value, context) ||
+      this.sqlReservedWords.has(identifier.value.toLowerCase())
+    ) {
+      return
+    }
+
+    const sqlBeforeIdentifier = model.getValueInRange({
+      startLineNumber: 1,
+      startColumn: 1,
+      endLineNumber: identifier.lineNumber,
+      endColumn: identifier.startColumn
+    })
+
+    if (
+      this.isInsideStringOrComment(sqlBeforeIdentifier) ||
+      this.isTableReferenceContext(sqlBeforeIdentifier)
+    ) {
+      return
+    }
+
+    const quotedIdentifier = this.quoteDoubleIdentifier(identifier.value)
+    const columnDelta = quotedIdentifier.length - identifier.value.length
+    const cursorPosition = new monaco.Position(
+      commitChange.range.startLineNumber,
+      commitChange.range.startColumn + commitChange.text.length + columnDelta
+    )
+
+    editor.executeEdits('auto-quote-column', [{
+      range: {
+        startLineNumber: identifier.lineNumber,
+        endLineNumber: identifier.lineNumber,
+        startColumn: identifier.startColumn,
+        endColumn: identifier.endColumn
+      },
+      text: quotedIdentifier,
+      forceMoveMarkers: true
+    }], [
+      new monaco.Selection(
+        cursorPosition.lineNumber,
+        cursorPosition.column,
+        cursorPosition.lineNumber,
+        cursorPosition.column
+      )
+    ])
+  }
+
+  private isAutoQuoteCommitText(text: string): boolean {
+    return text.length === 1 && /^[ \t,;)=+\-*\/<>]$/.test(text)
+  }
+
+  private getAutoQuoteCommitChange(
+    event: monaco.editor.IModelContentChangedEvent
+  ): monaco.editor.IModelContentChange | null {
+    for (let index = event.changes.length - 1; index >= 0; index--) {
+      const change = event.changes[index]
+      if (change.rangeLength === 0 && this.isAutoQuoteCommitText(change.text)) {
+        return change
+      }
+    }
+
+    return null
+  }
+
+  private resolveIdentifierBeforeCommit(
+    model: monaco.editor.ITextModel,
+    lineNumber: number,
+    endColumn: number
+  ): { value: string, lineNumber: number, startColumn: number, endColumn: number } | null {
+    if (endColumn <= 1) return null
+
+    const lineText = model.getLineContent(lineNumber)
+    const beforeCommit = lineText.slice(0, endColumn - 1)
+    const match = beforeCommit.match(/([A-Za-z_$#][A-Za-z0-9_$#]*)$/)
+    const value = match?.[1] || ''
+    if (!value) return null
+
+    const startColumn = endColumn - value.length
+    const beforeIdentifier = beforeCommit[beforeCommit.length - value.length - 1]
+    if (beforeIdentifier === '"' || beforeIdentifier === '`' || beforeIdentifier === '[') {
+      return null
+    }
+
+    return {
+      value,
+      lineNumber,
+      startColumn,
+      endColumn
+    }
+  }
+
+  private getColumnInsertText(columnName: string, context: any): string {
+    return this.shouldQuoteCapitalizedIdentifier(columnName, context)
+      ? this.quoteDoubleIdentifier(columnName)
+      : columnName
+  }
+
+  private shouldQuoteCapitalizedIdentifier(identifier: string, context: any): boolean {
+    const normalizedIdentifier = this.normalizeIdentifier(identifier)
+
+    return (
+      this.settings.shouldAutoQuoteCapitalizedColumns() &&
+      this.supportsDoubleQuotedIdentifiers(context) &&
+      /^[A-Z]/.test(normalizedIdentifier) &&
+      /[a-z]/.test(normalizedIdentifier)
+    )
+  }
+
+  private quoteDoubleIdentifier(identifier: string): string {
+    return `"${this.normalizeIdentifier(identifier).replace(/"/g, '""')}"`
+  }
+
+  private supportsDoubleQuotedIdentifiers(context: any): boolean {
+    const database = String(context?.sgbd || context?.database || '').toLowerCase()
+
+    return database !== 'mysql'
+  }
+
+  private isTableReferenceContext(sqlBeforeIdentifier: string): boolean {
+    if (/\(\s*$/.test(sqlBeforeIdentifier)) return false
+
+    const sanitizedSql = this.replaceStringsAndComments(sqlBeforeIdentifier)
+    const statementSql = this.extractCurrentStatement(sanitizedSql, sanitizedSql.length)
+    const tokens = this.tokenizeSql(statementSql)
+
+    for (let index = tokens.length - 1; index >= 0; index--) {
+      const token = tokens[index].lower
+
+      if (this.isTableReferenceBreakToken(token)) {
+        return false
+      }
+
+      if (this.isTableReferenceStartToken(token)) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  private isTableReferenceStartToken(token: string): boolean {
+    return ['from', 'join', 'update', 'into', 'table', 'view'].includes(token)
+  }
+
+  private isTableReferenceBreakToken(token: string): boolean {
+    return [
+      'select',
+      'where',
+      'on',
+      'set',
+      'values',
+      'group',
+      'order',
+      'having',
+      'limit',
+      'offset',
+      'union',
+      'with',
+      'by',
+      'as'
+    ].includes(token)
   }
 
   private generateAlias(tableName: string): string {

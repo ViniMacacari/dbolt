@@ -26,6 +26,7 @@ export class SettingsComponent implements OnInit {
   connectionExpirationMinutes: number
   tableAutocompleteEnabled: boolean
   columnAutocompleteEnabled: boolean
+  autoQuoteCapitalizedColumns: boolean
   sqlFormatterIndentSize: number
   sqlFormatterUppercaseKeywords: boolean
   sqlHighlightMode: SqlHighlightMode
@@ -69,6 +70,7 @@ export class SettingsComponent implements OnInit {
     this.connectionExpirationMinutes = this.settings.getConnectionExpirationMinutes()
     this.tableAutocompleteEnabled = this.settings.isTableAutocompleteEnabled()
     this.columnAutocompleteEnabled = this.settings.isColumnAutocompleteEnabled()
+    this.autoQuoteCapitalizedColumns = this.settings.shouldAutoQuoteCapitalizedColumns()
     this.sqlFormatterIndentSize = this.settings.getSqlFormatterIndentSize()
     this.sqlFormatterUppercaseKeywords = this.settings.shouldUppercaseSqlFormatterKeywords()
     this.sqlHighlightMode = this.settings.getSqlHighlightMode()
@@ -207,11 +209,18 @@ export class SettingsComponent implements OnInit {
     this.autocompleteSavedMessage = ''
   }
 
+  onAutoQuoteCapitalizedColumnsChange(event: Event): void {
+    this.autoQuoteCapitalizedColumns = (event.target as HTMLInputElement).checked
+    this.autocompleteSavedMessage = ''
+  }
+
   saveAutocompleteSettings(): void {
     let settings = this.settings.setTableAutocompleteEnabled(this.tableAutocompleteEnabled)
     settings = this.settings.setColumnAutocompleteEnabled(this.columnAutocompleteEnabled)
+    settings = this.settings.setAutoQuoteCapitalizedColumns(this.autoQuoteCapitalizedColumns)
     this.tableAutocompleteEnabled = settings.tableAutocompleteEnabled
     this.columnAutocompleteEnabled = settings.columnAutocompleteEnabled
+    this.autoQuoteCapitalizedColumns = settings.autoQuoteCapitalizedColumns
     this.autocompleteSavedMessage = 'Saved'
   }
 
