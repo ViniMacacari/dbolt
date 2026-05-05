@@ -36,7 +36,17 @@
 
     <div class="info table-info-panel">
         <div *ngIf="showData" class="data-panel">
-            <app-fix-table-data [calcWidth]="380" [elementName]="elementName" [tabInfo]="tabInfo"></app-fix-table-data>
+            <app-table-query [query]="dataRows" [columns]="dataColumns" [rowLimit]="dataFetchSize"
+                [totalRows]="dataTotalRows" [isSelectResult]="true" [executedSql]="dataErrorMessage ? '' : getTableDataSql()"
+                [dbContext]="tabInfo?.dbInfo || data" [resultHeight]="dataResultHeight" [isExpanded]="true"
+                [isLoading]="isLoadingData" [isLoadingMore]="isLoadingMoreData" [errorMessage]="dataErrorMessage"
+                [executionTimeMs]="dataExecutionTimeMs" [resultTitle]="'Data'" [showResultResize]="false"
+                [showResultExpand]="false" [showResultClose]="false" [emitFilterModelChanges]="true"
+                [filterOnApplyOnly]="true" (filterModelChange)="onDataFilterModelChange($event)"
+                (rowLimitChange)="onDataFetchSizeChange($event)"
+                (refreshQuery)="refreshTableDataWithFetchSize()" (newValuesQuery)="loadMoreTableData()"
+                (resultHeightChange)="onDataResultHeightChange($event)">
+            </app-table-query>
         </div>
 
         <div *ngIf="!showData && !showDDL" class="metadata-panel">
