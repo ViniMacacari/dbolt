@@ -133,6 +133,40 @@ export class SidebarComponent {
     )
   }
 
+  trackQuickSelectorOption(index: number, option: any): string {
+    if (!option) return String(index)
+
+    if (option.type === 'connection') {
+      const connection = option.value || {}
+      return [
+        option.type,
+        connection.id,
+        connection.database,
+        connection.host,
+        connection.port
+      ].filter(Boolean).join(':')
+    }
+
+    if (option.type === 'database') {
+      return [
+        option.type,
+        option.connection?.id,
+        option.value?.database
+      ].filter(Boolean).join(':')
+    }
+
+    if (option.type === 'schema') {
+      return [
+        option.type,
+        option.connection?.id,
+        option.database?.database,
+        option.value
+      ].filter(Boolean).join(':')
+    }
+
+    return `${option.type || 'option'}:${option.label || index}`
+  }
+
   onQuickSelectorFilter(event: Event): void {
     this.quickSelectorFilter = (event.target as HTMLInputElement).value
   }

@@ -145,14 +145,17 @@
         </div>
 
         <div class="quick-selector-body">
-            <button type="button" class="quick-option" *ngFor="let option of getFilteredQuickSelectorOptions()"
-                (click)="selectQuickOption(option, $event)">
-                <img [src]="option.icon" height="18px" width="18px">
-                <span>{{ option.label }}</span>
-                <small>{{ option.description }}</small>
-            </button>
+            <ng-container *ngIf="getFilteredQuickSelectorOptions() as quickOptions">
+                <button type="button" class="quick-option"
+                    *ngFor="let option of quickOptions; trackBy: trackQuickSelectorOption"
+                    (click)="selectQuickOption(option, $event)">
+                    <img [src]="option.icon" height="18px" width="18px">
+                    <span>{{ option.label }}</span>
+                    <small>{{ option.description }}</small>
+                </button>
 
-            <p class="quick-empty" *ngIf="getFilteredQuickSelectorOptions().length === 0">No options available</p>
+                <p class="quick-empty" *ngIf="quickOptions.length === 0">No options available</p>
+            </ng-container>
         </div>
     </div>
 </div>
