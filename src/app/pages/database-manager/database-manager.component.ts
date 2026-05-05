@@ -468,20 +468,26 @@ export class DatabaseManagerComponent {
   }
 
   onCompareEditRequested(event: any): void {
-    if (event?.source === 'current') {
-      this.tabsComponent.openSavedQueryTab(event.query)
+    const target = event?.target
+    if (!target) return
+
+    if (target.kind === 'query') {
+      this.tabsComponent.openSavedQueryTab(target.query)
       return
     }
 
     this.tabsComponent.newTab('sql', {
-      sql: event?.version?.sql || '',
-      context: event?.version?.dbSchema || event?.query?.dbSchema || this.selectedSchemaDB
-    }, `${event?.query?.name || 'Query'} - version ${event?.version?.id || ''}`)
+      sql: target.sql || '',
+      context: target.dbSchema || target.query?.dbSchema || this.selectedSchemaDB
+    }, `${target.query?.name || 'Query'} - version ${target.version?.id || ''}`)
   }
 
   async onCompareRestoreRequested(event: any): Promise<void> {
+    const target = event?.target
+    if (!target?.query || !target?.version) return
+
     try {
-      const restoredQuery = await this.querySave.restoreVersion(event.query.id, event.version.id)
+      const restoredQuery = await this.querySave.restoreVersion(target.query.id, target.version.id)
       this.tabsComponent.openSavedQueryTab(restoredQuery)
       this.toast.showToast('Query version restored successfully', 'green')
     } catch (error: any) {
