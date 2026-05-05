@@ -90,8 +90,10 @@
         }
 
         .tab {
-            display: flex;
+            display: grid;
             align-items: center;
+            grid-template-columns: 15px minmax(0, 1fr) 15px;
+            gap: 10px !important;
 
             flex: 0 0 auto;
 
@@ -102,21 +104,37 @@
             width: auto;
             max-width: 250px;
             min-width: 50px;
+            overflow: hidden;
 
             white-space: nowrap;
             padding: 5px 15px;
 
             cursor: pointer;
 
+            .tab-icon,
+            .tab-close {
+                display: block;
+                height: 15px;
+                min-width: 15px;
+                object-fit: contain;
+                width: 15px;
+            }
+
+            .tab-close {
+                justify-self: end;
+            }
+
             .text {
+                min-width: 0;
+                overflow: hidden;
                 width: 100%;
 
                 p {
                     margin: 0;
-
-                    text-wrap: nowrap;
+                    max-width: 100%;
                     overflow: hidden;
                     text-overflow: ellipsis;
+                    white-space: nowrap;
                 }
             }
 

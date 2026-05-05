@@ -23,11 +23,11 @@
         <div class="tabs" #tabsContainer>
             <div class="tab gap-3" *ngFor="let tab of tabs; let i = index" [class.active]="i === activeTab"
                 (click)="selectTab(i)">
-                <img [src]="getTabIcon(tab)" height="15px" />
-                <div class="text">
+                <img class="tab-icon" [src]="getTabIcon(tab)" height="15px" />
+                <div class="text" title="{{ tab.name }}">
                     <p class="text-min">{{ tab.name }}</p>
                 </div>
-                <img src="icons/close.png" height="15px" (click)="closeTab(i, $event, tab)" />
+                <img class="tab-close" src="icons/close.png" height="15px" (click)="closeTab(i, $event, tab)" />
             </div>
         </div>
     </div>
