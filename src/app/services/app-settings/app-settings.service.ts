@@ -59,6 +59,44 @@ export class AppSettingsService {
       keyword: '#739eca',
       function: '#f1e02d',
       identifier: '#e8e7e6',
+      string: '#8fd694',
+      number: '#d996ff',
+      comment: '#7f8c98',
+      operator: '#badedc',
+      type: '#b7a0ff',
+      variable: '#8bd5ca',
+      delimiter: '#c9d1d9'
+    },
+    'dbolt-high-contrast': {
+      keyword: '#4cc9f0',
+      function: '#ffbe0b',
+      identifier: '#ffffff',
+      string: '#80ed99',
+      number: '#c77dff',
+      comment: '#a8b3cf',
+      operator: '#f8f8f2',
+      type: '#64dfdf',
+      variable: '#bdb2ff',
+      delimiter: '#e8eaed'
+    },
+    'classic-sql': {
+      keyword: '#569cd6',
+      function: '#dcdcaa',
+      identifier: '#d4d4d4',
+      string: '#b5cea8',
+      number: '#dcdcaa',
+      comment: '#6a9955',
+      operator: '#d4d4d4',
+      type: '#4ec9b0',
+      variable: '#c586c0',
+      delimiter: '#d4d4d4'
+    }
+  }
+  private readonly legacySqlHighlightPresets: Record<Exclude<SqlHighlightMode, 'custom'>, SqlHighlightColors[]> = {
+    'dbolt-dark': [{
+      keyword: '#739eca',
+      function: '#f1e02d',
+      identifier: '#e8e7e6',
       string: '#cac580',
       number: '#d996ff',
       comment: '#7f8c98',
@@ -66,8 +104,8 @@ export class AppSettingsService {
       type: '#c7859c',
       variable: '#c7859c',
       delimiter: '#c9d1d9'
-    },
-    'dbolt-high-contrast': {
+    }],
+    'dbolt-high-contrast': [{
       keyword: '#4cc9f0',
       function: '#ffbe0b',
       identifier: '#ffffff',
@@ -78,8 +116,8 @@ export class AppSettingsService {
       type: '#fb5607',
       variable: '#f72585',
       delimiter: '#e8eaed'
-    },
-    'classic-sql': {
+    }],
+    'classic-sql': [{
       keyword: '#569cd6',
       function: '#dcdcaa',
       identifier: '#d4d4d4',
@@ -90,7 +128,7 @@ export class AppSettingsService {
       type: '#4ec9b0',
       variable: '#c586c0',
       delimiter: '#d4d4d4'
-    }
+    }]
   }
   private readonly settingsChangedSubject = new Subject<AppSettings>()
   readonly settingsChanges$ = this.settingsChangedSubject.asObservable()
@@ -325,23 +363,18 @@ export class AppSettingsService {
       keyword: '#739eca',
       function: '#f1e02d',
       identifier: '#e8e7e6',
-      string: '#cac580',
+      string: '#8fd694',
       number: '#d996ff',
       comment: '#7f8c98',
       operator: '#badedc',
-      type: '#c7859c',
-      variable: '#c7859c',
+      type: '#b7a0ff',
+      variable: '#8bd5ca',
       delimiter: '#c9d1d9'
     }
   }
 
   private normalizeSettings(settings?: Partial<AppSettings>): AppSettings {
-    const storedMode = settings?.sqlHighlightMode
-    const sqlHighlightMode = storedMode
-      ? this.normalizeSqlHighlightMode(storedMode)
-      : settings?.sqlHighlightColors
-        ? 'custom'
-        : this.fallbackSettings.sqlHighlightMode
+    const sqlHighlightMode = this.resolveStoredSqlHighlightMode(settings)
     const sqlHighlightColors = sqlHighlightMode === 'custom'
       ? this.normalizeSqlHighlightColors(settings?.sqlHighlightColors)
       : this.getSqlHighlightPresetColors(sqlHighlightMode)
@@ -358,6 +391,62 @@ export class AppSettingsService {
       sqlHighlightMode,
       sqlHighlightColors
     }
+  }
+
+  private resolveStoredSqlHighlightMode(settings?: Partial<AppSettings>): SqlHighlightMode {
+    const presetMode = this.resolvePresetModeByColors(settings?.sqlHighlightColors)
+
+    if (settings?.sqlHighlightMode === 'custom') {
+      return presetMode || 'custom'
+    }
+
+    if (settings?.sqlHighlightMode) {
+      return this.normalizeSqlHighlightMode(settings.sqlHighlightMode)
+    }
+
+    if (presetMode) return presetMode
+
+    return settings?.sqlHighlightColors
+      ? 'custom'
+      : this.fallbackSettings.sqlHighlightMode
+  }
+
+  private resolvePresetModeByColors(value: unknown): Exclude<SqlHighlightMode, 'custom'> | null {
+    if (!this.isObject(value)) return null
+
+    const colors = this.normalizeSqlHighlightColors(value)
+    const modes: Array<Exclude<SqlHighlightMode, 'custom'>> = [
+      'dbolt-dark',
+      'dbolt-high-contrast',
+      'classic-sql'
+    ]
+
+    for (const mode of modes) {
+      if (this.areSqlHighlightColorsEqual(colors, this.getSqlHighlightPresetColors(mode))) {
+        return mode
+      }
+
+      if (this.legacySqlHighlightPresets[mode].some((preset) => this.areSqlHighlightColorsEqual(colors, preset))) {
+        return mode
+      }
+    }
+
+    return null
+  }
+
+  private areSqlHighlightColorsEqual(left: SqlHighlightColors, right: SqlHighlightColors): boolean {
+    return (
+      left.keyword === right.keyword.toLowerCase() &&
+      left.function === right.function.toLowerCase() &&
+      left.identifier === right.identifier.toLowerCase() &&
+      left.string === right.string.toLowerCase() &&
+      left.number === right.number.toLowerCase() &&
+      left.comment === right.comment.toLowerCase() &&
+      left.operator === right.operator.toLowerCase() &&
+      left.type === right.type.toLowerCase() &&
+      left.variable === right.variable.toLowerCase() &&
+      left.delimiter === right.delimiter.toLowerCase()
+    )
   }
 
   private normalizeHexColor(value: unknown, fallback: string): string {
