@@ -304,11 +304,15 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private initializeEditorEvents(): void {
     this.editor?.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+      if (!this.active || this.isLoadingQuery) return
+
       this.runSelected()
     })
 
     this.editor?.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      this.saveQuery()
+      if (!this.active) return
+
+      void this.saveQuery()
     })
 
     this.editor?.onDidChangeModelContent(() => {
@@ -394,6 +398,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   async runSql(sql: string): Promise<void> {
+    if (this.isLoadingQuery) return
+
     this.isLoadingMore = false
     this.isLoadingQuery = true
     this.queryResultOpen = true
