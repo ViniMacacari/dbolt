@@ -53,6 +53,9 @@ export class SidebarComponent {
 
   toggleQuickSelector(type: 'connection' | 'database' | 'schema', event: MouseEvent): void {
     event.stopPropagation()
+    this.focusEventTarget(event)
+    this.contextMenu = null
+
     if (this.quickSelectorType === type) {
       this.closeQuickSelector()
       return
@@ -128,6 +131,40 @@ export class SidebarComponent {
     return options.filter((option) =>
       `${option.label || ''} ${option.description || ''}`.toLowerCase().includes(filter)
     )
+  }
+
+  trackQuickSelectorOption(index: number, option: any): string {
+    if (!option) return String(index)
+
+    if (option.type === 'connection') {
+      const connection = option.value || {}
+      return [
+        option.type,
+        connection.id,
+        connection.database,
+        connection.host,
+        connection.port
+      ].filter(Boolean).join(':')
+    }
+
+    if (option.type === 'database') {
+      return [
+        option.type,
+        option.connection?.id,
+        option.value?.database
+      ].filter(Boolean).join(':')
+    }
+
+    if (option.type === 'schema') {
+      return [
+        option.type,
+        option.connection?.id,
+        option.database?.database,
+        option.value
+      ].filter(Boolean).join(':')
+    }
+
+    return `${option.type || 'option'}:${option.label || index}`
   }
 
   onQuickSelectorFilter(event: Event): void {
@@ -258,6 +295,8 @@ export class SidebarComponent {
   private openContextMenu(event: MouseEvent, menu: any): void {
     event.preventDefault()
     event.stopPropagation()
+    this.focusEventTarget(event)
+    this.quickSelectorType = null
 
     this.contextMenu = {
       ...menu,
@@ -453,6 +492,21 @@ export class SidebarComponent {
   private arraysEqual(arr1: any[], arr2: any[]): boolean {
     if (arr1.length !== arr2.length) return false
     return arr1.every((value, index) => value === arr2[index])
+  }
+
+  private focusEventTarget(event: MouseEvent): void {
+    const currentTarget = event.currentTarget as HTMLElement | null
+    if (currentTarget && this.canReceiveFocus(currentTarget)) {
+      currentTarget.focus({ preventScroll: true })
+      return
+    }
+
+    const activeElement = document.activeElement as HTMLElement | null
+    activeElement?.blur()
+  }
+
+  private canReceiveFocus(element: HTMLElement): boolean {
+    return element.matches('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
   }
 
   async selectSchema(connection: any): Promise<any> {

@@ -13,20 +13,20 @@
     <div class="py-2"></div>
 
     <p class="selected-title">Currently selected</p>
-    <div class="sgbd" (click)="toggleQuickSelector('connection', $event)">
+    <button type="button" class="sgbd" (click)="toggleQuickSelector('connection', $event)">
         <img src="db-logo/{{ selectedSchemaDB?.sgbd }}.png" height="15px" width="15px">
         <p class="text-min w-100">{{ selectedSchemaDB?.sgbd }} ({{ selectedSchemaDB?.name }})</p>
-    </div>
-    <div class="database" (click)="toggleQuickSelector('database', $event)"
+    </button>
+    <button type="button" class="database" (click)="toggleQuickSelector('database', $event)"
         (contextmenu)="openSelectedDatabaseContextMenu($event)">
         <img src="icons/database.png" height="15px" width="15px">
         <p class="text-min w-100">{{ selectedSchemaDB?.database }}</p>
-    </div>
-    <div class="schema" (click)="toggleQuickSelector('schema', $event)"
+    </button>
+    <button type="button" class="schema" (click)="toggleQuickSelector('schema', $event)"
         (contextmenu)="openSelectedSchemaContextMenu($event)">
         <img src="icons/schema.png" height="15px" width="15px">
         <p class="text-min w-100">{{ selectedSchemaDB?.schema }}</p>
-    </div>
+    </button>
 
     <div class="separator my-3"></div>
 
@@ -145,14 +145,17 @@
         </div>
 
         <div class="quick-selector-body">
-            <button type="button" class="quick-option" *ngFor="let option of getFilteredQuickSelectorOptions()"
-                (click)="selectQuickOption(option, $event)">
-                <img [src]="option.icon" height="18px" width="18px">
-                <span>{{ option.label }}</span>
-                <small>{{ option.description }}</small>
-            </button>
+            <ng-container *ngIf="getFilteredQuickSelectorOptions() as quickOptions">
+                <button type="button" class="quick-option"
+                    *ngFor="let option of quickOptions; trackBy: trackQuickSelectorOption"
+                    (click)="selectQuickOption(option, $event)">
+                    <img [src]="option.icon" height="18px" width="18px">
+                    <span>{{ option.label }}</span>
+                    <small>{{ option.description }}</small>
+                </button>
 
-            <p class="quick-empty" *ngIf="getFilteredQuickSelectorOptions().length === 0">No options available</p>
+                <p class="quick-empty" *ngIf="quickOptions.length === 0">No options available</p>
+            </ng-container>
         </div>
     </div>
 </div>

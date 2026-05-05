@@ -25,6 +25,7 @@ import {
   QueryResultExportPayload,
   QueryResultExportService
 } from '../../../services/query-result-export/query-result-export.service'
+import { KeyboardShortcutService } from '../../../services/keyboard-shortcuts/keyboard-shortcut.service'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
@@ -146,6 +147,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   private gridHostElement: HTMLElement | null = null
   private removeGridContextMenuListener: (() => void) | null = null
   private selectedFullRowIds: number[] = []
+  private shortcutDisposers: Array<() => void> = []
 
   scrollTimeout: any
 
@@ -188,7 +190,8 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     private connectionContext: ConnectionContextService,
     private runQuery: RunQueryService,
     private gridDataSourceService: QueryResultGridDataSourceService,
-    private resultExport: QueryResultExportService
+    private resultExport: QueryResultExportService,
+    private keyboardShortcuts: KeyboardShortcutService
   ) { }
 
   @Input()
@@ -226,38 +229,16 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  @HostListener('document:keydown', ['$event'])
-  onDocumentKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
-      this.cellSelectionMenu = null
-      this.isSelectingCells = false
-      return
-    }
-
-    if (
-      !this.isCopyShortcut(event) ||
-      !this.isEventInsideTable(event) ||
-      this.isTextEditingTarget(event.target) ||
-      this.hasTextSelection()
-    ) {
-      return
-    }
-
-    const payload = this.getSelectionPayload()
-    if (!payload || payload.rows.length === 0) return
-
-    event.preventDefault()
-    this.copySelectedData()
-  }
-
   ngAfterViewInit(): void {
     this.isElementVisible = true
     this.adjustTableWrapperSize()
     this.updateColumns()
+    this.registerKeyboardShortcuts()
     this.cdr.detectChanges()
   }
 
   ngOnDestroy(): void {
+    this.unregisterKeyboardShortcuts()
     this.unbindGridContextMenuListener()
     this.releaseData()
   }
@@ -750,6 +731,46 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.removeGridContextMenuListener = null
   }
 
+  private registerKeyboardShortcuts(): void {
+    this.unregisterKeyboardShortcuts()
+
+    this.shortcutDisposers.push(
+      this.keyboardShortcuts.register({
+        key: 'c',
+        ctrlOrMeta: true,
+        priority: 80,
+        isEnabled: () => this.isElementVisible,
+        isInContext: (event) =>
+          this.isEventInsideTable(event) &&
+          !this.isTextEditingTarget(event.target) &&
+          !this.hasTextSelection(),
+        handler: () => {
+          const payload = this.getSelectionPayload()
+          if (!payload || payload.rows.length === 0) return false
+
+          void this.copySelectedData()
+          return true
+        }
+      }),
+      this.keyboardShortcuts.register({
+        key: 'Escape',
+        priority: 80,
+        isEnabled: () => this.isElementVisible && (this.isSelectingCells || !!this.cellSelectionMenu),
+        isInContext: (event) => this.isEventInsideTable(event) || !!this.cellSelectionMenu,
+        handler: () => {
+          this.cellSelectionMenu = null
+          this.isSelectingCells = false
+          return true
+        }
+      })
+    )
+  }
+
+  private unregisterKeyboardShortcuts(): void {
+    this.shortcutDisposers.forEach((dispose) => dispose())
+    this.shortcutDisposers = []
+  }
+
   private async runSelectionExport(action: (payload: QueryResultExportPayload) => Promise<void>): Promise<void> {
     const payload = this.getSelectionPayload()
     if (!payload) return
@@ -942,10 +963,6 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
         event?.colDef?.headerName === '#' &&
         !event?.colDef?.field
       )
-  }
-
-  private isCopyShortcut(event: KeyboardEvent): boolean {
-    return (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c'
   }
 
   private isEventInsideTable(event: Event): boolean {
