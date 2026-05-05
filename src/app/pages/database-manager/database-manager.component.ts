@@ -52,6 +52,7 @@ export class DatabaseManagerComponent {
   dbInfoInitialized: boolean = false
   tableInfoInitialized: boolean = false
   procedureInfoInitialized: boolean = false
+  settingsInitialized: boolean = false
 
   sqlContent: string = ''
   tabInfo: any
@@ -275,6 +276,10 @@ export class DatabaseManagerComponent {
       this.dbInfoInitialized = true
       this.dbInfoTabInfo = tab
       this.dbSchemasData = tab.info.dbInfo
+    }
+
+    if (this.settingsOpen) {
+      this.settingsInitialized = true
     }
 
     if (this.tableInfoOpen) {

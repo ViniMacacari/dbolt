@@ -21,7 +21,7 @@
                 <app-procedure-info *ngIf="procedureInfoInitialized" [hidden]="!procedureInfoOpen"
                     [data]="procedureInfoData" [elementName]="procedureElementName" [tabInfo]="procedureInfoTabInfo"
                     (editRequested)="onProcedureEditRequested($event)"></app-procedure-info>
-                <app-settings *ngIf="settingsOpen"></app-settings>
+                <app-settings *ngIf="settingsInitialized" [hidden]="!settingsOpen"></app-settings>
                 <app-query-assistant *ngIf="queryAssistantOpen" [tabInfo]="tabInfo"
                     (selectBuilderRequested)="onSelectBuilderRequested($event)"></app-query-assistant>
                 <app-select-builder *ngIf="selectBuilderOpen" [tabInfo]="tabInfo"
