@@ -5,6 +5,7 @@ import { LoadQueryComponent } from "../modal/load-query/load-query.component"
 import { YesNoModalComponent } from "../modal/yes-no-modal/yes-no-modal.component"
 import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
 import { ConnectionContextService } from '../../services/connection-context/connection-context.service'
+import { QueryCompareTargetService } from '../../services/query-compare-target/query-compare-target.service'
 
 @Component({
   selector: 'app-tabs',
@@ -35,7 +36,8 @@ export class TabsComponent {
 
   constructor(
     private dbSchema: GetDbschemaService,
-    private connectionContext: ConnectionContextService
+    private connectionContext: ConnectionContextService,
+    private compareTarget: QueryCompareTargetService
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
@@ -195,11 +197,13 @@ export class TabsComponent {
   }
 
   openQueryVersionCompareTab(event: any): void {
-    const query = event?.query
-    const version = event?.version
-    if (!query || !version) return
+    const left = event?.left || (event?.query ? this.compareTarget.createQueryTarget(event.query) : null)
+    const right = event?.right || (event?.query && event?.version
+      ? this.compareTarget.createVersionTarget(event.query, event.version)
+      : null)
+    if (!left || !right) return
 
-    const compareTabId = `compare-${query.id}-${version.id}`
+    const compareTabId = this.compareTarget.buildTabId(left, right)
     const existingIndex = this.tabs.findIndex(tab => tab.id === compareTabId)
 
     if (existingIndex >= 0) {
@@ -211,11 +215,11 @@ export class TabsComponent {
 
     this.tabs.push({
       id: compareTabId,
-      name: `${query.name} v${version.id}`,
+      name: this.compareTarget.buildTabName(left, right),
       type: 'query-compare',
       info: {
-        query,
-        version
+        left,
+        right
       },
       icon: 'COMPARE'
     })

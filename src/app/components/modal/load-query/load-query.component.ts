@@ -4,17 +4,22 @@ import { FormsModule } from '@angular/forms'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { InputListComponent } from "../../elements/input-list/input-list.component"
 import { ToastComponent } from "../../toast/toast.component"
+import { YesNoModalComponent } from '../yes-no-modal/yes-no-modal.component'
 import { QuerySaveService, SavedQuery, SavedQueryVersion } from '../../../services/query-save/query-save.service'
 import {
   QueryLibraryBreadcrumbPart,
   QueryLibraryNavigatorService,
   QueryLibraryView
 } from '../../../services/query-library/query-library-navigator.service'
+import {
+  QueryCompareTarget,
+  QueryCompareTargetService
+} from '../../../services/query-compare-target/query-compare-target.service'
 
 @Component({
   selector: 'app-load-query',
   standalone: true,
-  imports: [CommonModule, FormsModule, ToastComponent, InputListComponent],
+  imports: [CommonModule, FormsModule, ToastComponent, InputListComponent, YesNoModalComponent],
   templateUrl: './load-query.component.html',
   styleUrl: './load-query.component.scss'
 })
@@ -33,7 +38,10 @@ export class LoadQueryComponent {
   originalQueries: SavedQuery[] = []
   folders: string[] = []
   versionsByQueryId: Record<number, SavedQueryVersion[]> = {}
+  compareTargets: QueryCompareTarget[] = []
   expandedHistoryQueryId: number | null = null
+  showDeleteConfirm: boolean = false
+  pendingDeleteQuery: SavedQuery | null = null
   currentFolderPath: string = ''
   view: QueryLibraryView = {
     folders: [],
@@ -47,7 +55,8 @@ export class LoadQueryComponent {
   constructor(
     private IAPI: InternalApiService,
     private querySave: QuerySaveService,
-    private navigator: QueryLibraryNavigatorService
+    private navigator: QueryLibraryNavigatorService,
+    private compareTarget: QueryCompareTargetService
   ) { }
 
   async ngOnInit(): Promise<void> {
@@ -93,15 +102,67 @@ export class LoadQueryComponent {
     this.open.emit(query)
   }
 
-  async deleteQuery(query: SavedQuery): Promise<void> {
+  requestDeleteQuery(query: SavedQuery, event: MouseEvent): void {
+    event.stopPropagation()
+    this.pendingDeleteQuery = query
+    this.showDeleteConfirm = true
+  }
+
+  cancelDeleteQuery(): void {
+    this.pendingDeleteQuery = null
+    this.showDeleteConfirm = false
+  }
+
+  async confirmDeleteQuery(): Promise<void> {
+    if (!this.pendingDeleteQuery) return
+
+    const query = this.pendingDeleteQuery
+    this.pendingDeleteQuery = null
+    this.showDeleteConfirm = false
+
     try {
       await this.querySave.deleteQuery(query.id)
       this.originalQueries = this.originalQueries.filter((item: { id: number }) => item.id !== query.id)
+      this.compareTargets = this.compareTargets.filter(target => target.query.id !== query.id)
       this.applyFilters()
       this.toast.showToast('Query deleted successfully', 'green')
     } catch (error: any) {
       this.toast.showToast(error?.error || error?.message || 'Could not delete query', 'red')
     }
+  }
+
+  toggleCurrentQueryCompare(query: SavedQuery, event: MouseEvent): void {
+    event.stopPropagation()
+    this.toggleCompareTarget(this.compareTarget.createQueryTarget(query))
+  }
+
+  toggleVersionCompare(query: SavedQuery, version: SavedQueryVersion, event: MouseEvent): void {
+    event.stopPropagation()
+    this.toggleCompareTarget(this.compareTarget.createVersionTarget(query, version))
+  }
+
+  isCurrentQuerySelected(query: SavedQuery): boolean {
+    return this.isCompareTargetSelected(`query-${query.id}`)
+  }
+
+  isVersionSelected(query: SavedQuery, version: SavedQueryVersion): boolean {
+    return this.isCompareTargetSelected(`query-${query.id}-version-${version.id}`)
+  }
+
+  compareSelected(): void {
+    if (this.compareTargets.length !== 2) {
+      this.toast.showToast('Select two files to compare', 'red')
+      return
+    }
+
+    this.compare.emit({
+      left: this.compareTargets[0],
+      right: this.compareTargets[1]
+    })
+  }
+
+  clearCompareSelection(): void {
+    this.compareTargets = []
   }
 
   async toggleHistory(query: SavedQuery, event: MouseEvent): Promise<void> {
@@ -136,11 +197,6 @@ export class LoadQueryComponent {
     } catch (error: any) {
       this.toast.showToast(error?.error || error?.message || 'Could not restore query version', 'red')
     }
-  }
-
-  compareVersion(query: SavedQuery, version: SavedQueryVersion, event: MouseEvent): void {
-    event.stopPropagation()
-    this.compare.emit({ query, version })
   }
 
   openVersionCopy(query: SavedQuery, version: SavedQueryVersion, event: MouseEvent): void {
@@ -213,5 +269,26 @@ export class LoadQueryComponent {
   private replaceQuery(query: SavedQuery): void {
     this.originalQueries = this.originalQueries.map(item => item.id === query.id ? query : item)
     this.applyFilters()
+  }
+
+  private toggleCompareTarget(target: QueryCompareTarget): void {
+    const existingIndex = this.compareTargets.findIndex(item => item.id === target.id)
+
+    if (existingIndex >= 0) {
+      this.compareTargets = this.compareTargets.filter(item => item.id !== target.id)
+      return
+    }
+
+    if (this.compareTargets.length >= 2) {
+      this.compareTargets = [this.compareTargets[1], target]
+      this.toast.showToast('Selection updated. Two files are ready to compare.', 'green')
+      return
+    }
+
+    this.compareTargets = [...this.compareTargets, target]
+  }
+
+  private isCompareTargetSelected(targetId: string): boolean {
+    return this.compareTargets.some(target => target.id === targetId)
   }
 }

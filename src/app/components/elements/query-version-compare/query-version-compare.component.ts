@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common'
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core'
 import { QueryDiffResult, QueryVersionDiffService } from '../../../services/query-version-diff/query-version-diff.service'
-import { QuerySaveService, SavedQuery, SavedQueryVersion } from '../../../services/query-save/query-save.service'
+import { QuerySaveService } from '../../../services/query-save/query-save.service'
+import { QueryCompareTarget } from '../../../services/query-compare-target/query-compare-target.service'
 
 @Component({
   selector: 'app-query-version-compare',
@@ -12,11 +13,11 @@ import { QuerySaveService, SavedQuery, SavedQueryVersion } from '../../../servic
 })
 export class QueryVersionCompareComponent implements OnChanges {
   @Input() tabInfo: any
-  @Output() editRequested = new EventEmitter<{ source: 'current' | 'version', query: SavedQuery, version: SavedQueryVersion }>()
-  @Output() restoreRequested = new EventEmitter<{ query: SavedQuery, version: SavedQueryVersion }>()
+  @Output() editRequested = new EventEmitter<{ target: QueryCompareTarget }>()
+  @Output() restoreRequested = new EventEmitter<{ target: QueryCompareTarget }>()
 
-  query!: SavedQuery
-  version!: SavedQueryVersion
+  left!: QueryCompareTarget
+  right!: QueryCompareTarget
   diff: QueryDiffResult = {
     lines: [],
     added: 0,
@@ -32,10 +33,10 @@ export class QueryVersionCompareComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (!changes['tabInfo']) return
 
-    this.query = this.tabInfo?.info?.query
-    this.version = this.tabInfo?.info?.version
+    this.left = this.tabInfo?.info?.left
+    this.right = this.tabInfo?.info?.right
 
-    if (!this.query || !this.version) {
+    if (!this.left || !this.right) {
       this.diff = {
         lines: [],
         added: 0,
@@ -45,22 +46,19 @@ export class QueryVersionCompareComponent implements OnChanges {
       return
     }
 
-    this.diff = this.diffService.buildDiff(this.query.sql, this.version.sql)
+    this.diff = this.diffService.buildDiff(this.left.sql, this.right.sql)
   }
 
   formatDate(value?: string): string {
     return this.querySave.formatDate(value)
   }
 
-  editCurrent(): void {
-    this.editRequested.emit({ source: 'current', query: this.query, version: this.version })
+  editTarget(target: QueryCompareTarget): void {
+    this.editRequested.emit({ target })
   }
 
-  editVersionCopy(): void {
-    this.editRequested.emit({ source: 'version', query: this.query, version: this.version })
-  }
-
-  restoreVersion(): void {
-    this.restoreRequested.emit({ query: this.query, version: this.version })
+  restoreTarget(target: QueryCompareTarget): void {
+    if (!target.version) return
+    this.restoreRequested.emit({ target })
   }
 }

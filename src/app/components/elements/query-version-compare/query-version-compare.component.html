@@ -1,17 +1,37 @@
-<section class="compare-page" *ngIf="query && version">
+<section class="compare-page" *ngIf="left && right">
     <header class="compare-header">
         <div>
-            <p>{{ query.folderPath || 'Queries' }}</p>
-            <h2>{{ query.name }}</h2>
-            <span>Current file vs Version {{ version.id }} saved {{ formatDate(version.changedAt) }}</span>
+            <p>Query comparison</p>
+            <h2>{{ left.label }} vs {{ right.label }}</h2>
+            <span>{{ left.subtitle }} compared with {{ right.subtitle }}</span>
         </div>
 
         <div class="compare-actions">
-            <button type="button" (click)="editCurrent()">Edit current</button>
-            <button type="button" (click)="editVersionCopy()">Edit version copy</button>
-            <button type="button" class="restore-button" (click)="restoreVersion()">Restore version</button>
+            <button type="button" (click)="editTarget(left)">Edit left</button>
+            <button type="button" (click)="editTarget(right)">Edit right</button>
+            <button type="button" class="restore-button" *ngIf="left.version" (click)="restoreTarget(left)">
+                Restore left
+            </button>
+            <button type="button" class="restore-button" *ngIf="right.version" (click)="restoreTarget(right)">
+                Restore right
+            </button>
         </div>
     </header>
+
+    <div class="compare-files">
+        <div class="file-card">
+            <small>Left</small>
+            <strong>{{ left.label }}</strong>
+            <span *ngIf="left.kind === 'query'">Current file</span>
+            <span *ngIf="left.version">Saved {{ formatDate(left.version.changedAt) }}</span>
+        </div>
+        <div class="file-card">
+            <small>Right</small>
+            <strong>{{ right.label }}</strong>
+            <span *ngIf="right.kind === 'query'">Current file</span>
+            <span *ngIf="right.version">Saved {{ formatDate(right.version.changedAt) }}</span>
+        </div>
+    </div>
 
     <div class="diff-summary">
         <span class="added">+{{ diff.added }} added</span>
