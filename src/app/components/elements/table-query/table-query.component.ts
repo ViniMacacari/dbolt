@@ -80,6 +80,10 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   @Input() columns: string[] = []
   @Input() executedSql: string = ''
   @Input() dbContext: any
+  @Input() resultTitle: string = 'Results'
+  @Input() showResultResize: boolean = true
+  @Input() showResultExpand: boolean = true
+  @Input() showResultClose: boolean = true
 
   @Output() newValuesQuery = new EventEmitter<void>()
   @Output() closeResult = new EventEmitter<void>()

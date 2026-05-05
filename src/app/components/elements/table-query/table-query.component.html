@@ -1,9 +1,9 @@
 <div #tableWrapper class="query-result-wrapper">
     <div class="result-bar">
-        <div class="resize-handle" title="Resize results" (mousedown)="startResize($event)"></div>
+        <div class="resize-handle" *ngIf="showResultResize" title="Resize results" (mousedown)="startResize($event)"></div>
         <div class="result-actions">
             <div class="result-title">
-                <span>Results</span>
+                <span>{{ resultTitle }}</span>
                 <small *ngIf="isSelectResult">{{ getRowsSummary() }}</small>
                 <small *ngIf="getExecutionTimeSummary()">{{ getExecutionTimeSummary() }}</small>
             </div>
@@ -59,12 +59,12 @@
                 {{ copyErrorMessage }}
             </small>
 
-            <button type="button" class="toggle-result-size"
+            <button type="button" class="toggle-result-size" *ngIf="showResultExpand"
                 [attr.aria-label]="isExpanded ? 'Restore results' : 'Expand results'"
                 [title]="isExpanded ? 'Restore results' : 'Expand results'" (click)="toggleResultSize()">
                 <img [src]="isExpanded ? 'icons/minimize.png' : 'icons/maximize.png'" height="12px" width="12px">
             </button>
-            <button type="button" class="close-result" aria-label="Close results" title="Close results"
+            <button type="button" class="close-result" *ngIf="showResultClose" aria-label="Close results" title="Close results"
                 (click)="close()">x</button>
         </div>
     </div>
