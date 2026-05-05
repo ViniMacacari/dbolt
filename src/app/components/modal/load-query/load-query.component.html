@@ -25,6 +25,18 @@
                     [placeholder]="'Database'"></app-input-list>
             </div>
 
+            <div class="compare-strip" *ngIf="compareTargets.length > 0">
+                <div class="compare-selected">
+                    <strong>{{ compareTargets.length }}/2 selected</strong>
+                    <span *ngFor="let target of compareTargets">{{ target.label }}</span>
+                </div>
+                <div class="compare-strip-actions">
+                    <button type="button" class="clear-button" (click)="clearCompareSelection()">Clear</button>
+                    <button type="button" class="compare-button" [disabled]="compareTargets.length !== 2"
+                        (click)="compareSelected()">Compare selected</button>
+                </div>
+            </div>
+
             <div class="folder-title">
                 <img src="icons/folder.png" height="18px">
                 <strong>{{ currentFolderLabel }}</strong>
@@ -37,7 +49,8 @@
                     <span>{{ folder }}</span>
                 </button>
 
-                <div class="query-item" *ngFor="let query of queries">
+                <div class="query-item" *ngFor="let query of queries"
+                    [class.expanded]="expandedHistoryQueryId === query.id">
                     <div class="query-main" (click)="loadQuery(query)">
                         <img src="db-logo/{{ query.dbSchema?.sgbd }}.png" height="18px">
                         <span>
@@ -48,13 +61,22 @@
                             </small>
                         </span>
                     </div>
-                    <button class="history-button" *ngIf="query.versioningEnabled || (query.versions?.length || 0) > 0"
-                        (click)="toggleHistory(query, $event)">
-                        Versions
-                    </button>
-                    <button type="button" class="icon-button" title="Delete query" (click)="deleteQuery(query)">
-                        <img src="icons/delete.png" height="15px">
-                    </button>
+
+                    <div class="query-actions">
+                        <button type="button" class="select-button" [class.selected]="isCurrentQuerySelected(query)"
+                            (click)="toggleCurrentQueryCompare(query, $event)">
+                            {{ isCurrentQuerySelected(query) ? 'Selected' : 'Select' }}
+                        </button>
+                        <button type="button" class="history-button"
+                            *ngIf="query.versioningEnabled || (query.versions?.length || 0) > 0"
+                            (click)="toggleHistory(query, $event)">
+                            Versions
+                        </button>
+                        <button type="button" class="icon-button" title="Delete query"
+                            (click)="requestDeleteQuery(query, $event)">
+                            <img src="icons/delete.png" height="15px">
+                        </button>
+                    </div>
 
                     <div class="version-panel" *ngIf="expandedHistoryQueryId === query.id">
                         <div class="version-header">
@@ -62,19 +84,29 @@
                             <small>{{ query.name }}</small>
                         </div>
 
-                        <div class="version-current">
-                            <span>Current file</span>
-                            <small>{{ formatDate(query.updatedAt) }}</small>
+                        <div class="version-current" [class.selected]="isCurrentQuerySelected(query)">
+                            <button type="button" class="target-select"
+                                [class.selected]="isCurrentQuerySelected(query)"
+                                (click)="toggleCurrentQueryCompare(query, $event)">
+                                {{ isCurrentQuerySelected(query) ? 'Selected' : 'Select' }}
+                            </button>
+                            <span>
+                                <strong>Current file</strong>
+                                <small>{{ formatDate(query.updatedAt) }}</small>
+                            </span>
                         </div>
 
                         <div class="version-item" *ngFor="let version of getQueryVersions(query)"
-                            (click)="compareVersion(query, version, $event)">
+                            [class.selected]="isVersionSelected(query, version)">
+                            <button type="button" class="target-select" [class.selected]="isVersionSelected(query, version)"
+                                (click)="toggleVersionCompare(query, version, $event)">
+                                {{ isVersionSelected(query, version) ? 'Selected' : 'Select' }}
+                            </button>
                             <span>
                                 <strong>Version {{ version.id }}</strong>
                                 <small>{{ formatDate(version.changedAt) }}</small>
                             </span>
                             <span class="version-actions">
-                                <em>Compare</em>
                                 <button type="button" (click)="openVersionCopy(query, version, $event)">
                                     Edit copy
                                 </button>
@@ -101,5 +133,10 @@
         </div>
     </div>
 </div>
+
+<app-yes-no-modal *ngIf="showDeleteConfirm" [title]="'Delete query'"
+    [message]="'Do you really want to delete ' + (pendingDeleteQuery?.name || 'this query') + '?'"
+    [cancelLabel]="'No'" [continueLabel]="'Yes, delete'" (closeAction)="cancelDeleteQuery()"
+    (continueAction)="confirmDeleteQuery()"></app-yes-no-modal>
 
 <app-toast></app-toast>
