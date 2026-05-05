@@ -77,7 +77,7 @@
                 [maxConcurrentDatasourceRequests]="1" [blockLoadDebounceMillis]="infiniteBlockLoadDebounceMillis"
                 [rowBuffer]="20" [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false"
                 [suppressNoRowsOverlay]="true" [animateRows]="false" [rowClassRules]="rowClassRules"
-                (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)"
+                (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)" (filterChanged)="onGridFilterChanged()"
                 (cellMouseDown)="onGridCellMouseDown($event)" (cellMouseOver)="onGridCellMouseOver($event)"
                 (cellContextMenu)="onGridCellContextMenu($event)">
             </ag-grid-angular>
@@ -87,7 +87,7 @@
                     [defaultColDef]="defaultColDef" [domLayout]="'normal'" [rowBuffer]="20"
                     [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false"
                     [suppressNoRowsOverlay]="true" [animateRows]="false" [rowClassRules]="rowClassRules"
-                    (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)"
+                    (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)" (filterChanged)="onGridFilterChanged()"
                     (cellMouseDown)="onGridCellMouseDown($event)" (cellMouseOver)="onGridCellMouseOver($event)"
                     (cellContextMenu)="onGridCellContextMenu($event)">
                 </ag-grid-angular>

@@ -84,6 +84,8 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   @Input() showResultResize: boolean = true
   @Input() showResultExpand: boolean = true
   @Input() showResultClose: boolean = true
+  @Input() emitFilterModelChanges: boolean = false
+  @Input() filterOnApplyOnly: boolean = false
 
   @Output() newValuesQuery = new EventEmitter<void>()
   @Output() closeResult = new EventEmitter<void>()
@@ -91,6 +93,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   @Output() refreshQuery = new EventEmitter<void>()
   @Output() resultHeightChange = new EventEmitter<number>()
   @Output() toggleExpanded = new EventEmitter<void>()
+  @Output() filterModelChange = new EventEmitter<any>()
 
   @ViewChild('tableWrapper') tableWrapper!: ElementRef<HTMLDivElement>
   @ViewChild('agGrid') agGrid!: AgGridAngular
@@ -278,6 +281,10 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       this.refreshEditCapability()
       this.updateColumns()
     }
+
+    if (changes['filterOnApplyOnly']) {
+      this.syncGridRowModel()
+    }
   }
 
   adjustTableWrapperSize() {
@@ -367,6 +374,12 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     if (!Number.isFinite(value)) return
 
     this.rowLimitChange.emit(Math.max(1, Math.floor(value)))
+  }
+
+  onGridFilterChanged(): void {
+    if (!this.emitFilterModelChanges) return
+
+    this.filterModelChange.emit(this.agGrid?.api?.getFilterModel() || {})
   }
 
   applyRowLimit(): void {
@@ -1497,9 +1510,11 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   private syncGridRowModel(): void {
     this.useInfiniteRowModel = this.shouldUseInfiniteRowModel()
-    this.defaultColDef = this.useInfiniteRowModel
+    const baseDefaultColDef = this.useInfiniteRowModel
       ? this.infiniteDefaultColDef
       : this.clientDefaultColDef
+
+    this.defaultColDef = this.withFilterApplyConfig(baseDefaultColDef)
     this.gridDataSource = this.useInfiniteRowModel
       ? this.gridDataSourceService.create(this.displayRows)
       : undefined
@@ -1508,7 +1523,23 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   private shouldUseInfiniteRowModel(): boolean {
     return this.isSelectResult &&
       !this.editingEnabled &&
+      !this.emitFilterModelChanges &&
       this.query.length >= this.infiniteRowThreshold
+  }
+
+  private withFilterApplyConfig(defaultColDef: ColDef): ColDef {
+    if (!this.filterOnApplyOnly || !defaultColDef.filter) {
+      return defaultColDef
+    }
+
+    return {
+      ...defaultColDef,
+      filterParams: {
+        ...(defaultColDef.filterParams || {}),
+        buttons: ['apply', 'reset'],
+        closeOnApply: true
+      }
+    }
   }
 
   private getVisibleFields(): string[] {
