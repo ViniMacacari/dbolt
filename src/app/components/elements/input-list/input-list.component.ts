@@ -42,7 +42,7 @@ export class InputListComponent implements OnChanges {
 
   openDropdown(): void {
     this.isDropdownOpen = true
-    this.updateFilteredList()
+    this.updateFilteredList(this.isShowingSelectedValue())
   }
 
   updateSearch(): void {
@@ -51,7 +51,7 @@ export class InputListComponent implements OnChanges {
       this.itemSelected.emit(null)
     }
 
-    this.updateFilteredList()
+    this.updateFilteredList(false)
   }
 
   selectItem(item: { [key: string]: string | number }): void {
@@ -74,10 +74,15 @@ export class InputListComponent implements OnChanges {
     this.searchValue = ''
     this.selectedItem = null
     this.itemSelected.emit(null)
-    this.updateFilteredList()
+    this.updateFilteredList(false)
   }
 
-  private updateFilteredList(): void {
+  private updateFilteredList(showAll: boolean = false): void {
+    if (showAll) {
+      this.filteredList = [...this.list]
+      return
+    }
+
     const query = this.searchValue.toLowerCase().trim()
 
     if (!query) {
@@ -87,6 +92,13 @@ export class InputListComponent implements OnChanges {
 
     this.filteredList = this.list.filter(item =>
       item[this.displayKey]?.toString().toLowerCase().includes(query)
+    )
+  }
+
+  private isShowingSelectedValue(): boolean {
+    return Boolean(
+      this.selectedItem &&
+      this.searchValue === this.selectedItem[this.displayKey]?.toString()
     )
   }
 
