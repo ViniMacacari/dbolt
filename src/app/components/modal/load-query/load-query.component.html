@@ -63,10 +63,6 @@
                     </div>
 
                     <div class="query-actions">
-                        <button type="button" class="select-button" [class.selected]="isCurrentQuerySelected(query)"
-                            (click)="toggleCurrentQueryCompare(query, $event)">
-                            {{ isCurrentQuerySelected(query) ? 'Selected' : 'Select' }}
-                        </button>
                         <button type="button" class="history-button"
                             *ngIf="query.versioningEnabled || (query.versions?.length || 0) > 0"
                             (click)="toggleHistory(query, $event)">
@@ -88,7 +84,7 @@
                             <button type="button" class="target-select"
                                 [class.selected]="isCurrentQuerySelected(query)"
                                 (click)="toggleCurrentQueryCompare(query, $event)">
-                                {{ isCurrentQuerySelected(query) ? 'Selected' : 'Select' }}
+                                {{ isCurrentQuerySelected(query) ? 'Selected' : 'Compare' }}
                             </button>
                             <span>
                                 <strong>Current file</strong>
