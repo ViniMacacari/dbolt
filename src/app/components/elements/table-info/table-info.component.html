@@ -41,7 +41,9 @@
                 [dbContext]="tabInfo?.dbInfo || data" [resultHeight]="dataResultHeight" [isExpanded]="true"
                 [isLoading]="isLoadingData" [isLoadingMore]="isLoadingMoreData" [errorMessage]="dataErrorMessage"
                 [executionTimeMs]="dataExecutionTimeMs" [resultTitle]="'Data'" [showResultResize]="false"
-                [showResultExpand]="false" [showResultClose]="false" (rowLimitChange)="onDataFetchSizeChange($event)"
+                [showResultExpand]="false" [showResultClose]="false" [emitFilterModelChanges]="true"
+                [filterOnApplyOnly]="true" (filterModelChange)="onDataFilterModelChange($event)"
+                (rowLimitChange)="onDataFetchSizeChange($event)"
                 (refreshQuery)="refreshTableDataWithFetchSize()" (newValuesQuery)="loadMoreTableData()"
                 (resultHeightChange)="onDataResultHeightChange($event)">
             </app-table-query>

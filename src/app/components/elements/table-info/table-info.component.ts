@@ -5,6 +5,7 @@ import { AllCommunityModule, ColDef, GridApi, GridReadyEvent, ModuleRegistry } f
 import { ToastComponent } from '../../toast/toast.component'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
+import { TableDataQueryService } from '../../../services/table-data-query/table-data-query.service'
 import { TableQueryComponent } from '../table-query/table-query.component'
 
 ModuleRegistry.registerModules([AllCommunityModule])
@@ -52,6 +53,7 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
   dataExecutionTimeMs: number | null = null
   dataErrorMessage: string = ''
   dataResultHeight: number = 300
+  dataFilterModel: Record<string, any> = {}
   isLoadingData: boolean = false
   isLoadingMoreData: boolean = false
   defaultColDef: ColDef = {
@@ -65,10 +67,13 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
   private isRestoringGridState = false
   private metadataRequestId = 0
   private dataRequestId = 0
+  private dataFilterSignature = '{}'
+  private dataFilterTimeout: any
 
   constructor(
     private IAPI: InternalApiService,
-    private runQuery: RunQueryService
+    private runQuery: RunQueryService,
+    private tableDataQuery: TableDataQueryService
   ) { }
 
   ngOnInit(): void {
@@ -82,6 +87,7 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
   }
 
   ngOnDestroy(): void {
+    clearTimeout(this.dataFilterTimeout)
     this.persistTableInfoState()
   }
 
@@ -140,7 +146,7 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
 
   async refreshTableDataWithFetchSize(): Promise<void> {
     this.dataQueryLines = this.dataFetchSize
-    await this.loadTableData(true)
+    await this.loadTableData(true, false, false)
   }
 
   async loadMoreTableData(): Promise<void> {
@@ -155,6 +161,22 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
   onDataResultHeightChange(height: number): void {
     this.dataResultHeight = Math.max(120, Math.floor(Number(height) || 300))
     this.persistTableDataState()
+  }
+
+  onDataFilterModelChange(filterModel: Record<string, any>): void {
+    const normalizedFilterModel = filterModel || {}
+    const signature = JSON.stringify(normalizedFilterModel)
+    if (signature === this.dataFilterSignature) return
+
+    this.dataFilterModel = normalizedFilterModel
+    this.dataFilterSignature = signature
+    this.dataQueryLines = this.dataFetchSize
+    this.persistTableDataState()
+
+    clearTimeout(this.dataFilterTimeout)
+    this.dataFilterTimeout = setTimeout(() => {
+      void this.loadTableData(true, false, false)
+    }, 350)
   }
 
   private async loadTableMetadata(): Promise<void> {
@@ -213,7 +235,11 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
     }
   }
 
-  private async loadTableData(forceReload: boolean = false, append: boolean = false): Promise<void> {
+  private async loadTableData(
+    forceReload: boolean = false,
+    append: boolean = false,
+    clearBeforeLoad: boolean = true
+  ): Promise<void> {
     const context = this.tabInfo?.dbInfo || this.data
     if (!context?.sgbd || !context?.version || !this.elementName) {
       this.dataRows = []
@@ -233,12 +259,15 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
     const requestId = ++this.dataRequestId
     const sql = this.getTableDataSql()
 
-    if (!append) {
+    if (!append && clearBeforeLoad) {
       this.dataRows = []
       this.dataColumns = []
       this.dataTotalRows = null
       this.dataExecutionTimeMs = null
       this.dataErrorMessage = ''
+    }
+
+    if (!append) {
       this.isLoadingData = true
     } else {
       this.isLoadingMoreData = true
@@ -364,6 +393,8 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
     this.dataExecutionTimeMs = state.executionTimeMs ?? null
     this.dataErrorMessage = state.errorMessage || ''
     this.dataResultHeight = state.resultHeight ?? 300
+    this.dataFilterModel = state.filterModel || {}
+    this.dataFilterSignature = JSON.stringify(this.dataFilterModel)
     this.isLoadingData = false
     this.isLoadingMoreData = false
 
@@ -383,7 +414,8 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
       totalRows: this.dataTotalRows,
       executionTimeMs: this.dataExecutionTimeMs,
       errorMessage: this.dataErrorMessage,
-      resultHeight: this.dataResultHeight
+      resultHeight: this.dataResultHeight,
+      filterModel: this.dataFilterModel
     }
   }
 
@@ -465,7 +497,8 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
   }
 
   getTableDataSql(): string {
-    return `select * from ${this.elementName}`
+    const context = this.tabInfo?.dbInfo || this.data
+    return this.tableDataQuery.buildSelectSql(this.elementName, this.dataFilterModel, context)
   }
 
   private getTableDataKey(): string {
@@ -492,5 +525,7 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
     this.dataTotalRows = null
     this.dataExecutionTimeMs = null
     this.dataErrorMessage = ''
+    this.dataFilterModel = {}
+    this.dataFilterSignature = '{}'
   }
 }
