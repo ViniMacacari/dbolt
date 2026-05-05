@@ -12,6 +12,8 @@ export class YesNoModalComponent {
   @Output() continueAction = new EventEmitter<void>()
   @Input() title: string = ''
   @Input() message: string = ''
+  @Input() cancelLabel: string = 'Cancel'
+  @Input() continueLabel: string = 'Continue'
 
   close() {
     this.closeAction.emit()
