@@ -205,7 +205,8 @@
 
                 <div class="connection-picker">
                     <p class="setting-label">Connection</p>
-                    <app-input-list [list]="connectionOptions" [displayKey]="'label'" [width]="'100%'"
+                    <app-input-list [list]="connectionOptions" [displayKey]="'label'" [valueKey]="'id'"
+                        [selectedValue]="selectedConnection?.id || null" [width]="'100%'"
                         [placeholder]="'Select connection'" (itemSelected)="onConnectionSelected($event)">
                     </app-input-list>
                 </div>
@@ -227,14 +228,16 @@
                 <div class="target-inputs" *ngIf="selectedConnection && targetOptionsLoaded">
                     <div *ngIf="requiresDefaultDatabase">
                         <p class="setting-label">Default database</p>
-                        <app-input-list [list]="defaultDatabaseList" [displayKey]="'name'" [width]="'100%'"
+                        <app-input-list [list]="defaultDatabaseList" [displayKey]="'name'" [valueKey]="'name'"
+                            [selectedValue]="selectedDefaultDatabase" [width]="'100%'"
                             [placeholder]="'Select database'" (itemSelected)="onDefaultDatabaseSelected($event)">
                         </app-input-list>
                     </div>
 
                     <div *ngIf="requiresDefaultSchema">
                         <p class="setting-label">Default schema</p>
-                        <app-input-list [list]="defaultSchemaList" [displayKey]="'name'" [width]="'100%'"
+                        <app-input-list [list]="defaultSchemaList" [displayKey]="'name'" [valueKey]="'name'"
+                            [selectedValue]="selectedDefaultSchema" [width]="'100%'"
                             [placeholder]="'Select schema'" (itemSelected)="onDefaultSchemaSelected($event)">
                         </app-input-list>
                     </div>
