@@ -74,8 +74,22 @@
         border-radius: 15px;
 
         background-color: #232020;
+        border: none;
+        color: inherit;
+        font-family: 'Nunito';
+        text-align: left;
+        width: 100%;
 
         cursor: pointer;
+
+        &:focus-visible {
+            box-shadow: 0 0 0 2px rgba(115, 158, 202, 0.72);
+            outline: none;
+        }
+
+        &:hover {
+            background-color: #292727;
+        }
 
         p {
             margin: 0;
@@ -204,7 +218,7 @@
     overflow: hidden;
     padding: 6px;
     position: fixed;
-    z-index: 10001;
+    z-index: 10049;
 
     .context-menu-header {
         border-bottom: 1px solid #303030;
@@ -266,7 +280,7 @@
     position: fixed;
     right: 0;
     top: 0;
-    z-index: 10000;
+    z-index: 10050;
 }
 
 .quick-selector-modal {
