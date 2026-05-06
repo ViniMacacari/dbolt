@@ -140,7 +140,7 @@ export class SqlTableAutocompleteService {
       state.lastTriggeredFragment = ''
     }
 
-    const changeDisposable = editor.onDidChangeModelContent(() => {
+    const changeDisposable = editor.onDidChangeModelContent((event) => {
       clearPauseTimer()
 
       if (
@@ -158,6 +158,11 @@ export class SqlTableAutocompleteService {
         return
       }
 
+      if (this.isDeletingTableFragment(event, fragment, state.lastTriggeredFragment)) {
+        this.schedulePausedTableSuggestRefresh(editor, isActive, state)
+        return
+      }
+
       if (fragment === state.lastTriggeredFragment) {
         return
       }
@@ -167,22 +172,7 @@ export class SqlTableAutocompleteService {
         return
       }
 
-      state.pauseTimer = setTimeout(() => {
-        state.pauseTimer = null
-
-        if (!isActive() || !this.settings.isTableAutocompleteEnabled()) {
-          state.lastTriggeredFragment = ''
-          return
-        }
-
-        const currentFragment = this.getCurrentTableSuggestFragment(editor)
-        if (!currentFragment) {
-          state.lastTriggeredFragment = ''
-          return
-        }
-
-        this.triggerTableSuggest(editor, state, currentFragment)
-      }, this.tableSuggestPauseDelayMs)
+      this.schedulePausedTableSuggestRefresh(editor, isActive, state)
     })
 
     return {
@@ -191,6 +181,41 @@ export class SqlTableAutocompleteService {
         changeDisposable.dispose()
       }
     }
+  }
+
+  private schedulePausedTableSuggestRefresh(
+    editor: monaco.editor.IStandaloneCodeEditor,
+    isActive: () => boolean,
+    state: TableSuggestRefreshState
+  ): void {
+    state.pauseTimer = setTimeout(() => {
+      state.pauseTimer = null
+
+      if (!isActive() || !this.settings.isTableAutocompleteEnabled()) {
+        state.lastTriggeredFragment = ''
+        return
+      }
+
+      const currentFragment = this.getCurrentTableSuggestFragment(editor)
+      if (!currentFragment) {
+        state.lastTriggeredFragment = ''
+        return
+      }
+
+      this.triggerTableSuggest(editor, state, currentFragment)
+    }, this.tableSuggestPauseDelayMs)
+  }
+
+  private isDeletingTableFragment(
+    event: monaco.editor.IModelContentChangedEvent,
+    fragment: string,
+    lastTriggeredFragment: string
+  ): boolean {
+    if (lastTriggeredFragment.startsWith(fragment) && fragment.length < lastTriggeredFragment.length) {
+      return true
+    }
+
+    return event.changes.some((change) => change.rangeLength > change.text.length)
   }
 
   private getCurrentTableSuggestFragment(editor: monaco.editor.IStandaloneCodeEditor): string {
@@ -253,7 +278,7 @@ export class SqlTableAutocompleteService {
 
     this.providerDisposable = monaco.languages.registerCompletionItemProvider('sql', {
       triggerCharacters: [' ', '_', '.', '"', '`', '['],
-      provideCompletionItems: async (model, position) => {
+      provideCompletionItems: async (model, position, _context, token) => {
         const editorInfo = this.editors.get(this.getModelKey(model))
         if (!editorInfo?.isActive()) {
           return { suggestions: [] }
@@ -274,11 +299,18 @@ export class SqlTableAutocompleteService {
 
         try {
           const context = editorInfo.getContext()
-          const tables = await this.tableSource.getTables(context)
-          const fragment = request.fragment.toLowerCase()
+          const tables = await this.tableSource.getTableSuggestions(
+            context,
+            request.fragment,
+            this.settings.getTableAutocompleteMatchMode(),
+            this.maxSuggestions,
+            { shouldCancel: () => token.isCancellationRequested }
+          )
+          if (token.isCancellationRequested) {
+            return { suggestions: [] }
+          }
+
           const suggestions = tables
-            .filter((table) => this.matchesTableName(table.name, fragment))
-            .slice(0, this.maxSuggestions)
             .map((table) => this.toSuggestion(table, request, context))
 
           return {
@@ -407,14 +439,6 @@ export class SqlTableAutocompleteService {
     const lastToken = tokens[tokens.length - 1]?.toLowerCase()
 
     return lastToken === 'from' || lastToken === 'join'
-  }
-
-  private matchesTableName(tableName: string, fragment: string): boolean {
-    if (this.settings.getTableAutocompleteMatchMode() === 'fuzzy') {
-      return true
-    }
-
-    return tableName.toLowerCase().includes(fragment)
   }
 
   private toSuggestion(
