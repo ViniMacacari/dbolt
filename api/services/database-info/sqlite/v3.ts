@@ -16,6 +16,7 @@ import type {
 type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' };
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type: string };
 type ColumnRow = QueryRow & TableColumn;
+type TableLikeObjectRow = QueryRow & { name: string; type: 'table' | 'view' };
 
 class ListObjectsSQLiteV3 {
   private readonly db = new SQLiteV3();
@@ -101,15 +102,16 @@ class ListObjectsSQLiteV3 {
 
   async tableColumns(tableName: string, connectionKey?: string): Promise<TableColumnsResult> {
     try {
-      const columns = (await this.db.executeQuery(
-        `PRAGMA table_info(${quoteIdentifier(tableName)})`,
-        [],
-        connectionKey
-      )) as (QueryRow & { name: string; type: string })[];
+      const object = await this.resolveTableLikeObject(tableName, connectionKey);
+      if (!object) {
+        return { success: true, data: [] };
+      }
+
+      const columns = await this.loadObjectColumns(object.name, connectionKey);
 
       return {
         success: true,
-        data: columns.map((column) => ({ name: column.name, type: column.type || 'TEXT' }) as ColumnRow)
+        data: columns.map((column) => this.toColumnMetadata(column, object.type))
       };
     } catch (error: unknown) {
       return {
@@ -215,6 +217,60 @@ class ListObjectsSQLiteV3 {
     return {
       success: false,
       message: 'SQLite does not support stored procedures.'
+    };
+  }
+
+  private async resolveTableLikeObject(tableName: string, connectionKey?: string): Promise<TableLikeObjectRow | null> {
+    const rows = (await this.db.executeQuery(
+      `
+        SELECT name, type
+        FROM sqlite_master
+        WHERE type IN ('table', 'view')
+          AND name = ?
+        LIMIT 1
+      `,
+      [tableName],
+      connectionKey
+    )) as TableLikeObjectRow[];
+
+    return rows[0] || null;
+  }
+
+  private async loadObjectColumns(tableName: string, connectionKey?: string): Promise<QueryRow[]> {
+    try {
+      const columns = (await this.db.executeQuery(
+        `PRAGMA table_xinfo(${quoteIdentifier(tableName)})`,
+        [],
+        connectionKey
+      )) as QueryRow[];
+
+      if (columns.length > 0) {
+        return columns;
+      }
+    } catch (error: unknown) {
+      console.warn('Could not load SQLite extended table columns:', getErrorMessage(error));
+    }
+
+    return (await this.db.executeQuery(
+      `PRAGMA table_info(${quoteIdentifier(tableName)})`,
+      [],
+      connectionKey
+    )) as QueryRow[];
+  }
+
+  private toColumnMetadata(column: QueryRow, objectType: TableLikeObjectRow['type']): TableColumn {
+    const type = String(column['type'] || 'TEXT');
+
+    return {
+      name: String(column['name'] || ''),
+      type,
+      data_type: type,
+      is_nullable: Number(column['notnull'] || 0) === 1 ? 'NO' : 'YES',
+      default_value: column['dflt_value'],
+      primary_key: column['pk'],
+      ordinal_position: column['cid'],
+      hidden: column['hidden'],
+      object_type: objectType
     };
   }
 }

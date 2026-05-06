@@ -16,6 +16,7 @@ import type {
 type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'procedure' };
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type?: string };
 type ColumnRow = QueryRow & TableColumn;
+type TableLikeObjectRow = QueryRow & { name: string; type: 'table' | 'view' };
 
 class ListObjectsHanaV1 {
   private readonly db = new HanaV1();
@@ -96,17 +97,16 @@ class ListObjectsHanaV1 {
 
   async tableColumns(tableName: string, connectionKey?: string): Promise<TableColumnsResult> {
     try {
-      const columns = (await this.db.executeQuery(`
-        SELECT COLUMN_NAME AS "name", DATA_TYPE_NAME AS "type"
-        FROM SYS.TABLE_COLUMNS
-        WHERE SCHEMA_NAME = CURRENT_SCHEMA
-          AND TABLE_NAME = ?
-        ORDER BY POSITION
-      `, [tableName.toUpperCase()], connectionKey)) as ColumnRow[];
+      const object = await this.resolveTableLikeObject(tableName, connectionKey);
+      if (!object) {
+        return { success: true, data: [] };
+      }
+
+      const columns = await this.loadObjectColumns(object, connectionKey);
 
       return {
         success: true,
-        data: columns.map((column) => ({ name: column.name, type: column.type }))
+        data: columns.map((column) => this.toColumnMetadata(column, object.type))
       };
     } catch (error: unknown) {
       console.error('Error listing table columns in HANA:', error);
@@ -120,6 +120,11 @@ class ListObjectsHanaV1 {
 
   async tableKeys(tableName: string, connectionKey?: string): Promise<TableMetadataRowsResult> {
     try {
+      const object = await this.resolveTableLikeObject(tableName, connectionKey);
+      if (!object || object.type === 'view') {
+        return { success: true, data: [] };
+      }
+
       const keys = (await this.db.executeQuery(
         `
           SELECT
@@ -136,7 +141,7 @@ class ListObjectsHanaV1 {
             AND c.TABLE_NAME = ?
           ORDER BY c.CONSTRAINT_NAME, c.POSITION
         `,
-        [tableName.toUpperCase()],
+        [object.name],
         connectionKey
       )) as QueryRow[];
 
@@ -152,6 +157,11 @@ class ListObjectsHanaV1 {
 
   async tableIndexes(tableName: string, connectionKey?: string): Promise<TableMetadataRowsResult> {
     try {
+      const object = await this.resolveTableLikeObject(tableName, connectionKey);
+      if (!object || object.type === 'view') {
+        return { success: true, data: [] };
+      }
+
       const indexes = (await this.db.executeQuery(
         `
           SELECT
@@ -169,7 +179,7 @@ class ListObjectsHanaV1 {
             AND i.INDEX_NAME IS NOT NULL
           ORDER BY i.INDEX_NAME, ic.POSITION
         `,
-        [tableName.toUpperCase()],
+        [object.name],
         connectionKey
       )) as QueryRow[];
 
@@ -185,30 +195,37 @@ class ListObjectsHanaV1 {
 
   async tableDDL(tableName: string, connectionKey?: string): Promise<TableDDLResult> {
     try {
-      const columns = (await this.db.executeQuery(
-        `
-          SELECT
-            COLUMN_NAME AS "column_name",
-            DATA_TYPE_NAME AS "data_type",
-            LENGTH AS "length",
-            SCALE AS "scale",
-            IS_NULLABLE AS "is_nullable",
-            DEFAULT_VALUE AS "default_value"
-          FROM SYS.TABLE_COLUMNS
-          WHERE SCHEMA_NAME = CURRENT_SCHEMA
-            AND TABLE_NAME = ?
-          ORDER BY POSITION
-        `,
-        [tableName.toUpperCase()],
-        connectionKey
-      )) as QueryRow[];
+      const object = await this.resolveTableLikeObject(tableName, connectionKey);
+      if (!object) {
+        return { success: true, ddl: '' };
+      }
+
+      if (object.type === 'view') {
+        const viewRows = (await this.db.executeQuery(
+          `
+            SELECT DEFINITION AS "definition"
+            FROM SYS.VIEWS
+            WHERE SCHEMA_NAME = CURRENT_SCHEMA
+              AND VIEW_NAME = ?
+          `,
+          [object.name],
+          connectionKey
+        )) as QueryRow[];
+
+        return {
+          success: true,
+          ddl: this.formatHanaViewDDL(object.name, String(viewRows[0]?.['definition'] || ''))
+        };
+      }
+
+      const columns = (await this.loadObjectColumns(object, connectionKey)) as QueryRow[];
       const columnLines = columns.map((column) => {
         const type = this.formatHanaColumnType(column);
         const nullable = column['is_nullable'] === 'FALSE' ? ' NOT NULL' : '';
         const defaultValue = column['default_value'] ? ` DEFAULT ${String(column['default_value'])}` : '';
-        return `  ${quoteIdentifier(String(column['column_name']))} ${type}${defaultValue}${nullable}`;
+        return `  ${quoteIdentifier(String(column['name']))} ${type}${defaultValue}${nullable}`;
       });
-      const ddl = `CREATE COLUMN TABLE ${quoteIdentifier(tableName)} (\n${columnLines.join(',\n')}\n);`;
+      const ddl = `CREATE COLUMN TABLE ${quoteIdentifier(object.name)} (\n${columnLines.join(',\n')}\n);`;
 
       return { success: true, ddl };
     } catch (error: unknown) {
@@ -255,6 +272,124 @@ class ListObjectsHanaV1 {
     }
 
     return dataType;
+  }
+
+  private async resolveTableLikeObject(tableName: string, connectionKey?: string): Promise<TableLikeObjectRow | null> {
+    const lookupNames = this.buildLookupNames(tableName);
+    if (!lookupNames[0]) {
+      return null;
+    }
+
+    const rows = (await this.db.executeQuery(
+      `
+        SELECT "name", "type"
+        FROM (
+          SELECT TABLE_NAME AS "name", 'table' AS "type"
+          FROM SYS.TABLES
+          WHERE SCHEMA_NAME = CURRENT_SCHEMA
+            AND TABLE_NAME IN (?, ?)
+          UNION ALL
+          SELECT VIEW_NAME AS "name", 'view' AS "type"
+          FROM SYS.VIEWS
+          WHERE SCHEMA_NAME = CURRENT_SCHEMA
+            AND VIEW_NAME IN (?, ?)
+        ) objects
+        ORDER BY
+          CASE WHEN "name" = ? THEN 0 ELSE 1 END,
+          CASE WHEN "type" = 'table' THEN 0 ELSE 1 END
+        LIMIT 1
+      `,
+      [lookupNames[0], lookupNames[1], lookupNames[0], lookupNames[1], lookupNames[0]],
+      connectionKey
+    )) as TableLikeObjectRow[];
+
+    return rows[0] || null;
+  }
+
+  private async loadObjectColumns(object: TableLikeObjectRow, connectionKey?: string): Promise<ColumnRow[]> {
+    if (object.type === 'view') {
+      return (await this.db.executeQuery(
+        `
+          SELECT
+            VIEW_NAME AS "object_name",
+            COLUMN_NAME AS "name",
+            DATA_TYPE_NAME AS "data_type",
+            LENGTH AS "length",
+            SCALE AS "scale",
+            IS_NULLABLE AS "is_nullable",
+            DEFAULT_VALUE AS "default_value",
+            COMMENTS AS "comment",
+            INDEX_TYPE AS "index_type",
+            POSITION AS "ordinal_position"
+          FROM SYS.VIEW_COLUMNS
+          WHERE SCHEMA_NAME = CURRENT_SCHEMA
+            AND VIEW_NAME = ?
+          ORDER BY POSITION
+        `,
+        [object.name],
+        connectionKey
+      )) as ColumnRow[];
+    }
+
+    return (await this.db.executeQuery(
+      `
+        SELECT
+          TABLE_NAME AS "object_name",
+          COLUMN_NAME AS "name",
+          DATA_TYPE_NAME AS "data_type",
+          LENGTH AS "length",
+          SCALE AS "scale",
+          IS_NULLABLE AS "is_nullable",
+          DEFAULT_VALUE AS "default_value",
+          COMMENTS AS "comment",
+          INDEX_TYPE AS "index_type",
+          POSITION AS "ordinal_position"
+        FROM SYS.TABLE_COLUMNS
+        WHERE SCHEMA_NAME = CURRENT_SCHEMA
+          AND TABLE_NAME = ?
+        ORDER BY POSITION
+      `,
+      [object.name],
+      connectionKey
+    )) as ColumnRow[];
+  }
+
+  private toColumnMetadata(column: QueryRow, objectType: 'table' | 'view'): TableColumn {
+    const fullType = this.formatHanaColumnType(column);
+
+    return {
+      name: String(column['name'] || ''),
+      type: fullType,
+      data_type: column['data_type'],
+      length: column['length'],
+      scale: column['scale'],
+      is_nullable: column['is_nullable'],
+      default_value: column['default_value'],
+      comment: column['comment'],
+      index_type: column['index_type'],
+      ordinal_position: column['ordinal_position'],
+      object_type: objectType
+    };
+  }
+
+  private formatHanaViewDDL(viewName: string, definition: string): string {
+    const trimmed = definition.trim();
+    if (!trimmed) {
+      return '';
+    }
+
+    if (/^create\s+(or\s+replace\s+)?(column\s+)?view\b/i.test(trimmed)) {
+      return trimmed.endsWith(';') ? trimmed : `${trimmed};`;
+    }
+
+    return `CREATE VIEW ${quoteIdentifier(viewName)} AS\n${trimmed}${trimmed.endsWith(';') ? '' : ';'}`;
+  }
+
+  private buildLookupNames(tableName: string): [string, string] {
+    const exactName = String(tableName || '').trim();
+    const upperName = exactName.toUpperCase();
+
+    return [exactName, upperName || exactName];
   }
 
   private async listIndexes(connectionKey?: string): Promise<IndexRow[]> {
