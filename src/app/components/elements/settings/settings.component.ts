@@ -4,7 +4,8 @@ import {
   AppSettingsService,
   SqlHighlightColorKey,
   SqlHighlightColors,
-  SqlHighlightMode
+  SqlHighlightMode,
+  TableAutocompleteMatchMode
 } from '../../../services/app-settings/app-settings.service'
 import { ConnectionsService, SavedConnection } from '../../../services/resolve-connections/connections.service'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
@@ -26,6 +27,7 @@ export class SettingsComponent implements OnInit {
   connectionExpirationMinutes: number
   sqlSyntaxValidationEnabled: boolean
   tableAutocompleteEnabled: boolean
+  tableAutocompleteMatchMode: TableAutocompleteMatchMode
   columnAutocompleteEnabled: boolean
   autoQuoteCapitalizedColumns: boolean
   sqlFormatterIndentSize: number
@@ -33,6 +35,10 @@ export class SettingsComponent implements OnInit {
   sqlHighlightMode: SqlHighlightMode
   sqlHighlightColors: SqlHighlightColors
   readonly sqlHighlightOptions: { value: SqlHighlightMode, label: string }[]
+  readonly tableAutocompleteMatchModeOptions: { value: TableAutocompleteMatchMode, label: string }[] = [
+    { value: 'contains', label: 'Contains typed text' },
+    { value: 'fuzzy', label: 'Fuzzy search' }
+  ]
   readonly sqlHighlightColorFields: { key: SqlHighlightColorKey, label: string }[] = [
     { key: 'keyword', label: 'Keyword' },
     { key: 'function', label: 'Function' },
@@ -50,7 +56,10 @@ export class SettingsComponent implements OnInit {
   syntaxValidationSavedMessage: string = ''
   formatterSavedMessage: string = ''
   highlightSavedMessage: string = ''
-  autocompleteSavedMessage: string = ''
+  tableAutocompleteSavedMessage: string = ''
+  tableMatchModeSavedMessage: string = ''
+  columnAutocompleteSavedMessage: string = ''
+  autoQuoteCapitalizedColumnsSavedMessage: string = ''
   connectionMessage: string = ''
   connectionError: string = ''
   connections: SavedConnection[] = []
@@ -72,6 +81,7 @@ export class SettingsComponent implements OnInit {
     this.connectionExpirationMinutes = this.settings.getConnectionExpirationMinutes()
     this.sqlSyntaxValidationEnabled = this.settings.isSqlSyntaxValidationEnabled()
     this.tableAutocompleteEnabled = this.settings.isTableAutocompleteEnabled()
+    this.tableAutocompleteMatchMode = this.settings.getTableAutocompleteMatchMode()
     this.columnAutocompleteEnabled = this.settings.isColumnAutocompleteEnabled()
     this.autoQuoteCapitalizedColumns = this.settings.shouldAutoQuoteCapitalizedColumns()
     this.sqlFormatterIndentSize = this.settings.getSqlFormatterIndentSize()
@@ -215,27 +225,48 @@ export class SettingsComponent implements OnInit {
 
   onTableAutocompleteChange(event: Event): void {
     this.tableAutocompleteEnabled = (event.target as HTMLInputElement).checked
-    this.autocompleteSavedMessage = ''
+    this.tableAutocompleteSavedMessage = ''
+  }
+
+  onTableAutocompleteMatchModeSelected(item: { [key: string]: string | number } | null): void {
+    if (!item) return
+
+    this.tableAutocompleteMatchMode = this.settings.normalizeTableAutocompleteMatchMode(item['value'])
+    this.tableMatchModeSavedMessage = ''
   }
 
   onColumnAutocompleteChange(event: Event): void {
     this.columnAutocompleteEnabled = (event.target as HTMLInputElement).checked
-    this.autocompleteSavedMessage = ''
+    this.columnAutocompleteSavedMessage = ''
   }
 
   onAutoQuoteCapitalizedColumnsChange(event: Event): void {
     this.autoQuoteCapitalizedColumns = (event.target as HTMLInputElement).checked
-    this.autocompleteSavedMessage = ''
+    this.autoQuoteCapitalizedColumnsSavedMessage = ''
   }
 
-  saveAutocompleteSettings(): void {
-    let settings = this.settings.setTableAutocompleteEnabled(this.tableAutocompleteEnabled)
-    settings = this.settings.setColumnAutocompleteEnabled(this.columnAutocompleteEnabled)
-    settings = this.settings.setAutoQuoteCapitalizedColumns(this.autoQuoteCapitalizedColumns)
+  saveTableAutocompleteSettings(): void {
+    const settings = this.settings.setTableAutocompleteEnabled(this.tableAutocompleteEnabled)
     this.tableAutocompleteEnabled = settings.tableAutocompleteEnabled
+    this.tableAutocompleteSavedMessage = 'Saved'
+  }
+
+  saveTableMatchModeSettings(): void {
+    const settings = this.settings.setTableAutocompleteMatchMode(this.tableAutocompleteMatchMode)
+    this.tableAutocompleteMatchMode = settings.tableAutocompleteMatchMode
+    this.tableMatchModeSavedMessage = 'Saved'
+  }
+
+  saveColumnAutocompleteSettings(): void {
+    const settings = this.settings.setColumnAutocompleteEnabled(this.columnAutocompleteEnabled)
     this.columnAutocompleteEnabled = settings.columnAutocompleteEnabled
+    this.columnAutocompleteSavedMessage = 'Saved'
+  }
+
+  saveAutoQuoteCapitalizedColumnsSettings(): void {
+    const settings = this.settings.setAutoQuoteCapitalizedColumns(this.autoQuoteCapitalizedColumns)
     this.autoQuoteCapitalizedColumns = settings.autoQuoteCapitalizedColumns
-    this.autocompleteSavedMessage = 'Saved'
+    this.autoQuoteCapitalizedColumnsSavedMessage = 'Saved'
   }
 
   onConnectionSelected(item: { [key: string]: string | number } | null): void {

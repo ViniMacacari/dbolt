@@ -158,7 +158,25 @@
                             (change)="onTableAutocompleteChange($event)">
                         <span></span>
                     </label>
-                    <button type="button" (click)="saveAutocompleteSettings()">Save</button>
+                    <button type="button" (click)="saveTableAutocompleteSettings()">Save</button>
+                    <small *ngIf="tableAutocompleteSavedMessage">{{ tableAutocompleteSavedMessage }}</small>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div>
+                    <h3>Table match mode</h3>
+                    <p>Controls how typed identifiers are matched against table and view names.</p>
+                </div>
+
+                <div class="setting-control match-mode-control">
+                    <label>Mode</label>
+                    <app-input-list [list]="tableAutocompleteMatchModeOptions" [displayKey]="'label'"
+                        [valueKey]="'value'" [selectedValue]="tableAutocompleteMatchMode" [width]="'220px'"
+                        [placeholder]="'Select mode'" (itemSelected)="onTableAutocompleteMatchModeSelected($event)">
+                    </app-input-list>
+                    <button type="button" (click)="saveTableMatchModeSettings()">Save</button>
+                    <small *ngIf="tableMatchModeSavedMessage">{{ tableMatchModeSavedMessage }}</small>
                 </div>
             </div>
 
@@ -174,8 +192,8 @@
                             (change)="onColumnAutocompleteChange($event)">
                         <span></span>
                     </label>
-                    <button type="button" (click)="saveAutocompleteSettings()">Save</button>
-                    <small *ngIf="autocompleteSavedMessage">{{ autocompleteSavedMessage }}</small>
+                    <button type="button" (click)="saveColumnAutocompleteSettings()">Save</button>
+                    <small *ngIf="columnAutocompleteSavedMessage">{{ columnAutocompleteSavedMessage }}</small>
                 </div>
             </div>
 
@@ -192,8 +210,10 @@
                             (change)="onAutoQuoteCapitalizedColumnsChange($event)">
                         <span></span>
                     </label>
-                    <button type="button" (click)="saveAutocompleteSettings()">Save</button>
-                    <small *ngIf="autocompleteSavedMessage">{{ autocompleteSavedMessage }}</small>
+                    <button type="button" (click)="saveAutoQuoteCapitalizedColumnsSettings()">Save</button>
+                    <small *ngIf="autoQuoteCapitalizedColumnsSavedMessage">
+                        {{ autoQuoteCapitalizedColumnsSavedMessage }}
+                    </small>
                 </div>
             </div>
         </div>

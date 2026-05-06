@@ -297,7 +297,17 @@ export class DatabaseManagerComponent {
     }
   }
 
-  onTabClosed(): void {
+  onTabClosed(event: any): void {
+    const tab = event?.tab || event
+
+    if (tab?.type === 'settings') {
+      this.settingsInitialized = false
+    }
+
+    if (event?.hasTabs) {
+      return
+    }
+
     this.editorOpen = false
     this.dbInfoOpen = false
     this.tableInfoOpen = false

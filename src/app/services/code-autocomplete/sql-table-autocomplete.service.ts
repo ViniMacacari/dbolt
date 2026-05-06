@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core'
 import * as monaco from 'monaco-editor'
 import { AppSettingsService } from '../app-settings/app-settings.service'
-import { TableAutocompleteSourceService } from './table-autocomplete-source.service'
+import { type TableAutocompleteItem, TableAutocompleteSourceService } from './table-autocomplete-source.service'
 import { ColumnAutocompleteItem, ColumnAutocompleteSourceService } from './column-autocomplete-source.service'
 
 interface RegisteredEditor {
@@ -12,6 +12,7 @@ interface RegisteredEditor {
 interface TableCompletionRequest {
   type: 'table'
   fragment: string
+  rawFragment: string
   range: monaco.IRange
 }
 
@@ -24,10 +25,16 @@ interface ColumnCompletionRequest {
 }
 
 type SqlCompletionRequest = TableCompletionRequest | ColumnCompletionRequest
+type IdentifierQuote = '"' | '`' | '['
 
 interface SqlToken {
   value: string
   lower: string
+}
+
+interface TableSuggestRefreshState {
+  lastTriggeredFragment: string
+  pauseTimer: ReturnType<typeof setTimeout> | null
 }
 
 @Injectable({
@@ -38,6 +45,8 @@ export class SqlTableAutocompleteService {
   private readonly editors = new Map<string, RegisteredEditor>()
   private readonly minimumFragmentLength = 3
   private readonly maxSuggestions = 50
+  private readonly tableSuggestSequentialCharacters = 2
+  private readonly tableSuggestPauseDelayMs = 220
   private readonly sqlReservedWords = new Set([
     'as',
     'by',
@@ -99,21 +108,177 @@ export class SqlTableAutocompleteService {
     const autoQuoteDisposable = editor.onDidChangeModelContent((event) => {
       this.autoQuoteTypedColumn(editor, getContext, isActive, event)
     })
+    const tableSuggestRefreshDisposable = this.registerControlledTableSuggestRefresh(editor, isActive)
 
     return {
       dispose: () => {
         this.editors.delete(modelKey)
         autoQuoteDisposable.dispose()
+        tableSuggestRefreshDisposable.dispose()
       }
     }
+  }
+
+  private registerControlledTableSuggestRefresh(
+    editor: monaco.editor.IStandaloneCodeEditor,
+    isActive: () => boolean
+  ): monaco.IDisposable {
+    const state: TableSuggestRefreshState = {
+      lastTriggeredFragment: '',
+      pauseTimer: null
+    }
+
+    const clearPauseTimer = () => {
+      if (!state.pauseTimer) return
+
+      clearTimeout(state.pauseTimer)
+      state.pauseTimer = null
+    }
+
+    const resetState = () => {
+      clearPauseTimer()
+      state.lastTriggeredFragment = ''
+    }
+
+    const changeDisposable = editor.onDidChangeModelContent((event) => {
+      clearPauseTimer()
+
+      if (
+        !isActive() ||
+        !this.settings.isTableAutocompleteEnabled() ||
+        this.settings.getTableAutocompleteMatchMode() !== 'contains'
+      ) {
+        resetState()
+        return
+      }
+
+      const fragment = this.getCurrentTableSuggestFragment(editor)
+      if (!fragment) {
+        resetState()
+        return
+      }
+
+      if (this.isDeletingTableFragment(event, fragment, state.lastTriggeredFragment)) {
+        this.schedulePausedTableSuggestRefresh(editor, isActive, state)
+        return
+      }
+
+      if (fragment === state.lastTriggeredFragment) {
+        return
+      }
+
+      if (this.shouldRefreshTableSuggestions(fragment, state.lastTriggeredFragment)) {
+        this.triggerTableSuggest(editor, state, fragment)
+        return
+      }
+
+      this.schedulePausedTableSuggestRefresh(editor, isActive, state)
+    })
+
+    return {
+      dispose: () => {
+        clearPauseTimer()
+        changeDisposable.dispose()
+      }
+    }
+  }
+
+  private schedulePausedTableSuggestRefresh(
+    editor: monaco.editor.IStandaloneCodeEditor,
+    isActive: () => boolean,
+    state: TableSuggestRefreshState
+  ): void {
+    state.pauseTimer = setTimeout(() => {
+      state.pauseTimer = null
+
+      if (!isActive() || !this.settings.isTableAutocompleteEnabled()) {
+        state.lastTriggeredFragment = ''
+        return
+      }
+
+      const currentFragment = this.getCurrentTableSuggestFragment(editor)
+      if (!currentFragment) {
+        state.lastTriggeredFragment = ''
+        return
+      }
+
+      this.triggerTableSuggest(editor, state, currentFragment)
+    }, this.tableSuggestPauseDelayMs)
+  }
+
+  private isDeletingTableFragment(
+    event: monaco.editor.IModelContentChangedEvent,
+    fragment: string,
+    lastTriggeredFragment: string
+  ): boolean {
+    if (lastTriggeredFragment.startsWith(fragment) && fragment.length < lastTriggeredFragment.length) {
+      return true
+    }
+
+    return event.changes.some((change) => change.rangeLength > change.text.length)
+  }
+
+  private getCurrentTableSuggestFragment(editor: monaco.editor.IStandaloneCodeEditor): string {
+    const model = editor.getModel()
+    const position = editor.getPosition()
+    if (!model || !position) return ''
+
+    const beforeCursor = model.getLineContent(position.lineNumber).slice(0, position.column - 1)
+    if (this.isInsideStringOrComment(beforeCursor)) {
+      return ''
+    }
+
+    const fragmentMatch = beforeCursor.match(/([A-Za-z0-9_$#.`"\[\]]*)$/)
+    const rawFragment = fragmentMatch?.[1] || ''
+    const fragment = this.normalizeIdentifier(rawFragment).toLowerCase()
+
+    if (fragment.length < this.minimumFragmentLength) {
+      return ''
+    }
+
+    const beforeFragment = beforeCursor.slice(0, beforeCursor.length - rawFragment.length)
+    return this.isTableNameContext(beforeFragment)
+      ? fragment
+      : ''
+  }
+
+  private shouldRefreshTableSuggestions(fragment: string, lastTriggeredFragment: string): boolean {
+    if (!lastTriggeredFragment) {
+      return true
+    }
+
+    if (!fragment.startsWith(lastTriggeredFragment)) {
+      return true
+    }
+
+    return fragment.length - lastTriggeredFragment.length >= this.tableSuggestSequentialCharacters
+  }
+
+  private triggerTableSuggest(
+    editor: monaco.editor.IStandaloneCodeEditor,
+    state: TableSuggestRefreshState,
+    fragment: string
+  ): void {
+    state.lastTriggeredFragment = fragment
+
+    const suggestController = editor.getContribution('editor.contrib.suggestController') as {
+      triggerSuggest?: (onlyFrom?: unknown, auto?: boolean, noFilter?: boolean) => void
+    } | null
+
+    if (suggestController?.triggerSuggest) {
+      suggestController.triggerSuggest(undefined, true)
+      return
+    }
+
+    void editor.getAction('editor.action.triggerSuggest')?.run()
   }
 
   private ensureProviderRegistered(): void {
     if (this.providerDisposable) return
 
     this.providerDisposable = monaco.languages.registerCompletionItemProvider('sql', {
-      triggerCharacters: [' ', '_', '.'],
-      provideCompletionItems: async (model, position) => {
+      triggerCharacters: [' ', '_', '.', '"', '`', '['],
+      provideCompletionItems: async (model, position, _context, token) => {
         const editorInfo = this.editors.get(this.getModelKey(model))
         if (!editorInfo?.isActive()) {
           return { suggestions: [] }
@@ -133,14 +298,24 @@ export class SqlTableAutocompleteService {
         }
 
         try {
-          const tables = await this.tableSource.getTables(editorInfo.getContext())
-          const fragment = request.fragment.toLowerCase()
-          const suggestions = tables
-            .filter((table) => table.name.toLowerCase().includes(fragment))
-            .slice(0, this.maxSuggestions)
-            .map((table) => this.toSuggestion(table.name, request.range))
+          const context = editorInfo.getContext()
+          const tables = await this.tableSource.getTableSuggestions(
+            context,
+            request.fragment,
+            this.settings.getTableAutocompleteMatchMode(),
+            this.maxSuggestions,
+            { shouldCancel: () => token.isCancellationRequested }
+          )
+          if (token.isCancellationRequested) {
+            return { suggestions: [] }
+          }
 
-          return { suggestions }
+          const suggestions = tables
+            .map((table) => this.toSuggestion(table, request, context))
+
+          return {
+            suggestions
+          }
         } catch (error) {
           console.warn('Could not load table autocomplete suggestions:', error)
           return { suggestions: [] }
@@ -187,6 +362,7 @@ export class SqlTableAutocompleteService {
     return {
       type: 'table',
       fragment,
+      rawFragment,
       range: {
         startLineNumber: position.lineNumber,
         endLineNumber: position.lineNumber,
@@ -265,18 +441,148 @@ export class SqlTableAutocompleteService {
     return lastToken === 'from' || lastToken === 'join'
   }
 
-  private toSuggestion(tableName: string, range: monaco.IRange): monaco.languages.CompletionItem {
+  private toSuggestion(
+    table: TableAutocompleteItem,
+    request: TableCompletionRequest,
+    context: any
+  ): monaco.languages.CompletionItem {
+    const tableName = table.name
     const alias = this.generateAlias(tableName)
+    const detail = table.type === 'view' ? 'View' : 'Table'
+    const insertTableName = this.getTableInsertText(tableName, request, context)
+    const filterText = this.getTableFilterText(tableName, insertTableName, request)
+    const sortText = this.getTableSortText(tableName, request.fragment)
 
     return {
       label: tableName,
       kind: monaco.languages.CompletionItemKind.Struct,
-      detail: 'Table',
+      detail,
       documentation: alias ? `Alias: ${alias}` : undefined,
-      insertText: alias ? `${tableName} ${alias}` : tableName,
-      range,
-      sortText: tableName.toLowerCase()
+      insertText: alias ? `${insertTableName} ${alias}` : insertTableName,
+      filterText,
+      range: request.range,
+      sortText
     }
+  }
+
+  private getTableFilterText(tableName: string, insertTableName: string, request: TableCompletionRequest): string {
+    if (!this.getRequestedIdentifierQuote(request.rawFragment)) {
+      return tableName
+    }
+
+    return this.hasClosingIdentifierQuote(request.rawFragment)
+      ? request.rawFragment
+      : insertTableName
+  }
+
+  private getTableSortText(tableName: string, fragment: string): string {
+    const normalizedTableName = this.normalizeIdentifier(tableName).toLowerCase()
+    const normalizedFragment = fragment.toLowerCase()
+    const matchIndex = normalizedTableName.indexOf(normalizedFragment)
+    const matchRank = matchIndex === 0
+      ? 0
+      : this.hasIdentifierPartStartingWith(normalizedTableName, normalizedFragment)
+        ? 1
+        : 2
+
+    return [
+      matchRank.toString(),
+      Math.max(matchIndex, 0).toString().padStart(4, '0'),
+      normalizedTableName
+    ].join(':')
+  }
+
+  private hasIdentifierPartStartingWith(tableName: string, fragment: string): boolean {
+    if (!fragment || fragment.includes('_') || fragment.includes('.')) {
+      return false
+    }
+
+    return tableName
+      .split(/[^a-z0-9]+/)
+      .some((part) => part.startsWith(fragment))
+  }
+
+  private getTableInsertText(tableName: string, request: TableCompletionRequest, context: any): string {
+    const quote = this.resolveIdentifierQuote(tableName, request.rawFragment, context)
+
+    return quote
+      ? this.quoteIdentifierReference(tableName, quote)
+      : tableName
+  }
+
+  private resolveIdentifierQuote(tableName: string, rawFragment: string, context: any): IdentifierQuote | null {
+    const requestedQuote = this.getRequestedIdentifierQuote(rawFragment)
+    if (requestedQuote) return requestedQuote
+
+    return this.shouldQuoteTableIdentifier(tableName, context)
+      ? this.getDefaultIdentifierQuote(context)
+      : null
+  }
+
+  private getRequestedIdentifierQuote(rawFragment: string): IdentifierQuote | null {
+    const firstChar = rawFragment.trimStart()[0]
+    if (firstChar === '"' || firstChar === '`' || firstChar === '[') {
+      return firstChar
+    }
+
+    return null
+  }
+
+  private hasClosingIdentifierQuote(rawFragment: string): boolean {
+    const trimmedFragment = rawFragment.trim()
+
+    return (
+      trimmedFragment.length > 1 &&
+      (
+        (trimmedFragment.startsWith('"') && trimmedFragment.endsWith('"')) ||
+        (trimmedFragment.startsWith('`') && trimmedFragment.endsWith('`')) ||
+        (trimmedFragment.startsWith('[') && trimmedFragment.endsWith(']'))
+      )
+    )
+  }
+
+  private shouldQuoteTableIdentifier(tableName: string, context: any): boolean {
+    const database = String(context?.sgbd || context?.database || '').toLowerCase()
+    const normalizedTableName = this.normalizeIdentifier(tableName)
+
+    if (!this.isSimpleIdentifier(normalizedTableName)) {
+      return true
+    }
+
+    if (database === 'hana') {
+      return !/^[A-Z_$#][A-Z0-9_$#]*$/.test(normalizedTableName)
+    }
+
+    return false
+  }
+
+  private getDefaultIdentifierQuote(context: any): IdentifierQuote {
+    const database = String(context?.sgbd || context?.database || '').toLowerCase()
+
+    if (database === 'mysql') return '`'
+    if (database === 'sqlserver') return '['
+
+    return '"'
+  }
+
+  private quoteIdentifierReference(value: string, quote: IdentifierQuote): string {
+    return this.splitIdentifierParts(value)
+      .map((part) => this.quoteIdentifierPart(part, quote))
+      .join('.')
+  }
+
+  private quoteIdentifierPart(value: string, quote: IdentifierQuote): string {
+    const normalizedValue = this.normalizeIdentifier(value)
+
+    if (quote === '`') {
+      return `\`${normalizedValue.replace(/`/g, '``')}\``
+    }
+
+    if (quote === '[') {
+      return `[${normalizedValue.replace(/]/g, ']]')}]`
+    }
+
+    return `"${normalizedValue.replace(/"/g, '""')}"`
   }
 
   private toColumnSuggestion(
@@ -507,6 +813,10 @@ export class SqlTableAutocompleteService {
       .replace(/[`"\]]+$/, '')
   }
 
+  private isSimpleIdentifier(value: string): boolean {
+    return /^[A-Za-z_$#][A-Za-z0-9_$#]*$/.test(value)
+  }
+
   private resolveTableAliases(
     model: monaco.editor.ITextModel,
     position: monaco.Position
@@ -665,7 +975,7 @@ export class SqlTableAutocompleteService {
     return this.normalizeIdentifier(this.getIdentifierLastPart(value))
   }
 
-  private getIdentifierLastPart(value: string): string {
+  private splitIdentifierParts(value: string): string[] {
     const parts: string[] = []
     let current = ''
     let quote: string | null = null
@@ -677,6 +987,13 @@ export class SqlTableAutocompleteService {
         current += char
 
         if ((quote === ']' && char === ']') || char === quote) {
+          const next = value[index + 1]
+          if ((quote === ']' && next === ']') || (quote === '"' && next === '"') || (quote === '`' && next === '`')) {
+            current += next
+            index++
+            continue
+          }
+
           quote = null
         }
         continue
@@ -698,6 +1015,12 @@ export class SqlTableAutocompleteService {
     }
 
     parts.push(current)
+    return parts
+  }
+
+  private getIdentifierLastPart(value: string): string {
+    const parts = this.splitIdentifierParts(value)
+
     return parts.pop() || value
   }
 
@@ -714,6 +1037,7 @@ export class SqlTableAutocompleteService {
   private replaceStringsAndComments(sql: string): string {
     let result = ''
     let quote: string | null = null
+    let identifierQuote: string | null = null
     let lineComment = false
     let blockComment = false
 
@@ -738,6 +1062,24 @@ export class SqlTableAutocompleteService {
           blockComment = false
         } else {
           result += ' '
+        }
+        continue
+      }
+
+      if (identifierQuote) {
+        result += current
+
+        if (current === identifierQuote) {
+          if (
+            (identifierQuote === ']' && next === ']') ||
+            (identifierQuote === '"' && next === '"') ||
+            (identifierQuote === '`' && next === '`')
+          ) {
+            result += next
+            index++
+          } else {
+            identifierQuote = null
+          }
         }
         continue
       }
@@ -770,9 +1112,15 @@ export class SqlTableAutocompleteService {
         continue
       }
 
-      if (current === '\'' || current === '"' || current === '`') {
+      if (current === '\'') {
         result += ' '
         quote = current
+        continue
+      }
+
+      if (current === '"' || current === '`' || current === '[') {
+        result += current
+        identifierQuote = current === '[' ? ']' : current
         continue
       }
 
@@ -784,6 +1132,7 @@ export class SqlTableAutocompleteService {
 
   private scanSqlState(sql: string): { quote: string | null, lineComment: boolean, blockComment: boolean } {
     let quote: string | null = null
+    let identifierQuote: string | null = null
     let lineComment = false
     let blockComment = false
 
@@ -802,6 +1151,21 @@ export class SqlTableAutocompleteService {
         if (current === '*' && next === '/') {
           index++
           blockComment = false
+        }
+        continue
+      }
+
+      if (identifierQuote) {
+        if (current === identifierQuote) {
+          if (
+            (identifierQuote === ']' && next === ']') ||
+            (identifierQuote === '"' && next === '"') ||
+            (identifierQuote === '`' && next === '`')
+          ) {
+            index++
+          } else {
+            identifierQuote = null
+          }
         }
         continue
       }
@@ -829,8 +1193,13 @@ export class SqlTableAutocompleteService {
         continue
       }
 
-      if (current === '\'' || current === '"' || current === '`') {
+      if (current === '\'') {
         quote = current
+        continue
+      }
+
+      if (current === '"' || current === '`' || current === '[') {
+        identifierQuote = current === '[' ? ']' : current
       }
     }
 
