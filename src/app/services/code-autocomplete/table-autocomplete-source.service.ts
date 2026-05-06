@@ -4,6 +4,7 @@ import { ConnectionContextService } from '../connection-context/connection-conte
 
 export interface TableAutocompleteItem {
   name: string
+  type: 'table' | 'view'
 }
 
 @Injectable({
@@ -26,13 +27,27 @@ export class TableAutocompleteSourceService {
     const cacheKey = this.buildCacheKey(ensuredContext)
 
     if (!this.cache.has(cacheKey)) {
-      this.cache.set(cacheKey, this.fetchTables(ensuredContext).catch((error) => {
+      this.cache.set(cacheKey, this.fetchTablesWithReconnect(ensuredContext).catch((error) => {
         this.cache.delete(cacheKey)
         throw error
       }))
     }
 
     return this.cache.get(cacheKey) || []
+  }
+
+  private async fetchTablesWithReconnect(context: any): Promise<TableAutocompleteItem[]> {
+    try {
+      return await this.fetchTables(context)
+    } catch (error: any) {
+      if (!this.connectionContext.isConnectionError(error)) {
+        throw error
+      }
+
+      this.connectionContext.forgetContext(context.connectionKey)
+      const reconnectedContext = await this.connectionContext.ensureContext(context, true)
+      return await this.fetchTables(reconnectedContext)
+    }
   }
 
   private async fetchTables(context: any): Promise<TableAutocompleteItem[]> {
@@ -43,26 +58,41 @@ export class TableAutocompleteSourceService {
       throw new Error(response.error || response.message || 'Could not load table names.')
     }
 
-    const tableRows = response?.tables?.length
-      ? response.tables
-      : (response?.data || []).filter((item: any) => item?.type === 'table')
+    const tableRows = this.rowsToAutocompleteItems(response?.tables, 'table')
+    const viewRows = this.rowsToAutocompleteItems(response?.views, 'view')
+    const dataRows = this.rowsToAutocompleteItems(
+      (response?.data || []).filter((item: any) => item?.type === 'table' || item?.type === 'view')
+    )
 
-    return this.uniqueNames(tableRows)
-      .map((name) => ({ name }))
+    return this.uniqueObjects([...tableRows, ...viewRows, ...dataRows])
       .sort((left, right) => left.name.localeCompare(right.name))
   }
 
-  private uniqueNames(rows: any[]): string[] {
-    const names = new Set<string>()
+  private rowsToAutocompleteItems(rows: any, fallbackType?: 'table' | 'view'): TableAutocompleteItem[] {
+    if (!Array.isArray(rows)) return []
+
+    return rows
+      .map((row): TableAutocompleteItem => {
+        const name = String(row?.name || row?.NAME || '').trim()
+        const rowType = String(row?.type || row?.TYPE || fallbackType || 'table').toLowerCase()
+        const type: TableAutocompleteItem['type'] = rowType === 'view' ? 'view' : 'table'
+
+        return { name, type }
+      })
+      .filter((item) => item.name)
+  }
+
+  private uniqueObjects(rows: TableAutocompleteItem[]): TableAutocompleteItem[] {
+    const objects = new Map<string, TableAutocompleteItem>()
 
     rows.forEach((row) => {
-      const name = String(row?.name || row?.NAME || '').trim()
-      if (name) {
-        names.add(name)
+      const key = row.name.toLowerCase()
+      if (!objects.has(key)) {
+        objects.set(key, row)
       }
     })
 
-    return Array.from(names)
+    return Array.from(objects.values())
   }
 
   private buildCacheKey(context: any): string {
