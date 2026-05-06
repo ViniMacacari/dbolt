@@ -157,6 +157,7 @@ export interface GroupedDatabaseObjects {
 export interface TableColumn {
   name: string;
   type: string;
+  [metadata: string]: QueryRowValue;
 }
 
 export interface SelectedSchemaInfo {

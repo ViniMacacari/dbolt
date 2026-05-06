@@ -20,6 +20,12 @@ import type {
 type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'procedure' };
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type: string };
 type ColumnRow = QueryRow & TableColumn;
+type TableLikeObjectRow = QueryRow & {
+  object_id: number | string;
+  schema_name: string;
+  name: string;
+  object_type: 'table' | 'view';
+};
 
 class ListObjectsSQLServerV1 {
   private readonly db = new SQLServerV1();
@@ -139,25 +145,16 @@ class ListObjectsSQLServerV1 {
         throw new Error(selectedSchema.message);
       }
 
-      const parameters: SqlServerQueryParameter[] = [
-        { name: 'tableName', type: sql.NVarChar, value: tableName },
-        { name: 'schemaName', type: sql.NVarChar, value: selectedSchema.schema }
-      ];
-      const columns = (await this.db.executeQuery(
-        `
-          SELECT COLUMN_NAME AS name, DATA_TYPE AS type
-          FROM INFORMATION_SCHEMA.COLUMNS
-          WHERE TABLE_NAME = @tableName
-            AND TABLE_SCHEMA = @schemaName
-          ORDER BY ORDINAL_POSITION
-        `,
-        parameters,
-        connectionKey
-      )) as ColumnRow[];
+      const object = await this.resolveTableLikeObject(tableName, selectedSchema.schema, connectionKey);
+      if (!object) {
+        return { success: true, data: [] };
+      }
+
+      const columns = await this.loadObjectColumns(object, connectionKey);
 
       return {
         success: true,
-        data: columns.map((column) => ({ name: column.name, type: column.type }))
+        data: columns.map((column) => this.toColumnMetadata(column, object.object_type))
       };
     } catch (error: unknown) {
       console.error('Error listing table columns:', error);
@@ -218,10 +215,6 @@ class ListObjectsSQLServerV1 {
         throw new Error(selectedSchema.message);
       }
 
-      const parameters: SqlServerQueryParameter[] = [
-        { name: 'tableName', type: sql.NVarChar, value: tableName },
-        { name: 'schemaName', type: sql.NVarChar, value: selectedSchema.schema }
-      ];
       const indexes = (await this.db.executeQuery(
         `
           SELECT
@@ -232,17 +225,21 @@ class ListObjectsSQLServerV1 {
             c.name AS column_name,
             ic.key_ordinal AS ordinal_position
           FROM sys.indexes i
-          INNER JOIN sys.tables t ON i.object_id = t.object_id
-          INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+          INNER JOIN sys.objects o ON i.object_id = o.object_id
+          INNER JOIN sys.schemas s ON o.schema_id = s.schema_id
           LEFT JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
           LEFT JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
           WHERE s.name = @schemaName
-            AND t.name = @tableName
+            AND o.name = @tableName
+            AND o.type IN ('U', 'V')
             AND i.index_id > 0
             AND i.name IS NOT NULL
           ORDER BY i.name, ic.key_ordinal
         `,
-        parameters,
+        [
+          { name: 'tableName', type: sql.NVarChar, value: tableName },
+          { name: 'schemaName', type: sql.NVarChar, value: selectedSchema.schema }
+        ],
         connectionKey
       )) as QueryRow[];
 
@@ -263,35 +260,38 @@ class ListObjectsSQLServerV1 {
         throw new Error(selectedSchema.message);
       }
 
-      const parameters: SqlServerQueryParameter[] = [
-        { name: 'tableName', type: sql.NVarChar, value: tableName },
-        { name: 'schemaName', type: sql.NVarChar, value: selectedSchema.schema }
-      ];
-      const columns = (await this.db.executeQuery(
-        `
-          SELECT
-            COLUMN_NAME AS column_name,
-            DATA_TYPE AS data_type,
-            CHARACTER_MAXIMUM_LENGTH AS character_maximum_length,
-            NUMERIC_PRECISION AS numeric_precision,
-            NUMERIC_SCALE AS numeric_scale,
-            IS_NULLABLE AS is_nullable,
-            COLUMN_DEFAULT AS column_default
-          FROM INFORMATION_SCHEMA.COLUMNS
-          WHERE TABLE_SCHEMA = @schemaName
-            AND TABLE_NAME = @tableName
-          ORDER BY ORDINAL_POSITION
-        `,
-        parameters,
-        connectionKey
-      )) as QueryRow[];
+      const object = await this.resolveTableLikeObject(tableName, selectedSchema.schema, connectionKey);
+      if (!object) {
+        return { success: true, ddl: '' };
+      }
+
+      if (object.object_type === 'view') {
+        const rows = (await this.db.executeQuery(
+          `
+            SELECT m.definition AS ddl
+            FROM sys.sql_modules m
+            INNER JOIN sys.objects o ON o.object_id = m.object_id
+            WHERE o.object_id = @objectId
+              AND o.type = 'V'
+          `,
+          [{ name: 'objectId', type: sql.Int, value: Number(object.object_id) }],
+          connectionKey
+        )) as QueryRow[];
+
+        return {
+          success: true,
+          ddl: this.formatSQLServerViewDDL(object, String(rows[0]?.['ddl'] || ''))
+        };
+      }
+
+      const columns = (await this.loadObjectColumns(object, connectionKey)) as QueryRow[];
       const columnLines = columns.map((column) => {
         const type = this.formatSQLServerColumnType(column);
-        const nullable = column['is_nullable'] === 'NO' ? ' NOT NULL' : ' NULL';
+        const nullable = this.isSQLServerNullable(column['is_nullable']) ? ' NULL' : ' NOT NULL';
         const defaultValue = column['column_default'] ? ` DEFAULT ${String(column['column_default'])}` : '';
-        return `  ${quoteIdentifier(String(column['column_name']))} ${type}${defaultValue}${nullable}`;
+        return `  ${quoteIdentifier(String(column['name']))} ${type}${defaultValue}${nullable}`;
       });
-      const ddl = `CREATE TABLE ${quoteIdentifier(selectedSchema.schema)}.${quoteIdentifier(tableName)} (\n${columnLines.join(',\n')}\n);`;
+      const ddl = `CREATE TABLE ${quoteIdentifier(object.schema_name)}.${quoteIdentifier(object.name)} (\n${columnLines.join(',\n')}\n);`;
 
       return { success: true, ddl };
     } catch (error: unknown) {
@@ -351,6 +351,110 @@ class ListObjectsSQLServerV1 {
     }
 
     return dataType;
+  }
+
+  private async resolveTableLikeObject(
+    tableName: string,
+    schemaName: string,
+    connectionKey?: string
+  ): Promise<TableLikeObjectRow | null> {
+    const rows = (await this.db.executeQuery(
+      `
+        SELECT
+          o.object_id,
+          s.name AS schema_name,
+          o.name,
+          CASE WHEN o.type = 'V' THEN 'view' ELSE 'table' END AS object_type
+        FROM sys.objects o
+        INNER JOIN sys.schemas s ON s.schema_id = o.schema_id
+        WHERE s.name = @schemaName
+          AND o.name = @tableName
+          AND o.type IN ('U', 'V')
+        ORDER BY CASE WHEN o.type = 'U' THEN 0 ELSE 1 END
+      `,
+      [
+        { name: 'tableName', type: sql.NVarChar, value: tableName },
+        { name: 'schemaName', type: sql.NVarChar, value: schemaName }
+      ],
+      connectionKey
+    )) as TableLikeObjectRow[];
+
+    return rows[0] || null;
+  }
+
+  private async loadObjectColumns(object: TableLikeObjectRow, connectionKey?: string): Promise<ColumnRow[]> {
+    return (await this.db.executeQuery(
+      `
+        SELECT
+          c.name AS name,
+          t.name AS data_type,
+          CASE
+            WHEN t.name IN ('nchar', 'nvarchar') AND c.max_length > 0 THEN c.max_length / 2
+            ELSE c.max_length
+          END AS character_maximum_length,
+          c.precision AS numeric_precision,
+          c.scale AS numeric_scale,
+          c.is_nullable,
+          dc.definition AS column_default,
+          c.collation_name,
+          c.is_identity,
+          c.is_computed,
+          cc.definition AS computed_definition,
+          ep.value AS description,
+          c.column_id AS ordinal_position
+        FROM sys.columns c
+        INNER JOIN sys.types t ON t.user_type_id = c.user_type_id
+        LEFT JOIN sys.default_constraints dc ON dc.object_id = c.default_object_id
+        LEFT JOIN sys.computed_columns cc
+          ON cc.object_id = c.object_id
+          AND cc.column_id = c.column_id
+        LEFT JOIN sys.extended_properties ep
+          ON ep.major_id = c.object_id
+          AND ep.minor_id = c.column_id
+          AND ep.name = 'MS_Description'
+        WHERE c.object_id = @objectId
+        ORDER BY c.column_id
+      `,
+      [{ name: 'objectId', type: sql.Int, value: Number(object.object_id) }],
+      connectionKey
+    )) as ColumnRow[];
+  }
+
+  private toColumnMetadata(column: QueryRow, objectType: TableLikeObjectRow['object_type']): TableColumn {
+    return {
+      name: String(column['name'] || ''),
+      type: this.formatSQLServerColumnType(column),
+      data_type: column['data_type'],
+      character_maximum_length: column['character_maximum_length'],
+      numeric_precision: column['numeric_precision'],
+      numeric_scale: column['numeric_scale'],
+      is_nullable: column['is_nullable'],
+      column_default: column['column_default'],
+      collation_name: column['collation_name'],
+      is_identity: column['is_identity'],
+      is_computed: column['is_computed'],
+      computed_definition: column['computed_definition'],
+      description: column['description'],
+      ordinal_position: column['ordinal_position'],
+      object_type: objectType
+    };
+  }
+
+  private formatSQLServerViewDDL(object: TableLikeObjectRow, definition: string): string {
+    const trimmed = definition.trim();
+    if (!trimmed) {
+      return '';
+    }
+
+    if (/^create\s+(or\s+alter\s+)?view\b/i.test(trimmed)) {
+      return trimmed;
+    }
+
+    return `CREATE VIEW ${quoteIdentifier(object.schema_name)}.${quoteIdentifier(object.name)} AS\n${trimmed}`;
+  }
+
+  private isSQLServerNullable(value: QueryRow[keyof QueryRow]): boolean {
+    return value === true || value === 1 || value === 'YES' || value === 'true';
   }
 }
 

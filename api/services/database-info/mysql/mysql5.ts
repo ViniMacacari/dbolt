@@ -16,6 +16,7 @@ import type {
 type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'procedure' };
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type: string };
 type ColumnRow = QueryRow & TableColumn;
+type TableLikeObjectRow = QueryRow & { name: string; object_type: 'table' | 'view' };
 
 class ListObjectsMySQLV1 {
   private readonly db = new MySQLV1();
@@ -129,21 +130,16 @@ class ListObjectsMySQLV1 {
     }
 
     try {
-      const columns = (await this.db.executeQuery(
-        `
-          SELECT COLUMN_NAME AS name, DATA_TYPE AS type
-          FROM INFORMATION_SCHEMA.COLUMNS
-          WHERE TABLE_SCHEMA = DATABASE()
-            AND TABLE_NAME = ?
-          ORDER BY ORDINAL_POSITION
-        `,
-        [tableName],
-        connectionKey
-      )) as ColumnRow[];
+      const object = await this.resolveTableLikeObject(tableName, connectionKey);
+      if (!object) {
+        return { success: true, data: [] };
+      }
+
+      const columns = await this.loadObjectColumns(object, connectionKey);
 
       return {
         success: true,
-        data: columns.map((column) => ({ name: column.name, type: column.type }))
+        data: columns.map((column) => this.toColumnMetadata(column, object.object_type))
       };
     } catch (error: unknown) {
       console.error('Error listing table columns:', error);
@@ -221,8 +217,14 @@ class ListObjectsMySQLV1 {
 
   async tableDDL(tableName: string, connectionKey?: string): Promise<TableDDLResult> {
     try {
+      const object = await this.resolveTableLikeObject(tableName, connectionKey);
+      if (!object) {
+        return { success: true, ddl: '' };
+      }
+
+      const statement = object.object_type === 'view' ? 'SHOW CREATE VIEW' : 'SHOW CREATE TABLE';
       const rows = (await this.db.executeQuery(
-        `SHOW CREATE TABLE ${quoteIdentifier(tableName, '`')}`,
+        `${statement} ${quoteIdentifier(object.name, '`')}`,
         [],
         connectionKey
       )) as QueryRow[];
@@ -255,6 +257,75 @@ class ListObjectsMySQLV1 {
         error: getErrorMessage(error)
       };
     }
+  }
+
+  private async resolveTableLikeObject(tableName: string, connectionKey?: string): Promise<TableLikeObjectRow | null> {
+    const rows = (await this.db.executeQuery(
+      `
+        SELECT
+          TABLE_NAME AS name,
+          CASE WHEN TABLE_TYPE = 'VIEW' THEN 'view' ELSE 'table' END AS object_type
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND TABLE_TYPE IN ('BASE TABLE', 'VIEW')
+        LIMIT 1
+      `,
+      [tableName],
+      connectionKey
+    )) as TableLikeObjectRow[];
+
+    return rows[0] || null;
+  }
+
+  private async loadObjectColumns(object: TableLikeObjectRow, connectionKey?: string): Promise<ColumnRow[]> {
+    return (await this.db.executeQuery(
+      `
+        SELECT
+          TABLE_NAME AS object_name,
+          COLUMN_NAME AS name,
+          COLUMN_TYPE AS column_type,
+          DATA_TYPE AS data_type,
+          CHARACTER_MAXIMUM_LENGTH AS character_maximum_length,
+          NUMERIC_PRECISION AS numeric_precision,
+          NUMERIC_SCALE AS numeric_scale,
+          DATETIME_PRECISION AS datetime_precision,
+          IS_NULLABLE AS is_nullable,
+          COLUMN_DEFAULT AS column_default,
+          COLUMN_KEY AS column_key,
+          EXTRA AS extra,
+          COLUMN_COMMENT AS comment,
+          COLLATION_NAME AS collation_name,
+          ORDINAL_POSITION AS ordinal_position
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+        ORDER BY ORDINAL_POSITION
+      `,
+      [object.name],
+      connectionKey
+    )) as ColumnRow[];
+  }
+
+  private toColumnMetadata(column: QueryRow, objectType: TableLikeObjectRow['object_type']): TableColumn {
+    return {
+      name: String(column['name'] || ''),
+      type: String(column['column_type'] || column['data_type'] || ''),
+      data_type: column['data_type'],
+      column_type: column['column_type'],
+      character_maximum_length: column['character_maximum_length'],
+      numeric_precision: column['numeric_precision'],
+      numeric_scale: column['numeric_scale'],
+      datetime_precision: column['datetime_precision'],
+      is_nullable: column['is_nullable'],
+      column_default: column['column_default'],
+      column_key: column['column_key'],
+      extra: column['extra'],
+      comment: column['comment'],
+      collation_name: column['collation_name'],
+      ordinal_position: column['ordinal_position'],
+      object_type: objectType
+    };
   }
 }
 
