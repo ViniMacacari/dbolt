@@ -32,13 +32,27 @@ export class ColumnAutocompleteSourceService {
     const cacheKey = this.buildCacheKey(ensuredContext, normalizedTable)
 
     if (!this.cache.has(cacheKey)) {
-      this.cache.set(cacheKey, this.fetchColumns(ensuredContext, normalizedTable).catch((error) => {
+      this.cache.set(cacheKey, this.fetchColumnsWithReconnect(ensuredContext, normalizedTable).catch((error) => {
         this.cache.delete(cacheKey)
         throw error
       }))
     }
 
     return this.cache.get(cacheKey) || []
+  }
+
+  private async fetchColumnsWithReconnect(context: any, tableName: string): Promise<ColumnAutocompleteItem[]> {
+    try {
+      return await this.fetchColumns(context, tableName)
+    } catch (error: any) {
+      if (!this.connectionContext.isConnectionError(error)) {
+        throw error
+      }
+
+      this.connectionContext.forgetContext(context.connectionKey)
+      const reconnectedContext = await this.connectionContext.ensureContext(context, true)
+      return await this.fetchColumns(reconnectedContext, tableName)
+    }
   }
 
   private async fetchColumns(context: any, tableName: string): Promise<ColumnAutocompleteItem[]> {

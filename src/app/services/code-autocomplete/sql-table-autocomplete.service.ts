@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core'
 import * as monaco from 'monaco-editor'
 import { AppSettingsService } from '../app-settings/app-settings.service'
-import { TableAutocompleteSourceService } from './table-autocomplete-source.service'
+import { type TableAutocompleteItem, TableAutocompleteSourceService } from './table-autocomplete-source.service'
 import { ColumnAutocompleteItem, ColumnAutocompleteSourceService } from './column-autocomplete-source.service'
 
 interface RegisteredEditor {
@@ -12,6 +12,7 @@ interface RegisteredEditor {
 interface TableCompletionRequest {
   type: 'table'
   fragment: string
+  rawFragment: string
   range: monaco.IRange
 }
 
@@ -24,6 +25,7 @@ interface ColumnCompletionRequest {
 }
 
 type SqlCompletionRequest = TableCompletionRequest | ColumnCompletionRequest
+type IdentifierQuote = '"' | '`' | '['
 
 interface SqlToken {
   value: string
@@ -112,7 +114,7 @@ export class SqlTableAutocompleteService {
     if (this.providerDisposable) return
 
     this.providerDisposable = monaco.languages.registerCompletionItemProvider('sql', {
-      triggerCharacters: [' ', '_', '.'],
+      triggerCharacters: [' ', '_', '.', '"', '`', '['],
       provideCompletionItems: async (model, position) => {
         const editorInfo = this.editors.get(this.getModelKey(model))
         if (!editorInfo?.isActive()) {
@@ -138,7 +140,7 @@ export class SqlTableAutocompleteService {
           const suggestions = tables
             .filter((table) => table.name.toLowerCase().includes(fragment))
             .slice(0, this.maxSuggestions)
-            .map((table) => this.toSuggestion(table.name, request.range))
+            .map((table) => this.toSuggestion(table, request, editorInfo.getContext()))
 
           return { suggestions }
         } catch (error) {
@@ -187,6 +189,7 @@ export class SqlTableAutocompleteService {
     return {
       type: 'table',
       fragment,
+      rawFragment,
       range: {
         startLineNumber: position.lineNumber,
         endLineNumber: position.lineNumber,
@@ -265,18 +268,120 @@ export class SqlTableAutocompleteService {
     return lastToken === 'from' || lastToken === 'join'
   }
 
-  private toSuggestion(tableName: string, range: monaco.IRange): monaco.languages.CompletionItem {
+  private toSuggestion(
+    table: TableAutocompleteItem,
+    request: TableCompletionRequest,
+    context: any
+  ): monaco.languages.CompletionItem {
+    const tableName = table.name
     const alias = this.generateAlias(tableName)
+    const detail = table.type === 'view' ? 'View' : 'Table'
+    const insertTableName = this.getTableInsertText(tableName, request, context)
+    const filterText = this.getTableFilterText(tableName, insertTableName, request)
 
     return {
       label: tableName,
       kind: monaco.languages.CompletionItemKind.Struct,
-      detail: 'Table',
+      detail,
       documentation: alias ? `Alias: ${alias}` : undefined,
-      insertText: alias ? `${tableName} ${alias}` : tableName,
-      range,
+      insertText: alias ? `${insertTableName} ${alias}` : insertTableName,
+      filterText,
+      range: request.range,
       sortText: tableName.toLowerCase()
     }
+  }
+
+  private getTableFilterText(tableName: string, insertTableName: string, request: TableCompletionRequest): string {
+    if (!this.getRequestedIdentifierQuote(request.rawFragment)) {
+      return tableName
+    }
+
+    return this.hasClosingIdentifierQuote(request.rawFragment)
+      ? request.rawFragment
+      : insertTableName
+  }
+
+  private getTableInsertText(tableName: string, request: TableCompletionRequest, context: any): string {
+    const quote = this.resolveIdentifierQuote(tableName, request.rawFragment, context)
+
+    return quote
+      ? this.quoteIdentifierReference(tableName, quote)
+      : tableName
+  }
+
+  private resolveIdentifierQuote(tableName: string, rawFragment: string, context: any): IdentifierQuote | null {
+    const requestedQuote = this.getRequestedIdentifierQuote(rawFragment)
+    if (requestedQuote) return requestedQuote
+
+    return this.shouldQuoteTableIdentifier(tableName, context)
+      ? this.getDefaultIdentifierQuote(context)
+      : null
+  }
+
+  private getRequestedIdentifierQuote(rawFragment: string): IdentifierQuote | null {
+    const firstChar = rawFragment.trimStart()[0]
+    if (firstChar === '"' || firstChar === '`' || firstChar === '[') {
+      return firstChar
+    }
+
+    return null
+  }
+
+  private hasClosingIdentifierQuote(rawFragment: string): boolean {
+    const trimmedFragment = rawFragment.trim()
+
+    return (
+      trimmedFragment.length > 1 &&
+      (
+        (trimmedFragment.startsWith('"') && trimmedFragment.endsWith('"')) ||
+        (trimmedFragment.startsWith('`') && trimmedFragment.endsWith('`')) ||
+        (trimmedFragment.startsWith('[') && trimmedFragment.endsWith(']'))
+      )
+    )
+  }
+
+  private shouldQuoteTableIdentifier(tableName: string, context: any): boolean {
+    const database = String(context?.sgbd || context?.database || '').toLowerCase()
+    const normalizedTableName = this.normalizeIdentifier(tableName)
+
+    if (!this.isSimpleIdentifier(normalizedTableName)) {
+      return true
+    }
+
+    if (database === 'hana') {
+      return !/^[A-Z_$#][A-Z0-9_$#]*$/.test(normalizedTableName)
+    }
+
+    return false
+  }
+
+  private getDefaultIdentifierQuote(context: any): IdentifierQuote {
+    const database = String(context?.sgbd || context?.database || '').toLowerCase()
+
+    if (database === 'mysql') return '`'
+    if (database === 'sqlserver') return '['
+
+    return '"'
+  }
+
+  private quoteIdentifierReference(value: string, quote: IdentifierQuote): string {
+    return this.splitIdentifierParts(value)
+      .map((part) => this.quoteIdentifierPart(part, quote))
+      .join('.')
+  }
+
+  private quoteIdentifierPart(value: string, quote: IdentifierQuote): string {
+    const normalizedValue = this.normalizeIdentifier(value)
+
+    if (quote === '`') {
+      return `\`${normalizedValue.replace(/`/g, '``')}\``
+    }
+
+    if (quote === '[') {
+      return `[${normalizedValue.replace(/]/g, ']]')}]`
+    }
+
+    return `"${normalizedValue.replace(/"/g, '""')}"`
   }
 
   private toColumnSuggestion(
@@ -507,6 +612,10 @@ export class SqlTableAutocompleteService {
       .replace(/[`"\]]+$/, '')
   }
 
+  private isSimpleIdentifier(value: string): boolean {
+    return /^[A-Za-z_$#][A-Za-z0-9_$#]*$/.test(value)
+  }
+
   private resolveTableAliases(
     model: monaco.editor.ITextModel,
     position: monaco.Position
@@ -665,7 +774,7 @@ export class SqlTableAutocompleteService {
     return this.normalizeIdentifier(this.getIdentifierLastPart(value))
   }
 
-  private getIdentifierLastPart(value: string): string {
+  private splitIdentifierParts(value: string): string[] {
     const parts: string[] = []
     let current = ''
     let quote: string | null = null
@@ -677,6 +786,13 @@ export class SqlTableAutocompleteService {
         current += char
 
         if ((quote === ']' && char === ']') || char === quote) {
+          const next = value[index + 1]
+          if ((quote === ']' && next === ']') || (quote === '"' && next === '"') || (quote === '`' && next === '`')) {
+            current += next
+            index++
+            continue
+          }
+
           quote = null
         }
         continue
@@ -698,6 +814,12 @@ export class SqlTableAutocompleteService {
     }
 
     parts.push(current)
+    return parts
+  }
+
+  private getIdentifierLastPart(value: string): string {
+    const parts = this.splitIdentifierParts(value)
+
     return parts.pop() || value
   }
 
@@ -714,6 +836,7 @@ export class SqlTableAutocompleteService {
   private replaceStringsAndComments(sql: string): string {
     let result = ''
     let quote: string | null = null
+    let identifierQuote: string | null = null
     let lineComment = false
     let blockComment = false
 
@@ -738,6 +861,24 @@ export class SqlTableAutocompleteService {
           blockComment = false
         } else {
           result += ' '
+        }
+        continue
+      }
+
+      if (identifierQuote) {
+        result += current
+
+        if (current === identifierQuote) {
+          if (
+            (identifierQuote === ']' && next === ']') ||
+            (identifierQuote === '"' && next === '"') ||
+            (identifierQuote === '`' && next === '`')
+          ) {
+            result += next
+            index++
+          } else {
+            identifierQuote = null
+          }
         }
         continue
       }
@@ -770,9 +911,15 @@ export class SqlTableAutocompleteService {
         continue
       }
 
-      if (current === '\'' || current === '"' || current === '`') {
+      if (current === '\'') {
         result += ' '
         quote = current
+        continue
+      }
+
+      if (current === '"' || current === '`' || current === '[') {
+        result += current
+        identifierQuote = current === '[' ? ']' : current
         continue
       }
 
@@ -784,6 +931,7 @@ export class SqlTableAutocompleteService {
 
   private scanSqlState(sql: string): { quote: string | null, lineComment: boolean, blockComment: boolean } {
     let quote: string | null = null
+    let identifierQuote: string | null = null
     let lineComment = false
     let blockComment = false
 
@@ -802,6 +950,21 @@ export class SqlTableAutocompleteService {
         if (current === '*' && next === '/') {
           index++
           blockComment = false
+        }
+        continue
+      }
+
+      if (identifierQuote) {
+        if (current === identifierQuote) {
+          if (
+            (identifierQuote === ']' && next === ']') ||
+            (identifierQuote === '"' && next === '"') ||
+            (identifierQuote === '`' && next === '`')
+          ) {
+            index++
+          } else {
+            identifierQuote = null
+          }
         }
         continue
       }
@@ -829,8 +992,13 @@ export class SqlTableAutocompleteService {
         continue
       }
 
-      if (current === '\'' || current === '"' || current === '`') {
+      if (current === '\'') {
         quote = current
+        continue
+      }
+
+      if (current === '"' || current === '`' || current === '[') {
+        identifierQuote = current === '[' ? ']' : current
       }
     }
 
