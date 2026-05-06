@@ -24,7 +24,7 @@ export class RunQueryService {
     try {
       return await this.executeSQL(db, sql, lines)
     } catch (error: any) {
-      if (!this.isConnectionError(error)) {
+      if (!this.connectionContext.isConnectionError(error)) {
         throw error
       }
 
@@ -54,31 +54,6 @@ export class RunQueryService {
     } else {
       throw new Error('Invalid data response.')
     }
-  }
-
-  private isConnectionError(error: any): boolean {
-    const errorText = [
-      error?.message,
-      error?.error,
-      error?.code,
-      error?.sqlState
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase()
-
-    return [
-      'not connected',
-      'connection is closed',
-      'connection closed',
-      'connection terminated',
-      'connection lost',
-      'server closed the connection',
-      'client has encountered a connection error',
-      'protocol_connection_lost',
-      'econnreset',
-      'econnrefused'
-    ].some((connectionError) => errorText.includes(connectionError))
   }
 
   getQueryLines(): number | null {

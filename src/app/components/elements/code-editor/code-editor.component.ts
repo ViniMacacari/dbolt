@@ -166,7 +166,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       folding: false,
       fontFamily: 'Nunito',
       selectionHighlight: false,
-      quickSuggestions: { other: true, comments: false, strings: false },
+      quickSuggestions: { other: 'on', comments: 'off', strings: 'on' },
       quickSuggestionsDelay: 250,
       suggestOnTriggerCharacters: true,
       wordBasedSuggestions: 'off',
@@ -266,19 +266,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     monaco.editor.defineTheme('dbolt-sql-configurable', {
       base: 'vs-dark',
-      inherit: true,
-      rules: [
-        { token: 'keyword', foreground: this.toMonacoColor(normalizedColors.keyword), fontStyle: 'bold' },
-        { token: 'function', foreground: this.toMonacoColor(normalizedColors.function), fontStyle: 'bold' },
-        { token: 'identifier', foreground: this.toMonacoColor(normalizedColors.identifier) },
-        { token: 'string', foreground: this.toMonacoColor(normalizedColors.string) },
-        { token: 'number', foreground: this.toMonacoColor(normalizedColors.number) },
-        { token: 'comment', foreground: this.toMonacoColor(normalizedColors.comment), fontStyle: 'italic' },
-        { token: 'operator', foreground: this.toMonacoColor(normalizedColors.operator), fontStyle: 'bold' },
-        { token: 'type', foreground: this.toMonacoColor(normalizedColors.type) },
-        { token: 'variable', foreground: this.toMonacoColor(normalizedColors.variable) },
-        { token: 'delimiter', foreground: this.toMonacoColor(normalizedColors.delimiter) }
-      ],
+      inherit: false,
+      rules: this.buildSqlTokenRules(normalizedColors),
       colors: {
         ...transparentEditorColors,
         'editor.foreground': normalizedColors.identifier,
@@ -289,6 +278,29 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         'editor.inactiveSelectionBackground': '#3a3d41'
       }
     })
+  }
+
+  private buildSqlTokenRules(colors: SqlHighlightColors): monaco.editor.ITokenThemeRule[] {
+    const rules: monaco.editor.ITokenThemeRule[] = []
+    const addRule = (token: string, color: string, fontStyle?: string) => {
+      rules.push(
+        { token, foreground: this.toMonacoColor(color), fontStyle },
+        { token: `${token}.sql`, foreground: this.toMonacoColor(color), fontStyle }
+      )
+    }
+
+    addRule('keyword', colors.keyword, 'bold')
+    addRule('function', colors.function, 'bold')
+    addRule('identifier', colors.identifier)
+    addRule('string', colors.string)
+    addRule('number', colors.number)
+    addRule('comment', colors.comment, 'italic')
+    addRule('operator', colors.operator, 'bold')
+    addRule('type', colors.type)
+    addRule('variable', colors.variable)
+    addRule('delimiter', colors.delimiter)
+
+    return rules
   }
 
   private applySqlHighlightTheme(colors: SqlHighlightColors): void {

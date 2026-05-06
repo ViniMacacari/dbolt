@@ -82,6 +82,32 @@ export class ConnectionContextService {
     this.ensuredContexts.delete(connectionKey)
   }
 
+  isConnectionError(error: any): boolean {
+    const errorText = [
+      error?.message,
+      error?.error,
+      error?.code,
+      error?.sqlState
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+
+    return [
+      'not connected',
+      'no active connection',
+      'connection is closed',
+      'connection closed',
+      'connection terminated',
+      'connection lost',
+      'server closed the connection',
+      'client has encountered a connection error',
+      'protocol_connection_lost',
+      'econnreset',
+      'econnrefused'
+    ].some((connectionError) => errorText.includes(connectionError))
+  }
+
   toQueryString(schemaDb: any): string {
     return schemaDb?.connectionKey
       ? `?connectionKey=${encodeURIComponent(schemaDb.connectionKey)}`

@@ -52,6 +52,7 @@ export class DatabaseManagerComponent {
   dbInfoInitialized: boolean = false
   tableInfoInitialized: boolean = false
   procedureInfoInitialized: boolean = false
+  settingsInitialized: boolean = false
 
   sqlContent: string = ''
   tabInfo: any
@@ -277,6 +278,10 @@ export class DatabaseManagerComponent {
       this.dbSchemasData = tab.info.dbInfo
     }
 
+    if (this.settingsOpen) {
+      this.settingsInitialized = true
+    }
+
     if (this.tableInfoOpen) {
       this.tableInfoInitialized = true
       this.tableInfoTabInfo = tab
@@ -292,7 +297,17 @@ export class DatabaseManagerComponent {
     }
   }
 
-  onTabClosed(): void {
+  onTabClosed(event: any): void {
+    const tab = event?.tab || event
+
+    if (tab?.type === 'settings') {
+      this.settingsInitialized = false
+    }
+
+    if (event?.hasTabs) {
+      return
+    }
+
     this.editorOpen = false
     this.dbInfoOpen = false
     this.tableInfoOpen = false
