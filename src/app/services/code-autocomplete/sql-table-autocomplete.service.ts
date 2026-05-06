@@ -32,6 +32,11 @@ interface SqlToken {
   lower: string
 }
 
+interface TableSuggestRefreshState {
+  lastTriggeredFragment: string
+  pauseTimer: ReturnType<typeof setTimeout> | null
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -40,6 +45,8 @@ export class SqlTableAutocompleteService {
   private readonly editors = new Map<string, RegisteredEditor>()
   private readonly minimumFragmentLength = 3
   private readonly maxSuggestions = 50
+  private readonly tableSuggestSequentialCharacters = 2
+  private readonly tableSuggestPauseDelayMs = 220
   private readonly sqlReservedWords = new Set([
     'as',
     'by',
@@ -101,13 +108,144 @@ export class SqlTableAutocompleteService {
     const autoQuoteDisposable = editor.onDidChangeModelContent((event) => {
       this.autoQuoteTypedColumn(editor, getContext, isActive, event)
     })
+    const tableSuggestRefreshDisposable = this.registerControlledTableSuggestRefresh(editor, isActive)
 
     return {
       dispose: () => {
         this.editors.delete(modelKey)
         autoQuoteDisposable.dispose()
+        tableSuggestRefreshDisposable.dispose()
       }
     }
+  }
+
+  private registerControlledTableSuggestRefresh(
+    editor: monaco.editor.IStandaloneCodeEditor,
+    isActive: () => boolean
+  ): monaco.IDisposable {
+    const state: TableSuggestRefreshState = {
+      lastTriggeredFragment: '',
+      pauseTimer: null
+    }
+
+    const clearPauseTimer = () => {
+      if (!state.pauseTimer) return
+
+      clearTimeout(state.pauseTimer)
+      state.pauseTimer = null
+    }
+
+    const resetState = () => {
+      clearPauseTimer()
+      state.lastTriggeredFragment = ''
+    }
+
+    const changeDisposable = editor.onDidChangeModelContent(() => {
+      clearPauseTimer()
+
+      if (
+        !isActive() ||
+        !this.settings.isTableAutocompleteEnabled() ||
+        this.settings.getTableAutocompleteMatchMode() !== 'contains'
+      ) {
+        resetState()
+        return
+      }
+
+      const fragment = this.getCurrentTableSuggestFragment(editor)
+      if (!fragment) {
+        resetState()
+        return
+      }
+
+      if (fragment === state.lastTriggeredFragment) {
+        return
+      }
+
+      if (this.shouldRefreshTableSuggestions(fragment, state.lastTriggeredFragment)) {
+        this.triggerTableSuggest(editor, state, fragment)
+        return
+      }
+
+      state.pauseTimer = setTimeout(() => {
+        state.pauseTimer = null
+
+        if (!isActive() || !this.settings.isTableAutocompleteEnabled()) {
+          state.lastTriggeredFragment = ''
+          return
+        }
+
+        const currentFragment = this.getCurrentTableSuggestFragment(editor)
+        if (!currentFragment) {
+          state.lastTriggeredFragment = ''
+          return
+        }
+
+        this.triggerTableSuggest(editor, state, currentFragment)
+      }, this.tableSuggestPauseDelayMs)
+    })
+
+    return {
+      dispose: () => {
+        clearPauseTimer()
+        changeDisposable.dispose()
+      }
+    }
+  }
+
+  private getCurrentTableSuggestFragment(editor: monaco.editor.IStandaloneCodeEditor): string {
+    const model = editor.getModel()
+    const position = editor.getPosition()
+    if (!model || !position) return ''
+
+    const beforeCursor = model.getLineContent(position.lineNumber).slice(0, position.column - 1)
+    if (this.isInsideStringOrComment(beforeCursor)) {
+      return ''
+    }
+
+    const fragmentMatch = beforeCursor.match(/([A-Za-z0-9_$#.`"\[\]]*)$/)
+    const rawFragment = fragmentMatch?.[1] || ''
+    const fragment = this.normalizeIdentifier(rawFragment).toLowerCase()
+
+    if (fragment.length < this.minimumFragmentLength) {
+      return ''
+    }
+
+    const beforeFragment = beforeCursor.slice(0, beforeCursor.length - rawFragment.length)
+    return this.isTableNameContext(beforeFragment)
+      ? fragment
+      : ''
+  }
+
+  private shouldRefreshTableSuggestions(fragment: string, lastTriggeredFragment: string): boolean {
+    if (!lastTriggeredFragment) {
+      return true
+    }
+
+    if (!fragment.startsWith(lastTriggeredFragment)) {
+      return true
+    }
+
+    return fragment.length - lastTriggeredFragment.length >= this.tableSuggestSequentialCharacters
+  }
+
+  private triggerTableSuggest(
+    editor: monaco.editor.IStandaloneCodeEditor,
+    state: TableSuggestRefreshState,
+    fragment: string
+  ): void {
+    state.lastTriggeredFragment = fragment
+
+    const suggestController = editor.getContribution('editor.contrib.suggestController') as {
+      triggerSuggest?: (onlyFrom?: unknown, auto?: boolean, noFilter?: boolean) => void
+    } | null
+
+    if (suggestController?.triggerSuggest) {
+      suggestController.triggerSuggest(undefined, true)
+      return
+    }
+
+    void editor.getAction('editor.action.triggerSuggest')?.run()
   }
 
   private ensureProviderRegistered(): void {
@@ -135,14 +273,17 @@ export class SqlTableAutocompleteService {
         }
 
         try {
-          const tables = await this.tableSource.getTables(editorInfo.getContext())
+          const context = editorInfo.getContext()
+          const tables = await this.tableSource.getTables(context)
           const fragment = request.fragment.toLowerCase()
           const suggestions = tables
-            .filter((table) => table.name.toLowerCase().includes(fragment))
+            .filter((table) => this.matchesTableName(table.name, fragment))
             .slice(0, this.maxSuggestions)
-            .map((table) => this.toSuggestion(table, request, editorInfo.getContext()))
+            .map((table) => this.toSuggestion(table, request, context))
 
-          return { suggestions }
+          return {
+            suggestions
+          }
         } catch (error) {
           console.warn('Could not load table autocomplete suggestions:', error)
           return { suggestions: [] }
@@ -268,6 +409,14 @@ export class SqlTableAutocompleteService {
     return lastToken === 'from' || lastToken === 'join'
   }
 
+  private matchesTableName(tableName: string, fragment: string): boolean {
+    if (this.settings.getTableAutocompleteMatchMode() === 'fuzzy') {
+      return true
+    }
+
+    return tableName.toLowerCase().includes(fragment)
+  }
+
   private toSuggestion(
     table: TableAutocompleteItem,
     request: TableCompletionRequest,
@@ -278,6 +427,7 @@ export class SqlTableAutocompleteService {
     const detail = table.type === 'view' ? 'View' : 'Table'
     const insertTableName = this.getTableInsertText(tableName, request, context)
     const filterText = this.getTableFilterText(tableName, insertTableName, request)
+    const sortText = this.getTableSortText(tableName, request.fragment)
 
     return {
       label: tableName,
@@ -287,7 +437,7 @@ export class SqlTableAutocompleteService {
       insertText: alias ? `${insertTableName} ${alias}` : insertTableName,
       filterText,
       range: request.range,
-      sortText: tableName.toLowerCase()
+      sortText
     }
   }
 
@@ -299,6 +449,33 @@ export class SqlTableAutocompleteService {
     return this.hasClosingIdentifierQuote(request.rawFragment)
       ? request.rawFragment
       : insertTableName
+  }
+
+  private getTableSortText(tableName: string, fragment: string): string {
+    const normalizedTableName = this.normalizeIdentifier(tableName).toLowerCase()
+    const normalizedFragment = fragment.toLowerCase()
+    const matchIndex = normalizedTableName.indexOf(normalizedFragment)
+    const matchRank = matchIndex === 0
+      ? 0
+      : this.hasIdentifierPartStartingWith(normalizedTableName, normalizedFragment)
+        ? 1
+        : 2
+
+    return [
+      matchRank.toString(),
+      Math.max(matchIndex, 0).toString().padStart(4, '0'),
+      normalizedTableName
+    ].join(':')
+  }
+
+  private hasIdentifierPartStartingWith(tableName: string, fragment: string): boolean {
+    if (!fragment || fragment.includes('_') || fragment.includes('.')) {
+      return false
+    }
+
+    return tableName
+      .split(/[^a-z0-9]+/)
+      .some((part) => part.startsWith(fragment))
   }
 
   private getTableInsertText(tableName: string, request: TableCompletionRequest, context: any): string {

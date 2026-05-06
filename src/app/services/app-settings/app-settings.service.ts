@@ -17,12 +17,14 @@ export interface SqlHighlightColors {
 
 export type SqlHighlightColorKey = keyof SqlHighlightColors
 export type SqlHighlightMode = 'dbolt-dark' | 'dbolt-high-contrast' | 'classic-sql' | 'custom'
+export type TableAutocompleteMatchMode = 'contains' | 'fuzzy'
 
 export interface AppSettings {
   defaultQueryRows: number
   connectionExpirationMinutes: number
   sqlSyntaxValidationEnabled: boolean
   tableAutocompleteEnabled: boolean
+  tableAutocompleteMatchMode: TableAutocompleteMatchMode
   columnAutocompleteEnabled: boolean
   autoQuoteCapitalizedColumns: boolean
   sqlFormatterIndentSize: number
@@ -41,6 +43,7 @@ export class AppSettingsService {
     connectionExpirationMinutes: 30,
     sqlSyntaxValidationEnabled: true,
     tableAutocompleteEnabled: true,
+    tableAutocompleteMatchMode: 'contains',
     columnAutocompleteEnabled: true,
     autoQuoteCapitalizedColumns: true,
     sqlFormatterIndentSize: 2,
@@ -166,6 +169,10 @@ export class AppSettingsService {
     return this.getSettings().tableAutocompleteEnabled
   }
 
+  getTableAutocompleteMatchMode(): TableAutocompleteMatchMode {
+    return this.getSettings().tableAutocompleteMatchMode
+  }
+
   isColumnAutocompleteEnabled(): boolean {
     return this.getSettings().columnAutocompleteEnabled
   }
@@ -229,6 +236,17 @@ export class AppSettingsService {
     const settings = {
       ...this.getSettings(),
       tableAutocompleteEnabled: Boolean(value)
+    }
+
+    this.saveSettings(settings)
+
+    return settings
+  }
+
+  setTableAutocompleteMatchMode(value: unknown): AppSettings {
+    const settings = {
+      ...this.getSettings(),
+      tableAutocompleteMatchMode: this.normalizeTableAutocompleteMatchMode(value)
     }
 
     this.saveSettings(settings)
@@ -355,6 +373,10 @@ export class AppSettingsService {
     return this.fallbackSettings.sqlHighlightMode
   }
 
+  normalizeTableAutocompleteMatchMode(value: unknown): TableAutocompleteMatchMode {
+    return value === 'fuzzy' ? 'fuzzy' : 'contains'
+  }
+
   getSqlHighlightPresetColors(mode: Exclude<SqlHighlightMode, 'custom'>): SqlHighlightColors {
     const preset = this.sqlHighlightPresets?.[mode]
     if (preset) return { ...preset }
@@ -384,6 +406,7 @@ export class AppSettingsService {
       connectionExpirationMinutes: this.normalizeExpirationMinutes(settings?.connectionExpirationMinutes),
       sqlSyntaxValidationEnabled: settings?.sqlSyntaxValidationEnabled ?? this.fallbackSettings.sqlSyntaxValidationEnabled,
       tableAutocompleteEnabled: settings?.tableAutocompleteEnabled ?? this.fallbackSettings.tableAutocompleteEnabled,
+      tableAutocompleteMatchMode: this.normalizeTableAutocompleteMatchMode(settings?.tableAutocompleteMatchMode),
       columnAutocompleteEnabled: settings?.columnAutocompleteEnabled ?? this.fallbackSettings.columnAutocompleteEnabled,
       autoQuoteCapitalizedColumns: settings?.autoQuoteCapitalizedColumns ?? this.fallbackSettings.autoQuoteCapitalizedColumns,
       sqlFormatterIndentSize: this.normalizeIndentSize(settings?.sqlFormatterIndentSize),

@@ -19,21 +19,43 @@ export class TableAutocompleteSourceService {
   ) { }
 
   async getTables(context: any): Promise<TableAutocompleteItem[]> {
-    if (!context?.sgbd || !context?.version) {
+    if (!context?.sgbd && !context?.connId && !context?.connectionId) {
       return []
     }
 
-    const ensuredContext = await this.connectionContext.ensureContext(context)
-    const cacheKey = this.buildCacheKey(ensuredContext)
-
+    const cacheKey = this.buildCacheKey(context)
     if (!this.cache.has(cacheKey)) {
-      this.cache.set(cacheKey, this.fetchTablesWithReconnect(ensuredContext).catch((error) => {
+      this.cache.set(cacheKey, this.fetchTablesForContext(context, cacheKey).catch((error) => {
         this.cache.delete(cacheKey)
         throw error
       }))
     }
 
     return this.cache.get(cacheKey) || []
+  }
+
+  private async fetchTablesForContext(context: any, originalCacheKey: string): Promise<TableAutocompleteItem[]> {
+    const ensuredContext = await this.connectionContext.ensureContext(context)
+    const ensuredCacheKey = this.buildCacheKey(ensuredContext)
+
+    if (ensuredCacheKey !== originalCacheKey) {
+      const cachedTables = this.cache.get(ensuredCacheKey)
+      if (cachedTables) {
+        return cachedTables
+      }
+
+      const fetchPromise = this.fetchTablesWithReconnect(ensuredContext)
+      this.cache.set(ensuredCacheKey, fetchPromise)
+
+      try {
+        return await fetchPromise
+      } catch (error) {
+        this.cache.delete(ensuredCacheKey)
+        throw error
+      }
+    }
+
+    return this.fetchTablesWithReconnect(ensuredContext)
   }
 
   private async fetchTablesWithReconnect(context: any): Promise<TableAutocompleteItem[]> {
