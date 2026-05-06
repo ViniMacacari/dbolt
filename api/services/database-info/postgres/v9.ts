@@ -17,6 +17,12 @@ type CurrentSchemaRow = QueryRow & { schema: string };
 type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'function' | 'procedure' };
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type: string };
 type ColumnRow = QueryRow & TableColumn;
+type TableLikeObjectRow = QueryRow & {
+  object_id: string;
+  schema_name: string;
+  name: string;
+  object_type: 'table' | 'view' | 'materialized_view';
+};
 
 class ListObjectsPgV1 {
   private readonly db = new PgV1();
@@ -173,21 +179,16 @@ class ListObjectsPgV1 {
 
   async tableColumns(tableName: string, connectionKey?: string): Promise<TableColumnsResult> {
     try {
-      const columns = (await this.db.executeQuery(
-        `
-          SELECT column_name AS name, data_type AS type
-          FROM information_schema.columns
-          WHERE table_name = $1
-            AND table_schema = current_schema()
-          ORDER BY ordinal_position
-        `,
-        [tableName],
-        connectionKey
-      )) as ColumnRow[];
+      const object = await this.resolveTableLikeObject(tableName, connectionKey);
+      if (!object) {
+        return { success: true, data: [] };
+      }
+
+      const columns = await this.loadObjectColumns(object, connectionKey);
 
       return {
         success: true,
-        data: columns.map((column) => ({ name: column.name, type: column.type }))
+        data: columns.map((column) => this.toColumnMetadata(column, object.object_type))
       };
     } catch (error: unknown) {
       console.error('Error listing table columns:', error);
@@ -265,31 +266,32 @@ class ListObjectsPgV1 {
 
   async tableDDL(tableName: string, connectionKey?: string): Promise<TableDDLResult> {
     try {
-      const columns = (await this.db.executeQuery(
-        `
-          SELECT
-            column_name,
-            data_type,
-            character_maximum_length,
-            numeric_precision,
-            numeric_scale,
-            is_nullable,
-            column_default
-          FROM information_schema.columns
-          WHERE table_schema = current_schema()
-            AND table_name = $1
-          ORDER BY ordinal_position
-        `,
-        [tableName],
-        connectionKey
-      )) as QueryRow[];
+      const object = await this.resolveTableLikeObject(tableName, connectionKey);
+      if (!object) {
+        return { success: true, ddl: '' };
+      }
+
+      if (object.object_type === 'view' || object.object_type === 'materialized_view') {
+        const rows = (await this.db.executeQuery(
+          'SELECT pg_get_viewdef($1::oid, true) AS definition',
+          [object.object_id],
+          connectionKey
+        )) as QueryRow[];
+
+        return {
+          success: true,
+          ddl: this.formatPostgresViewDDL(object, String(rows[0]?.['definition'] || ''))
+        };
+      }
+
+      const columns = (await this.loadObjectColumns(object, connectionKey)) as QueryRow[];
       const columnLines = columns.map((column) => {
         const type = this.formatPostgresColumnType(column);
         const nullable = column['is_nullable'] === 'NO' ? ' NOT NULL' : '';
         const defaultValue = column['column_default'] ? ` DEFAULT ${String(column['column_default'])}` : '';
-        return `  ${quoteIdentifier(String(column['column_name']))} ${type}${defaultValue}${nullable}`;
+        return `  ${quoteIdentifier(String(column['name']))} ${type}${defaultValue}${nullable}`;
       });
-      const ddl = `CREATE TABLE ${quoteIdentifier(tableName)} (\n${columnLines.join(',\n')}\n);`;
+      const ddl = `CREATE TABLE ${quoteIdentifier(object.schema_name)}.${quoteIdentifier(object.name)} (\n${columnLines.join(',\n')}\n);`;
 
       return { success: true, ddl };
     } catch (error: unknown) {
@@ -329,6 +331,10 @@ class ListObjectsPgV1 {
 
   private formatPostgresColumnType(column: QueryRow): string {
     const dataType = String(column['data_type'] || '');
+    if (dataType === 'USER-DEFINED' && column['udt_name']) {
+      return String(column['udt_name']);
+    }
+
     if (column['character_maximum_length']) {
       return `${dataType}(${column['character_maximum_length']})`;
     }
@@ -340,6 +346,93 @@ class ListObjectsPgV1 {
     }
 
     return dataType;
+  }
+
+  private async resolveTableLikeObject(tableName: string, connectionKey?: string): Promise<TableLikeObjectRow | null> {
+    const rows = (await this.db.executeQuery(
+      `
+        SELECT
+          c.oid::text AS object_id,
+          n.nspname AS schema_name,
+          c.relname AS name,
+          CASE
+            WHEN c.relkind = 'v' THEN 'view'
+            WHEN c.relkind = 'm' THEN 'materialized_view'
+            ELSE 'table'
+          END AS object_type
+        FROM pg_class c
+        INNER JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = current_schema()
+          AND c.relname = $1
+          AND c.relkind IN ('r', 'p', 'v', 'm')
+        ORDER BY
+          CASE c.relkind
+            WHEN 'r' THEN 0
+            WHEN 'p' THEN 0
+            WHEN 'v' THEN 1
+            ELSE 2
+          END
+        LIMIT 1
+      `,
+      [tableName],
+      connectionKey
+    )) as TableLikeObjectRow[];
+
+    return rows[0] || null;
+  }
+
+  private async loadObjectColumns(object: TableLikeObjectRow, connectionKey?: string): Promise<ColumnRow[]> {
+    return (await this.db.executeQuery(
+      `
+        SELECT
+          table_name AS object_name,
+          column_name AS name,
+          data_type,
+          udt_name,
+          character_maximum_length,
+          numeric_precision,
+          numeric_scale,
+          datetime_precision,
+          is_nullable,
+          column_default,
+          collation_name,
+          ordinal_position
+        FROM information_schema.columns
+        WHERE table_schema = $1
+          AND table_name = $2
+        ORDER BY ordinal_position
+      `,
+      [object.schema_name, object.name],
+      connectionKey
+    )) as ColumnRow[];
+  }
+
+  private toColumnMetadata(column: QueryRow, objectType: TableLikeObjectRow['object_type']): TableColumn {
+    return {
+      name: String(column['name'] || ''),
+      type: this.formatPostgresColumnType(column),
+      data_type: column['data_type'],
+      udt_name: column['udt_name'],
+      character_maximum_length: column['character_maximum_length'],
+      numeric_precision: column['numeric_precision'],
+      numeric_scale: column['numeric_scale'],
+      datetime_precision: column['datetime_precision'],
+      is_nullable: column['is_nullable'],
+      column_default: column['column_default'],
+      collation_name: column['collation_name'],
+      ordinal_position: column['ordinal_position'],
+      object_type: objectType
+    };
+  }
+
+  private formatPostgresViewDDL(object: TableLikeObjectRow, definition: string): string {
+    const trimmed = definition.trim();
+    if (!trimmed) {
+      return '';
+    }
+
+    const keyword = object.object_type === 'materialized_view' ? 'MATERIALIZED VIEW' : 'VIEW';
+    return `CREATE ${keyword} ${quoteIdentifier(object.schema_name)}.${quoteIdentifier(object.name)} AS\n${trimmed}${trimmed.endsWith(';') ? '' : ';'}`;
   }
 }
 
