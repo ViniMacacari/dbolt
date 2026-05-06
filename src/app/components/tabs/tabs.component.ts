@@ -16,7 +16,7 @@ import { QueryCompareTargetService } from '../../services/query-compare-target/q
 })
 export class TabsComponent {
   @Output() tabSelected = new EventEmitter<any>()
-  @Output() tabClosed = new EventEmitter<void>()
+  @Output() tabClosed = new EventEmitter<any>()
 
   showLoadQuery: boolean = false
   showYNModal: boolean = false
@@ -247,15 +247,28 @@ export class TabsComponent {
 
   private closeTabAt(index: number): void {
     const tab = this.tabs[index]
+    const wasActive = this.activeTab === index
     this.releaseTabResources(tab)
     this.tabs.splice(index, 1)
+    this.tabClosed.emit({
+      tab,
+      wasActive,
+      hasTabs: this.tabs.length > 0
+    })
 
     if (this.tabs.length === 0) {
       this.activeTab = null
-      this.tabClosed.emit()
-    } else {
+      return
+    }
+
+    if (wasActive) {
       const newActiveTab = Math.min(index, this.tabs.length - 1)
       this.selectTab(newActiveTab)
+      return
+    }
+
+    if (this.activeTab !== null && index < this.activeTab) {
+      this.activeTab--
     }
   }
 
