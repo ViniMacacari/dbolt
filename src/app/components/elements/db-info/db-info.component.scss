@@ -32,6 +32,7 @@
     height: 100%;
     min-height: 0;
     overflow: hidden;
+    position: relative;
     background-color: #292727;
     border: 1px solid #363535;
     border-radius: 10px;
@@ -87,6 +88,52 @@
 
     .ag-body-viewport {
         overflow-y: auto !important;
+    }
+}
+
+.db-info-status {
+    align-items: center;
+    background: rgba(27, 27, 27, .88);
+    color: #e8eaed;
+    display: flex;
+    font-family: 'Nunito';
+    font-size: .86em;
+    gap: 10px;
+    inset: 0;
+    justify-content: center;
+    padding: 18px;
+    position: absolute;
+    text-align: center;
+    z-index: 4;
+
+    &.error {
+        align-items: flex-start;
+        background: #1b1b1b;
+        color: #ffb4b4;
+        flex-direction: column;
+        justify-content: flex-start;
+        text-align: left;
+        user-select: text;
+
+        strong,
+        span {
+            user-select: text;
+        }
+    }
+}
+
+.db-info-spinner {
+    animation: db-info-spin .8s linear infinite;
+    border: 2px solid #5f5f5f;
+    border-radius: 50%;
+    border-top-color: #d8e9fb;
+    height: 18px;
+    width: 18px;
+}
+
+@keyframes db-info-spin {
+    to {
+        transform: rotate(360deg);
     }
 }
 
