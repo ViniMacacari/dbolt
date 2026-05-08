@@ -45,6 +45,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private syntaxValidationDisposable?: monaco.IDisposable
   private settingsSubscription?: Subscription
   private shortcutDisposers: Array<() => void> = []
+  private editorActionDisposables: monaco.IDisposable[] = []
   private readonly defaultResultHeight = 300
   private readonly minimumResultHeight = 120
   private readonly minimumEditorHeight = 120
@@ -122,6 +123,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.syntaxValidationDisposable?.dispose()
     this.settingsSubscription?.unsubscribe()
     this.unregisterKeyboardShortcuts()
+    this.disposeEditorContextMenuActions()
 
     if (this.editor) {
       this.editor.dispose()
@@ -174,7 +176,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       quickSuggestionsDelay: 250,
       suggestOnTriggerCharacters: true,
       wordBasedSuggestions: 'off',
-      contextmenu: false
+      contextmenu: true
     })
 
     this.autocompleteDisposable = this.tableAutocomplete.registerEditor(
@@ -320,6 +322,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private initializeEditorEvents(): void {
     this.registerKeyboardShortcuts()
+    this.registerEditorContextMenuActions()
 
     this.editor?.onDidChangeModelContent(() => {
       const value = this.editor?.getValue() || ''
@@ -328,6 +331,29 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         this.sqlContentChange.emit(value)
       }
     })
+  }
+
+  private registerEditorContextMenuActions(): void {
+    this.disposeEditorContextMenuActions()
+
+    const indentAction = this.editor?.addAction({
+      id: 'dbolt.indentSql',
+      label: 'Indent code',
+      contextMenuGroupId: '1_modification',
+      contextMenuOrder: 1.5,
+      run: () => {
+        this.formatCode()
+      }
+    })
+
+    if (indentAction) {
+      this.editorActionDisposables.push(indentAction)
+    }
+  }
+
+  private disposeEditorContextMenuActions(): void {
+    this.editorActionDisposables.forEach((disposable) => disposable.dispose())
+    this.editorActionDisposables = []
   }
 
   private registerKeyboardShortcuts(): void {
