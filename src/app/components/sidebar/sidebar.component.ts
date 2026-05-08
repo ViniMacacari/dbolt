@@ -537,7 +537,7 @@ export class SidebarComponent {
     let schemaDb: any
 
     try {
-      await this.connectDatabase({
+      await this.canConnect({
         host: connection.host,
         port: connection.port,
         user: connection.user,
@@ -582,14 +582,7 @@ export class SidebarComponent {
       this.clickTimeout = null
     }
 
-    LoadingComponent.show()
-
-    try {
-      await this.setSchema(data2)
-      this.dbInfoRequested.emit(connection)
-    } finally {
-      LoadingComponent.hide()
-    }
+    this.dbInfoRequested.emit(data2 || connection)
   }
 
   async openDatabaseInfo(connection: any, database: any, event: MouseEvent): Promise<void> {
