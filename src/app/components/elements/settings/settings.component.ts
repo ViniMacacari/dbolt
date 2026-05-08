@@ -12,8 +12,10 @@ import { ConnectionsService, SavedConnection } from '../../../services/resolve-c
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { InputListComponent } from '../input-list/input-list.component'
 import { LoadingComponent } from '../../modal/loading/loading.component'
+import { AppLanguageService } from '../../../services/language/app-language.service'
+import { AppLanguage } from '../../../services/language/language.model'
 
-type SettingsTab = 'query' | 'connections' | 'autocomplete' | 'highlight'
+type SettingsTab = 'query' | 'connections' | 'autocomplete' | 'highlight' | 'language'
 
 @Component({
   selector: 'app-settings',
@@ -38,7 +40,9 @@ export class SettingsComponent implements OnInit {
   sqlFormatterIndentCreateBody: boolean
   sqlHighlightMode: SqlHighlightMode
   sqlHighlightColors: SqlHighlightColors
+  appLanguage: AppLanguage
   readonly sqlHighlightOptions: { value: SqlHighlightMode, label: string }[]
+  readonly appLanguageOptions: { value: AppLanguage, label: string }[]
   readonly sqlFormatterCommaStyleOptions: { value: SqlFormatterCommaStyle, label: string }[] = [
     { value: 'trailing', label: 'Trailing commas' },
     { value: 'leading', label: 'Leading commas' }
@@ -64,6 +68,7 @@ export class SettingsComponent implements OnInit {
   syntaxValidationSavedMessage: string = ''
   formatterSavedMessage: string = ''
   highlightSavedMessage: string = ''
+  languageSavedMessage: string = ''
   tableAutocompleteSavedMessage: string = ''
   tableMatchModeSavedMessage: string = ''
   columnAutocompleteSavedMessage: string = ''
@@ -83,7 +88,8 @@ export class SettingsComponent implements OnInit {
   constructor(
     private settings: AppSettingsService,
     private connectionsService: ConnectionsService,
-    private IAPI: InternalApiService
+    private IAPI: InternalApiService,
+    private language: AppLanguageService
   ) {
     this.defaultQueryRows = this.settings.getDefaultQueryRows()
     this.connectionExpirationMinutes = this.settings.getConnectionExpirationMinutes()
@@ -99,7 +105,9 @@ export class SettingsComponent implements OnInit {
     this.sqlFormatterIndentCreateBody = this.settings.shouldIndentSqlCreateBody()
     this.sqlHighlightMode = this.settings.getSqlHighlightMode()
     this.sqlHighlightColors = this.settings.getSqlHighlightColors()
+    this.appLanguage = this.settings.getAppLanguage()
     this.sqlHighlightOptions = this.settings.sqlHighlightOptions
+    this.appLanguageOptions = this.language.languageOptions
   }
 
   async ngOnInit(): Promise<void> {
@@ -111,11 +119,27 @@ export class SettingsComponent implements OnInit {
   }
 
   get settingsTitle(): string {
+    if (this.activeTab === 'language') return this.t('settings.language.title')
     if (this.activeTab === 'connections') return 'Connections'
     if (this.activeTab === 'autocomplete') return 'Auto-complete'
     if (this.activeTab === 'highlight') return 'SQL highlight'
 
     return 'Query defaults'
+  }
+
+  onAppLanguageSelected(item: { [key: string]: string | number } | null): void {
+    if (!item) return
+
+    this.appLanguage = this.settings.appLanguageOptions
+      .some((option) => option.value === item['value'])
+      ? item['value'] as AppLanguage
+      : this.settings.getAppLanguage()
+    this.languageSavedMessage = ''
+  }
+
+  saveLanguageSettings(): void {
+    this.appLanguage = this.language.setLanguage(this.appLanguage)
+    this.languageSavedMessage = this.t('settings.language.saved')
   }
 
   get isCustomSqlHighlight(): boolean {
@@ -459,5 +483,9 @@ export class SettingsComponent implements OnInit {
         throw new Error('Selected default schema does not exist.')
       }
     }
+  }
+
+  t(key: string): string {
+    return this.language.translate(key)
   }
 }

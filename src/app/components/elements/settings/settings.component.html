@@ -22,6 +22,12 @@
             <img src="icons/star.png" title="Highlight" height="15px">
             Highlight
         </button>
+
+        <button type="button" class="btn" [ngClass]="{ 'active': activeTab === 'language' }"
+            (click)="selectTab('language')">
+            <img src="icons/settings.png" [title]="t('settings.language.tab')" height="15px">
+            {{ t('settings.language.tab') }}
+        </button>
     </div>
 
     <div class="settings-panel">
@@ -195,6 +201,26 @@
                     </div>
                     <button type="button" (click)="saveSqlHighlightSettings()">Save</button>
                     <small *ngIf="highlightSavedMessage">{{ highlightSavedMessage }}</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-stack" *ngIf="activeTab === 'language'">
+            <div class="settings-card">
+                <div>
+                    <h3>{{ t('settings.language.cardTitle') }}</h3>
+                    <p>{{ t('settings.language.description') }}</p>
+                </div>
+
+                <div class="setting-control match-mode-control">
+                    <label>{{ t('settings.language.field') }}</label>
+                    <app-input-list [list]="appLanguageOptions" [displayKey]="'label'" [valueKey]="'value'"
+                        [selectedValue]="appLanguage" [width]="'220px'"
+                        [placeholder]="t('settings.language.placeholder')"
+                        (itemSelected)="onAppLanguageSelected($event)">
+                    </app-input-list>
+                    <button type="button" (click)="saveLanguageSettings()">{{ t('settings.language.save') }}</button>
+                    <small *ngIf="languageSavedMessage">{{ languageSavedMessage }}</small>
                 </div>
             </div>
         </div>
