@@ -80,32 +80,41 @@
                 </div>
             </div>
 
-            <div class="settings-card">
-                <div>
+            <div class="settings-card formatter-settings-card">
+                <div class="formatter-settings-header">
                     <h3>Script indentation</h3>
                     <p>Applied by the indent button in query tabs.</p>
                 </div>
 
                 <div class="setting-control formatter-control">
-                    <div class="formatter-grid">
-                        <label class="formatter-field" for="sql-formatter-indent-size">
-                            <span>Spaces</span>
+                    <div class="formatter-list">
+                        <div class="formatter-row">
+                            <div>
+                                <strong>Indent size</strong>
+                                <span>Number of spaces used for nested lines.</span>
+                            </div>
                             <input id="sql-formatter-indent-size" type="number" min="1" max="8" step="1"
                                 [value]="sqlFormatterIndentSize" (input)="onSqlFormatterIndentInput($event)"
                                 (keydown.enter)="saveSqlFormatterSettings()">
-                        </label>
+                        </div>
 
-                        <div class="formatter-field">
-                            <span>Commas</span>
+                        <div class="formatter-row">
+                            <div>
+                                <strong>Comma style</strong>
+                                <span>Choose whether split SELECT columns use trailing or leading commas.</span>
+                            </div>
                             <app-input-list [list]="sqlFormatterCommaStyleOptions" [displayKey]="'label'"
                                 [valueKey]="'value'" [selectedValue]="sqlFormatterCommaStyle"
-                                [width]="'180px'" [placeholder]="'Comma style'"
+                                [width]="'210px'" [placeholder]="'Comma style'"
                                 (itemSelected)="onSqlFormatterCommaStyleSelected($event)">
                             </app-input-list>
                         </div>
 
-                        <label class="formatter-toggle" for="sql-formatter-uppercase-keywords">
-                            <span>Uppercase</span>
+                        <label class="formatter-row" for="sql-formatter-uppercase-keywords">
+                            <div>
+                                <strong>Uppercase keywords</strong>
+                                <span>Formats SELECT, FROM, WHERE and other SQL keywords in uppercase.</span>
+                            </div>
                             <span class="toggle-control compact-toggle">
                                 <input id="sql-formatter-uppercase-keywords" type="checkbox"
                                     [checked]="sqlFormatterUppercaseKeywords"
@@ -114,8 +123,11 @@
                             </span>
                         </label>
 
-                        <label class="formatter-toggle" for="sql-formatter-blank-lines">
-                            <span>Statement spacing</span>
+                        <label class="formatter-row" for="sql-formatter-blank-lines">
+                            <div>
+                                <strong>Statement spacing</strong>
+                                <span>Adds a blank line between separate SQL statements.</span>
+                            </div>
                             <span class="toggle-control compact-toggle">
                                 <input id="sql-formatter-blank-lines" type="checkbox"
                                     [checked]="sqlFormatterBlankLineBetweenStatements"
@@ -124,8 +136,11 @@
                             </span>
                         </label>
 
-                        <label class="formatter-toggle" for="sql-formatter-indent-create-body">
-                            <span>Indent DDL body</span>
+                        <label class="formatter-row" for="sql-formatter-indent-create-body">
+                            <div>
+                                <strong>Indent DDL body</strong>
+                                <span>Indents the SQL body after CREATE/ALTER VIEW, PROCEDURE or FUNCTION.</span>
+                            </div>
                             <span class="toggle-control compact-toggle">
                                 <input id="sql-formatter-indent-create-body" type="checkbox"
                                     [checked]="sqlFormatterIndentCreateBody"
@@ -134,8 +149,11 @@
                             </span>
                         </label>
                     </div>
-                    <button type="button" (click)="saveSqlFormatterSettings()">Save</button>
-                    <small *ngIf="formatterSavedMessage">{{ formatterSavedMessage }}</small>
+
+                    <div class="formatter-actions">
+                        <button type="button" (click)="saveSqlFormatterSettings()">Save</button>
+                        <small *ngIf="formatterSavedMessage">{{ formatterSavedMessage }}</small>
+                    </div>
                 </div>
             </div>
 
