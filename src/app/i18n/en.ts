@@ -2,6 +2,7 @@ import type { TranslationCatalog } from '../services/language/language.model'
 
 export const enTranslations: TranslationCatalog = {
   'generic.saved': 'Saved',
+  'generic.close': 'Close',
 
   'home.title': 'DBolt Database Manager',
   'home.chooseDatabase': 'Choose your database',
@@ -25,6 +26,9 @@ export const enTranslations: TranslationCatalog = {
   'home.loadConnectionsError': 'Error loading saved connections',
   'home.connectionFailed': 'Connection failed',
   'home.applyDefaultTargetError': 'Could not apply default database/schema',
+  'home.languageButton': 'Change language',
+  'home.languageModalTitle': 'Language',
+  'home.languageModalDescription': 'Choose the language used on supported screens.',
 
   'help.title': 'DBolt Help',
   'help.subtitle': 'App usage, common questions, and driver behavior.',
