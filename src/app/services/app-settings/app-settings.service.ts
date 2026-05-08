@@ -17,6 +17,7 @@ export interface SqlHighlightColors {
 
 export type SqlHighlightColorKey = keyof SqlHighlightColors
 export type SqlHighlightMode = 'dbolt-dark' | 'dbolt-high-contrast' | 'classic-sql' | 'custom'
+export type SqlFormatterCommaStyle = 'trailing' | 'leading'
 export type TableAutocompleteMatchMode = 'contains' | 'fuzzy'
 
 export interface AppSettings {
@@ -29,6 +30,9 @@ export interface AppSettings {
   autoQuoteCapitalizedColumns: boolean
   sqlFormatterIndentSize: number
   sqlFormatterUppercaseKeywords: boolean
+  sqlFormatterCommaStyle: SqlFormatterCommaStyle
+  sqlFormatterBlankLineBetweenStatements: boolean
+  sqlFormatterIndentCreateBody: boolean
   sqlHighlightMode: SqlHighlightMode
   sqlHighlightColors: SqlHighlightColors
 }
@@ -48,6 +52,9 @@ export class AppSettingsService {
     autoQuoteCapitalizedColumns: true,
     sqlFormatterIndentSize: 2,
     sqlFormatterUppercaseKeywords: true,
+    sqlFormatterCommaStyle: 'trailing',
+    sqlFormatterBlankLineBetweenStatements: true,
+    sqlFormatterIndentCreateBody: true,
     sqlHighlightMode: 'dbolt-dark',
     sqlHighlightColors: this.getSqlHighlightPresetColors('dbolt-dark')
   }
@@ -189,6 +196,18 @@ export class AppSettingsService {
     return this.getSettings().sqlFormatterUppercaseKeywords
   }
 
+  getSqlFormatterCommaStyle(): SqlFormatterCommaStyle {
+    return this.getSettings().sqlFormatterCommaStyle
+  }
+
+  shouldAddBlankLineBetweenSqlStatements(): boolean {
+    return this.getSettings().sqlFormatterBlankLineBetweenStatements
+  }
+
+  shouldIndentSqlCreateBody(): boolean {
+    return this.getSettings().sqlFormatterIndentCreateBody
+  }
+
   getSqlHighlightColors(): SqlHighlightColors {
     return this.getSettings().sqlHighlightColors
   }
@@ -276,11 +295,20 @@ export class AppSettingsService {
     return settings
   }
 
-  setSqlFormatterSettings(indentSize: number, uppercaseKeywords: boolean): AppSettings {
+  setSqlFormatterSettings(
+    indentSize: number,
+    uppercaseKeywords: boolean,
+    commaStyle: unknown = this.getSettings().sqlFormatterCommaStyle,
+    blankLineBetweenStatements: boolean = this.getSettings().sqlFormatterBlankLineBetweenStatements,
+    indentCreateBody: boolean = this.getSettings().sqlFormatterIndentCreateBody
+  ): AppSettings {
     const settings = {
       ...this.getSettings(),
       sqlFormatterIndentSize: this.normalizeIndentSize(indentSize),
-      sqlFormatterUppercaseKeywords: Boolean(uppercaseKeywords)
+      sqlFormatterUppercaseKeywords: Boolean(uppercaseKeywords),
+      sqlFormatterCommaStyle: this.normalizeSqlFormatterCommaStyle(commaStyle),
+      sqlFormatterBlankLineBetweenStatements: Boolean(blankLineBetweenStatements),
+      sqlFormatterIndentCreateBody: Boolean(indentCreateBody)
     }
 
     this.saveSettings(settings)
@@ -377,6 +405,10 @@ export class AppSettingsService {
     return value === 'fuzzy' ? 'fuzzy' : 'contains'
   }
 
+  normalizeSqlFormatterCommaStyle(value: unknown): SqlFormatterCommaStyle {
+    return value === 'leading' ? 'leading' : 'trailing'
+  }
+
   getSqlHighlightPresetColors(mode: Exclude<SqlHighlightMode, 'custom'>): SqlHighlightColors {
     const preset = this.sqlHighlightPresets?.[mode]
     if (preset) return { ...preset }
@@ -411,6 +443,9 @@ export class AppSettingsService {
       autoQuoteCapitalizedColumns: settings?.autoQuoteCapitalizedColumns ?? this.fallbackSettings.autoQuoteCapitalizedColumns,
       sqlFormatterIndentSize: this.normalizeIndentSize(settings?.sqlFormatterIndentSize),
       sqlFormatterUppercaseKeywords: settings?.sqlFormatterUppercaseKeywords ?? this.fallbackSettings.sqlFormatterUppercaseKeywords,
+      sqlFormatterCommaStyle: this.normalizeSqlFormatterCommaStyle(settings?.sqlFormatterCommaStyle),
+      sqlFormatterBlankLineBetweenStatements: settings?.sqlFormatterBlankLineBetweenStatements ?? this.fallbackSettings.sqlFormatterBlankLineBetweenStatements,
+      sqlFormatterIndentCreateBody: settings?.sqlFormatterIndentCreateBody ?? this.fallbackSettings.sqlFormatterIndentCreateBody,
       sqlHighlightMode,
       sqlHighlightColors
     }
