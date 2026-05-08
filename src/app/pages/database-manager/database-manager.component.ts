@@ -537,11 +537,17 @@ export class DatabaseManagerComponent {
   }
 
   async onDbInfoRequested(event: any): Promise<void> {
-    LoadingComponent.show()
+    const requestedContext = this.normalizeContextInput(event)
+    const initialContext = this.connectionContext.createContext(this.withReusableSchemaConnectionKey(requestedContext))
+    const schemaTab = this.tabsComponent.newTab('schema', {
+      dbInfo: this.createDatabaseObjectsState(initialContext, requestedContext, {
+        loading: true
+      }),
+      context: initialContext
+    }, this.getDbInfoTabName(initialContext))
 
     try {
-      const requestedContext = this.normalizeContextInput(event)
-      let context = await this.connectionContext.ensureContext(this.connectionContext.createContext(requestedContext))
+      let context = await this.connectionContext.ensureContext(initialContext)
 
       const queryString = this.connectionContext.toQueryString(context)
       const schemaDb: any = await this.IAPI.get(`/api/${context.sgbd}/${context.version}/get-selected-schema${queryString}`)
@@ -559,16 +565,42 @@ export class DatabaseManagerComponent {
       this.dbSchemaService.setSelectedSchemaDB(context)
 
       const result: any = await this.loadDatabaseObjects(context, requestedContext)
+      if (!this.isTabOpen(schemaTab)) return
 
-      this.dbSchemasData = result
+      schemaTab.name = this.getDbInfoTabName(context)
+      schemaTab.dbInfo = context
+      schemaTab.info = {
+        ...schemaTab.info,
+        dbInfo: result,
+        context
+      }
 
-      this.tabsComponent.newTab('schema', { dbInfo: this.dbSchemasData, context }, this.getDbInfoTabName(context))
+      if (this.isActiveTab(schemaTab)) {
+        this.dbSchemasData = result
+        this.dbInfoTabInfo = schemaTab
+      }
     } catch (error: any) {
       console.error(error)
+      if (this.isTabOpen(schemaTab)) {
+        const errorContext = schemaTab.info?.context || initialContext
+        const errorMessage = error?.error || error?.message || 'Could not load database objects.'
+        const errorData = this.createDatabaseObjectsState(errorContext, requestedContext, {
+          errorMessage
+        })
+
+        schemaTab.info = {
+          ...schemaTab.info,
+          dbInfo: errorData,
+          context: errorContext
+        }
+
+        if (this.isActiveTab(schemaTab)) {
+          this.dbSchemasData = errorData
+          this.dbInfoTabInfo = schemaTab
+        }
+      }
       this.toast.showToast(error?.error || error?.message || 'Could not load database objects.', 'red')
     }
-
-    LoadingComponent.hide()
   }
 
   private normalizeContextInput(context: any): any {
@@ -621,16 +653,34 @@ export class DatabaseManagerComponent {
 
   private async reloadSchemaInfoTab(tab: any, context: any): Promise<void> {
     try {
-      const result = await this.loadDatabaseObjects(context, context)
+      const loadingData = this.createDatabaseObjectsState(context, context, {
+        loading: true
+      })
 
-      this.dbSchemasData = result
+      tab.info = {
+        ...tab.info,
+        dbInfo: loadingData,
+        context
+      }
+      if (this.isActiveTab(tab)) {
+        this.dbSchemasData = loadingData
+        this.dbInfoTabInfo = tab
+      }
+
+      const result = await this.loadDatabaseObjects(context, context)
+      if (!this.isTabOpen(tab)) return
+
       tab.info = {
         ...tab.info,
         dbInfo: result,
         context
       }
       tab.name = context.schema || tab.name
-      this.dbInfoTabInfo = tab
+
+      if (this.isActiveTab(tab)) {
+        this.dbSchemasData = result
+        this.dbInfoTabInfo = tab
+      }
     } catch (error: any) {
       console.error(error)
       this.toast.showToast(error?.error || error?.message || 'Could not reload database objects.', 'red')
@@ -646,7 +696,27 @@ export class DatabaseManagerComponent {
 
     const result: any = this.normalizeDatabaseObjects(response)
 
-    result.connection = {
+    result.connection = this.buildDatabaseObjectsConnection(context, source)
+
+    return result
+  }
+
+  private createDatabaseObjectsState(context: any, source: any, state: any = {}): any {
+    return {
+      tables: [],
+      views: [],
+      procedures: [],
+      indexes: [],
+      connection: this.buildDatabaseObjectsConnection(context, source),
+      ...state
+    }
+  }
+
+  private buildDatabaseObjectsConnection(context: any = {}, source: any = {}): any {
+    context = context || {}
+    source = source || {}
+
+    return {
       host: source.host || context.host,
       port: source.port || context.port,
       database: source.database || context.database,
@@ -658,8 +728,32 @@ export class DatabaseManagerComponent {
       connId: source.connectionId || source.connId || source.id || context.connId,
       connectionKey: context.connectionKey
     }
+  }
 
-    return result
+  private withReusableSchemaConnectionKey(context: any): any {
+    if (!context || context.connectionKey) return context
+
+    const activeContext = this.tabsComponent?.getActiveTab()?.dbInfo || this.selectedSchemaDB
+    if (!activeContext?.connectionKey) return context
+
+    const sameConnection = this.isSameSelectedConnection(activeContext, context)
+    const sameDatabase = activeContext.database === context.database
+    const sameSchema = activeContext.schema === context.schema
+
+    if (!sameConnection || !sameDatabase || !sameSchema) return context
+
+    return {
+      ...context,
+      connectionKey: activeContext.connectionKey
+    }
+  }
+
+  private isTabOpen(tab: any): boolean {
+    return !!tab && !!this.tabsComponent?.tabs?.includes(tab)
+  }
+
+  private isActiveTab(tab: any): boolean {
+    return !!tab && this.tabsComponent?.getActiveTab() === tab
   }
 
   private normalizeDatabaseObjects(response: any): any {

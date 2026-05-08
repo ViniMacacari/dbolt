@@ -55,7 +55,7 @@ export class TabsComponent {
     this.dropdownVisible = !this.dropdownVisible
   }
 
-  newTab(type: string, info: any, name: string | null = null): void {
+  newTab(type: string, info: any, name: string | null = null): any {
     const newTab: any = {
       id: Date.now(),
       name: name || Date.now(),
@@ -75,6 +75,8 @@ export class TabsComponent {
     setTimeout(() => {
       this.dropdownVisible = false
     }, 100)
+
+    return newTab
   }
 
   newSavedTab(type: string, info: any): void {
