@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common'
 import { Component, OnInit } from '@angular/core'
 import {
   AppSettingsService,
+  SqlFormatterCommaStyle,
   SqlHighlightColorKey,
   SqlHighlightColors,
   SqlHighlightMode,
@@ -32,9 +33,16 @@ export class SettingsComponent implements OnInit {
   autoQuoteCapitalizedColumns: boolean
   sqlFormatterIndentSize: number
   sqlFormatterUppercaseKeywords: boolean
+  sqlFormatterCommaStyle: SqlFormatterCommaStyle
+  sqlFormatterBlankLineBetweenStatements: boolean
+  sqlFormatterIndentCreateBody: boolean
   sqlHighlightMode: SqlHighlightMode
   sqlHighlightColors: SqlHighlightColors
   readonly sqlHighlightOptions: { value: SqlHighlightMode, label: string }[]
+  readonly sqlFormatterCommaStyleOptions: { value: SqlFormatterCommaStyle, label: string }[] = [
+    { value: 'trailing', label: 'Trailing commas' },
+    { value: 'leading', label: 'Leading commas' }
+  ]
   readonly tableAutocompleteMatchModeOptions: { value: TableAutocompleteMatchMode, label: string }[] = [
     { value: 'contains', label: 'Contains typed text' },
     { value: 'fuzzy', label: 'Fuzzy search' }
@@ -86,6 +94,9 @@ export class SettingsComponent implements OnInit {
     this.autoQuoteCapitalizedColumns = this.settings.shouldAutoQuoteCapitalizedColumns()
     this.sqlFormatterIndentSize = this.settings.getSqlFormatterIndentSize()
     this.sqlFormatterUppercaseKeywords = this.settings.shouldUppercaseSqlFormatterKeywords()
+    this.sqlFormatterCommaStyle = this.settings.getSqlFormatterCommaStyle()
+    this.sqlFormatterBlankLineBetweenStatements = this.settings.shouldAddBlankLineBetweenSqlStatements()
+    this.sqlFormatterIndentCreateBody = this.settings.shouldIndentSqlCreateBody()
     this.sqlHighlightMode = this.settings.getSqlHighlightMode()
     this.sqlHighlightColors = this.settings.getSqlHighlightColors()
     this.sqlHighlightOptions = this.settings.sqlHighlightOptions
@@ -182,13 +193,36 @@ export class SettingsComponent implements OnInit {
     this.formatterSavedMessage = ''
   }
 
+  onSqlFormatterCommaStyleSelected(item: { [key: string]: string | number } | null): void {
+    if (!item) return
+
+    this.sqlFormatterCommaStyle = this.settings.normalizeSqlFormatterCommaStyle(item['value'])
+    this.formatterSavedMessage = ''
+  }
+
+  onSqlFormatterBlankLineChange(event: Event): void {
+    this.sqlFormatterBlankLineBetweenStatements = (event.target as HTMLInputElement).checked
+    this.formatterSavedMessage = ''
+  }
+
+  onSqlFormatterIndentCreateBodyChange(event: Event): void {
+    this.sqlFormatterIndentCreateBody = (event.target as HTMLInputElement).checked
+    this.formatterSavedMessage = ''
+  }
+
   saveSqlFormatterSettings(): void {
     const settings = this.settings.setSqlFormatterSettings(
       this.sqlFormatterIndentSize,
-      this.sqlFormatterUppercaseKeywords
+      this.sqlFormatterUppercaseKeywords,
+      this.sqlFormatterCommaStyle,
+      this.sqlFormatterBlankLineBetweenStatements,
+      this.sqlFormatterIndentCreateBody
     )
     this.sqlFormatterIndentSize = settings.sqlFormatterIndentSize
     this.sqlFormatterUppercaseKeywords = settings.sqlFormatterUppercaseKeywords
+    this.sqlFormatterCommaStyle = settings.sqlFormatterCommaStyle
+    this.sqlFormatterBlankLineBetweenStatements = settings.sqlFormatterBlankLineBetweenStatements
+    this.sqlFormatterIndentCreateBody = settings.sqlFormatterIndentCreateBody
     this.formatterSavedMessage = 'Saved'
   }
 

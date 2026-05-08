@@ -362,6 +362,37 @@
 }
 
 .formatter-control {
+    align-items: flex-end;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+
+    .formatter-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 90px 180px repeat(3, minmax(116px, 1fr));
+    }
+
+    .formatter-field,
+    .formatter-toggle {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        justify-content: flex-end;
+        min-width: 0;
+
+        > span:first-child {
+            color: #969696;
+            font-family: 'Nunito';
+            font-size: .72em;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+    }
+
+    .formatter-toggle {
+        align-items: flex-start;
+    }
+
     .compact-toggle {
         cursor: pointer;
         display: inline-flex;
@@ -405,6 +436,17 @@
                 background: #d8e9fb;
                 transform: translateX(19px);
             }
+        }
+    }
+}
+
+@media (max-width: 1200px) {
+    .formatter-control {
+        justify-content: flex-start;
+
+        .formatter-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            width: 100%;
         }
     }
 }
