@@ -26,6 +26,7 @@ import {
   QueryResultExportService
 } from '../../../services/query-result-export/query-result-export.service'
 import { KeyboardShortcutService } from '../../../services/keyboard-shortcuts/keyboard-shortcut.service'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
@@ -81,7 +82,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   @Input() columns: string[] = []
   @Input() executedSql: string = ''
   @Input() dbContext: any
-  @Input() resultTitle: string = 'Results'
+  @Input() resultTitle: string = ''
   @Input() showResultResize: boolean = true
   @Input() showResultExpand: boolean = true
   @Input() showResultClose: boolean = true
@@ -193,7 +194,8 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     private runQuery: RunQueryService,
     private gridDataSourceService: QueryResultGridDataSourceService,
     private resultExport: QueryResultExportService,
-    private keyboardShortcuts: KeyboardShortcutService
+    private keyboardShortcuts: KeyboardShortcutService,
+    private language: AppLanguageService
   ) { }
 
   @Input()
@@ -381,10 +383,33 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     const loadedRows = this.query.length
 
     if (this.totalRows !== null && this.totalRows !== undefined && loadedRows < this.totalRows) {
-      return `${this.formatRowCount(loadedRows)} loaded of ${this.formatRowCount(this.totalRows)} rows`
+      return this.t('results.rowsLoadedOf', {
+        loaded: this.formatRowCount(loadedRows),
+        total: this.formatRowCount(this.totalRows)
+      })
     }
 
-    return `${this.formatRowCount(loadedRows)} rows`
+    return this.t('results.rows', { count: this.formatRowCount(loadedRows) })
+  }
+
+  getResultTitle(): string {
+    return this.resultTitle || this.t('results.title')
+  }
+
+  getPendingChangesSummary(): string {
+    const count = this.getPendingChangeCount()
+    return this.t(count === 1 ? 'results.pendingSingular' : 'results.pendingPlural', { count })
+  }
+
+  getToggleResultTitle(): string {
+    return this.isExpanded ? this.t('results.restore') : this.t('results.expand')
+  }
+
+  getLoadingStatus(): string {
+    if (this.isApplyingEdits) return this.t('results.applyingChanges')
+    if (this.isLoadingMore) return this.t('results.loadingRows')
+
+    return this.t('results.executingQuery')
   }
 
   getExecutionTimeSummary(): string {
@@ -499,7 +524,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       await this.resultExport.copyText(this.errorMessage)
     } catch (error: any) {
       console.error(error)
-      this.copyErrorMessage = error?.message || 'Could not copy query error.'
+      this.copyErrorMessage = error?.message || this.t('results.copyQueryErrorFailed')
     }
   }
 
@@ -635,7 +660,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       this.refreshQuery.emit()
     } catch (error: any) {
       console.error(error)
-      this.editErrorMessage = error?.error || error?.message || 'Could not apply result changes.'
+      this.editErrorMessage = error?.error || error?.message || this.t('results.applyChangesFailed')
     } finally {
       this.isApplyingEdits = false
     }
@@ -792,7 +817,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       this.cellSelectionMenu = null
     } catch (error: any) {
       console.error(error)
-      this.copyErrorMessage = error?.message || 'Could not copy selected cells.'
+      this.copyErrorMessage = error?.message || this.t('results.copySelectedCellsFailed')
     }
   }
 
@@ -1062,8 +1087,8 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
         tooltipValueGetter: (params: any) => {
           const editableMeta = this.getEditableMetaForCell(params.data, field)
           if (!this.editingEnabled) return null
-          if (!editableMeta) return 'Read-only in result editor'
-          return `Type: ${editableMeta.type}`
+          if (!editableMeta) return this.t('results.readOnlyInEditor')
+          return this.t('results.typeTooltip', { type: editableMeta.type })
         }
       }
     })
@@ -1093,7 +1118,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
         ...(columnDef.cellClassRules || {}),
         'dbolt-row-index-selected': (params: any) => this.isRowFullySelected(params.data)
       },
-      tooltipValueGetter: () => 'Select row'
+      tooltipValueGetter: () => this.t('results.selectRow')
     }
   }
 
@@ -1115,7 +1140,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
         input.type = 'checkbox'
         input.checked = this.selectedRows.has(rowId)
         input.disabled = this.pendingDeletes.has(rowId) && !this.isInsertRow(rowId)
-        input.title = input.disabled ? 'Pending delete' : 'Select row'
+        input.title = input.disabled ? this.t('results.pendingDelete') : this.t('results.selectRow')
         input.addEventListener('click', (event) => {
           event.stopPropagation()
           this.toggleSelectedRow(rowId, input.checked)
@@ -1139,7 +1164,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     const target = this.resolveEditableTableTarget(this.executedSql)
     if (!target) {
       this.clearEditMetadata()
-      this.editCapabilityMessage = 'Editing is available only for simple SELECTs from one table.'
+      this.editCapabilityMessage = this.t('results.editingSimpleSelectOnly')
       this.editMetadataSignature = ''
       return
     }
@@ -1164,7 +1189,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.editMetadataSignature = signature
     this.clearEditMetadata()
     this.editMetadataLoading = true
-    this.editCapabilityMessage = 'Loading edit metadata...'
+    this.editCapabilityMessage = this.t('results.loadingEditMetadata')
 
     try {
       const queryString = this.connectionContext.toQueryString(this.dbContext)
@@ -1177,11 +1202,11 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       if (signature !== this.editMetadataSignature) return
 
       if (!columnsResponse?.success) {
-        throw new Error(columnsResponse?.message || columnsResponse?.error || 'Could not load table columns.')
+        throw new Error(columnsResponse?.message || columnsResponse?.error || this.t('results.loadColumnsFailed'))
       }
 
       if (!keysResponse?.success) {
-        throw new Error(keysResponse?.message || keysResponse?.error || 'Could not load table keys.')
+        throw new Error(keysResponse?.message || keysResponse?.error || this.t('results.loadKeysFailed'))
       }
 
       const columnMetas = this.buildEditableColumnMetas(columnsResponse.data || [], keysResponse.data || [], visibleFields)
@@ -1190,7 +1215,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
         .filter((primaryKey) => !columnMetas.some((column) => column.primaryKey && this.sameIdentifier(column.name, primaryKey)))
 
       if (primaryKeys.length === 0 || missingPrimaryKeys.length > 0) {
-        this.editCapabilityMessage = 'Include the primary key columns in the SELECT to edit or delete rows.'
+        this.editCapabilityMessage = this.t('results.includePrimaryKeys')
         this.updateColumns()
         return
       }
@@ -1200,7 +1225,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       columnMetas.forEach((column) => this.resultColumnsByField.set(column.resultField, column))
       editableColumns.forEach((column) => this.editableColumnsByField.set(column.resultField, column))
       this.editCapabilityMessage = editableColumns.length === 0
-        ? 'Existing rows are read-only; add row is available.'
+        ? this.t('results.readOnlyRows')
         : ''
       this.updateColumns()
     } catch (error: any) {
@@ -1209,7 +1234,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       this.editableTable = null
       this.editableColumnsByField.clear()
       this.resultColumnsByField.clear()
-      this.editCapabilityMessage = error?.error || error?.message || 'Could not prepare result editing.'
+      this.editCapabilityMessage = error?.error || error?.message || this.t('results.prepareEditingFailed')
       this.updateColumns()
     } finally {
       if (signature === this.editMetadataSignature) {
@@ -1279,7 +1304,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     const parsed = this.parseEditableValue(params.newValue, meta)
     if (!parsed.valid) {
-      this.editErrorMessage = parsed.message || `Invalid value for ${field}.`
+      this.editErrorMessage = parsed.message || this.t('results.invalidValue', { column: field })
       return false
     }
 
@@ -1333,25 +1358,25 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     if (meta.kind === 'integer') {
       if (!/^-?\d+$/.test(rawValue)) {
-        return { valid: false, message: `${meta.name} expects an integer value.` }
+        return { valid: false, message: this.t('results.integerExpected', { column: meta.name }) }
       }
 
       const parsed = Number(rawValue)
       return Number.isSafeInteger(parsed)
         ? { valid: true, value: parsed }
-        : { valid: false, message: `${meta.name} is outside the supported integer range.` }
+        : { valid: false, message: this.t('results.integerRange', { column: meta.name }) }
     }
 
     if (meta.kind === 'decimal') {
       const normalizedValue = rawValue.replace(',', '.')
       if (!/^-?\d+(\.\d+)?$/.test(normalizedValue)) {
-        return { valid: false, message: `${meta.name} expects a numeric value.` }
+        return { valid: false, message: this.t('results.numericExpected', { column: meta.name }) }
       }
 
       const parsed = Number(normalizedValue)
       return Number.isFinite(parsed)
         ? { valid: true, value: parsed }
-        : { valid: false, message: `${meta.name} expects a numeric value.` }
+        : { valid: false, message: this.t('results.numericExpected', { column: meta.name }) }
     }
 
     if (meta.kind === 'boolean') {
@@ -1359,11 +1384,11 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       if (['true', '1', 'yes', 'y'].includes(normalizedValue)) return { valid: true, value: true }
       if (['false', '0', 'no', 'n'].includes(normalizedValue)) return { valid: true, value: false }
 
-      return { valid: false, message: `${meta.name} expects true/false or 1/0.` }
+      return { valid: false, message: this.t('results.booleanExpected', { column: meta.name }) }
     }
 
     if (meta.kind === 'date' && rawValue && Number.isNaN(Date.parse(rawValue))) {
-      return { valid: false, message: `${meta.name} expects a valid date/time value.` }
+      return { valid: false, message: this.t('results.dateExpected', { column: meta.name }) }
     }
 
     return { valid: true, value: rawValue }
@@ -1686,6 +1711,11 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   }
 
   private formatRowCount(value: number): string {
-    return Number(value || 0).toLocaleString('en-US')
+    const locale = this.language.getCurrentLanguage() === 'pt-BR' ? 'pt-BR' : 'en-US'
+    return Number(value || 0).toLocaleString(locale)
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 }
