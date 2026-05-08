@@ -13,6 +13,7 @@ import { SqlTableAutocompleteService } from '../../../services/code-autocomplete
 import { SqlCodeFormatterService } from '../../../services/code-formatting/sql-code-formatter.service'
 import { SqlSyntaxMonacoMarkersService } from '../../../services/sql-validation/sql-syntax-monaco-markers.service'
 import { QuerySaveService, SavedQuery, SavedQueryInput } from '../../../services/query-save/query-save.service'
+import { KeyboardShortcutService } from '../../../services/keyboard-shortcuts/keyboard-shortcut.service'
 
 let sqlTokenizerConfigured = false
 
@@ -43,6 +44,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private autocompleteDisposable?: monaco.IDisposable
   private syntaxValidationDisposable?: monaco.IDisposable
   private settingsSubscription?: Subscription
+  private shortcutDisposers: Array<() => void> = []
   private readonly defaultResultHeight = 300
   private readonly minimumResultHeight = 120
   private readonly minimumEditorHeight = 120
@@ -74,7 +76,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     private tableAutocomplete: SqlTableAutocompleteService,
     private sqlFormatter: SqlCodeFormatterService,
     private sqlSyntaxMarkers: SqlSyntaxMonacoMarkersService,
-    private querySave: QuerySaveService
+    private querySave: QuerySaveService,
+    private keyboardShortcuts: KeyboardShortcutService
   ) {
     this.settingsSubscription = this.appSettings.settingsChanges$.subscribe((settings) => {
       this.applySqlHighlightTheme(settings.sqlHighlightColors)
@@ -100,7 +103,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     }
 
     if (changes['active'] && changes['active'].currentValue) {
-      this.refreshVisibleLayout()
+      this.refreshVisibleLayout(true)
     }
 
     if (this.editor && this.sqlContent !== this.editor.getValue()) {
@@ -118,6 +121,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.autocompleteDisposable?.dispose()
     this.syntaxValidationDisposable?.dispose()
     this.settingsSubscription?.unsubscribe()
+    this.unregisterKeyboardShortcuts()
 
     if (this.editor) {
       this.editor.dispose()
@@ -315,17 +319,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   private initializeEditorEvents(): void {
-    this.editor?.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-      if (!this.active || this.isLoadingQuery) return
-
-      this.runSelected()
-    })
-
-    this.editor?.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      if (!this.active) return
-
-      void this.saveQuery()
-    })
+    this.registerKeyboardShortcuts()
 
     this.editor?.onDidChangeModelContent(() => {
       const value = this.editor?.getValue() || ''
@@ -334,6 +328,69 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         this.sqlContentChange.emit(value)
       }
     })
+  }
+
+  private registerKeyboardShortcuts(): void {
+    this.unregisterKeyboardShortcuts()
+
+    this.shortcutDisposers.push(
+      this.keyboardShortcuts.register({
+        key: 'Enter',
+        ctrlOrMeta: true,
+        priority: 90,
+        stopPropagation: true,
+        isEnabled: () => this.active && !this.isLoadingQuery && !!this.editor,
+        isInContext: (event) => this.isEditorShortcutContext(event),
+        handler: () => {
+          this.runSelected()
+          return true
+        }
+      }),
+      this.keyboardShortcuts.register({
+        key: 's',
+        ctrlOrMeta: true,
+        priority: 90,
+        stopPropagation: true,
+        isEnabled: () => this.active && !!this.editor,
+        isInContext: (event) => this.isEditorShortcutContext(event),
+        handler: () => {
+          void this.saveQuery()
+          return true
+        }
+      })
+    )
+  }
+
+  private unregisterKeyboardShortcuts(): void {
+    this.shortcutDisposers.forEach((dispose) => dispose())
+    this.shortcutDisposers = []
+  }
+
+  private isEditorShortcutContext(event: KeyboardEvent): boolean {
+    if (this.isSaveAsOpen) return false
+
+    const target = event.target as HTMLElement | null
+
+    if (this.keyboardShortcuts.isEventInside(event, this.editorContainer?.nativeElement)) {
+      return true
+    }
+
+    if (this.isTextInputTarget(target)) {
+      return false
+    }
+
+    return this.keyboardShortcuts.isEventInside(event, this.codeEditorPanel?.nativeElement) ||
+      target === document.body ||
+      target === document.documentElement
+  }
+
+  private isTextInputTarget(target: HTMLElement | null): boolean {
+    if (!target) return false
+
+    return target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      target.isContentEditable
   }
 
   runSelected(): void {
@@ -686,14 +743,20 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     setTimeout(() => this.editor?.layout(), 0)
   }
 
-  private refreshVisibleLayout(): void {
+  private refreshVisibleLayout(focusEditor: boolean = false): void {
     setTimeout(() => {
       this.editor?.layout()
       this.tableQuery?.refreshVisibleGrid()
+      if (focusEditor && !this.queryResultExpanded) {
+        this.editor?.focus()
+      }
 
       window.requestAnimationFrame(() => {
         this.editor?.layout()
         this.tableQuery?.refreshVisibleGrid()
+        if (focusEditor && !this.queryResultExpanded) {
+          this.editor?.focus()
+        }
       })
     }, 0)
   }
