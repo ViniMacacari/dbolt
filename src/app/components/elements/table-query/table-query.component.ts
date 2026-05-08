@@ -158,6 +158,8 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   readonly infiniteCacheBlockSize = 250
   readonly infiniteMaxBlocksInCache = 8
   readonly infiniteBlockLoadDebounceMillis = 25
+  readonly resultRowHeight = 28
+  readonly resultHeaderHeight = 32
   selectedFullRowCount = 0
   canSelectAllLoadedRows = false
   editingEnabled = false

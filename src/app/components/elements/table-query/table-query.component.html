@@ -75,6 +75,7 @@
                 [rowModelType]="'infinite'" [datasource]="gridDataSource"
                 [cacheBlockSize]="infiniteCacheBlockSize" [maxBlocksInCache]="infiniteMaxBlocksInCache"
                 [maxConcurrentDatasourceRequests]="1" [blockLoadDebounceMillis]="infiniteBlockLoadDebounceMillis"
+                [rowHeight]="resultRowHeight" [headerHeight]="resultHeaderHeight"
                 [rowBuffer]="20" [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false"
                 [suppressNoRowsOverlay]="true" [animateRows]="false" [rowClassRules]="rowClassRules"
                 (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)" (filterChanged)="onGridFilterChanged()"
@@ -85,6 +86,7 @@
             <ng-template #clientSideGrid>
                 <ag-grid-angular #agGrid class="ag-root" [rowData]="displayRows" [columnDefs]="columnDefs"
                     [defaultColDef]="defaultColDef" [domLayout]="'normal'" [rowBuffer]="20"
+                    [rowHeight]="resultRowHeight" [headerHeight]="resultHeaderHeight"
                     [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false"
                     [suppressNoRowsOverlay]="true" [animateRows]="false" [rowClassRules]="rowClassRules"
                     (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)" (filterChanged)="onGridFilterChanged()"
