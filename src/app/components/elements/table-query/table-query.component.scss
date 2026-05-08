@@ -59,6 +59,18 @@
         overflow-y: auto !important;
     }
 
+    .ag-body-horizontal-scroll,
+    .ag-body-horizontal-scroll-viewport,
+    .ag-body-horizontal-scroll-container {
+        height: 7px !important;
+        max-height: 7px !important;
+        min-height: 7px !important;
+    }
+
+    .ag-body-horizontal-scroll-viewport::-webkit-scrollbar {
+        height: 7px !important;
+    }
+
     .ag-body-horizontal-scroll-container {
         border-radius: 0 !important;
     }
