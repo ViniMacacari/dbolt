@@ -394,7 +394,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     const formatted = this.sqlFormatter.format(source, {
       indentSize: this.appSettings.getSqlFormatterIndentSize(),
-      uppercaseKeywords: this.appSettings.shouldUppercaseSqlFormatterKeywords()
+      uppercaseKeywords: this.appSettings.shouldUppercaseSqlFormatterKeywords(),
+      commaStyle: this.appSettings.getSqlFormatterCommaStyle(),
+      blankLineBetweenStatements: this.appSettings.shouldAddBlankLineBetweenSqlStatements(),
+      indentCreateBody: this.appSettings.shouldIndentSqlCreateBody()
     })
 
     if (formatted === source) return

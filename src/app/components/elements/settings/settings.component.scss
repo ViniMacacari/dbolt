@@ -361,7 +361,82 @@
     }
 }
 
+.formatter-settings-card {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.formatter-settings-header {
+    max-width: 680px;
+}
+
 .formatter-control {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+
+    .formatter-list {
+        background: #1b1b1b;
+        border: 1px solid #353535;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        width: 100%;
+    }
+
+    .formatter-row {
+        align-items: center;
+        border-bottom: 1px solid #303030;
+        display: grid;
+        gap: 18px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        margin: 0;
+        min-height: 66px;
+        padding: 12px 14px;
+
+        &:last-child {
+            border-bottom: none;
+        }
+
+        > div {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        strong,
+        span {
+            font-family: 'Nunito';
+        }
+
+        strong {
+            color: #e8eaed;
+            font-size: .9em;
+            font-weight: 800;
+        }
+
+        span {
+            color: #969696;
+            font-size: .76em;
+            line-height: 1.35;
+        }
+
+        input[type='number'] {
+            width: 76px;
+        }
+    }
+
+    .formatter-actions {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        padding-top: 4px;
+    }
+
     .compact-toggle {
         cursor: pointer;
         display: inline-flex;
@@ -406,6 +481,26 @@
                 transform: translateX(19px);
             }
         }
+    }
+}
+
+@media (max-width: 1200px) {
+    .formatter-control {
+        .formatter-row {
+            align-items: flex-start;
+            grid-template-columns: 1fr;
+        }
+
+        .formatter-actions {
+            justify-content: flex-start;
+        }
+    }
+}
+
+@media (max-width: 900px) {
+    .settings-card {
+        align-items: stretch;
+        flex-direction: column;
     }
 }
 
