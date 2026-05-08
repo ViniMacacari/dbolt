@@ -11,7 +11,7 @@ export const DEFAULT_APP_LANGUAGE: AppLanguage = 'en'
 
 export const APP_LANGUAGE_OPTIONS: AppLanguageOption[] = [
   { value: 'en', label: 'English' },
-  { value: 'pt-BR', label: 'Portugues (Brasil)' }
+  { value: 'pt-BR', label: 'Português (Brasil)' }
 ]
 
 export function normalizeAppLanguage(value: unknown): AppLanguage {
