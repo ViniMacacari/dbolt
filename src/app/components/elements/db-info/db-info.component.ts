@@ -153,6 +153,14 @@ export class DbInfoComponent implements AfterViewInit, OnChanges, OnDestroy {
     return this.groupConfig[this.activeGroup].emptyMessage
   }
 
+  get isLoading(): boolean {
+    return Boolean(this.data?.loading)
+  }
+
+  get errorMessage(): string {
+    return this.data?.errorMessage || ''
+  }
+
   private setActiveGroup(group: ObjectGroup): void {
     this.persistDbInfoState()
 
