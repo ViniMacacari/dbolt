@@ -10,13 +10,10 @@
             </div>
 
             <div class="header-actions">
-                <div class="language-control">
-                    <app-input-list [list]="appLanguageOptions" [displayKey]="'label'" [valueKey]="'value'"
-                        [selectedValue]="appLanguage" [width]="'150px'"
-                        [placeholder]="t('settings.language.placeholder')"
-                        (itemSelected)="onLanguageSelected($event)">
-                    </app-input-list>
-                </div>
+                <button type="button" class="language-button" [title]="t('home.languageButton')"
+                    [attr.aria-label]="t('home.languageButton')" (click)="openLanguageModal()">
+                    <img src="icons/language.png" height="18px" width="18px">
+                </button>
 
                 <div class="view-toggle gap-1" [attr.aria-label]="t('home.viewMode')">
                     <button type="button" [class.active]="viewMode === 'focus'" (click)="setViewMode('focus')">
@@ -121,6 +118,30 @@
         </section>
     </section>
 </main>
+
+<div class="modal-overlay" *ngIf="isLanguageModalOpen">
+    <div class="modal-content language-modal">
+        <div class="modal-header">
+            <h5 class="title text-center w-100">{{ t('home.languageModalTitle') }}</h5>
+        </div>
+
+        <div class="modal-body">
+            <p class="language-description">{{ t('home.languageModalDescription') }}</p>
+
+            <div class="language-options">
+                <button type="button" *ngFor="let option of appLanguageOptions"
+                    [class.active]="appLanguage === option.value" (click)="selectLanguage(option.value)">
+                    <span>{{ option.label }}</span>
+                    <img *ngIf="appLanguage === option.value" src="icons/check.png" height="14px" width="14px">
+                </button>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-cancel" (click)="closeLanguageModal()">{{ t('generic.close') }}</button>
+        </div>
+    </div>
+</div>
 
 <app-connection *ngIf="isModalOpen" [connection]="editingConnection" (close)="closeModal()"></app-connection>
 <app-toast #toast></app-toast>

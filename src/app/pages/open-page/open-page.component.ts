@@ -8,7 +8,6 @@ import { LoadingComponent } from '../../components/modal/loading/loading.compone
 import { ConnectionsService } from '../../services/resolve-connections/connections.service'
 import { AppLanguageService } from '../../services/language/app-language.service'
 import { AppLanguage } from '../../services/language/language.model'
-import { InputListComponent } from '../../components/elements/input-list/input-list.component'
 
 type ConnectionViewMode = 'focus' | 'matrix'
 
@@ -18,7 +17,6 @@ type ConnectionViewMode = 'focus' | 'matrix'
   imports: [
     CommonModule,
     ConnectionComponent,
-    InputListComponent,
     ToastComponent
   ],
   templateUrl: './open-page.component.html',
@@ -33,6 +31,7 @@ export class OpenPageComponent {
   appVersion: string = ''
   appLanguage: AppLanguage
   readonly appLanguageOptions: { value: AppLanguage, label: string }[]
+  isLanguageModalOpen = false
 
   private readonly viewModeStorageKey = 'dbolt-home-view-mode'
 
@@ -77,10 +76,17 @@ export class OpenPageComponent {
     this.router.navigate(['/help'])
   }
 
-  onLanguageSelected(item: { [key: string]: string | number } | null): void {
-    if (!item) return
+  openLanguageModal(): void {
+    this.isLanguageModalOpen = true
+  }
 
-    this.appLanguage = this.language.setLanguage(item['value'])
+  closeLanguageModal(): void {
+    this.isLanguageModalOpen = false
+  }
+
+  selectLanguage(language: AppLanguage): void {
+    this.appLanguage = this.language.setLanguage(language)
+    this.closeLanguageModal()
   }
 
   async closeModal() {
