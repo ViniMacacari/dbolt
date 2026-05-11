@@ -1,71 +1,77 @@
 <div class="settings-container code-editor-container d-flex h-100 gap-2">
     <div class="settings-toolbar gap-1 d-flex align-items-center flex-column">
         <button type="button" class="btn" [ngClass]="{ 'active': activeTab === 'query' }" (click)="selectTab('query')">
-            <img src="icons/code.png" title="Query" height="15px">
-            Query
+            <img src="icons/code.png" [title]="t('settings.query.tab')" height="15px">
+            {{ t('settings.query.tab') }}
         </button>
 
         <button type="button" class="btn" [ngClass]="{ 'active': activeTab === 'connections' }"
             (click)="selectTab('connections')">
-            <img src="icons/database.png" title="Connections" height="15px">
-            Connections
+            <img src="icons/database.png" [title]="t('settings.connections.tab')" height="15px">
+            {{ t('settings.connections.tab') }}
         </button>
 
         <button type="button" class="btn" [ngClass]="{ 'active': activeTab === 'autocomplete' }"
             (click)="selectTab('autocomplete')">
-            <img src="icons/code-block.png" title="Auto-complete" height="15px">
-            Suggest
+            <img src="icons/code-block.png" [title]="t('settings.autocomplete.title')" height="15px">
+            {{ t('settings.autocomplete.tab') }}
         </button>
 
         <button type="button" class="btn" [ngClass]="{ 'active': activeTab === 'highlight' }"
             (click)="selectTab('highlight')">
-            <img src="icons/star.png" title="Highlight" height="15px">
-            Highlight
+            <img src="icons/star.png" [title]="t('settings.highlight.tab')" height="15px">
+            {{ t('settings.highlight.tab') }}
+        </button>
+
+        <button type="button" class="btn" [ngClass]="{ 'active': activeTab === 'language' }"
+            (click)="selectTab('language')">
+            <img src="icons/settings.png" [title]="t('settings.language.tab')" height="15px">
+            {{ t('settings.language.tab') }}
         </button>
     </div>
 
     <div class="settings-panel">
         <div class="settings-header">
-            <p>Settings</p>
+            <p>{{ t('settings.header') }}</p>
             <h2>{{ settingsTitle }}</h2>
         </div>
 
         <div class="settings-stack" *ngIf="activeTab === 'query'">
             <div class="settings-card">
                 <div>
-                    <h3>Default query return rows</h3>
-                    <p>Used when a new query tab is opened. Existing tabs keep their own selected value.</p>
+                    <h3>{{ t('settings.query.defaultRows.title') }}</h3>
+                    <p>{{ t('settings.query.defaultRows.description') }}</p>
                 </div>
 
                 <div class="setting-control">
-                    <label for="default-query-rows">Rows</label>
+                    <label for="default-query-rows">{{ t('settings.query.defaultRows.field') }}</label>
                     <input id="default-query-rows" type="number" min="1" step="1" [value]="defaultQueryRows"
                         (input)="onDefaultRowsInput($event)" (keydown.enter)="saveDefaultRows()">
-                    <button type="button" (click)="saveDefaultRows()">Save</button>
+                    <button type="button" (click)="saveDefaultRows()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="savedMessage">{{ savedMessage }}</small>
                 </div>
             </div>
 
             <div class="settings-card">
                 <div>
-                    <h3>Connection idle expiration</h3>
-                    <p>Reconnects before running a query when a tab connection has been idle for this long.</p>
+                    <h3>{{ t('settings.query.expiration.title') }}</h3>
+                    <p>{{ t('settings.query.expiration.description') }}</p>
                 </div>
 
                 <div class="setting-control">
-                    <label for="connection-expiration-minutes">Minutes</label>
+                    <label for="connection-expiration-minutes">{{ t('settings.query.expiration.field') }}</label>
                     <input id="connection-expiration-minutes" type="number" min="1" step="1"
                         [value]="connectionExpirationMinutes" (input)="onConnectionExpirationInput($event)"
                         (keydown.enter)="saveConnectionExpiration()">
-                    <button type="button" (click)="saveConnectionExpiration()">Save</button>
+                    <button type="button" (click)="saveConnectionExpiration()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="expirationSavedMessage">{{ expirationSavedMessage }}</small>
                 </div>
             </div>
 
             <div class="settings-card">
                 <div>
-                    <h3>SQL syntax validation</h3>
-                    <p>Underlines syntax errors in query tabs while editing.</p>
+                    <h3>{{ t('settings.query.syntaxValidation.title') }}</h3>
+                    <p>{{ t('settings.query.syntaxValidation.description') }}</p>
                 </div>
 
                 <div class="setting-control autocomplete-toggle">
@@ -75,23 +81,23 @@
                             (change)="onSqlSyntaxValidationChange($event)">
                         <span></span>
                     </label>
-                    <button type="button" (click)="saveSqlSyntaxValidationSettings()">Save</button>
+                    <button type="button" (click)="saveSqlSyntaxValidationSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="syntaxValidationSavedMessage">{{ syntaxValidationSavedMessage }}</small>
                 </div>
             </div>
 
             <div class="settings-card formatter-settings-card">
                 <div class="formatter-settings-header">
-                    <h3>Script indentation</h3>
-                    <p>Applied by the indent button in query tabs.</p>
+                    <h3>{{ t('settings.formatter.title') }}</h3>
+                    <p>{{ t('settings.formatter.description') }}</p>
                 </div>
 
                 <div class="setting-control formatter-control">
                     <div class="formatter-list">
                         <div class="formatter-row">
                             <div>
-                                <strong>Indent size</strong>
-                                <span>Number of spaces used for nested lines.</span>
+                                <strong>{{ t('settings.formatter.indentSize.title') }}</strong>
+                                <span>{{ t('settings.formatter.indentSize.description') }}</span>
                             </div>
                             <input id="sql-formatter-indent-size" type="number" min="1" max="8" step="1"
                                 [value]="sqlFormatterIndentSize" (input)="onSqlFormatterIndentInput($event)"
@@ -100,20 +106,20 @@
 
                         <div class="formatter-row">
                             <div>
-                                <strong>Comma style</strong>
-                                <span>Choose whether split SELECT columns use trailing or leading commas.</span>
+                                <strong>{{ t('settings.formatter.commaStyle.title') }}</strong>
+                                <span>{{ t('settings.formatter.commaStyle.description') }}</span>
                             </div>
                             <app-input-list [list]="sqlFormatterCommaStyleOptions" [displayKey]="'label'"
                                 [valueKey]="'value'" [selectedValue]="sqlFormatterCommaStyle"
-                                [width]="'210px'" [placeholder]="'Comma style'"
+                                [width]="'210px'" [placeholder]="t('settings.formatter.commaStyle.placeholder')"
                                 (itemSelected)="onSqlFormatterCommaStyleSelected($event)">
                             </app-input-list>
                         </div>
 
                         <label class="formatter-row" for="sql-formatter-uppercase-keywords">
                             <div>
-                                <strong>Uppercase keywords</strong>
-                                <span>Formats SELECT, FROM, WHERE and other SQL keywords in uppercase.</span>
+                                <strong>{{ t('settings.formatter.uppercase.title') }}</strong>
+                                <span>{{ t('settings.formatter.uppercase.description') }}</span>
                             </div>
                             <span class="toggle-control compact-toggle">
                                 <input id="sql-formatter-uppercase-keywords" type="checkbox"
@@ -125,8 +131,8 @@
 
                         <label class="formatter-row" for="sql-formatter-blank-lines">
                             <div>
-                                <strong>Statement spacing</strong>
-                                <span>Adds a blank line between separate SQL statements.</span>
+                                <strong>{{ t('settings.formatter.spacing.title') }}</strong>
+                                <span>{{ t('settings.formatter.spacing.description') }}</span>
                             </div>
                             <span class="toggle-control compact-toggle">
                                 <input id="sql-formatter-blank-lines" type="checkbox"
@@ -138,8 +144,8 @@
 
                         <label class="formatter-row" for="sql-formatter-indent-create-body">
                             <div>
-                                <strong>Indent DDL body</strong>
-                                <span>Indents the SQL body after CREATE/ALTER VIEW, PROCEDURE or FUNCTION.</span>
+                                <strong>{{ t('settings.formatter.ddlBody.title') }}</strong>
+                                <span>{{ t('settings.formatter.ddlBody.description') }}</span>
                             </div>
                             <span class="toggle-control compact-toggle">
                                 <input id="sql-formatter-indent-create-body" type="checkbox"
@@ -151,7 +157,7 @@
                     </div>
 
                     <div class="formatter-actions">
-                        <button type="button" (click)="saveSqlFormatterSettings()">Save</button>
+                        <button type="button" (click)="saveSqlFormatterSettings()">{{ t('settings.actions.save') }}</button>
                         <small *ngIf="formatterSavedMessage">{{ formatterSavedMessage }}</small>
                     </div>
                 </div>
@@ -162,25 +168,26 @@
         <div class="settings-stack" *ngIf="activeTab === 'highlight'">
             <div class="settings-card">
                 <div>
-                    <h3>SQL highlight theme</h3>
-                    <p>Choose a built-in SQL palette or switch to Custom to edit each token color.</p>
+                    <h3>{{ t('settings.highlight.theme.title') }}</h3>
+                    <p>{{ t('settings.highlight.theme.description') }}</p>
                 </div>
 
                 <div class="setting-control highlight-theme-control">
-                    <label>Theme</label>
+                    <label>{{ t('settings.highlight.theme.field') }}</label>
                     <app-input-list [list]="sqlHighlightOptions" [displayKey]="'label'" [valueKey]="'value'"
-                        [selectedValue]="sqlHighlightMode" [width]="'220px'" [placeholder]="'Select theme'"
+                        [selectedValue]="sqlHighlightMode" [width]="'220px'"
+                        [placeholder]="t('settings.highlight.theme.placeholder')"
                         (itemSelected)="onSqlHighlightModeSelected($event)">
                     </app-input-list>
-                    <button type="button" (click)="saveSqlHighlightSettings()">Save</button>
+                    <button type="button" (click)="saveSqlHighlightSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="highlightSavedMessage">{{ highlightSavedMessage }}</small>
                 </div>
             </div>
 
             <div class="settings-card" *ngIf="isCustomSqlHighlight">
                 <div>
-                    <h3>Custom colors</h3>
-                    <p>Applies to SQL tokens such as SELECT, max(), id, strings and comments.</p>
+                    <h3>{{ t('settings.highlight.custom.title') }}</h3>
+                    <p>{{ t('settings.highlight.custom.description') }}</p>
                 </div>
 
                 <div class="setting-control highlight-control">
@@ -193,8 +200,28 @@
                                 (input)="onSqlHighlightColorInput(field.key, $event)">
                         </label>
                     </div>
-                    <button type="button" (click)="saveSqlHighlightSettings()">Save</button>
+                    <button type="button" (click)="saveSqlHighlightSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="highlightSavedMessage">{{ highlightSavedMessage }}</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-stack" *ngIf="activeTab === 'language'">
+            <div class="settings-card">
+                <div>
+                    <h3>{{ t('settings.language.cardTitle') }}</h3>
+                    <p>{{ t('settings.language.description') }}</p>
+                </div>
+
+                <div class="setting-control match-mode-control">
+                    <label>{{ t('settings.language.field') }}</label>
+                    <app-input-list [list]="appLanguageOptions" [displayKey]="'label'" [valueKey]="'value'"
+                        [selectedValue]="appLanguage" [width]="'220px'"
+                        [placeholder]="t('settings.language.placeholder')"
+                        (itemSelected)="onAppLanguageSelected($event)">
+                    </app-input-list>
+                    <button type="button" (click)="saveLanguageSettings()">{{ t('settings.language.save') }}</button>
+                    <small *ngIf="languageSavedMessage">{{ languageSavedMessage }}</small>
                 </div>
             </div>
         </div>
@@ -202,8 +229,8 @@
         <div class="settings-stack" *ngIf="activeTab === 'autocomplete'">
             <div class="settings-card">
                 <div>
-                    <h3>Table auto-complete</h3>
-                    <p>Suggests table names in query tabs after FROM or JOIN when at least 3 characters are typed.</p>
+                    <h3>{{ t('settings.autocomplete.table.title') }}</h3>
+                    <p>{{ t('settings.autocomplete.table.description') }}</p>
                 </div>
 
                 <div class="setting-control autocomplete-toggle">
@@ -212,32 +239,33 @@
                             (change)="onTableAutocompleteChange($event)">
                         <span></span>
                     </label>
-                    <button type="button" (click)="saveTableAutocompleteSettings()">Save</button>
+                    <button type="button" (click)="saveTableAutocompleteSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="tableAutocompleteSavedMessage">{{ tableAutocompleteSavedMessage }}</small>
                 </div>
             </div>
 
             <div class="settings-card">
                 <div>
-                    <h3>Table match mode</h3>
-                    <p>Controls how typed identifiers are matched against table and view names.</p>
+                    <h3>{{ t('settings.autocomplete.matchMode.title') }}</h3>
+                    <p>{{ t('settings.autocomplete.matchMode.description') }}</p>
                 </div>
 
                 <div class="setting-control match-mode-control">
-                    <label>Mode</label>
+                    <label>{{ t('settings.autocomplete.matchMode.field') }}</label>
                     <app-input-list [list]="tableAutocompleteMatchModeOptions" [displayKey]="'label'"
                         [valueKey]="'value'" [selectedValue]="tableAutocompleteMatchMode" [width]="'220px'"
-                        [placeholder]="'Select mode'" (itemSelected)="onTableAutocompleteMatchModeSelected($event)">
+                        [placeholder]="t('settings.autocomplete.matchMode.placeholder')"
+                        (itemSelected)="onTableAutocompleteMatchModeSelected($event)">
                     </app-input-list>
-                    <button type="button" (click)="saveTableMatchModeSettings()">Save</button>
+                    <button type="button" (click)="saveTableMatchModeSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="tableMatchModeSavedMessage">{{ tableMatchModeSavedMessage }}</small>
                 </div>
             </div>
 
             <div class="settings-card">
                 <div>
-                    <h3>Column auto-complete</h3>
-                    <p>Suggests columns after a table alias, like u., using aliases declared in FROM or JOIN.</p>
+                    <h3>{{ t('settings.autocomplete.columns.title') }}</h3>
+                    <p>{{ t('settings.autocomplete.columns.description') }}</p>
                 </div>
 
                 <div class="setting-control autocomplete-toggle">
@@ -246,15 +274,15 @@
                             (change)="onColumnAutocompleteChange($event)">
                         <span></span>
                     </label>
-                    <button type="button" (click)="saveColumnAutocompleteSettings()">Save</button>
+                    <button type="button" (click)="saveColumnAutocompleteSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="columnAutocompleteSavedMessage">{{ columnAutocompleteSavedMessage }}</small>
                 </div>
             </div>
 
             <div class="settings-card">
                 <div>
-                    <h3>Capitalized column quotes</h3>
-                    <p>Wraps names like "MyColumn" in double quotes, while "MYCOLUMN" and "myColumn" stay unchanged.</p>
+                    <h3>{{ t('settings.autocomplete.capitalizedQuotes.title') }}</h3>
+                    <p>{{ t('settings.autocomplete.capitalizedQuotes.description') }}</p>
                 </div>
 
                 <div class="setting-control autocomplete-toggle">
@@ -264,7 +292,7 @@
                             (change)="onAutoQuoteCapitalizedColumnsChange($event)">
                         <span></span>
                     </label>
-                    <button type="button" (click)="saveAutoQuoteCapitalizedColumnsSettings()">Save</button>
+                    <button type="button" (click)="saveAutoQuoteCapitalizedColumnsSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="autoQuoteCapitalizedColumnsSavedMessage">
                         {{ autoQuoteCapitalizedColumnsSavedMessage }}
                     </small>
@@ -274,26 +302,27 @@
 
         <div class="settings-card connections-settings-card" *ngIf="activeTab === 'connections'">
             <div class="connection-settings-main">
-                <h3>Default connection target</h3>
-                <p>Choose the saved connection and configure the default database/schema used when it opens.</p>
+                <h3>{{ t('settings.connections.defaultTarget.title') }}</h3>
+                <p>{{ t('settings.connections.defaultTarget.description') }}</p>
 
                 <div class="connection-picker">
-                    <p class="setting-label">Connection</p>
+                    <p class="setting-label">{{ t('settings.connections.connection.field') }}</p>
                     <app-input-list [list]="connectionOptions" [displayKey]="'label'" [valueKey]="'id'"
                         [selectedValue]="selectedConnection?.id || null" [width]="'100%'"
-                        [placeholder]="'Select connection'" (itemSelected)="onConnectionSelected($event)">
+                        [placeholder]="t('settings.connections.connection.placeholder')"
+                        (itemSelected)="onConnectionSelected($event)">
                     </app-input-list>
                 </div>
 
                 <div class="current-target" *ngIf="selectedConnection">
-                    <span>Current default</span>
+                    <span>{{ t('settings.connections.currentDefault') }}</span>
                     <strong>{{ currentDefaultTarget }}</strong>
                 </div>
 
                 <div class="connection-target-actions" *ngIf="selectedConnection">
-                    <button type="button" (click)="loadConnectionTargets()">Load options</button>
-                    <button type="button" (click)="saveConnectionTarget()">Save</button>
-                    <button type="button" class="secondary" (click)="clearConnectionTarget()">Clear</button>
+                    <button type="button" (click)="loadConnectionTargets()">{{ t('settings.actions.loadOptions') }}</button>
+                    <button type="button" (click)="saveConnectionTarget()">{{ t('settings.actions.save') }}</button>
+                    <button type="button" class="secondary" (click)="clearConnectionTarget()">{{ t('settings.actions.clear') }}</button>
                     <small *ngIf="connectionMessage">{{ connectionMessage }}</small>
                 </div>
 
@@ -301,18 +330,20 @@
 
                 <div class="target-inputs" *ngIf="selectedConnection && targetOptionsLoaded">
                     <div *ngIf="requiresDefaultDatabase">
-                        <p class="setting-label">Default database</p>
+                        <p class="setting-label">{{ t('settings.connections.defaultDatabase') }}</p>
                         <app-input-list [list]="defaultDatabaseList" [displayKey]="'name'" [valueKey]="'name'"
                             [selectedValue]="selectedDefaultDatabase" [width]="'100%'"
-                            [placeholder]="'Select database'" (itemSelected)="onDefaultDatabaseSelected($event)">
+                            [placeholder]="t('settings.connections.databasePlaceholder')"
+                            (itemSelected)="onDefaultDatabaseSelected($event)">
                         </app-input-list>
                     </div>
 
                     <div *ngIf="requiresDefaultSchema">
-                        <p class="setting-label">Default schema</p>
+                        <p class="setting-label">{{ t('settings.connections.defaultSchema') }}</p>
                         <app-input-list [list]="defaultSchemaList" [displayKey]="'name'" [valueKey]="'name'"
                             [selectedValue]="selectedDefaultSchema" [width]="'100%'"
-                            [placeholder]="'Select schema'" (itemSelected)="onDefaultSchemaSelected($event)">
+                            [placeholder]="t('settings.connections.schemaPlaceholder')"
+                            (itemSelected)="onDefaultSchemaSelected($event)">
                         </app-input-list>
                     </div>
                 </div>

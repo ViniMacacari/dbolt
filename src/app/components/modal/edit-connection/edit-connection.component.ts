@@ -6,6 +6,7 @@ import { InputListComponent } from "../../elements/input-list/input-list.compone
 import { LoadingComponent } from '../loading/loading.component'
 import { ToastComponent } from "../../toast/toast.component"
 import { ConnectionsService } from '../../../services/resolve-connections/connections.service'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 @Component({
   selector: 'app-edit-connection',
@@ -36,7 +37,8 @@ export class EditConnectionComponent {
 
   constructor(
     private IAPI: InternalApiService,
-    private connectionsService: ConnectionsService
+    private connectionsService: ConnectionsService,
+    private language: AppLanguageService
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
@@ -69,7 +71,7 @@ export class EditConnectionComponent {
       this.databaseInput.clearInput()
       this.connectionConfig = {
         host: '',
-        port: item['name'].toString() === 'SQLite' ? 0 : null,
+        port: this.isSQLite ? 0 : null,
         user: '',
         password: ''
       }
@@ -115,7 +117,7 @@ export class EditConnectionComponent {
   }
 
   getHostPlaceholder(): string {
-    return this.isSQLite ? 'Database file path' : 'Host'
+    return this.isSQLite ? this.t('connection.sqlitePathPlaceholder') : this.t('connection.hostPlaceholder')
   }
 
   async testConnection(): Promise<void> {
@@ -131,7 +133,7 @@ export class EditConnectionComponent {
 
       setTimeout(() => {
         LoadingComponent.hide()
-        this.toast.showToast('Connection successfully established!', 'green')
+        this.toast.showToast(this.t('connection.testSuccess'), 'green')
       }, 500)
     } catch (error: any) {
       setTimeout(() => {
@@ -143,7 +145,7 @@ export class EditConnectionComponent {
 
   async newConnection(): Promise<any> {
     if (this.connectionName.length === 0) {
-      this.toast.showToast('Connection name cannot be empty', 'red')
+      this.toast.showToast(this.t('connection.nameRequired'), 'red')
       return
     }
 
@@ -170,7 +172,7 @@ export class EditConnectionComponent {
       setTimeout(() => {
         LoadingComponent.hide()
         this.close.emit()
-        this.toast.showToast('New connection successfully created!', 'green')
+        this.toast.showToast(this.t('connection.createSuccess'), 'green')
       }, 500)
     } catch (error: any) {
       console.error(error)
@@ -187,5 +189,9 @@ export class EditConnectionComponent {
     } else {
       this.connectionName = value
     }
+  }
+
+  t(key: string): string {
+    return this.language.translate(key)
   }
 }

@@ -1,6 +1,13 @@
 import { Injectable } from '@angular/core'
 import { Subject } from 'rxjs'
 import { CacheManagerService } from '../cache/cache-manager.service'
+import {
+  APP_LANGUAGE_OPTIONS,
+  AppLanguage,
+  AppLanguageOption,
+  DEFAULT_APP_LANGUAGE,
+  normalizeAppLanguage
+} from '../language/language.model'
 
 export interface SqlHighlightColors {
   keyword: string
@@ -21,6 +28,7 @@ export type SqlFormatterCommaStyle = 'trailing' | 'leading'
 export type TableAutocompleteMatchMode = 'contains' | 'fuzzy'
 
 export interface AppSettings {
+  appLanguage: AppLanguage
   defaultQueryRows: number
   connectionExpirationMinutes: number
   sqlSyntaxValidationEnabled: boolean
@@ -43,6 +51,7 @@ export interface AppSettings {
 export class AppSettingsService {
   private readonly cacheKey = 'app-settings'
   private readonly fallbackSettings: AppSettings = {
+    appLanguage: DEFAULT_APP_LANGUAGE,
     defaultQueryRows: 50,
     connectionExpirationMinutes: 30,
     sqlSyntaxValidationEnabled: true,
@@ -64,6 +73,7 @@ export class AppSettingsService {
     { value: 'classic-sql', label: 'Classic SQL' },
     { value: 'custom', label: 'Custom' }
   ]
+  readonly appLanguageOptions: AppLanguageOption[] = APP_LANGUAGE_OPTIONS
   private readonly sqlHighlightPresets: Record<Exclude<SqlHighlightMode, 'custom'>, SqlHighlightColors> = {
     'dbolt-dark': {
       keyword: '#739eca',
@@ -160,6 +170,10 @@ export class AppSettingsService {
     return settings
   }
 
+  getAppLanguage(): AppLanguage {
+    return this.getSettings().appLanguage
+  }
+
   getDefaultQueryRows(): number {
     return this.getSettings().defaultQueryRows
   }
@@ -221,6 +235,17 @@ export class AppSettingsService {
     const settings = {
       ...this.getSettings(),
       defaultQueryRows
+    }
+
+    this.saveSettings(settings)
+
+    return settings
+  }
+
+  setAppLanguage(value: unknown): AppSettings {
+    const settings = {
+      ...this.getSettings(),
+      appLanguage: normalizeAppLanguage(value)
     }
 
     this.saveSettings(settings)
@@ -434,6 +459,7 @@ export class AppSettingsService {
       : this.getSqlHighlightPresetColors(sqlHighlightMode)
 
     return {
+      appLanguage: normalizeAppLanguage(settings?.appLanguage),
       defaultQueryRows: this.normalizeRows(settings?.defaultQueryRows),
       connectionExpirationMinutes: this.normalizeExpirationMinutes(settings?.connectionExpirationMinutes),
       sqlSyntaxValidationEnabled: settings?.sqlSyntaxValidationEnabled ?? this.fallbackSettings.sqlSyntaxValidationEnabled,

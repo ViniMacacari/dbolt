@@ -3,29 +3,34 @@
         <header class="home-header">
             <div class="title-block">
                 <h1>
-                    DBolt Database Manager
+                    {{ t('home.title') }}
                     <span *ngIf="appVersion">{{ appVersion }}</span>
                 </h1>
-                <p>Choose your database</p>
+                <p>{{ t('home.chooseDatabase') }}</p>
             </div>
 
             <div class="header-actions">
-                <div class="view-toggle gap-1" aria-label="View mode">
+                <button type="button" class="language-button" [title]="t('home.languageButton')"
+                    [attr.aria-label]="t('home.languageButton')" (click)="openLanguageModal()">
+                    <img src="icons/language.png" height="18px" width="18px">
+                </button>
+
+                <div class="view-toggle gap-1" [attr.aria-label]="t('home.viewMode')">
                     <button type="button" [class.active]="viewMode === 'focus'" (click)="setViewMode('focus')">
-                        Focus
+                        {{ t('home.focus') }}
                     </button>
                     <button type="button" [class.active]="viewMode === 'matrix'" (click)="setViewMode('matrix')">
-                        Matrix
+                        {{ t('home.matrix') }}
                     </button>
                 </div>
 
                 <button type="button" class="new-button" (click)="openModal()">
                     <img src="icons/add.png" height="14px" width="14px">
-                    New
+                    {{ t('home.new') }}
                 </button>
 
-                <button type="button" class="help-button" title="Open help" (click)="openHelp()">
-                    Help
+                <button type="button" class="help-button" [title]="t('home.openHelp')" (click)="openHelp()">
+                    {{ t('home.help') }}
                 </button>
             </div>
         </header>
@@ -50,10 +55,11 @@
 
             <article class="connection-stage" *ngIf="selectedConnection">
                 <div class="stage-actions">
-                    <button type="button" title="Edit connection" (click)="editConnection(selectedConnection, $event)">
+                    <button type="button" [title]="t('home.editConnection')"
+                        (click)="editConnection(selectedConnection, $event)">
                         <img src="icons/edit.png" height="15px" width="15px">
                     </button>
-                    <button type="button" title="Delete connection"
+                    <button type="button" [title]="t('home.deleteConnection')"
                         (click)="deleteConnection(selectedConnection.id, $event)">
                         <img src="icons/delete.png" height="15px" width="15px">
                     </button>
@@ -66,24 +72,24 @@
                 <div class="stage-copy">
                     <p>{{ selectedConnection.database }}</p>
                     <h2>{{ selectedConnection.name }}</h2>
-                    <span *ngIf="selectedConnection.databaseVersion">Version: {{ selectedConnection.databaseVersion
+                    <span *ngIf="selectedConnection.databaseVersion">{{ t('home.version') }}: {{ selectedConnection.databaseVersion
                         }}</span>
-                    <span>IP: {{ selectedConnection.host }}:{{ selectedConnection.port }}</span>
+                    <span>{{ t('home.ip') }}: {{ selectedConnection.host }}:{{ selectedConnection.port }}</span>
                 </div>
 
                 <dl class="stage-meta">
                     <div>
-                        <dt>User</dt>
+                        <dt>{{ t('home.user') }}</dt>
                         <dd>{{ selectedConnection.user }}</dd>
                     </div>
                     <div>
-                        <dt>Default target</dt>
+                        <dt>{{ t('home.defaultTarget') }}</dt>
                         <dd>{{ selectedTarget }}</dd>
                     </div>
                 </dl>
 
                 <button type="button" class="open-button" (click)="openSelectedConnection()">
-                    Open workspace
+                    {{ t('home.openWorkspace') }}
                 </button>
             </article>
         </section>
@@ -93,25 +99,49 @@
                 *ngFor="let connection of connections; trackBy: trackConnectionById"
                 (click)="onCardClick(connection.id)">
                 <span class="matrix-actions">
-                    <img src="icons/edit.png" title="Edit connection" height="14px" width="14px"
+                    <img src="icons/edit.png" [title]="t('home.editConnection')" height="14px" width="14px"
                         (click)="editConnection(connection, $event)">
-                    <img src="icons/delete.png" title="Delete connection" height="14px" width="14px"
+                    <img src="icons/delete.png" [title]="t('home.deleteConnection')" height="14px" width="14px"
                         (click)="deleteConnection(connection.id, $event)">
                 </span>
                 <img src="db-logo/{{ connection.database }}.png" height="54px" width="54px">
                 <strong>{{ connection.name }}</strong>
-                <small *ngIf="connection.databaseVersion">Version: {{ connection.databaseVersion }}</small>
+                <small *ngIf="connection.databaseVersion">{{ t('home.version') }}: {{ connection.databaseVersion }}</small>
                 <small>{{ connection.host }}:{{ connection.port }}</small>
             </button>
         </section>
 
         <section class="empty-state" *ngIf="connections.length === 0">
             <span class="plus-mark"></span>
-            <h2>No saved connections</h2>
-            <button type="button" class="open-button" (click)="openModal()">New connection</button>
+            <h2>{{ t('home.noSavedConnections') }}</h2>
+            <button type="button" class="open-button" (click)="openModal()">{{ t('home.newConnection') }}</button>
         </section>
     </section>
 </main>
+
+<div class="modal-overlay" *ngIf="isLanguageModalOpen">
+    <div class="modal-content language-modal">
+        <div class="modal-header">
+            <h5 class="title text-center w-100">{{ t('home.languageModalTitle') }}</h5>
+        </div>
+
+        <div class="modal-body">
+            <p class="language-description">{{ t('home.languageModalDescription') }}</p>
+
+            <div class="language-options">
+                <button type="button" *ngFor="let option of appLanguageOptions"
+                    [class.active]="appLanguage === option.value" (click)="selectLanguage(option.value)">
+                    <span>{{ option.label }}</span>
+                    <img *ngIf="appLanguage === option.value" src="icons/check.png" height="14px" width="14px">
+                </button>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-cancel" (click)="closeLanguageModal()">{{ t('generic.close') }}</button>
+        </div>
+    </div>
+</div>
 
 <app-connection *ngIf="isModalOpen" [connection]="editingConnection" (close)="closeModal()"></app-connection>
 <app-toast #toast></app-toast>

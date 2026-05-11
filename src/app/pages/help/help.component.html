@@ -2,17 +2,17 @@
     <section class="help-shell">
         <header class="help-header">
             <div class="title-block">
-                <h1>DBolt Help</h1>
-                <p>App usage, common questions, and driver behavior.</p>
+                <h1>{{ t('help.title') }}</h1>
+                <p>{{ t('help.subtitle') }}</p>
             </div>
 
             <div class="help-actions">
                 <a class="repo-link" [href]="repositoryUrl" target="_blank" rel="noopener noreferrer">
-                    Original repo
+                    {{ t('help.originalRepo') }}
                 </a>
                 <button type="button" class="back-button" (click)="goHome()">
                     <img src="icons/home.png" height="14px" width="14px">
-                    Home
+                    {{ t('help.home') }}
                 </button>
             </div>
         </header>

@@ -8,6 +8,7 @@ import { ToastComponent } from "../../toast/toast.component"
 import { ConnectionsService } from '../../../services/resolve-connections/connections.service'
 import type { SavedConnection } from '../../../services/resolve-connections/connections.service'
 import { DatabaseVersionService } from '../../../services/database-version/database-version.service'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 @Component({
   selector: 'app-connection',
@@ -40,7 +41,8 @@ export class ConnectionComponent {
   constructor(
     private IAPI: InternalApiService,
     private connectionsService: ConnectionsService,
-    private databaseVersion: DatabaseVersionService
+    private databaseVersion: DatabaseVersionService,
+    private language: AppLanguageService
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
@@ -127,7 +129,7 @@ export class ConnectionComponent {
   }
 
   getHostPlaceholder(): string {
-    return this.isSQLite ? 'Database file path' : 'Host'
+    return this.isSQLite ? this.t('connection.sqlitePathPlaceholder') : this.t('connection.hostPlaceholder')
   }
 
   async testConnection(): Promise<void> {
@@ -140,12 +142,12 @@ export class ConnectionComponent {
       )
 
       if (result?.success === false) {
-        throw new Error(result.error || result.message || 'Connection failed')
+        throw new Error(result.error || result.message || this.t('connection.failed'))
       }
 
       setTimeout(() => {
         LoadingComponent.hide()
-        this.toast.showToast('Connection successfully established!', 'green')
+        this.toast.showToast(this.t('connection.testSuccess'), 'green')
       }, 500)
     } catch (error: any) {
       setTimeout(() => {
@@ -157,7 +159,7 @@ export class ConnectionComponent {
 
   async newConnection(): Promise<any> {
     if (this.connectionName.length === 0) {
-      this.toast.showToast('Connection name cannot be empty', 'red')
+      this.toast.showToast(this.t('connection.nameRequired'), 'red')
       return
     }
 
@@ -171,7 +173,7 @@ export class ConnectionComponent {
       )
 
       if (result?.success === false) {
-        throw new Error(result.error || result.message || 'Connection failed')
+        throw new Error(result.error || result.message || this.t('connection.failed'))
       }
 
       const databaseVersion = await this.databaseVersion.detectDatabaseVersion(
@@ -198,13 +200,16 @@ export class ConnectionComponent {
       setTimeout(() => {
         LoadingComponent.hide()
         this.close.emit()
-        this.toast.showToast(this.connection ? 'Connection successfully updated!' : 'New connection successfully created!', 'green')
+        this.toast.showToast(
+          this.connection ? this.t('connection.updateSuccess') : this.t('connection.createSuccess'),
+          'green'
+        )
       }, 500)
     } catch (error: any) {
       console.error(error)
       setTimeout(() => {
         LoadingComponent.hide()
-        this.toast.showToast(error?.error || error?.message || 'Connection could not be saved', 'red')
+        this.toast.showToast(error?.error || error?.message || this.t('connection.saveError'), 'red')
       }, 500)
     }
   }
@@ -240,5 +245,9 @@ export class ConnectionComponent {
     this.versionList = selectedDatabase?.versions.map((version: any) => ({
       name: version.name
     })) || []
+  }
+
+  t(key: string): string {
+    return this.language.translate(key)
   }
 }

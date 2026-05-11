@@ -4,15 +4,15 @@
             <img src="icons/menu.png" height="24px" class="toogle-img">
         </button>
         <button type="button" (click)="goToHome()" class="sidebar-action-button home-button">
-            <img src="icons/home.png" height="17px" width="17px" title="Home">
+            <img src="icons/home.png" height="17px" width="17px" [title]="t('sidebar.home')">
         </button>
         <button type="button" (click)="openSettings()" class="sidebar-action-button settings-button">
-            <img src="icons/settings.png" height="17px" width="17px" title="Settings">
+            <img src="icons/settings.png" height="17px" width="17px" [title]="t('sidebar.settings')">
         </button>
     </div>
     <div class="py-2"></div>
 
-    <p class="selected-title">Currently selected</p>
+    <p class="selected-title">{{ t('sidebar.currentlySelected') }}</p>
     <button type="button" class="sgbd" (click)="toggleQuickSelector('connection', $event)">
         <img src="db-logo/{{ selectedSchemaDB?.sgbd }}.png" height="15px" width="15px">
         <p class="text-min w-100">{{ selectedSchemaDB?.sgbd }} ({{ selectedSchemaDB?.name }})</p>
@@ -32,7 +32,7 @@
 
     <div class="connections">
         <div *ngFor="let connection of connections" class="connection d-flex w-100 my-3 mt-0">
-            <button type="button" class="connection-edit-button" title="Edit connection"
+            <button type="button" class="connection-edit-button" [title]="t('sidebar.editConnection')"
                 (click)="editConnection(connection, $event)">
                 <img src="icons/edit.png" height="13px" width="13px">
             </button>
@@ -108,24 +108,24 @@
 <div class="context-menu" *ngIf="contextMenu" [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y"
     (click)="$event.stopPropagation()" (contextmenu)="$event.preventDefault()">
     <div class="context-menu-header">
-        <span>{{ contextMenu.type === 'database' ? 'Database' : 'Schema' }}</span>
+        <span>{{ contextMenu.type === 'database' ? t('sidebar.context.database') : t('sidebar.context.schema') }}</span>
         <strong>{{ contextMenu.label }}</strong>
     </div>
     <button type="button" (click)="requestNewSqlScript($event)">
         <img src="icons/code.png" height="13px" width="13px">
-        New SQL script
+        {{ t('sidebar.context.newSqlScript') }}
     </button>
     <button type="button" (click)="requestConnection(true, $event)">
         <img src="icons/refresh.png" height="13px" width="13px">
-        Invalidate and reconnect
+        {{ t('sidebar.context.invalidateReconnect') }}
     </button>
     <button type="button" (click)="requestConnection(false, $event)">
         <img src="icons/test-connection.png" height="13px" width="13px">
-        Connect
+        {{ t('sidebar.context.connect') }}
     </button>
     <button type="button" (click)="requestContextInfo($event)">
         <img src="icons/database.png" height="13px" width="13px">
-        Open information
+        {{ t('sidebar.context.openInformation') }}
     </button>
 </div>
 
@@ -133,15 +133,15 @@
     <div class="quick-selector-modal" (click)="$event.stopPropagation()">
         <div class="quick-selector-header">
             <div>
-                <p class="quick-selector-kicker">Currently selected</p>
+                <p class="quick-selector-kicker">{{ t('sidebar.currentlySelected') }}</p>
                 <h2>{{ getQuickSelectorTitle() }}</h2>
             </div>
-            <button type="button" aria-label="Close selector" (click)="closeQuickSelector($event)">x</button>
+            <button type="button" [attr.aria-label]="t('sidebar.closeSelector')" (click)="closeQuickSelector($event)">x</button>
         </div>
 
         <div class="quick-selector-search">
             <input type="text" [value]="quickSelectorFilter" (input)="onQuickSelectorFilter($event)"
-                placeholder="Filter by name">
+                [placeholder]="t('sidebar.filterByName')">
         </div>
 
         <div class="quick-selector-body">
@@ -154,7 +154,7 @@
                     <small>{{ option.description }}</small>
                 </button>
 
-                <p class="quick-empty" *ngIf="quickOptions.length === 0">No options available</p>
+                <p class="quick-empty" *ngIf="quickOptions.length === 0">{{ t('sidebar.noOptions') }}</p>
             </ng-container>
         </div>
     </div>

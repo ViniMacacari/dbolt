@@ -12,8 +12,10 @@ import { ConnectionsService, SavedConnection } from '../../../services/resolve-c
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { InputListComponent } from '../input-list/input-list.component'
 import { LoadingComponent } from '../../modal/loading/loading.component'
+import { AppLanguageService } from '../../../services/language/app-language.service'
+import { AppLanguage } from '../../../services/language/language.model'
 
-type SettingsTab = 'query' | 'connections' | 'autocomplete' | 'highlight'
+type SettingsTab = 'query' | 'connections' | 'autocomplete' | 'highlight' | 'language'
 
 @Component({
   selector: 'app-settings',
@@ -38,32 +40,14 @@ export class SettingsComponent implements OnInit {
   sqlFormatterIndentCreateBody: boolean
   sqlHighlightMode: SqlHighlightMode
   sqlHighlightColors: SqlHighlightColors
-  readonly sqlHighlightOptions: { value: SqlHighlightMode, label: string }[]
-  readonly sqlFormatterCommaStyleOptions: { value: SqlFormatterCommaStyle, label: string }[] = [
-    { value: 'trailing', label: 'Trailing commas' },
-    { value: 'leading', label: 'Leading commas' }
-  ]
-  readonly tableAutocompleteMatchModeOptions: { value: TableAutocompleteMatchMode, label: string }[] = [
-    { value: 'contains', label: 'Contains typed text' },
-    { value: 'fuzzy', label: 'Fuzzy search' }
-  ]
-  readonly sqlHighlightColorFields: { key: SqlHighlightColorKey, label: string }[] = [
-    { key: 'keyword', label: 'Keyword' },
-    { key: 'function', label: 'Function' },
-    { key: 'identifier', label: 'Identifier' },
-    { key: 'string', label: 'String' },
-    { key: 'number', label: 'Number' },
-    { key: 'comment', label: 'Comment' },
-    { key: 'operator', label: 'Operator' },
-    { key: 'type', label: 'Type' },
-    { key: 'variable', label: 'Variable' },
-    { key: 'delimiter', label: 'Delimiter' }
-  ]
+  appLanguage: AppLanguage
+  readonly appLanguageOptions: { value: AppLanguage, label: string }[]
   savedMessage: string = ''
   expirationSavedMessage: string = ''
   syntaxValidationSavedMessage: string = ''
   formatterSavedMessage: string = ''
   highlightSavedMessage: string = ''
+  languageSavedMessage: string = ''
   tableAutocompleteSavedMessage: string = ''
   tableMatchModeSavedMessage: string = ''
   columnAutocompleteSavedMessage: string = ''
@@ -83,7 +67,8 @@ export class SettingsComponent implements OnInit {
   constructor(
     private settings: AppSettingsService,
     private connectionsService: ConnectionsService,
-    private IAPI: InternalApiService
+    private IAPI: InternalApiService,
+    private language: AppLanguageService
   ) {
     this.defaultQueryRows = this.settings.getDefaultQueryRows()
     this.connectionExpirationMinutes = this.settings.getConnectionExpirationMinutes()
@@ -99,7 +84,8 @@ export class SettingsComponent implements OnInit {
     this.sqlFormatterIndentCreateBody = this.settings.shouldIndentSqlCreateBody()
     this.sqlHighlightMode = this.settings.getSqlHighlightMode()
     this.sqlHighlightColors = this.settings.getSqlHighlightColors()
-    this.sqlHighlightOptions = this.settings.sqlHighlightOptions
+    this.appLanguage = this.settings.getAppLanguage()
+    this.appLanguageOptions = this.language.languageOptions
   }
 
   async ngOnInit(): Promise<void> {
@@ -110,12 +96,66 @@ export class SettingsComponent implements OnInit {
     this.activeTab = tab
   }
 
-  get settingsTitle(): string {
-    if (this.activeTab === 'connections') return 'Connections'
-    if (this.activeTab === 'autocomplete') return 'Auto-complete'
-    if (this.activeTab === 'highlight') return 'SQL highlight'
+  get sqlFormatterCommaStyleOptions(): { value: SqlFormatterCommaStyle, label: string }[] {
+    return [
+      { value: 'trailing', label: this.t('settings.formatter.commaStyle.trailing') },
+      { value: 'leading', label: this.t('settings.formatter.commaStyle.leading') }
+    ]
+  }
 
-    return 'Query defaults'
+  get tableAutocompleteMatchModeOptions(): { value: TableAutocompleteMatchMode, label: string }[] {
+    return [
+      { value: 'contains', label: this.t('settings.autocomplete.matchMode.contains') },
+      { value: 'fuzzy', label: this.t('settings.autocomplete.matchMode.fuzzy') }
+    ]
+  }
+
+  get sqlHighlightOptions(): { value: SqlHighlightMode, label: string }[] {
+    return [
+      { value: 'dbolt-dark', label: this.t('settings.highlight.option.dboltDark') },
+      { value: 'dbolt-high-contrast', label: this.t('settings.highlight.option.dboltHighContrast') },
+      { value: 'classic-sql', label: this.t('settings.highlight.option.classicSql') },
+      { value: 'custom', label: this.t('settings.highlight.option.custom') }
+    ]
+  }
+
+  get sqlHighlightColorFields(): { key: SqlHighlightColorKey, label: string }[] {
+    return [
+      { key: 'keyword', label: this.t('settings.highlight.color.keyword') },
+      { key: 'function', label: this.t('settings.highlight.color.function') },
+      { key: 'identifier', label: this.t('settings.highlight.color.identifier') },
+      { key: 'string', label: this.t('settings.highlight.color.string') },
+      { key: 'number', label: this.t('settings.highlight.color.number') },
+      { key: 'comment', label: this.t('settings.highlight.color.comment') },
+      { key: 'operator', label: this.t('settings.highlight.color.operator') },
+      { key: 'type', label: this.t('settings.highlight.color.type') },
+      { key: 'variable', label: this.t('settings.highlight.color.variable') },
+      { key: 'delimiter', label: this.t('settings.highlight.color.delimiter') }
+    ]
+  }
+
+  get settingsTitle(): string {
+    if (this.activeTab === 'language') return this.t('settings.language.title')
+    if (this.activeTab === 'connections') return this.t('settings.connections.title')
+    if (this.activeTab === 'autocomplete') return this.t('settings.autocomplete.title')
+    if (this.activeTab === 'highlight') return this.t('settings.highlight.title')
+
+    return this.t('settings.query.title')
+  }
+
+  onAppLanguageSelected(item: { [key: string]: string | number } | null): void {
+    if (!item) return
+
+    this.appLanguage = this.settings.appLanguageOptions
+      .some((option) => option.value === item['value'])
+      ? item['value'] as AppLanguage
+      : this.settings.getAppLanguage()
+    this.languageSavedMessage = ''
+  }
+
+  saveLanguageSettings(): void {
+    this.appLanguage = this.language.setLanguage(this.appLanguage)
+    this.languageSavedMessage = this.t('settings.language.saved')
   }
 
   get isCustomSqlHighlight(): boolean {
@@ -132,7 +172,7 @@ export class SettingsComponent implements OnInit {
 
   get currentDefaultTarget(): string {
     if (!this.selectedConnection?.defaultDatabase && !this.selectedConnection?.defaultSchema) {
-      return 'No default target selected'
+      return this.t('settings.connections.noDefaultTarget')
     }
 
     return [
@@ -152,7 +192,7 @@ export class SettingsComponent implements OnInit {
   saveDefaultRows(): void {
     const settings = this.settings.setDefaultQueryRows(this.defaultQueryRows)
     this.defaultQueryRows = settings.defaultQueryRows
-    this.savedMessage = 'Saved'
+    this.savedMessage = this.t('generic.saved')
   }
 
   onConnectionExpirationInput(event: Event): void {
@@ -166,7 +206,7 @@ export class SettingsComponent implements OnInit {
   saveConnectionExpiration(): void {
     const settings = this.settings.setConnectionExpirationMinutes(this.connectionExpirationMinutes)
     this.connectionExpirationMinutes = settings.connectionExpirationMinutes
-    this.expirationSavedMessage = 'Saved'
+    this.expirationSavedMessage = this.t('generic.saved')
   }
 
   onSqlSyntaxValidationChange(event: Event): void {
@@ -177,7 +217,7 @@ export class SettingsComponent implements OnInit {
   saveSqlSyntaxValidationSettings(): void {
     const settings = this.settings.setSqlSyntaxValidationEnabled(this.sqlSyntaxValidationEnabled)
     this.sqlSyntaxValidationEnabled = settings.sqlSyntaxValidationEnabled
-    this.syntaxValidationSavedMessage = 'Saved'
+    this.syntaxValidationSavedMessage = this.t('generic.saved')
   }
 
   onSqlFormatterIndentInput(event: Event): void {
@@ -223,7 +263,7 @@ export class SettingsComponent implements OnInit {
     this.sqlFormatterCommaStyle = settings.sqlFormatterCommaStyle
     this.sqlFormatterBlankLineBetweenStatements = settings.sqlFormatterBlankLineBetweenStatements
     this.sqlFormatterIndentCreateBody = settings.sqlFormatterIndentCreateBody
-    this.formatterSavedMessage = 'Saved'
+    this.formatterSavedMessage = this.t('generic.saved')
   }
 
   onSqlHighlightColorInput(key: SqlHighlightColorKey, event: Event): void {
@@ -254,7 +294,7 @@ export class SettingsComponent implements OnInit {
 
     this.sqlHighlightMode = settings.sqlHighlightMode
     this.sqlHighlightColors = settings.sqlHighlightColors
-    this.highlightSavedMessage = 'Saved'
+    this.highlightSavedMessage = this.t('generic.saved')
   }
 
   onTableAutocompleteChange(event: Event): void {
@@ -282,25 +322,25 @@ export class SettingsComponent implements OnInit {
   saveTableAutocompleteSettings(): void {
     const settings = this.settings.setTableAutocompleteEnabled(this.tableAutocompleteEnabled)
     this.tableAutocompleteEnabled = settings.tableAutocompleteEnabled
-    this.tableAutocompleteSavedMessage = 'Saved'
+    this.tableAutocompleteSavedMessage = this.t('generic.saved')
   }
 
   saveTableMatchModeSettings(): void {
     const settings = this.settings.setTableAutocompleteMatchMode(this.tableAutocompleteMatchMode)
     this.tableAutocompleteMatchMode = settings.tableAutocompleteMatchMode
-    this.tableMatchModeSavedMessage = 'Saved'
+    this.tableMatchModeSavedMessage = this.t('generic.saved')
   }
 
   saveColumnAutocompleteSettings(): void {
     const settings = this.settings.setColumnAutocompleteEnabled(this.columnAutocompleteEnabled)
     this.columnAutocompleteEnabled = settings.columnAutocompleteEnabled
-    this.columnAutocompleteSavedMessage = 'Saved'
+    this.columnAutocompleteSavedMessage = this.t('generic.saved')
   }
 
   saveAutoQuoteCapitalizedColumnsSettings(): void {
     const settings = this.settings.setAutoQuoteCapitalizedColumns(this.autoQuoteCapitalizedColumns)
     this.autoQuoteCapitalizedColumns = settings.autoQuoteCapitalizedColumns
-    this.autoQuoteCapitalizedColumnsSavedMessage = 'Saved'
+    this.autoQuoteCapitalizedColumnsSavedMessage = this.t('generic.saved')
   }
 
   onConnectionSelected(item: { [key: string]: string | number } | null): void {
@@ -326,7 +366,7 @@ export class SettingsComponent implements OnInit {
   async loadConnectionTargets(): Promise<void> {
     if (!this.selectedConnection) return
 
-    LoadingComponent.show('Loading available databases...')
+    LoadingComponent.show(this.t('settings.connections.loadingTargets'))
     this.connectionMessage = ''
     this.connectionError = ''
 
@@ -344,7 +384,7 @@ export class SettingsComponent implements OnInit {
       )
 
       if (connectionResult?.success === false) {
-        throw new Error(connectionResult.error || connectionResult.message || 'Connection failed')
+        throw new Error(connectionResult.error || connectionResult.message || this.t('settings.connections.connectionFailed'))
       }
 
       const response: any = await this.IAPI.get(
@@ -352,7 +392,7 @@ export class SettingsComponent implements OnInit {
       )
 
       if (response?.success === false) {
-        throw new Error(response.error || response.message || 'Could not load databases and schemas.')
+        throw new Error(response.error || response.message || this.t('settings.connections.loadTargetsFailed'))
       }
 
       this.schemaOptions = response.data || []
@@ -366,7 +406,7 @@ export class SettingsComponent implements OnInit {
       this.targetOptionsLoaded = true
     } catch (error: any) {
       console.error(error)
-      this.connectionError = error?.error || error?.message || 'Could not load databases and schemas.'
+      this.connectionError = error?.error || error?.message || this.t('settings.connections.loadTargetsFailed')
     } finally {
       LoadingComponent.hide()
     }
@@ -385,7 +425,7 @@ export class SettingsComponent implements OnInit {
   async saveConnectionTarget(): Promise<void> {
     if (!this.selectedConnection) return
 
-    LoadingComponent.show('Saving connection defaults...')
+    LoadingComponent.show(this.t('settings.connections.savingDefaults'))
 
     try {
       this.validateSelectedTarget()
@@ -405,12 +445,12 @@ export class SettingsComponent implements OnInit {
 
       this.selectedConnection = updatedConnection
       await this.loadConnections()
-      this.connectionMessage = 'Saved'
+      this.connectionMessage = this.t('generic.saved')
       this.connectionError = ''
     } catch (error: any) {
       console.error(error)
       this.connectionMessage = ''
-      this.connectionError = error?.error || error?.message || 'Could not save connection defaults.'
+      this.connectionError = error?.error || error?.message || this.t('settings.connections.saveDefaultsFailed')
     } finally {
       LoadingComponent.hide()
     }
@@ -443,21 +483,25 @@ export class SettingsComponent implements OnInit {
 
   private validateSelectedTarget(): void {
     if (!this.targetOptionsLoaded && (this.selectedDefaultDatabase || this.selectedDefaultSchema)) {
-      throw new Error('Load available databases before saving a default target.')
+      throw new Error(this.t('settings.connections.loadBeforeSaving'))
     }
 
     if (this.requiresDefaultDatabase && this.selectedDefaultDatabase) {
       const databaseExists = this.defaultDatabaseList.some((database) => database.name === this.selectedDefaultDatabase)
       if (!databaseExists) {
-        throw new Error('Selected default database does not exist.')
+        throw new Error(this.t('settings.connections.databaseMissing'))
       }
     }
 
     if (this.requiresDefaultSchema && this.selectedDefaultSchema) {
       const schemaExists = this.defaultSchemaList.some((schema) => schema.name === this.selectedDefaultSchema)
       if (!schemaExists) {
-        throw new Error('Selected default schema does not exist.')
+        throw new Error(this.t('settings.connections.schemaMissing'))
       }
     }
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 }

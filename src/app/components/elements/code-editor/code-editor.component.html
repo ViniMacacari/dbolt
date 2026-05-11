@@ -2,19 +2,19 @@
     [class.results-expanded]="queryResultExpanded && queryResultOpen">
     <div class="editor-toolbar d-flex align-items-center flex-column">
         <button class="btn">
-            <img (click)="runSelected()" src="icons/run.png" title="Run selected code" height="15px">
+            <img (click)="runSelected()" src="icons/run.png" [title]="t('editor.runSelected')" height="15px">
         </button>
         <button class="btn">
-            <img (click)="runAll()" src="icons/execute-all.png" title="Run all code" height="15px">
+            <img (click)="runAll()" src="icons/execute-all.png" [title]="t('editor.runAll')" height="15px">
         </button>
         <button class="btn" (click)="formatCode()">
-            <img src="icons/star.png" title="Indent code" height="15px">
+            <img src="icons/star.png" [title]="t('editor.indentCode')" height="15px">
         </button>
         <button class="btn" (click)="saveQuery()">
-            <img src="icons/save.png" title="Save code" height="15px">
+            <img src="icons/save.png" [title]="t('editor.saveCode')" height="15px">
         </button>
         <button class="btn" (click)="saveAs()">
-            <img src="icons/save_as.png" title="Save code as" height="15px">
+            <img src="icons/save_as.png" [title]="t('editor.saveCodeAs')" height="15px">
         </button>
     </div>
     <div #codeEditorPanel class="code-editor py-2" [class.has-results]="queryResultOpen"
