@@ -1,6 +1,7 @@
 import { Component, Input, HostListener, EventEmitter, Output, OnChanges, SimpleChanges, ElementRef } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 @Component({
   selector: 'app-input-list',
@@ -23,7 +24,10 @@ export class InputListComponent implements OnChanges {
   isDropdownOpen: boolean = false
   selectedItem: { [key: string]: string | number } | null = null
 
-  constructor(private elementRef: ElementRef<HTMLElement>) { }
+  constructor(
+    private elementRef: ElementRef<HTMLElement>,
+    private language: AppLanguageService
+  ) { }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['list'] && changes['list'].currentValue) {
@@ -112,5 +116,9 @@ export class InputListComponent implements OnChanges {
     this.selectedItem = selectedItem
     this.searchValue = selectedItem[this.displayKey]?.toString() || ''
     this.updateFilteredList()
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 }
