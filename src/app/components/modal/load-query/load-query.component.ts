@@ -93,9 +93,13 @@ export class LoadQueryComponent {
   }
 
   applyFilters(): void {
+    const isQuerySearchActive = this.queryName.trim().length > 0
+
     this.view = this.navigator.buildView(this.originalQueries, this.folders, this.currentFolderPath, {
       database: this._sgbd,
       queryName: this.queryName
+    }, {
+      searchAcrossFolders: isQuerySearchActive
     })
     this.queries = this.view.queries
   }
@@ -216,6 +220,12 @@ export class LoadQueryComponent {
 
   formatQueryPath(query: SavedQuery): string {
     return this.querySave.formatQueryPath(query)
+  }
+
+  getQueryDisplayName(query: SavedQuery): string {
+    return this.queryName.trim() && query.folderPath
+      ? this.formatQueryPath(query)
+      : query.name
   }
 
   formatDate(value?: string): string {

@@ -54,7 +54,7 @@
                     <div class="query-main" (click)="loadQuery(query)">
                         <img src="db-logo/{{ query.dbSchema?.sgbd }}.png" height="18px">
                         <span>
-                            <h2 class="subtitle">{{ query.name }}</h2>
+                            <h2 class="subtitle">{{ getQueryDisplayName(query) }}</h2>
                             <small *ngIf="query.updatedAt">{{ t('loadQuery.updated', { date: formatDate(query.updatedAt) }) }}</small>
                             <small *ngIf="query.versioningEnabled || (query.versions?.length || 0) > 0">
                                 {{ savedVersionsLabel(query.versions?.length || 0) }}
