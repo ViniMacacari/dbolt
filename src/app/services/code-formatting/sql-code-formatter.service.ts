@@ -40,6 +40,8 @@ export class SqlCodeFormatterService {
     ['case', 'CASE'],
     ['create', 'CREATE'],
     ['cross', 'CROSS'],
+    ['call', 'CALL'],
+    ['declare', 'DECLARE'],
     ['delete', 'DELETE'],
     ['desc', 'DESC'],
     ['distinct', 'DISTINCT'],
@@ -54,6 +56,7 @@ export class SqlCodeFormatterService {
     ['group', 'GROUP'],
     ['having', 'HAVING'],
     ['in', 'IN'],
+    ['if', 'IF'],
     ['inner', 'INNER'],
     ['insert', 'INSERT'],
     ['intersect', 'INTERSECT'],
@@ -63,6 +66,7 @@ export class SqlCodeFormatterService {
     ['left', 'LEFT'],
     ['like', 'LIKE'],
     ['limit', 'LIMIT'],
+    ['loop', 'LOOP'],
     ['not', 'NOT'],
     ['null', 'NULL'],
     ['offset', 'OFFSET'],
@@ -75,6 +79,7 @@ export class SqlCodeFormatterService {
     ['proc', 'PROC'],
     ['procedure', 'PROCEDURE'],
     ['replace', 'REPLACE'],
+    ['return', 'RETURN'],
     ['returning', 'RETURNING'],
     ['right', 'RIGHT'],
     ['select', 'SELECT'],
@@ -89,6 +94,7 @@ export class SqlCodeFormatterService {
     ['view', 'VIEW'],
     ['when', 'WHEN'],
     ['where', 'WHERE'],
+    ['while', 'WHILE'],
     ['with', 'WITH']
   ])
 
