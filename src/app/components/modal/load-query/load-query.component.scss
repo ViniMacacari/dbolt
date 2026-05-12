@@ -20,6 +20,7 @@
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
     max-height: min(86vh, 760px);
+    min-height: min(86vh, 760px);
     max-width: 780px;
     overflow: hidden;
     padding: 0;
