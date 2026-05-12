@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core'
 import { SavedQuery, SavedQueryDbSchema, SavedQueryVersion } from '../query-save/query-save.service'
+import { AppLanguageService } from '../language/app-language.service'
 
 export type QueryCompareTargetKind = 'query' | 'version'
 
@@ -20,12 +21,14 @@ export interface QueryCompareTarget {
   providedIn: 'root'
 })
 export class QueryCompareTargetService {
+  constructor(private language: AppLanguageService) { }
+
   createQueryTarget(query: SavedQuery): QueryCompareTarget {
     return {
       id: `query-${query.id}`,
       kind: 'query',
       label: query.name,
-      subtitle: query.folderPath || 'Queries',
+      subtitle: query.folderPath || this.t('queryLibrary.root'),
       sql: query.sql || '',
       query,
       dbSchema: query.dbSchema,
@@ -38,8 +41,8 @@ export class QueryCompareTargetService {
     return {
       id: `query-${query.id}-version-${version.id}`,
       kind: 'version',
-      label: `${query.name} - Version ${version.id}`,
-      subtitle: query.folderPath || 'Queries',
+      label: this.t('queryLibrary.versionName', { name: query.name, version: version.id }),
+      subtitle: query.folderPath || this.t('queryLibrary.root'),
       sql: version.sql || '',
       query,
       version,
@@ -60,5 +63,9 @@ export class QueryCompareTargetService {
   private shorten(value: string): string {
     const normalizedValue = String(value || 'Query')
     return normalizedValue.length > 24 ? `${normalizedValue.slice(0, 21)}...` : normalizedValue
+  }
+
+  private t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 }
