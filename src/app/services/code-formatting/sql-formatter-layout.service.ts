@@ -33,7 +33,7 @@ export class SqlFormatterLayoutService {
     if (!/^(CREATE|ALTER)\b/i.test(sql)) return null
     if (!/\b(VIEW|PROCEDURE|PROC|FUNCTION)\b/i.test(sql)) return null
 
-    const asIndex = this.findTopLevelWord(sql, 'as', 0)
+    const asIndex = this.findCreateBodyAsIndex(sql)
     if (asIndex === -1) return null
 
     const header = sql.slice(0, asIndex).trim()
@@ -48,6 +48,20 @@ export class SqlFormatterLayoutService {
       `${header} AS`,
       this.formatQueryStatement(body, options, bodyBaseLevel)
     ].join('\n')
+  }
+
+  private findCreateBodyAsIndex(sql: string): number {
+    const asIndexes = this.findTopLevelWordIndexes(sql, 'as', 0)
+    const bodyStartPattern = /^(BEGIN|RETURN|SELECT|WITH|DECLARE|SET|INSERT|UPDATE|DELETE|IF|EXEC|EXECUTE|CALL)\b/i
+
+    for (const asIndex of asIndexes) {
+      const afterAs = sql.slice(asIndex + 2).trim()
+      if (bodyStartPattern.test(afterAs)) {
+        return asIndex
+      }
+    }
+
+    return asIndexes[asIndexes.length - 1] ?? -1
   }
 
   private formatQueryStatement(sql: string, options: ResolvedSqlCodeFormatterOptions, baseLevel: number): string {
@@ -100,7 +114,8 @@ export class SqlFormatterLayoutService {
 
   private breakClauses(sql: string): string {
     return sql
-      .replace(/\b(BEGIN)\b\s*/gi, '$1\n')
+      .replace(/\s*\b(BEGIN)\b\s*/gi, '\n$1\n')
+      .replace(/\b(THEN)\b\s*/gi, '$1\n')
       .replace(/\s*\b(END)\b/gi, '\n$1')
       .replace(/\s+(FROM)\b/gi, '\n$1')
       .replace(/\s+(WHERE)\b/gi, '\n$1')
@@ -116,7 +131,8 @@ export class SqlFormatterLayoutService {
       .replace(/\s+((?:INNER|LEFT(?:\s+OUTER)?|RIGHT(?:\s+OUTER)?|FULL(?:\s+OUTER)?|CROSS)?\s*JOIN)\b/gi, '\n$1')
       .replace(/\s+(ON)\b/gi, '\n$1')
       .replace(/\s+(AND|OR)\b/gi, '\n$1')
-      .replace(/\s+(WHEN|ELSE)\b/gi, '\n$1')
+      .replace(/\s+(WHEN|ELSE|ELSEIF)\b/gi, '\n$1')
+      .replace(/;\s*/g, ';\n')
   }
 
   private normalizeLines(sql: string, options: ResolvedSqlCodeFormatterOptions, baseLevel: number): string {
@@ -131,7 +147,10 @@ export class SqlFormatterLayoutService {
 
     return lines
       .map((line) => {
-        if (/^END\b/i.test(line)) {
+        const isEndLine = /^END\b/i.test(line)
+        const isElseLine = /^(ELSE|ELSEIF)\b/i.test(line)
+
+        if (isEndLine || isElseLine) {
           blockLevel = Math.max(baseLevel, blockLevel - 1)
         }
 
@@ -146,7 +165,7 @@ export class SqlFormatterLayoutService {
           inSelectList = false
         }
 
-        if (/^BEGIN\b/i.test(line)) {
+        if (this.opensIndentedBlock(line) || isElseLine) {
           blockLevel++
           inSelectList = false
         }
@@ -164,11 +183,22 @@ export class SqlFormatterLayoutService {
     return 0
   }
 
+  private opensIndentedBlock(line: string): boolean {
+    return /^BEGIN\b/i.test(line) ||
+      /^IF\b[\s\S]*\bTHEN\b/i.test(line) ||
+      /^CASE\b/i.test(line) ||
+      /^(LOOP|WHILE|FOR)\b/i.test(line)
+  }
+
   private isTopLevelClauseLine(line: string): boolean {
     return /^(FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT|OFFSET|RETURNING|VALUES|SET|UNION|(?:INNER|LEFT(?:\s+OUTER)?|RIGHT(?:\s+OUTER)?|FULL(?:\s+OUTER)?|CROSS)?\s*JOIN)\b/i.test(line)
   }
 
   private splitStatements(sql: string): SqlStatement[] {
+    if (this.isRoutineDefinition(sql)) {
+      return [this.toSingleStatement(sql)]
+    }
+
     const statements: SqlStatement[] = []
     let level = 0
     let current = ''
@@ -196,6 +226,20 @@ export class SqlFormatterLayoutService {
     }
 
     return statements
+  }
+
+  private isRoutineDefinition(sql: string): boolean {
+    return /^(CREATE|ALTER)\b[\s\S]*\b(PROCEDURE|PROC|FUNCTION)\b/i.test(sql.trim())
+  }
+
+  private toSingleStatement(sql: string): SqlStatement {
+    const trimmed = sql.trim()
+    const terminated = trimmed.endsWith(';')
+
+    return {
+      text: terminated ? trimmed.slice(0, -1).trim() : trimmed,
+      terminated
+    }
   }
 
   private splitTopLevel(value: string, delimiter: string): string[] {
@@ -235,6 +279,11 @@ export class SqlFormatterLayoutService {
   }
 
   private findTopLevelWord(sql: string, word: string, startIndex: number): number {
+    return this.findTopLevelWordIndexes(sql, word, startIndex)[0] ?? -1
+  }
+
+  private findTopLevelWordIndexes(sql: string, word: string, startIndex: number): number[] {
+    const indexes: number[] = []
     let level = 0
     const normalizedWord = word.toLowerCase()
 
@@ -252,11 +301,11 @@ export class SqlFormatterLayoutService {
       }
 
       if (level === 0 && this.isWordAt(sql, normalizedWord, index)) {
-        return index
+        indexes.push(index)
       }
     }
 
-    return -1
+    return indexes
   }
 
   private isWordAt(sql: string, word: string, index: number): boolean {
