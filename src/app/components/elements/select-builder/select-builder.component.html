@@ -3,25 +3,25 @@
         <div class="builder-header">
             <div>
                 <p>{{ databaseLabel }}</p>
-                <h2>Select Builder</h2>
+                <h2>{{ t('selectBuilder.title') }}</h2>
             </div>
 
             <div class="builder-actions">
                 <label class="check-control">
                     <input type="checkbox" [(ngModel)]="distinct" (ngModelChange)="onStateChange()">
-                    Distinct
+                    {{ t('selectBuilder.distinct') }}
                 </label>
                 <label class="check-control">
                     <input type="checkbox" [(ngModel)]="quoteIdentifiers" (ngModelChange)="onStateChange()">
-                    Quote identifiers
+                    {{ t('selectBuilder.quoteIdentifiers') }}
                 </label>
-                <button type="button" class="secondary" (click)="copySql()" [disabled]="!canBuild()">Copy SQL</button>
-                <button type="button" (click)="openAsQuery()" [disabled]="!canBuild()">Open query</button>
+                <button type="button" class="secondary" (click)="copySql()" [disabled]="!canBuild()">{{ t('selectBuilder.copySql') }}</button>
+                <button type="button" (click)="openAsQuery()" [disabled]="!canBuild()">{{ t('selectBuilder.openQuery') }}</button>
             </div>
         </div>
 
-        <p class="metadata-status" *ngIf="isLoadingObjects">Loading objects...</p>
-        <p class="metadata-status" *ngIf="isLoadingColumns">Loading columns...</p>
+        <p class="metadata-status" *ngIf="isLoadingObjects">{{ t('selectBuilder.loadingObjects') }}</p>
+        <p class="metadata-status" *ngIf="isLoadingColumns">{{ t('selectBuilder.loadingColumns') }}</p>
         <p class="metadata-status" *ngIf="!isLoadingObjects && metadataInfo">{{ metadataInfo }}</p>
         <p class="metadata-status error" *ngIf="metadataMessage">{{ metadataMessage }}</p>
 
@@ -36,12 +36,12 @@
             <div class="builder-form">
                 <section class="builder-section">
                     <div class="section-title">
-                        <h3>From</h3>
+                        <h3>{{ t('selectBuilder.from') }}</h3>
                     </div>
 
                     <div class="field-grid two">
                         <label>
-                            <span>Table</span>
+                            <span>{{ t('selectBuilder.table') }}</span>
                             <input type="text" [ngModel]="baseTable"
                                 (ngModelChange)="baseTable = $event; onBaseTableChange($event)"
                                 (focus)="onObjectLookup(baseTable)"
@@ -49,7 +49,7 @@
                         </label>
 
                         <label>
-                            <span>Alias</span>
+                            <span>{{ t('selectBuilder.alias') }}</span>
                             <input type="text" [ngModel]="baseAlias"
                                 (ngModelChange)="baseAlias = $event; onBaseAliasChange()"
                                 placeholder="o">
@@ -61,12 +61,12 @@
                             (ngModelChange)="columnSearch = $event; onColumnLookup($event)"
                             (focus)="onColumnLookup(columnSearch)"
                             (keydown.enter)="$event.preventDefault(); addColumnFromSearch()"
-                            [attr.list]="columnListId" placeholder="Search columns">
-                        <button type="button" class="section-button" (click)="addColumnFromSearch()">Add</button>
+                            [attr.list]="columnListId" [placeholder]="t('selectBuilder.searchColumns')">
+                        <button type="button" class="section-button" (click)="addColumnFromSearch()">{{ t('selectBuilder.add') }}</button>
                     </div>
 
                     <label class="text-area-field">
-                        <span>Columns</span>
+                        <span>{{ t('selectBuilder.columns') }}</span>
                         <textarea [(ngModel)]="columnsText" (ngModelChange)="onStateChange()"
                             placeholder="o.id&#10;o.created_at&#10;c.name"></textarea>
                     </label>
@@ -74,14 +74,14 @@
 
                 <section class="builder-section">
                     <div class="section-title">
-                        <h3>Joins</h3>
+                        <h3>{{ t('selectBuilder.joins') }}</h3>
                         <div class="section-actions">
-                            <button type="button" class="section-button" (click)="addJoin('JOIN')">Join</button>
-                            <button type="button" class="section-button" (click)="addJoin('LEFT JOIN')">Left join</button>
+                            <button type="button" class="section-button" (click)="addJoin('JOIN')">{{ t('selectBuilder.join') }}</button>
+                            <button type="button" class="section-button" (click)="addJoin('LEFT JOIN')">{{ t('selectBuilder.leftJoin') }}</button>
                         </div>
                     </div>
 
-                    <div class="empty-state" *ngIf="joins.length === 0">No joins</div>
+                    <div class="empty-state" *ngIf="joins.length === 0">{{ t('selectBuilder.noJoins') }}</div>
 
                     <div class="join-row" *ngFor="let join of joins; trackBy: trackJoin">
                         <select [(ngModel)]="join.type" (ngModelChange)="onStateChange()">
@@ -103,17 +103,17 @@
                         <input type="text" [(ngModel)]="join.rightField" (ngModelChange)="onStateChange()"
                             (input)="onColumnLookup(join.rightField)" (focus)="onColumnLookup(join.rightField)"
                             [attr.list]="columnListId" placeholder="c.id">
-                        <button type="button" class="icon-button" title="Remove join" (click)="removeJoin(join.id)">x</button>
+                        <button type="button" class="icon-button" [title]="t('selectBuilder.removeJoin')" (click)="removeJoin(join.id)">x</button>
                     </div>
                 </section>
 
                 <section class="builder-section">
                     <div class="section-title">
-                        <h3>Filters</h3>
-                        <button type="button" class="section-button" (click)="addFilter()">Filter</button>
+                        <h3>{{ t('selectBuilder.filters') }}</h3>
+                        <button type="button" class="section-button" (click)="addFilter()">{{ t('selectBuilder.filter') }}</button>
                     </div>
 
-                    <div class="empty-state" *ngIf="filters.length === 0">No filters</div>
+                    <div class="empty-state" *ngIf="filters.length === 0">{{ t('selectBuilder.noFilters') }}</div>
 
                     <div class="filter-row" *ngFor="let filter of filters; let i = index; trackBy: trackFilter">
                         <select [(ngModel)]="filter.connector" (ngModelChange)="onStateChange()" [disabled]="i === 0">
@@ -130,7 +130,7 @@
                             [disabled]="!requiresFilterValue(filter.operator)" placeholder="open">
                         <input type="text" [(ngModel)]="filter.valueTo" (ngModelChange)="onStateChange()"
                             [disabled]="!requiresSecondFilterValue(filter.operator)" placeholder="end">
-                        <button type="button" class="icon-button" title="Remove filter" (click)="removeFilter(filter.id)">x</button>
+                        <button type="button" class="icon-button" [title]="t('selectBuilder.removeFilter')" (click)="removeFilter(filter.id)">x</button>
                     </div>
                 </section>
             </div>
@@ -138,7 +138,7 @@
             <aside class="preview-panel">
                 <div class="preview-header">
                     <h3>SQL</h3>
-                    <button type="button" class="section-button" (click)="resetBuilder()">Reset</button>
+                    <button type="button" class="section-button" (click)="resetBuilder()">{{ t('selectBuilder.reset') }}</button>
                 </div>
 
                 <pre class="sql-preview">{{ generatedSql }}</pre>

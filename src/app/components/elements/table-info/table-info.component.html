@@ -1,36 +1,36 @@
 <div class="code-editor-container table-info-container d-flex h-100 gap-2">
     <div class="editor-toolbar d-flex h-100 align-items-center flex-column">
         <button class="btn" [ngClass]="{ 'active': activeView === 'data' }" (click)="filterData()">
-            <img src="icons/table.png" title="Data" height="15px">
-            Data
+            <img src="icons/table.png" [title]="t('tableInfo.data')" height="15px">
+            {{ t('tableInfo.data') }}
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': activeView === 'columns' }" (click)="filterColumns()">
-            <img src="icons/column.png" title="Columns" height="15px">
-            Columns
+            <img src="icons/column.png" [title]="t('tableInfo.columns')" height="15px">
+            {{ t('tableInfo.columns') }}
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': activeView === 'keys' }" (click)="filterKeys()">
-            <img src="icons/key.png" title="Keys" height="15px">
-            Keys
+            <img src="icons/key.png" [title]="t('tableInfo.keys')" height="15px">
+            {{ t('tableInfo.keys') }}
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': activeView === 'indexes' }" (click)="filterIndexes()">
-            <img src="icons/index.png" title="Indexes" height="15px">
-            Indexes
+            <img src="icons/index.png" [title]="t('tableInfo.indexes')" height="15px">
+            {{ t('tableInfo.indexes') }}
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': activeView === 'ddl' }" (click)="filterDDL()">
-            <img src="icons/code.png" title="DDL" height="15px">
-            DDL
+            <img src="icons/code.png" [title]="t('tableInfo.ddl')" height="15px">
+            {{ t('tableInfo.ddl') }}
         </button>
     </div>
 
@@ -40,7 +40,7 @@
                 [totalRows]="dataTotalRows" [isSelectResult]="true" [executedSql]="dataErrorMessage ? '' : getTableDataSql()"
                 [dbContext]="tabInfo?.dbInfo || data" [resultHeight]="dataResultHeight" [isExpanded]="true"
                 [isLoading]="isLoadingData" [isLoadingMore]="isLoadingMoreData" [errorMessage]="dataErrorMessage"
-                [executionTimeMs]="dataExecutionTimeMs" [resultTitle]="'Data'" [showResultResize]="false"
+                [executionTimeMs]="dataExecutionTimeMs" [resultTitle]="t('tableInfo.data')" [showResultResize]="false"
                 [showResultExpand]="false" [showResultClose]="false" [emitFilterModelChanges]="true"
                 [filterOnApplyOnly]="true" (filterModelChange)="onDataFilterModelChange($event)"
                 (rowLimitChange)="onDataFetchSizeChange($event)"
@@ -50,7 +50,7 @@
         </div>
 
         <div *ngIf="!showData && !showDDL" class="metadata-panel">
-            <p class="metadata-status" *ngIf="isLoadingMetadata">Loading metadata...</p>
+            <p class="metadata-status" *ngIf="isLoadingMetadata">{{ t('tableInfo.loadingMetadata') }}</p>
             <p class="metadata-status error" *ngIf="metadataError">{{ metadataError }}</p>
 
             <div #metadataGridWrapper class="metadata-grid-wrapper" *ngIf="!isLoadingMetadata && !metadataError">
@@ -65,14 +65,14 @@
             </div>
 
             <p class="metadata-status" *ngIf="!isLoadingMetadata && !metadataError && activeRows.length === 0">
-                No metadata found
+                {{ t('tableInfo.noMetadataFound') }}
             </p>
         </div>
 
         <div *ngIf="showDDL" class="ddl-panel">
-            <p class="metadata-status" *ngIf="isLoadingMetadata">Loading DDL...</p>
+            <p class="metadata-status" *ngIf="isLoadingMetadata">{{ t('tableInfo.loadingDdl') }}</p>
             <p class="metadata-status error" *ngIf="metadataError">{{ metadataError }}</p>
-            <pre *ngIf="!isLoadingMetadata && !metadataError">{{ ddl || 'No DDL available' }}</pre>
+            <pre *ngIf="!isLoadingMetadata && !metadataError">{{ ddl || t('tableInfo.noDdlAvailable') }}</pre>
         </div>
     </div>
 </div>

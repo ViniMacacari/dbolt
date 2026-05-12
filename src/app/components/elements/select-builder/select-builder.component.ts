@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 type JoinType = 'JOIN' | 'LEFT JOIN'
 type FilterConnector = 'AND' | 'OR'
@@ -80,7 +81,7 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
   metadataMessage: string = ''
   metadataInfo: string = ''
   copiedMessage: string = ''
-  generatedSql: string = '-- Select a base table to generate SQL.'
+  generatedSql: string = ''
   readonly objectListId = `select-builder-objects-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   readonly columnListId = `select-builder-columns-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   readonly maxObjectSuggestions = 80
@@ -113,7 +114,8 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
 
   constructor(
     private IAPI: InternalApiService,
-    private connectionContext: ConnectionContextService
+    private connectionContext: ConnectionContextService,
+    private language: AppLanguageService
   ) { }
 
   ngOnInit(): void {
@@ -248,14 +250,14 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
     if (!sql || !navigator?.clipboard) return
 
     await navigator.clipboard.writeText(sql)
-    this.copiedMessage = 'Copied'
+    this.copiedMessage = this.t('selectBuilder.copied')
   }
 
   get databaseLabel(): string {
     const dbInfo = this.tabInfo?.dbInfo
     return [dbInfo?.sgbd, dbInfo?.database, dbInfo?.schema]
       .filter(Boolean)
-      .join(' / ') || 'No connection selected'
+      .join(' / ') || this.t('selectBuilder.noConnectionSelected')
   }
 
   canBuild(): boolean {
@@ -303,7 +305,7 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
       this.loadColumnsForSelectedTable(this.baseTable)
       this.joins.forEach((join) => this.loadColumnsForSelectedTable(join.table))
     } catch (error: any) {
-      this.metadataMessage = error?.error || error?.message || 'Could not load database objects.'
+      this.metadataMessage = error?.error || error?.message || this.t('selectBuilder.loadObjectsFailed')
     } finally {
       this.isLoadingObjects = false
     }
@@ -462,7 +464,7 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
       this.columnsByTable.set(normalizedTable, columns)
       this.refreshColumnOptions()
     } catch (error: any) {
-      this.metadataMessage = error?.error || error?.message || 'Could not load table columns.'
+      this.metadataMessage = error?.error || error?.message || this.t('selectBuilder.loadColumnsFailed')
     } finally {
       this.pendingColumnRequests.delete(normalizedTable)
       this.isLoadingColumns = this.pendingColumnRequests.size > 0
@@ -531,7 +533,7 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
 
   private buildSql(): string {
     const table = this.baseTable.trim()
-    if (!table) return '-- Select a base table to generate SQL.'
+    if (!table) return this.t('selectBuilder.selectBaseTableComment')
 
     const columns = this.resolveColumns()
     const lines = [
@@ -685,5 +687,9 @@ export class SelectBuilderComponent implements OnInit, OnChanges {
   private resolveQueryName(): string {
     const tableName = this.baseTable.split('.').pop()?.trim() || 'select'
     return `${tableName} select`
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 }

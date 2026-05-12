@@ -7,6 +7,7 @@ import { InternalApiService } from '../../../services/requests/internal-api.serv
 import { RunQueryService } from '../../../services/db-query/run-query.service'
 import { TableDataQueryService } from '../../../services/table-data-query/table-data-query.service'
 import { TableQueryComponent } from '../table-query/table-query.component'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
@@ -73,7 +74,8 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
   constructor(
     private IAPI: InternalApiService,
     private runQuery: RunQueryService,
-    private tableDataQuery: TableDataQueryService
+    private tableDataQuery: TableDataQueryService,
+    private language: AppLanguageService
   ) { }
 
   ngOnInit(): void {
@@ -187,7 +189,7 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
       this.indexesRows = []
       this.ddl = ''
       this.refreshActiveRows()
-      this.metadataError = 'No table context available.'
+      this.metadataError = this.t('tableInfo.noTableContext')
       return
     }
 
@@ -227,7 +229,7 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
       if (requestId !== this.metadataRequestId) return
 
       console.error(error)
-      this.metadataError = error?.error || error?.message || 'Could not load table metadata.'
+      this.metadataError = error?.error || error?.message || this.t('tableInfo.loadMetadataFailed')
     } finally {
       if (requestId === this.metadataRequestId) {
         this.isLoadingMetadata = false
@@ -244,7 +246,7 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
     if (!context?.sgbd || !context?.version || !this.elementName) {
       this.dataRows = []
       this.dataColumns = []
-      this.dataErrorMessage = 'No table context available.'
+      this.dataErrorMessage = this.t('tableInfo.noTableContext')
       return
     }
 
@@ -293,7 +295,7 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
       this.dataColumns = []
       this.dataTotalRows = null
       this.dataExecutionTimeMs = null
-      this.dataErrorMessage = error?.error || error?.message || 'Could not load table data.'
+      this.dataErrorMessage = error?.error || error?.message || this.t('tableInfo.loadDataFailed')
       this.persistTableDataState()
     } finally {
       if (requestId === this.dataRequestId) {
@@ -499,6 +501,10 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
   getTableDataSql(): string {
     const context = this.tabInfo?.dbInfo || this.data
     return this.tableDataQuery.buildSelectSql(this.elementName, this.dataFilterModel, context)
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 
   private getTableDataKey(): string {

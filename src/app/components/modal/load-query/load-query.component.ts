@@ -15,6 +15,7 @@ import {
   QueryCompareTarget,
   QueryCompareTargetService
 } from '../../../services/query-compare-target/query-compare-target.service'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 @Component({
   selector: 'app-load-query',
@@ -47,7 +48,7 @@ export class LoadQueryComponent {
     folders: [],
     queries: [],
     breadcrumbParts: [],
-    currentFolderLabel: 'Queries',
+    currentFolderLabel: '',
     hasVisibleItems: false
   }
   private _sgbd: string = ''
@@ -56,7 +57,8 @@ export class LoadQueryComponent {
     private IAPI: InternalApiService,
     private querySave: QuerySaveService,
     private navigator: QueryLibraryNavigatorService,
-    private compareTarget: QueryCompareTargetService
+    private compareTarget: QueryCompareTargetService,
+    private language: AppLanguageService
   ) { }
 
   async ngOnInit(): Promise<void> {
@@ -125,9 +127,9 @@ export class LoadQueryComponent {
       this.originalQueries = this.originalQueries.filter((item: { id: number }) => item.id !== query.id)
       this.compareTargets = this.compareTargets.filter(target => target.query.id !== query.id)
       this.applyFilters()
-      this.toast.showToast('Query deleted successfully', 'green')
+      this.toast.showToast(this.t('loadQuery.deletedSuccess'), 'green')
     } catch (error: any) {
-      this.toast.showToast(error?.error || error?.message || 'Could not delete query', 'red')
+      this.toast.showToast(error?.error || error?.message || this.t('loadQuery.deleteFailed'), 'red')
     }
   }
 
@@ -151,7 +153,7 @@ export class LoadQueryComponent {
 
   compareSelected(): void {
     if (this.compareTargets.length !== 2) {
-      this.toast.showToast('Select two files to compare', 'red')
+      this.toast.showToast(this.t('loadQuery.selectTwoToCompare'), 'red')
       return
     }
 
@@ -182,7 +184,7 @@ export class LoadQueryComponent {
     try {
       this.versionsByQueryId[query.id] = await this.querySave.loadVersions(query.id)
     } catch (error: any) {
-      this.toast.showToast(error?.error || error?.message || 'Could not load query history', 'red')
+      this.toast.showToast(error?.error || error?.message || this.t('loadQuery.historyLoadFailed'), 'red')
     }
   }
 
@@ -193,16 +195,16 @@ export class LoadQueryComponent {
       const restoredQuery = await this.querySave.restoreVersion(query.id, version.id)
       this.replaceQuery(restoredQuery)
       this.versionsByQueryId[query.id] = await this.querySave.loadVersions(query.id)
-      this.toast.showToast('Query version restored successfully', 'green')
+      this.toast.showToast(this.t('loadQuery.restoreSuccess'), 'green')
     } catch (error: any) {
-      this.toast.showToast(error?.error || error?.message || 'Could not restore query version', 'red')
+      this.toast.showToast(error?.error || error?.message || this.t('loadQuery.restoreFailed'), 'red')
     }
   }
 
   openVersionCopy(query: SavedQuery, version: SavedQueryVersion, event: MouseEvent): void {
     event.stopPropagation()
     this.open.emit({
-      name: `${query.name} - version ${version.id}`,
+      name: this.t('queryLibrary.versionName', { name: query.name, version: version.id }),
       type: 'sql',
       sql: version.sql,
       dbSchema: version.dbSchema || query.dbSchema,
@@ -245,7 +247,7 @@ export class LoadQueryComponent {
   }
 
   get currentFolderLabel(): string {
-    return this.view.currentFolderLabel
+    return this.currentFolderPath ? this.view.currentFolderLabel : this.t('queryLibrary.root')
   }
 
   get breadcrumbParts(): QueryLibraryBreadcrumbPart[] {
@@ -281,7 +283,7 @@ export class LoadQueryComponent {
 
     if (this.compareTargets.length >= 2) {
       this.compareTargets = [this.compareTargets[1], target]
-      this.toast.showToast('Selection updated. Two files are ready to compare.', 'green')
+      this.toast.showToast(this.t('loadQuery.selectionUpdated'), 'green')
       return
     }
 
@@ -290,5 +292,38 @@ export class LoadQueryComponent {
 
   private isCompareTargetSelected(targetId: string): boolean {
     return this.compareTargets.some(target => target.id === targetId)
+  }
+
+  savedVersionsLabel(count: number): string {
+    return this.t(count === 1 ? 'loadQuery.savedVersionSingular' : 'loadQuery.savedVersionPlural', { count })
+  }
+
+  compareActionLabel(isSelected: boolean): string {
+    return this.t(isSelected ? 'loadQuery.selected' : 'loadQuery.compare')
+  }
+
+  versionLabel(versionId: number): string {
+    return this.t('queryLibrary.version', { version: versionId })
+  }
+
+  targetLabel(target: QueryCompareTarget): string {
+    if (target.version) {
+      return this.t('queryLibrary.versionName', {
+        name: target.query.name,
+        version: target.version.id
+      })
+    }
+
+    return target.label
+  }
+
+  get deleteConfirmMessage(): string {
+    return this.t('loadQuery.deleteConfirmMessage', {
+      name: this.pendingDeleteQuery?.name || this.t('loadQuery.thisQuery')
+    })
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 }
