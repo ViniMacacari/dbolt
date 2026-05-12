@@ -1,23 +1,23 @@
 <div class="code-editor-container procedure-info-container d-flex h-100 gap-2">
     <div class="editor-toolbar d-flex h-100 align-items-center flex-column">
         <button class="btn active">
-            <img src="icons/ddl.png" title="DDL" height="15px">
-            DDL
+            <img src="icons/ddl.png" [title]="t('procedureInfo.ddl')" height="15px">
+            {{ t('procedureInfo.ddl') }}
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" (click)="editProcedure()" [disabled]="isLoadingMetadata || !!metadataError">
-            <img src="icons/edit.png" title="Edit" height="15px">
-            Edit
+            <img src="icons/edit.png" [title]="t('procedureInfo.edit')" height="15px">
+            {{ t('procedureInfo.edit') }}
         </button>
     </div>
 
     <div class="info procedure-info-panel">
         <div class="ddl-panel">
-            <p class="metadata-status" *ngIf="isLoadingMetadata">Loading DDL...</p>
+            <p class="metadata-status" *ngIf="isLoadingMetadata">{{ t('procedureInfo.loadingDdl') }}</p>
             <p class="metadata-status error" *ngIf="metadataError">{{ metadataError }}</p>
-            <pre *ngIf="!isLoadingMetadata && !metadataError">{{ ddl || 'No DDL available' }}</pre>
+            <pre *ngIf="!isLoadingMetadata && !metadataError">{{ ddl || t('procedureInfo.noDdlAvailable') }}</pre>
         </div>
     </div>
 </div>

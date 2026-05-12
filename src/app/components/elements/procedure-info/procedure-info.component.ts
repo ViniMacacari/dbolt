@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChange
 import { CommonModule } from '@angular/common'
 import { ToastComponent } from '../../toast/toast.component'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 @Component({
   selector: 'app-procedure-info',
@@ -21,7 +22,10 @@ export class ProcedureInfoComponent implements OnInit, OnChanges {
   isLoadingMetadata: boolean = false
   metadataError: string = ''
 
-  constructor(private IAPI: InternalApiService) { }
+  constructor(
+    private IAPI: InternalApiService,
+    private language: AppLanguageService
+  ) { }
 
   ngOnInit(): void {
     void this.loadProcedureDDL()
@@ -49,7 +53,7 @@ export class ProcedureInfoComponent implements OnInit, OnChanges {
   private async loadProcedureDDL(): Promise<void> {
     const context = this.tabInfo?.dbInfo || this.data
     if (!context?.sgbd || !context?.version || !this.elementName) {
-      this.metadataError = 'No procedure context available.'
+      this.metadataError = this.t('procedureInfo.noProcedureContext')
       return
     }
 
@@ -65,15 +69,19 @@ export class ProcedureInfoComponent implements OnInit, OnChanges {
       const response: any = await this.IAPI.get(`/api/${context.sgbd}/${context.version}/procedure-ddl/${procedureName}${queryString}`)
 
       if (response?.success === false) {
-        throw new Error(response.error || response.message || 'Could not load procedure DDL.')
+        throw new Error(response.error || response.message || this.t('procedureInfo.loadDdlFailed'))
       }
 
       this.ddl = response?.ddl || ''
     } catch (error: any) {
       console.error(error)
-      this.metadataError = error?.error || error?.message || 'Could not load procedure DDL.'
+      this.metadataError = error?.error || error?.message || this.t('procedureInfo.loadDdlFailed')
     } finally {
       this.isLoadingMetadata = false
     }
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 }
