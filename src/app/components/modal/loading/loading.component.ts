@@ -1,5 +1,6 @@
 import { Component, Renderer2, Input, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core'
 import { CommonModule } from '@angular/common'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 @Component({
   selector: 'app-loading',
@@ -17,14 +18,25 @@ export class LoadingComponent implements OnInit, OnDestroy {
   static interval: any = null
   static startTime = 0
   private static activeRequests = 0
-  private defaultMessage = 'Connecting to database...'
-  @Input() message = this.defaultMessage
+  @Input() message = ''
 
-  constructor(private renderer: Renderer2, private cdr: ChangeDetectorRef) { }
+  constructor(
+    private renderer: Renderer2,
+    private cdr: ChangeDetectorRef,
+    private language: AppLanguageService
+  ) { }
+
+  get defaultMessage(): string {
+    return this.language.translate('loading.default')
+  }
 
   ngOnInit(): void {
     if (this.global || !LoadingComponent.instance) {
       LoadingComponent.instance = this
+    }
+
+    if (!this.message) {
+      this.message = this.defaultMessage
     }
   }
 

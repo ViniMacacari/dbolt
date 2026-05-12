@@ -1,23 +1,23 @@
 <div class="modal-overlay">
     <div class="modal-content">
         <div class="modal-header">
-            <h5 class="title">Create a query file</h5>
+            <h5 class="title">{{ t('saveQuery.title') }}</h5>
         </div>
 
         <div class="modal-body">
             <div class="field-group">
-                <label>Query name</label>
+                <label>{{ t('saveQuery.queryName') }}</label>
                 <input [(ngModel)]="queryName" type="text" [attr.maxlength]="maxQueryNameLength" class="input-page"
-                    placeholder="Name your query" (ngModelChange)="validateQueryName($event)" />
+                    [placeholder]="t('saveQuery.namePlaceholder')" (ngModelChange)="validateQueryName($event)" />
                 <small class="field-hint">{{ queryName.length }}/{{ maxQueryNameLength }}</small>
             </div>
 
             <section class="folder-picker">
                 <div class="folder-header">
                     <div>
-                        <label>Save in</label>
+                        <label>{{ t('saveQuery.saveIn') }}</label>
                         <div class="breadcrumb">
-                            <button type="button" (click)="goRoot()">Queries</button>
+                            <button type="button" (click)="goRoot()">{{ t('queryLibrary.root') }}</button>
                             <ng-container *ngFor="let part of breadcrumbParts">
                                 <span>/</span>
                                 <button type="button" (click)="openBreadcrumb(part.path)">{{ part.label }}</button>
@@ -25,7 +25,7 @@
                         </div>
                     </div>
                     <button type="button" class="nav-button" [disabled]="!currentFolderPath" (click)="goBack()">
-                        Back
+                        {{ t('generic.back') }}
                     </button>
                 </div>
 
@@ -44,20 +44,20 @@
                     <button type="button" class="folder-item create-folder" *ngIf="!creatingFolder"
                         (click)="creatingFolder = true">
                         <img src="icons/add.png" height="16px">
-                        <span>New folder</span>
+                        <span>{{ t('saveQuery.newFolder') }}</span>
                     </button>
                 </div>
 
                 <div class="new-folder-row" *ngIf="creatingFolder">
-                    <input [(ngModel)]="newFolderName" type="text" class="input-page" placeholder="Folder name" />
-                    <button type="button" class="btn-page-2" (click)="createFolder()">Create</button>
+                    <input [(ngModel)]="newFolderName" type="text" class="input-page" [placeholder]="t('saveQuery.folderNamePlaceholder')" />
+                    <button type="button" class="btn-page-2" (click)="createFolder()">{{ t('saveQuery.create') }}</button>
                 </div>
             </section>
 
             <label class="version-toggle">
                 <span>
-                    <strong>Version history</strong>
-                    <small>Keep a snapshot every time this query is saved.</small>
+                    <strong>{{ t('saveQuery.versionHistory') }}</strong>
+                    <small>{{ t('saveQuery.versionHistoryDescription') }}</small>
                 </span>
                 <span class="toggle-control">
                     <input [(ngModel)]="versioningEnabled" type="checkbox" />
@@ -67,8 +67,8 @@
         </div>
 
         <div class="modal-footer">
-            <button class="btn-cancel" (click)="onClose()">Cancel</button>
-            <button class="btn-page" (click)="saveQuery()">Save</button>
+            <button class="btn-cancel" (click)="onClose()">{{ t('saveQuery.cancel') }}</button>
+            <button class="btn-page" (click)="saveQuery()">{{ t('saveQuery.save') }}</button>
         </div>
     </div>
 </div>

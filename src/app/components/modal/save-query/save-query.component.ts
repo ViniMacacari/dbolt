@@ -8,6 +8,7 @@ import {
   QueryLibraryNavigatorService,
   QueryLibraryView
 } from '../../../services/query-library/query-library-navigator.service'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 @Component({
   selector: 'app-save-query',
@@ -32,13 +33,14 @@ export class SaveQueryComponent {
     folders: [],
     queries: [],
     breadcrumbParts: [],
-    currentFolderLabel: 'Queries',
+    currentFolderLabel: '',
     hasVisibleItems: false
   }
 
   constructor(
     private querySave: QuerySaveService,
-    private navigator: QueryLibraryNavigatorService
+    private navigator: QueryLibraryNavigatorService,
+    private language: AppLanguageService
   ) { }
 
   get maxQueryNameLength(): number {
@@ -75,7 +77,7 @@ export class SaveQueryComponent {
     try {
       const name = this.queryName.trim()
       if (!name) {
-        this.toast.showToast('Query name cannot be empty', 'red')
+        this.toast.showToast(this.t('saveQuery.nameRequired'), 'red')
         return
       }
 
@@ -92,7 +94,7 @@ export class SaveQueryComponent {
       this.close.emit()
     } catch (error: any) {
       console.error(error)
-      this.toast.showToast(error?.error || error?.message || 'Could not save query', 'red')
+      this.toast.showToast(error?.error || error?.message || this.t('saveQuery.saveFailed'), 'red')
     }
   }
 
@@ -132,7 +134,7 @@ export class SaveQueryComponent {
   }
 
   get currentFolderLabel(): string {
-    return this.view.currentFolderLabel
+    return this.currentFolderPath ? this.view.currentFolderLabel : this.t('queryLibrary.root')
   }
 
   get breadcrumbParts(): QueryLibraryBreadcrumbPart[] {
@@ -154,5 +156,9 @@ export class SaveQueryComponent {
       database: '',
       queryName: ''
     })
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 }

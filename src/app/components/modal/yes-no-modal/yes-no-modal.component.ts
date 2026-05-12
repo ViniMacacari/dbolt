@@ -1,4 +1,5 @@
-import { Component, EventEmitter, Output, Input, ViewChild } from '@angular/core'
+import { Component, EventEmitter, Output, Input } from '@angular/core'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 @Component({
   selector: 'app-yes-no-modal',
@@ -12,8 +13,18 @@ export class YesNoModalComponent {
   @Output() continueAction = new EventEmitter<void>()
   @Input() title: string = ''
   @Input() message: string = ''
-  @Input() cancelLabel: string = 'Cancel'
-  @Input() continueLabel: string = 'Continue'
+  @Input() cancelLabel: string = ''
+  @Input() continueLabel: string = ''
+
+  constructor(private language: AppLanguageService) { }
+
+  get resolvedCancelLabel(): string {
+    return this.cancelLabel || this.language.translate('generic.cancel')
+  }
+
+  get resolvedContinueLabel(): string {
+    return this.continueLabel || this.language.translate('generic.continue')
+  }
 
   close() {
     this.closeAction.emit()
