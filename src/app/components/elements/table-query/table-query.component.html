@@ -1,51 +1,51 @@
 <div #tableWrapper class="query-result-wrapper">
     <div class="result-bar">
-        <div class="resize-handle" *ngIf="showResultResize" title="Resize results" (mousedown)="startResize($event)"></div>
+        <div class="resize-handle" *ngIf="showResultResize" [title]="t('results.resize')" (mousedown)="startResize($event)"></div>
         <div class="result-actions">
             <div class="result-title">
-                <span>{{ resultTitle }}</span>
+                <span>{{ getResultTitle() }}</span>
                 <small *ngIf="isSelectResult">{{ getRowsSummary() }}</small>
                 <small *ngIf="getExecutionTimeSummary()">{{ getExecutionTimeSummary() }}</small>
             </div>
 
             <div class="row-limit" *ngIf="isSelectResult">
-                <label for="query-row-limit">Max rows</label>
+                <label for="query-row-limit">{{ t('results.maxRows') }}</label>
                 <input id="query-row-limit" type="number" min="1" step="1" [value]="rowLimit"
                     (input)="onRowLimitInput($event)" (keydown.enter)="applyRowLimit()">
-                <button type="button" (click)="applyRowLimit()">Apply</button>
+                <button type="button" (click)="applyRowLimit()">{{ t('results.apply') }}</button>
             </div>
 
             <button type="button" class="select-all-button" *ngIf="canSelectAllLoadedRows"
-                title="Select all loaded rows" (click)="selectAllRows()">
+                [title]="t('results.selectAllLoadedRows')" (click)="selectAllRows()">
                 <img src="icons/table.png" height="13px" width="13px">
-                Select all
+                {{ t('results.selectAll') }}
             </button>
 
             <div class="edit-actions" *ngIf="isSelectResult">
-                <button type="button" class="result-icon-button" title="Edit result rows" *ngIf="!editingEnabled"
+                <button type="button" class="result-icon-button" [title]="t('results.editRows')" *ngIf="!editingEnabled"
                     [disabled]="!canStartEditing()" (click)="startEditing()">
                     <img src="icons/edit.png" height="13px" width="13px">
                 </button>
 
                 <ng-container *ngIf="editingEnabled">
-                    <button type="button" class="result-icon-button" title="Add row"
+                    <button type="button" class="result-icon-button" [title]="t('results.addRow')"
                         [disabled]="isApplyingEdits" (click)="addRow()">
                         <img src="icons/add.png" height="13px" width="13px">
                     </button>
-                    <button type="button" class="result-icon-button" title="Apply changes"
+                    <button type="button" class="result-icon-button" [title]="t('results.applyChanges')"
                         [disabled]="!hasPendingChanges() || isApplyingEdits" (click)="applyPendingChanges()">
                         <img src="icons/save.png" height="13px" width="13px">
                     </button>
-                    <button type="button" class="result-icon-button" title="Cancel changes"
+                    <button type="button" class="result-icon-button" [title]="t('results.cancelChanges')"
                         [disabled]="isApplyingEdits" (click)="cancelEditing()">
                         <img src="icons/close.png" height="13px" width="13px">
                     </button>
-                    <button type="button" class="result-icon-button danger" title="Preview row delete"
+                    <button type="button" class="result-icon-button danger" [title]="t('results.previewRowDelete')"
                         [disabled]="getSelectedRowCount() === 0 || isApplyingEdits"
                         (click)="markSelectedRowsForDelete()">
                         <img src="icons/delete.png" height="13px" width="13px">
                     </button>
-                    <small *ngIf="hasPendingChanges()">{{ getPendingChangeCount() }} pending</small>
+                    <small *ngIf="hasPendingChanges()">{{ getPendingChangesSummary() }}</small>
                 </ng-container>
             </div>
 
@@ -60,12 +60,12 @@
             </small>
 
             <button type="button" class="toggle-result-size" *ngIf="showResultExpand"
-                [attr.aria-label]="isExpanded ? 'Restore results' : 'Expand results'"
-                [title]="isExpanded ? 'Restore results' : 'Expand results'" (click)="toggleResultSize()">
+                [attr.aria-label]="getToggleResultTitle()"
+                [title]="getToggleResultTitle()" (click)="toggleResultSize()">
                 <img [src]="isExpanded ? 'icons/minimize.png' : 'icons/maximize.png'" height="12px" width="12px">
             </button>
-            <button type="button" class="close-result" *ngIf="showResultClose" aria-label="Close results" title="Close results"
-                (click)="close()">x</button>
+            <button type="button" class="close-result" *ngIf="showResultClose"
+                [attr.aria-label]="t('results.close')" [title]="t('results.close')" (click)="close()">x</button>
         </div>
     </div>
     <div class="result-body">
@@ -75,6 +75,7 @@
                 [rowModelType]="'infinite'" [datasource]="gridDataSource"
                 [cacheBlockSize]="infiniteCacheBlockSize" [maxBlocksInCache]="infiniteMaxBlocksInCache"
                 [maxConcurrentDatasourceRequests]="1" [blockLoadDebounceMillis]="infiniteBlockLoadDebounceMillis"
+                [rowHeight]="resultRowHeight" [headerHeight]="resultHeaderHeight"
                 [rowBuffer]="20" [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false"
                 [suppressNoRowsOverlay]="true" [animateRows]="false" [rowClassRules]="rowClassRules"
                 (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)" (filterChanged)="onGridFilterChanged()"
@@ -85,6 +86,7 @@
             <ng-template #clientSideGrid>
                 <ag-grid-angular #agGrid class="ag-root" [rowData]="displayRows" [columnDefs]="columnDefs"
                     [defaultColDef]="defaultColDef" [domLayout]="'normal'" [rowBuffer]="20"
+                    [rowHeight]="resultRowHeight" [headerHeight]="resultHeaderHeight"
                     [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false"
                     [suppressNoRowsOverlay]="true" [animateRows]="false" [rowClassRules]="rowClassRules"
                     (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)" (filterChanged)="onGridFilterChanged()"
@@ -97,27 +99,27 @@
         <div class="cell-selection-menu" *ngIf="cellSelectionMenu" [style.left.px]="cellSelectionMenu.x"
             [style.top.px]="cellSelectionMenu.y" (click)="$event.stopPropagation()"
             (contextmenu)="$event.preventDefault()">
-            <button type="button" (click)="copySelectedData()">Copy</button>
-            <button type="button" (click)="copySelectedTable()">Copy to table</button>
-            <button type="button" (click)="exportSelectedXlsx()">Export to XLSX</button>
+            <button type="button" (click)="copySelectedData()">{{ t('results.copy') }}</button>
+            <button type="button" (click)="copySelectedTable()">{{ t('results.copyToTable') }}</button>
+            <button type="button" (click)="exportSelectedXlsx()">{{ t('results.exportXlsx') }}</button>
         </div>
 
         <div class="query-status loading" *ngIf="isLoading || isLoadingMore || isApplyingEdits">
             <span class="query-spinner"></span>
-            <span>{{ isApplyingEdits ? 'Applying changes...' : (isLoadingMore ? 'Loading rows...' : 'Executing query...') }}</span>
+            <span>{{ getLoadingStatus() }}</span>
         </div>
 
         <div class="query-status error" *ngIf="errorMessage">
             <div class="query-error-header">
-                <strong>Query error</strong>
-                <button type="button" (click)="copyQueryError($event)">Copy</button>
+                <strong>{{ t('results.queryError') }}</strong>
+                <button type="button" (click)="copyQueryError($event)">{{ t('results.copy') }}</button>
             </div>
             <span class="query-error-message">{{ errorMessage }}</span>
         </div>
 
         <div class="query-status empty"
             *ngIf="!isLoading && !isLoadingMore && !errorMessage && displayRows.length === 0">
-            <span>No rows returned.</span>
+            <span>{{ t('results.noRowsReturned') }}</span>
         </div>
     </div>
 </div>

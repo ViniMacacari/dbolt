@@ -6,6 +6,7 @@ import { YesNoModalComponent } from "../modal/yes-no-modal/yes-no-modal.componen
 import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
 import { ConnectionContextService } from '../../services/connection-context/connection-context.service'
 import { QueryCompareTargetService } from '../../services/query-compare-target/query-compare-target.service'
+import { AppLanguageService } from '../../services/language/app-language.service'
 
 @Component({
   selector: 'app-tabs',
@@ -20,8 +21,6 @@ export class TabsComponent {
 
   showLoadQuery: boolean = false
   showYNModal: boolean = false
-  titleYN: string = 'Unsaved changes'
-  messageYN: string = 'Do you want to close the tab even without saving the changes?'
 
   dataList: any = []
   dropdownVisible: boolean = false
@@ -37,7 +36,8 @@ export class TabsComponent {
   constructor(
     private dbSchema: GetDbschemaService,
     private connectionContext: ConnectionContextService,
-    private compareTarget: QueryCompareTargetService
+    private compareTarget: QueryCompareTargetService,
+    private language: AppLanguageService
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
@@ -55,7 +55,7 @@ export class TabsComponent {
     this.dropdownVisible = !this.dropdownVisible
   }
 
-  newTab(type: string, info: any, name: string | null = null): void {
+  newTab(type: string, info: any, name: string | null = null): any {
     const newTab: any = {
       id: Date.now(),
       name: name || Date.now(),
@@ -75,13 +75,15 @@ export class TabsComponent {
     setTimeout(() => {
       this.dropdownVisible = false
     }, 100)
+
+    return newTab
   }
 
   newSavedTab(type: string, info: any): void {
     const savedQuery = info.query || info
     const newTab: any = {
       id: savedQuery.id || Date.now(),
-      name: savedQuery.name || info.name?.name || 'Saved query',
+      name: savedQuery.name || info.name?.name || this.t('tabs.savedQuery'),
       type: type,
       info: {
         sql: savedQuery.sql || info.info?.sql || ''
@@ -124,7 +126,7 @@ export class TabsComponent {
 
     const newTab: any = {
       id: 'settings',
-      name: 'Settings',
+      name: this.t('tabs.settings'),
       type: 'settings',
       info: {},
       icon: 'SETTINGS'
@@ -138,7 +140,7 @@ export class TabsComponent {
     const context = this.dbSchema.getSelectedSchemaDB()
     const newTab: any = {
       id: Date.now(),
-      name: 'Query Assistant',
+      name: this.t('tabs.queryAssistant'),
       type: 'query-assistant',
       info: {},
       dbInfo: this.createTabDbInfo(context, !context),
@@ -157,7 +159,7 @@ export class TabsComponent {
     const resolvedContext = context || this.getActiveTab()?.dbInfo || this.dbSchema.getSelectedSchemaDB()
     const newTab: any = {
       id: Date.now(),
-      name: 'Select Builder',
+      name: this.t('tabs.selectBuilder'),
       type: 'select-builder',
       info: {},
       dbInfo: this.createTabDbInfo(resolvedContext, !resolvedContext),
@@ -317,7 +319,7 @@ export class TabsComponent {
       this.newTab('sql', {
         sql: event?.sql || '',
         context: event?.dbSchema
-      }, event?.name || 'Query version')
+    }, event?.name || this.t('tabs.queryVersion'))
       return
     }
 
@@ -380,5 +382,9 @@ export class TabsComponent {
     tab.versions = query.versions || []
     tab.icon = 'CODE'
     tab.persisted = Boolean(query.id)
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 }

@@ -1,6 +1,7 @@
 import { Component } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { Router } from '@angular/router'
+import { AppLanguageService } from '../../services/language/app-language.service'
 
 interface HelpSection {
   title: string
@@ -18,41 +19,50 @@ interface HelpSection {
 export class HelpComponent {
   readonly repositoryUrl = 'https://github.com/ViniMacacari/dbolt'
 
-  readonly sections: HelpSection[] = [
-    {
-      title: 'General App Help',
-      description: 'DBolt is a local database manager focused on connecting, browsing schemas, writing SQL, and inspecting query results.',
-      items: [
-        'Use the home screen to create, edit, remove, and open saved connections.',
-        'Use the workspace sidebar to switch database/schema context and open database objects.',
-        'Use SQL tabs to run selected SQL, full scripts, or the current statement.',
-        'Use the result grid to inspect rows, copy selected data, and increase the row limit when needed.'
-      ]
-    },
-    {
-      title: 'Common Questions',
-      items: [
-        'Saved connections are local to this machine.',
-        'The backend runs locally and is used by the frontend to execute database operations.',
-        'If a connection fails, check host, port, user, password, network access, and database driver availability.',
-        'Large result sets are loaded with a max row limit to avoid freezing the app.'
-      ]
-    },
-    {
-      title: 'Drivers',
-      description: 'Drivers are the fixed database adapters DBolt uses to communicate with each database engine through the local backend.',
-      items: [
-        'Each driver maps DBolt actions to a specific database protocol and SQL dialect.',
-        'Drivers are not user-created plugins in this version; they are built into the app.',
-        'The selected driver controls connection behavior, schema loading, metadata queries, and query execution.',
-        'Examples include HANA, PostgreSQL, MySQL, and SQL Server versions supported by the app.'
-      ]
-    }
-  ]
+  constructor(
+    private router: Router,
+    private language: AppLanguageService
+  ) { }
 
-  constructor(private router: Router) { }
+  get sections(): HelpSection[] {
+    return [
+      {
+        title: this.t('help.general.title'),
+        description: this.t('help.general.description'),
+        items: [
+          this.t('help.general.item.home'),
+          this.t('help.general.item.sidebar'),
+          this.t('help.general.item.sqlTabs'),
+          this.t('help.general.item.results')
+        ]
+      },
+      {
+        title: this.t('help.questions.title'),
+        items: [
+          this.t('help.questions.item.localConnections'),
+          this.t('help.questions.item.localBackend'),
+          this.t('help.questions.item.connectionFailure'),
+          this.t('help.questions.item.largeResults')
+        ]
+      },
+      {
+        title: this.t('help.drivers.title'),
+        description: this.t('help.drivers.description'),
+        items: [
+          this.t('help.drivers.item.protocol'),
+          this.t('help.drivers.item.plugins'),
+          this.t('help.drivers.item.behavior'),
+          this.t('help.drivers.item.examples')
+        ]
+      }
+    ]
+  }
 
   goHome(): void {
     this.router.navigate(['/'])
+  }
+
+  t(key: string): string {
+    return this.language.translate(key)
   }
 }

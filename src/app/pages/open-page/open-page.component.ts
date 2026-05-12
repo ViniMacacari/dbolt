@@ -6,6 +6,8 @@ import { ConnectionComponent } from "../../components/modal/connection/connectio
 import { ToastComponent } from '../../components/toast/toast.component'
 import { LoadingComponent } from '../../components/modal/loading/loading.component'
 import { ConnectionsService } from '../../services/resolve-connections/connections.service'
+import { AppLanguageService } from '../../services/language/app-language.service'
+import { AppLanguage } from '../../services/language/language.model'
 
 type ConnectionViewMode = 'focus' | 'matrix'
 
@@ -27,6 +29,9 @@ export class OpenPageComponent {
   viewMode: ConnectionViewMode = 'focus'
   selectedConnectionId: number | null = null
   appVersion: string = ''
+  appLanguage: AppLanguage
+  readonly appLanguageOptions: { value: AppLanguage, label: string }[]
+  isLanguageModalOpen = false
 
   private readonly viewModeStorageKey = 'dbolt-home-view-mode'
 
@@ -35,12 +40,16 @@ export class OpenPageComponent {
   constructor(
     private IAPI: InternalApiService,
     private router: Router,
-    private connectionsService: ConnectionsService
-  ) { }
+    private connectionsService: ConnectionsService,
+    private language: AppLanguageService
+  ) {
+    this.appLanguage = this.language.getCurrentLanguage()
+    this.appLanguageOptions = this.language.languageOptions
+  }
 
   async ngAfterViewInit(): Promise<void> {
     this.viewMode = this.getStoredViewMode()
-    LoadingComponent.show('Loading saved connections...')
+    LoadingComponent.show(this.t('home.loadingConnections'))
 
     try {
       await this.getConfigurations()
@@ -48,7 +57,7 @@ export class OpenPageComponent {
       await this.loadConnections()
     } catch (error: any) {
       console.error(error)
-      this.toast.showToast(error.message || 'Error loading saved connections', 'red')
+      this.toast.showToast(error.message || this.t('home.loadConnectionsError'), 'red')
     } finally {
       LoadingComponent.hide()
     }
@@ -65,6 +74,19 @@ export class OpenPageComponent {
 
   openHelp(): void {
     this.router.navigate(['/help'])
+  }
+
+  openLanguageModal(): void {
+    this.isLanguageModalOpen = true
+  }
+
+  closeLanguageModal(): void {
+    this.isLanguageModalOpen = false
+  }
+
+  selectLanguage(language: AppLanguage): void {
+    this.appLanguage = this.language.setLanguage(language)
+    this.closeLanguageModal()
   }
 
   async closeModal() {
@@ -105,7 +127,8 @@ export class OpenPageComponent {
 
   get selectedTarget(): string {
     const connection = this.selectedConnection
-    return [connection?.defaultDatabase, connection?.defaultSchema].filter(Boolean).join(' / ') || 'No default target'
+    return [connection?.defaultDatabase, connection?.defaultSchema].filter(Boolean).join(' / ') ||
+      this.t('home.noDefaultTarget')
   }
 
   openSelectedConnection(): void {
@@ -131,7 +154,7 @@ export class OpenPageComponent {
       })
 
       if (connectionResult?.success === false) {
-        throw new Error(connectionResult.error || connectionResult.message || 'Connection failed')
+        throw new Error(connectionResult.error || connectionResult.message || this.t('home.connectionFailed'))
       }
 
       if (result.defaultDatabase || result.defaultSchema) {
@@ -141,7 +164,7 @@ export class OpenPageComponent {
         })
 
         if (schemaResult?.success === false) {
-          throw new Error(schemaResult.error || schemaResult.message || 'Could not apply default database/schema')
+          throw new Error(schemaResult.error || schemaResult.message || this.t('home.applyDefaultTargetError'))
         }
       }
 
@@ -150,7 +173,7 @@ export class OpenPageComponent {
     } catch (error) {
       console.error(error)
       LoadingComponent.hide()
-      this.toast.showToast('Connection failed', 'red')
+      this.toast.showToast(this.t('home.connectionFailed'), 'red')
     }
   }
 
@@ -171,5 +194,9 @@ export class OpenPageComponent {
     return storedViewMode === 'focus' || storedViewMode === 'matrix'
       ? storedViewMode
       : 'focus'
+  }
+
+  t(key: string): string {
+    return this.language.translate(key)
   }
 }

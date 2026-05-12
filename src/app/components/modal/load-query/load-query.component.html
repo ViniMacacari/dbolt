@@ -2,9 +2,9 @@
     <div class="modal-content">
         <div class="modal-header">
             <div>
-                <h5 class="title">Load a query file</h5>
+                <h5 class="title">{{ t('loadQuery.title') }}</h5>
                 <div class="breadcrumb">
-                    <button type="button" (click)="goRoot()">Queries</button>
+                    <button type="button" (click)="goRoot()">{{ t('queryLibrary.root') }}</button>
                     <ng-container *ngFor="let part of breadcrumbParts">
                         <span>/</span>
                         <button type="button" (click)="openBreadcrumb(part.path)">{{ part.label }}</button>
@@ -16,24 +16,24 @@
         <div class="modal-body">
             <div class="toolbar">
                 <button type="button" class="nav-button" [disabled]="!currentFolderPath" (click)="goBack()">
-                    Back
+                    {{ t('generic.back') }}
                 </button>
                 <input [(ngModel)]="queryName" type="text" class="input-page"
-                    placeholder="Search files in this folder" (ngModelChange)="validateQueryName($event)" />
+                    [placeholder]="t('loadQuery.searchPlaceholder')" (ngModelChange)="validateQueryName($event)" />
                 <app-input-list #database [list]="dataList" [displayKey]="'name'" [width]="'220px'"
                     (itemSelected)="onDatabaseSelected($event)"
-                    [placeholder]="'Database'"></app-input-list>
+                    [placeholder]="t('queryLibrary.database')"></app-input-list>
             </div>
 
             <div class="compare-strip" *ngIf="compareTargets.length > 0">
                 <div class="compare-selected">
-                    <strong>{{ compareTargets.length }}/2 selected</strong>
-                    <span *ngFor="let target of compareTargets">{{ target.label }}</span>
+                    <strong>{{ t('loadQuery.selectedCount', { count: compareTargets.length }) }}</strong>
+                    <span *ngFor="let target of compareTargets">{{ targetLabel(target) }}</span>
                 </div>
                 <div class="compare-strip-actions">
-                    <button type="button" class="clear-button" (click)="clearCompareSelection()">Clear</button>
+                    <button type="button" class="clear-button" (click)="clearCompareSelection()">{{ t('loadQuery.clear') }}</button>
                     <button type="button" class="compare-button" [disabled]="compareTargets.length !== 2"
-                        (click)="compareSelected()">Compare selected</button>
+                        (click)="compareSelected()">{{ t('loadQuery.compareSelected') }}</button>
                 </div>
             </div>
 
@@ -54,10 +54,10 @@
                     <div class="query-main" (click)="loadQuery(query)">
                         <img src="db-logo/{{ query.dbSchema?.sgbd }}.png" height="18px">
                         <span>
-                            <h2 class="subtitle">{{ query.name }}</h2>
-                            <small *ngIf="query.updatedAt">Updated: {{ formatDate(query.updatedAt) }}</small>
+                            <h2 class="subtitle">{{ getQueryDisplayName(query) }}</h2>
+                            <small *ngIf="query.updatedAt">{{ t('loadQuery.updated', { date: formatDate(query.updatedAt) }) }}</small>
                             <small *ngIf="query.versioningEnabled || (query.versions?.length || 0) > 0">
-                                {{ (query.versions?.length || 0) }} saved version{{ (query.versions?.length || 0) === 1 ? '' : 's' }}
+                                {{ savedVersionsLabel(query.versions?.length || 0) }}
                             </small>
                         </span>
                     </div>
@@ -66,9 +66,9 @@
                         <button type="button" class="history-button"
                             *ngIf="query.versioningEnabled || (query.versions?.length || 0) > 0"
                             (click)="toggleHistory(query, $event)">
-                            Versions
+                            {{ t('loadQuery.versions') }}
                         </button>
-                        <button type="button" class="icon-button" title="Delete query"
+                        <button type="button" class="icon-button" [title]="t('loadQuery.deleteQuery')"
                             (click)="requestDeleteQuery(query, $event)">
                             <img src="icons/delete.png" height="15px">
                         </button>
@@ -76,7 +76,7 @@
 
                     <div class="version-panel" *ngIf="expandedHistoryQueryId === query.id">
                         <div class="version-header">
-                            <strong>Version history</strong>
+                            <strong>{{ t('loadQuery.versionHistory') }}</strong>
                             <small>{{ query.name }}</small>
                         </div>
 
@@ -84,10 +84,10 @@
                             <button type="button" class="target-select"
                                 [class.selected]="isCurrentQuerySelected(query)"
                                 (click)="toggleCurrentQueryCompare(query, $event)">
-                                {{ isCurrentQuerySelected(query) ? 'Selected' : 'Compare' }}
+                                {{ compareActionLabel(isCurrentQuerySelected(query)) }}
                             </button>
                             <span>
-                                <strong>Current file</strong>
+                                <strong>{{ t('queryCompare.currentFile') }}</strong>
                                 <small>{{ formatDate(query.updatedAt) }}</small>
                             </span>
                         </div>
@@ -96,23 +96,23 @@
                             [class.selected]="isVersionSelected(query, version)">
                             <button type="button" class="target-select" [class.selected]="isVersionSelected(query, version)"
                                 (click)="toggleVersionCompare(query, version, $event)">
-                                {{ isVersionSelected(query, version) ? 'Selected' : 'Compare' }}
+                                {{ compareActionLabel(isVersionSelected(query, version)) }}
                             </button>
                             <span>
-                                <strong>Version {{ version.id }}</strong>
+                                <strong>{{ versionLabel(version.id) }}</strong>
                                 <small>{{ formatDate(version.changedAt) }}</small>
                             </span>
                             <span class="version-actions">
                                 <button type="button" (click)="openVersionCopy(query, version, $event)">
-                                    Edit copy
+                                    {{ t('loadQuery.editCopy') }}
                                 </button>
                                 <button type="button" (click)="restoreVersion(query, version, $event)">
-                                    Restore
+                                    {{ t('loadQuery.restore') }}
                                 </button>
                             </span>
                         </div>
                         <small class="empty-history" *ngIf="getQueryVersions(query).length === 0">
-                            No saved versions yet
+                            {{ t('loadQuery.noSavedVersions') }}
                         </small>
                     </div>
                 </div>
@@ -120,19 +120,19 @@
 
             <div class="empty-state" *ngIf="!hasVisibleItems()">
                 <img src="icons/folder-code.png" height="28px">
-                <span>No files in this folder</span>
+                <span>{{ t('loadQuery.noFiles') }}</span>
             </div>
         </div>
 
         <div class="modal-footer">
-            <button class="btn-cancel" (click)="onClose()">Cancel</button>
+            <button class="btn-cancel" (click)="onClose()">{{ t('loadQuery.cancel') }}</button>
         </div>
     </div>
 </div>
 
-<app-yes-no-modal *ngIf="showDeleteConfirm" [title]="'Delete query'"
-    [message]="'Do you really want to delete ' + (pendingDeleteQuery?.name || 'this query') + '?'"
-    [cancelLabel]="'No'" [continueLabel]="'Yes, delete'" (closeAction)="cancelDeleteQuery()"
+<app-yes-no-modal *ngIf="showDeleteConfirm" [title]="t('loadQuery.deleteQuery')"
+    [message]="deleteConfirmMessage"
+    [cancelLabel]="t('loadQuery.no')" [continueLabel]="t('loadQuery.yesDelete')" (closeAction)="cancelDeleteQuery()"
     (continueAction)="confirmDeleteQuery()"></app-yes-no-modal>
 
 <app-toast></app-toast>

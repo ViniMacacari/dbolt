@@ -7,6 +7,7 @@ import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
 import { Router } from '@angular/router'
 import { ConnectionsService } from '../../services/resolve-connections/connections.service'
 import { ConnectionComponent } from '../modal/connection/connection.component'
+import { AppLanguageService } from '../../services/language/app-language.service'
 
 @Component({
   selector: 'app-sidebar',
@@ -43,7 +44,8 @@ export class SidebarComponent {
     private IAPI: InternalApiService,
     private dbSchemaService: GetDbschemaService,
     private router: Router,
-    private connectionsService: ConnectionsService
+    private connectionsService: ConnectionsService,
+    private language: AppLanguageService
   ) { }
 
   toggle() {
@@ -72,9 +74,9 @@ export class SidebarComponent {
   }
 
   getQuickSelectorTitle(): string {
-    if (this.quickSelectorType === 'connection') return 'Select connection'
-    if (this.quickSelectorType === 'database') return 'Select database'
-    if (this.quickSelectorType === 'schema') return 'Select schema'
+    if (this.quickSelectorType === 'connection') return this.t('sidebar.selectConnection')
+    if (this.quickSelectorType === 'database') return this.t('sidebar.selectDatabase')
+    if (this.quickSelectorType === 'schema') return this.t('sidebar.selectSchema')
 
     return ''
   }
@@ -97,7 +99,7 @@ export class SidebarComponent {
       return this.getSchemasByConnection(selectedConnection).map((database) => ({
         type: 'database',
         label: database.database,
-        description: `${database.schemas.length} schemas`,
+        description: this.t('sidebar.schemasCount', { count: database.schemas.length }),
         icon: 'icons/database.png',
         value: database,
         connection: selectedConnection
@@ -173,7 +175,7 @@ export class SidebarComponent {
 
   async selectQuickOption(option: any, event: MouseEvent): Promise<void> {
     event.stopPropagation()
-    LoadingComponent.show('Changing selected connection...')
+    LoadingComponent.show(this.t('sidebar.changingSelectedConnection'))
 
     try {
       if (option.type === 'connection') {
@@ -537,7 +539,7 @@ export class SidebarComponent {
     let schemaDb: any
 
     try {
-      await this.connectDatabase({
+      await this.canConnect({
         host: connection.host,
         port: connection.port,
         user: connection.user,
@@ -582,14 +584,7 @@ export class SidebarComponent {
       this.clickTimeout = null
     }
 
-    LoadingComponent.show()
-
-    try {
-      await this.setSchema(data2)
-      this.dbInfoRequested.emit(connection)
-    } finally {
-      LoadingComponent.hide()
-    }
+    this.dbInfoRequested.emit(data2 || connection)
   }
 
   async openDatabaseInfo(connection: any, database: any, event: MouseEvent): Promise<void> {
@@ -638,5 +633,9 @@ export class SidebarComponent {
     this.isModalOpen = false
     this.editingConnection = null
     this.connections = this.connectionsService.getCachedConnections()
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 }

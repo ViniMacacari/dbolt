@@ -13,6 +13,8 @@ import { SqlTableAutocompleteService } from '../../../services/code-autocomplete
 import { SqlCodeFormatterService } from '../../../services/code-formatting/sql-code-formatter.service'
 import { SqlSyntaxMonacoMarkersService } from '../../../services/sql-validation/sql-syntax-monaco-markers.service'
 import { QuerySaveService, SavedQuery, SavedQueryInput } from '../../../services/query-save/query-save.service'
+import { KeyboardShortcutService } from '../../../services/keyboard-shortcuts/keyboard-shortcut.service'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 let sqlTokenizerConfigured = false
 
@@ -43,6 +45,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private autocompleteDisposable?: monaco.IDisposable
   private syntaxValidationDisposable?: monaco.IDisposable
   private settingsSubscription?: Subscription
+  private languageSubscription?: Subscription
+  private shortcutDisposers: Array<() => void> = []
+  private editorActionDisposables: monaco.IDisposable[] = []
   private readonly defaultResultHeight = 300
   private readonly minimumResultHeight = 120
   private readonly minimumEditorHeight = 120
@@ -74,10 +79,15 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     private tableAutocomplete: SqlTableAutocompleteService,
     private sqlFormatter: SqlCodeFormatterService,
     private sqlSyntaxMarkers: SqlSyntaxMonacoMarkersService,
-    private querySave: QuerySaveService
+    private querySave: QuerySaveService,
+    private keyboardShortcuts: KeyboardShortcutService,
+    private language: AppLanguageService
   ) {
     this.settingsSubscription = this.appSettings.settingsChanges$.subscribe((settings) => {
       this.applySqlHighlightTheme(settings.sqlHighlightColors)
+    })
+    this.languageSubscription = this.language.languageChanges$.subscribe(() => {
+      this.registerEditorContextMenuActions()
     })
   }
 
@@ -100,7 +110,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     }
 
     if (changes['active'] && changes['active'].currentValue) {
-      this.refreshVisibleLayout()
+      this.refreshVisibleLayout(true)
     }
 
     if (this.editor && this.sqlContent !== this.editor.getValue()) {
@@ -118,6 +128,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.autocompleteDisposable?.dispose()
     this.syntaxValidationDisposable?.dispose()
     this.settingsSubscription?.unsubscribe()
+    this.languageSubscription?.unsubscribe()
+    this.unregisterKeyboardShortcuts()
+    this.disposeEditorContextMenuActions()
 
     if (this.editor) {
       this.editor.dispose()
@@ -170,7 +183,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       quickSuggestionsDelay: 250,
       suggestOnTriggerCharacters: true,
       wordBasedSuggestions: 'off',
-      contextmenu: false
+      contextmenu: true
     })
 
     this.autocompleteDisposable = this.tableAutocomplete.registerEditor(
@@ -315,17 +328,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   private initializeEditorEvents(): void {
-    this.editor?.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-      if (!this.active || this.isLoadingQuery) return
-
-      this.runSelected()
-    })
-
-    this.editor?.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      if (!this.active) return
-
-      void this.saveQuery()
-    })
+    this.registerKeyboardShortcuts()
+    this.registerEditorContextMenuActions()
 
     this.editor?.onDidChangeModelContent(() => {
       const value = this.editor?.getValue() || ''
@@ -334,6 +338,92 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         this.sqlContentChange.emit(value)
       }
     })
+  }
+
+  private registerEditorContextMenuActions(): void {
+    this.disposeEditorContextMenuActions()
+
+    const indentAction = this.editor?.addAction({
+      id: 'dbolt.indentSql',
+      label: this.t('editor.indentCode'),
+      contextMenuGroupId: '1_modification',
+      contextMenuOrder: 1.5,
+      run: () => {
+        this.formatCode()
+      }
+    })
+
+    if (indentAction) {
+      this.editorActionDisposables.push(indentAction)
+    }
+  }
+
+  private disposeEditorContextMenuActions(): void {
+    this.editorActionDisposables.forEach((disposable) => disposable.dispose())
+    this.editorActionDisposables = []
+  }
+
+  private registerKeyboardShortcuts(): void {
+    this.unregisterKeyboardShortcuts()
+
+    this.shortcutDisposers.push(
+      this.keyboardShortcuts.register({
+        key: 'Enter',
+        ctrlOrMeta: true,
+        priority: 90,
+        stopPropagation: true,
+        isEnabled: () => this.active && !this.isLoadingQuery && !!this.editor,
+        isInContext: (event) => this.isEditorShortcutContext(event),
+        handler: () => {
+          this.runSelected()
+          return true
+        }
+      }),
+      this.keyboardShortcuts.register({
+        key: 's',
+        ctrlOrMeta: true,
+        priority: 90,
+        stopPropagation: true,
+        isEnabled: () => this.active && !!this.editor,
+        isInContext: (event) => this.isEditorShortcutContext(event),
+        handler: () => {
+          void this.saveQuery()
+          return true
+        }
+      })
+    )
+  }
+
+  private unregisterKeyboardShortcuts(): void {
+    this.shortcutDisposers.forEach((dispose) => dispose())
+    this.shortcutDisposers = []
+  }
+
+  private isEditorShortcutContext(event: KeyboardEvent): boolean {
+    if (this.isSaveAsOpen) return false
+
+    const target = event.target as HTMLElement | null
+
+    if (this.keyboardShortcuts.isEventInside(event, this.editorContainer?.nativeElement)) {
+      return true
+    }
+
+    if (this.isTextInputTarget(target)) {
+      return false
+    }
+
+    return this.keyboardShortcuts.isEventInside(event, this.codeEditorPanel?.nativeElement) ||
+      target === document.body ||
+      target === document.documentElement
+  }
+
+  private isTextInputTarget(target: HTMLElement | null): boolean {
+    if (!target) return false
+
+    return target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      target.isContentEditable
   }
 
   runSelected(): void {
@@ -394,7 +484,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     const formatted = this.sqlFormatter.format(source, {
       indentSize: this.appSettings.getSqlFormatterIndentSize(),
-      uppercaseKeywords: this.appSettings.shouldUppercaseSqlFormatterKeywords()
+      uppercaseKeywords: this.appSettings.shouldUppercaseSqlFormatterKeywords(),
+      commaStyle: this.appSettings.getSqlFormatterCommaStyle(),
+      blankLineBetweenStatements: this.appSettings.shouldAddBlankLineBetweenSqlStatements(),
+      indentCreateBody: this.appSettings.shouldIndentSqlCreateBody()
     })
 
     if (formatted === source) return
@@ -514,7 +607,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
       this.applySavedQueryToTab(updatedQuery)
       this.savedQuery.emit(updatedQuery)
-      this.toast.showToast('Saved successfully ', 'green')
+      this.toast.showToast(this.t('editor.savedSuccessfully'), 'green')
     } catch (error: any) {
       console.error(error)
 
@@ -523,7 +616,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         return
       }
 
-      this.toast.showToast(error?.error || error?.message || 'Could not save query', 'red')
+      this.toast.showToast(error?.error || error?.message || this.t('editor.saveError'), 'red')
     }
   }
 
@@ -683,25 +776,31 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     setTimeout(() => this.editor?.layout(), 0)
   }
 
-  private refreshVisibleLayout(): void {
+  private refreshVisibleLayout(focusEditor: boolean = false): void {
     setTimeout(() => {
       this.editor?.layout()
       this.tableQuery?.refreshVisibleGrid()
+      if (focusEditor && !this.queryResultExpanded) {
+        this.editor?.focus()
+      }
 
       window.requestAnimationFrame(() => {
         this.editor?.layout()
         this.tableQuery?.refreshVisibleGrid()
+        if (focusEditor && !this.queryResultExpanded) {
+          this.editor?.focus()
+        }
       })
     }, 0)
   }
 
   private getQueryErrorMessage(error: any): string {
-    return error?.error || error?.message || 'Could not execute query.'
+    return error?.error || error?.message || this.t('editor.executeError')
   }
 
   private buildSavedQueryPayload(sql: string, dbSchemas: any): SavedQueryInput {
     return {
-      name: this.tabInfo?.name || 'Untitled query',
+      name: this.tabInfo?.name || this.t('editor.untitledQuery'),
       type: 'sql',
       sql,
       dbSchema: this.connectionContext.withoutRuntimeFields(dbSchemas),
@@ -736,10 +835,14 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   private getCopyQueryName(name: string): string {
-    const baseName = String(name || 'Untitled query').trim()
-    const suffix = ' copy'
+    const baseName = String(name || this.t('editor.untitledQuery')).trim()
+    const suffix = this.t('editor.copySuffix')
     const maxBaseLength = this.querySave.maxQueryNameLength - suffix.length
 
     return `${baseName.substring(0, maxBaseLength)}${suffix}`
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 }

@@ -1,29 +1,29 @@
 <div class="code-editor-container db-info-container d-flex h-100 gap-2">
     <div class="editor-toolbar d-flex align-items-center flex-column">
         <button class="btn" [ngClass]="{ 'active': activeGroup === 'tables' }" (click)="filterTables()">
-            <img src="icons/table.png" title="Tables" height="15px">
-            Tables <small>{{ data?.tables?.length || 0 }}</small>
+            <img src="icons/table.png" [title]="t('dbInfo.tables')" height="15px">
+            {{ t('dbInfo.tables') }} <small>{{ data?.tables?.length || 0 }}</small>
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': activeGroup === 'views' }" (click)="filterViews()">
-            <img src="icons/view.png" title="Views" height="15px">
-            Views <small>{{ data?.views?.length || 0 }}</small>
+            <img src="icons/view.png" [title]="t('dbInfo.views')" height="15px">
+            {{ t('dbInfo.views') }} <small>{{ data?.views?.length || 0 }}</small>
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': activeGroup === 'procedures' }" (click)="filterProcedures()">
-            <img src="icons/procedure.png" title="Procedures" height="15px">
-            Procedures <small>{{ data?.procedures?.length || 0 }}</small>
+            <img src="icons/procedure.png" [title]="t('dbInfo.procedures')" height="15px">
+            {{ t('dbInfo.procedures') }} <small>{{ data?.procedures?.length || 0 }}</small>
         </button>
 
         <div class="separator"></div>
 
         <button class="btn" [ngClass]="{ 'active': activeGroup === 'indexes' }" (click)="filterIndexes()">
-            <img src="icons/index.png" title="Indexes" height="15px">
-            Indexes <small>{{ data?.indexes?.length || 0 }}</small>
+            <img src="icons/index.png" [title]="t('dbInfo.indexes')" height="15px">
+            {{ t('dbInfo.indexes') }} <small>{{ data?.indexes?.length || 0 }}</small>
         </button>
     </div>
 
@@ -37,9 +37,19 @@
                 (columnResized)="onGridStateChanged()" (columnVisible)="onGridStateChanged()"
                 (columnPinned)="onGridStateChanged()" (rowClicked)="onRowClicked($event)">
             </ag-grid-angular>
+
+            <div class="db-info-status loading" *ngIf="isLoading">
+                <span class="db-info-spinner"></span>
+                <span>{{ t('dbInfo.loadingObjects') }}</span>
+            </div>
+
+            <div class="db-info-status error" *ngIf="!isLoading && errorMessage">
+                <strong>{{ t('dbInfo.informationError') }}</strong>
+                <span>{{ errorMessage }}</span>
+            </div>
         </div>
 
-        <p class="empty-list" *ngIf="activeRows.length === 0">{{ emptyMessage }}</p>
+        <p class="empty-list" *ngIf="!isLoading && !errorMessage && activeRows.length === 0">{{ emptyMessage }}</p>
     </div>
 </div>
 

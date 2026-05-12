@@ -19,6 +19,10 @@ export interface QueryLibraryView {
   hasVisibleItems: boolean
 }
 
+export interface QueryLibraryViewOptions {
+  searchAcrossFolders?: boolean
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -27,11 +31,13 @@ export class QueryLibraryNavigatorService {
     queries: SavedQuery[],
     folders: string[],
     currentFolderPath: string,
-    filters: QueryLibraryFilters
+    filters: QueryLibraryFilters,
+    options: QueryLibraryViewOptions = {}
   ): QueryLibraryView {
     const normalizedCurrentFolder = this.normalizeFolderPath(currentFolderPath)
-    const visibleFolders = this.getVisibleFolders(queries, folders, normalizedCurrentFolder)
-    const visibleQueries = this.getVisibleQueries(queries, normalizedCurrentFolder, filters)
+    const searchAcrossFolders = Boolean(options.searchAcrossFolders && String(filters.queryName || '').trim())
+    const visibleFolders = searchAcrossFolders ? [] : this.getVisibleFolders(queries, folders, normalizedCurrentFolder)
+    const visibleQueries = this.getVisibleQueries(queries, normalizedCurrentFolder, filters, searchAcrossFolders)
 
     return {
       folders: visibleFolders,
@@ -65,18 +71,21 @@ export class QueryLibraryNavigatorService {
   private getVisibleQueries(
     queries: SavedQuery[],
     currentFolderPath: string,
-    filters: QueryLibraryFilters
+    filters: QueryLibraryFilters,
+    searchAcrossFolders: boolean
   ): SavedQuery[] {
     const database = String(filters.database || '').toLowerCase()
     const queryName = String(filters.queryName || '').toLowerCase()
 
     return queries.filter(query => {
       const queryDatabase = String(query.dbSchema?.sgbd || '').toLowerCase()
-      const queryFolderPath = this.normalizeFolderPath(query.folderPath || '').toLowerCase()
+      const queryFolderPath = this.normalizeFolderPath(query.folderPath || '')
+      const normalizedQueryFolderPath = queryFolderPath.toLowerCase()
+      const queryPath = [queryFolderPath, query.name].filter(Boolean).join('/').toLowerCase()
 
-      return queryFolderPath === currentFolderPath.toLowerCase() &&
+      return (searchAcrossFolders || normalizedQueryFolderPath === currentFolderPath.toLowerCase()) &&
         (!database || queryDatabase.includes(database)) &&
-        (!queryName || query.name.toLowerCase().includes(queryName))
+        (!queryName || query.name.toLowerCase().includes(queryName) || queryPath.includes(queryName))
     })
   }
 

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common'
 import { AgGridAngular } from 'ag-grid-angular'
 import { AllCommunityModule, ColDef, GridApi, GridReadyEvent, ModuleRegistry, RowClickedEvent } from 'ag-grid-community'
 import { ToastComponent } from '../../toast/toast.component'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
@@ -47,31 +48,28 @@ export class DbInfoComponent implements AfterViewInit, OnChanges, OnDestroy {
   private gridApi?: GridApi
   private isRestoringGridState = false
   private readonly groupConfig: Record<ObjectGroup, {
-    label: string
-    singular: string
-    emptyMessage: string
+    singularKey: string
+    emptyMessageKey: string
   }> = {
     tables: {
-      label: 'Tables',
-      singular: 'Table',
-      emptyMessage: 'No tables found'
+      singularKey: 'dbInfo.table',
+      emptyMessageKey: 'dbInfo.noTablesFound'
     },
     views: {
-      label: 'Views',
-      singular: 'View',
-      emptyMessage: 'No views found'
+      singularKey: 'dbInfo.view',
+      emptyMessageKey: 'dbInfo.noViewsFound'
     },
     procedures: {
-      label: 'Procedures',
-      singular: 'Procedure',
-      emptyMessage: 'No procedures found'
+      singularKey: 'dbInfo.procedure',
+      emptyMessageKey: 'dbInfo.noProceduresFound'
     },
     indexes: {
-      label: 'Indexes',
-      singular: 'Index',
-      emptyMessage: 'No indexes found'
+      singularKey: 'dbInfo.index',
+      emptyMessageKey: 'dbInfo.noIndexesFound'
     }
   }
+
+  constructor(private language: AppLanguageService) { }
 
   ngOnInit(): void {
     this.restoreDbInfoState()
@@ -150,7 +148,19 @@ export class DbInfoComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   get emptyMessage(): string {
-    return this.groupConfig[this.activeGroup].emptyMessage
+    return this.t(this.groupConfig[this.activeGroup].emptyMessageKey)
+  }
+
+  get isLoading(): boolean {
+    return Boolean(this.data?.loading)
+  }
+
+  get errorMessage(): string {
+    return this.data?.errorMessage || ''
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 
   private setActiveGroup(group: ObjectGroup): void {
@@ -245,7 +255,7 @@ export class DbInfoComponent implements AfterViewInit, OnChanges, OnDestroy {
       ...row,
       id: row['id'] || [this.activeGroup, table, name || index].filter(Boolean).join(':'),
       name,
-      objectType: this.groupConfig[this.activeGroup].singular,
+      objectType: this.t(this.groupConfig[this.activeGroup].singularKey),
       table,
       index_type: indexType
     }
@@ -265,14 +275,14 @@ export class DbInfoComponent implements AfterViewInit, OnChanges, OnDestroy {
   private updateColumns(): void {
     const columns: ColDef[] = [
       {
-        headerName: 'Name',
+        headerName: this.t('dbInfo.name'),
         field: 'name',
         flex: 1,
         minWidth: 260,
         tooltipField: 'name'
       },
       {
-        headerName: 'Type',
+        headerName: this.t('dbInfo.type'),
         field: 'objectType',
         width: 140
       }
@@ -280,7 +290,7 @@ export class DbInfoComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     if (this.activeGroup === 'indexes') {
       columns.splice(1, 0, {
-        headerName: 'Table',
+        headerName: this.t('dbInfo.tableColumn'),
         field: 'table',
         flex: 1,
         minWidth: 220,
@@ -288,7 +298,7 @@ export class DbInfoComponent implements AfterViewInit, OnChanges, OnDestroy {
       })
 
       columns.push({
-        headerName: 'Index Type',
+        headerName: this.t('dbInfo.indexType'),
         field: 'index_type',
         width: 180
       })

@@ -1,8 +1,13 @@
 import { Injectable } from '@angular/core'
+import type { SqlFormatterCommaStyle } from '../app-settings/app-settings.service'
+import { SqlFormatterLayoutService } from './sql-formatter-layout.service'
 
 export interface SqlCodeFormatterOptions {
   indentSize?: number
   uppercaseKeywords?: boolean
+  commaStyle?: SqlFormatterCommaStyle
+  blankLineBetweenStatements?: boolean
+  indentCreateBody?: boolean
 }
 
 interface ProtectedSql {
@@ -16,7 +21,10 @@ interface ProtectedSql {
 export class SqlCodeFormatterService {
   private readonly fallbackOptions: Required<SqlCodeFormatterOptions> = {
     indentSize: 2,
-    uppercaseKeywords: true
+    uppercaseKeywords: true,
+    commaStyle: 'trailing',
+    blankLineBetweenStatements: true,
+    indentCreateBody: true
   }
 
   private readonly keywordMap = new Map([
@@ -26,11 +34,14 @@ export class SqlCodeFormatterService {
     ['and', 'AND'],
     ['as', 'AS'],
     ['asc', 'ASC'],
+    ['begin', 'BEGIN'],
     ['between', 'BETWEEN'],
     ['by', 'BY'],
     ['case', 'CASE'],
     ['create', 'CREATE'],
     ['cross', 'CROSS'],
+    ['call', 'CALL'],
+    ['declare', 'DECLARE'],
     ['delete', 'DELETE'],
     ['desc', 'DESC'],
     ['distinct', 'DISTINCT'],
@@ -41,9 +52,11 @@ export class SqlCodeFormatterService {
     ['exists', 'EXISTS'],
     ['from', 'FROM'],
     ['full', 'FULL'],
+    ['function', 'FUNCTION'],
     ['group', 'GROUP'],
     ['having', 'HAVING'],
     ['in', 'IN'],
+    ['if', 'IF'],
     ['inner', 'INNER'],
     ['insert', 'INSERT'],
     ['intersect', 'INTERSECT'],
@@ -53,6 +66,7 @@ export class SqlCodeFormatterService {
     ['left', 'LEFT'],
     ['like', 'LIKE'],
     ['limit', 'LIMIT'],
+    ['loop', 'LOOP'],
     ['not', 'NOT'],
     ['null', 'NULL'],
     ['offset', 'OFFSET'],
@@ -62,7 +76,10 @@ export class SqlCodeFormatterService {
     ['outer', 'OUTER'],
     ['over', 'OVER'],
     ['partition', 'PARTITION'],
+    ['proc', 'PROC'],
     ['procedure', 'PROCEDURE'],
+    ['replace', 'REPLACE'],
+    ['return', 'RETURN'],
     ['returning', 'RETURNING'],
     ['right', 'RIGHT'],
     ['select', 'SELECT'],
@@ -77,8 +94,11 @@ export class SqlCodeFormatterService {
     ['view', 'VIEW'],
     ['when', 'WHEN'],
     ['where', 'WHERE'],
+    ['while', 'WHILE'],
     ['with', 'WITH']
   ])
+
+  constructor(private layout: SqlFormatterLayoutService) { }
 
   format(sql: string, options: SqlCodeFormatterOptions = {}): string {
     if (!sql.trim()) return sql
@@ -91,9 +111,7 @@ export class SqlCodeFormatterService {
       formatted = this.uppercaseKeywords(formatted)
     }
 
-    formatted = this.formatSelectLists(formatted, resolvedOptions)
-    formatted = this.breakClauses(formatted)
-    formatted = this.normalizeLines(formatted, resolvedOptions)
+    formatted = this.layout.format(formatted, resolvedOptions)
 
     return this.restoreProtectedValues(formatted, protectedSql.values)
   }
@@ -101,7 +119,10 @@ export class SqlCodeFormatterService {
   private resolveOptions(options: SqlCodeFormatterOptions): Required<SqlCodeFormatterOptions> {
     return {
       indentSize: this.normalizeIndentSize(options.indentSize),
-      uppercaseKeywords: options.uppercaseKeywords ?? this.fallbackOptions.uppercaseKeywords
+      uppercaseKeywords: options.uppercaseKeywords ?? this.fallbackOptions.uppercaseKeywords,
+      commaStyle: options.commaStyle === 'leading' ? 'leading' : this.fallbackOptions.commaStyle,
+      blankLineBetweenStatements: options.blankLineBetweenStatements ?? this.fallbackOptions.blankLineBetweenStatements,
+      indentCreateBody: options.indentCreateBody ?? this.fallbackOptions.indentCreateBody
     }
   }
 
@@ -212,7 +233,7 @@ export class SqlCodeFormatterService {
       .replace(/\s+/g, ' ')
       .replace(/\s*([,;])\s*/g, '$1 ')
       .replace(/\s*\(\s*/g, '(')
-      .replace(/\s*\)\s*/g, ')')
+      .replace(/\s*\)/g, ')')
       .replace(/\s*([=<>!]+)\s*/g, ' $1 ')
       .replace(/\s+/g, ' ')
       .trim()
@@ -222,170 +243,6 @@ export class SqlCodeFormatterService {
     return sql.replace(/\b[A-Za-z_][A-Za-z0-9_$#]*\b/g, (word) => (
       this.keywordMap.get(word.toLowerCase()) || word
     ))
-  }
-
-  private formatSelectLists(sql: string, options: Required<SqlCodeFormatterOptions>): string {
-    let result = ''
-    let cursor = 0
-
-    while (cursor < sql.length) {
-      const selectIndex = this.findNextWord(sql, 'select', cursor)
-      if (selectIndex === -1) {
-        result += sql.slice(cursor)
-        break
-      }
-
-      const fromIndex = this.findTopLevelWord(sql, 'from', selectIndex + 6)
-      if (fromIndex === -1) {
-        result += sql.slice(cursor)
-        break
-      }
-
-      result += sql.slice(cursor, selectIndex)
-
-      const selectKeyword = sql.slice(selectIndex, selectIndex + 6)
-      const columnText = sql.slice(selectIndex + 6, fromIndex).trim()
-      const columns = this.splitTopLevel(columnText, ',')
-      const indent = ' '.repeat(options.indentSize)
-
-      result += `${selectKeyword}\n${indent}${columns.join(`,\n${indent}`)}\n`
-      cursor = fromIndex
-    }
-
-    return result
-  }
-
-  private breakClauses(sql: string): string {
-    return sql
-      .replace(/\s*;\s*/g, ';\n')
-      .replace(/\s+(FROM)\b/gi, '\n$1')
-      .replace(/\s+(WHERE)\b/gi, '\n$1')
-      .replace(/\s+(GROUP\s+BY)\b/gi, '\n$1')
-      .replace(/\s+(ORDER\s+BY)\b/gi, '\n$1')
-      .replace(/\s+(HAVING)\b/gi, '\n$1')
-      .replace(/\s+(LIMIT)\b/gi, '\n$1')
-      .replace(/\s+(OFFSET)\b/gi, '\n$1')
-      .replace(/\s+(RETURNING)\b/gi, '\n$1')
-      .replace(/\s+(VALUES)\b/gi, '\n$1')
-      .replace(/\s+(SET)\b/gi, '\n$1')
-      .replace(/\s+(UNION(?:\s+ALL)?)\b/gi, '\n$1')
-      .replace(/\s+((?:INNER|LEFT(?:\s+OUTER)?|RIGHT(?:\s+OUTER)?|FULL(?:\s+OUTER)?|CROSS)?\s*JOIN)\b/gi, '\n$1')
-      .replace(/\s+(ON)\b/gi, '\n$1')
-      .replace(/\s+(AND|OR)\b/gi, '\n$1')
-  }
-
-  private normalizeLines(sql: string, options: Required<SqlCodeFormatterOptions>): string {
-    const indent = ' '.repeat(options.indentSize)
-    const lines = sql
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-
-    let inSelectList = false
-
-    return lines
-      .map((line) => {
-        if (/^SELECT\b/i.test(line)) {
-          inSelectList = true
-          return line
-        }
-
-        if (this.isTopLevelClauseLine(line)) {
-          inSelectList = false
-        }
-
-        return `${inSelectList ? indent : this.getLineIndent(line, indent)}${line}`
-      })
-      .join('\n')
-      .trim()
-  }
-
-  private getLineIndent(line: string, indent: string): string {
-    if (/^(AND|OR|ON)\b/i.test(line)) {
-      return indent
-    }
-
-    if (/^WHEN\b/i.test(line)) {
-      return indent
-    }
-
-    return ''
-  }
-
-  private isTopLevelClauseLine(line: string): boolean {
-    return /^(FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT|OFFSET|RETURNING|VALUES|SET|UNION|(?:INNER|LEFT(?:\s+OUTER)?|RIGHT(?:\s+OUTER)?|FULL(?:\s+OUTER)?|CROSS)?\s*JOIN)\b/i.test(line)
-  }
-
-  private splitTopLevel(value: string, delimiter: string): string[] {
-    const parts: string[] = []
-    let level = 0
-    let current = ''
-
-    for (const char of value) {
-      if (char === '(') {
-        level++
-      } else if (char === ')') {
-        level = Math.max(0, level - 1)
-      }
-
-      if (char === delimiter && level === 0) {
-        parts.push(current.trim())
-        current = ''
-        continue
-      }
-
-      current += char
-    }
-
-    if (current.trim()) {
-      parts.push(current.trim())
-    }
-
-    return parts.length ? parts : [value.trim()]
-  }
-
-  private findNextWord(sql: string, word: string, startIndex: number): number {
-    const pattern = new RegExp(`\\b${word}\\b`, 'ig')
-    pattern.lastIndex = startIndex
-    const match = pattern.exec(sql)
-
-    return match?.index ?? -1
-  }
-
-  private findTopLevelWord(sql: string, word: string, startIndex: number): number {
-    let level = 0
-    const normalizedWord = word.toLowerCase()
-
-    for (let index = startIndex; index < sql.length; index++) {
-      const char = sql[index]
-
-      if (char === '(') {
-        level++
-        continue
-      }
-
-      if (char === ')') {
-        level = Math.max(0, level - 1)
-        continue
-      }
-
-      if (level === 0 && this.isWordAt(sql, normalizedWord, index)) {
-        return index
-      }
-    }
-
-    return -1
-  }
-
-  private isWordAt(sql: string, word: string, index: number): boolean {
-    const candidate = sql.slice(index, index + word.length).toLowerCase()
-    if (candidate !== word) return false
-
-    return !this.isWordCharacter(sql[index - 1]) && !this.isWordCharacter(sql[index + word.length])
-  }
-
-  private isWordCharacter(value?: string): boolean {
-    return Boolean(value && /[A-Za-z0-9_$#]/.test(value))
   }
 
   private restoreProtectedValues(sql: string, values: string[]): string {

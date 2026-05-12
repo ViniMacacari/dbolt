@@ -1,6 +1,13 @@
 import { Injectable } from '@angular/core'
 import { Subject } from 'rxjs'
 import { CacheManagerService } from '../cache/cache-manager.service'
+import {
+  APP_LANGUAGE_OPTIONS,
+  AppLanguage,
+  AppLanguageOption,
+  DEFAULT_APP_LANGUAGE,
+  normalizeAppLanguage
+} from '../language/language.model'
 
 export interface SqlHighlightColors {
   keyword: string
@@ -17,9 +24,11 @@ export interface SqlHighlightColors {
 
 export type SqlHighlightColorKey = keyof SqlHighlightColors
 export type SqlHighlightMode = 'dbolt-dark' | 'dbolt-high-contrast' | 'classic-sql' | 'custom'
+export type SqlFormatterCommaStyle = 'trailing' | 'leading'
 export type TableAutocompleteMatchMode = 'contains' | 'fuzzy'
 
 export interface AppSettings {
+  appLanguage: AppLanguage
   defaultQueryRows: number
   connectionExpirationMinutes: number
   sqlSyntaxValidationEnabled: boolean
@@ -29,6 +38,9 @@ export interface AppSettings {
   autoQuoteCapitalizedColumns: boolean
   sqlFormatterIndentSize: number
   sqlFormatterUppercaseKeywords: boolean
+  sqlFormatterCommaStyle: SqlFormatterCommaStyle
+  sqlFormatterBlankLineBetweenStatements: boolean
+  sqlFormatterIndentCreateBody: boolean
   sqlHighlightMode: SqlHighlightMode
   sqlHighlightColors: SqlHighlightColors
 }
@@ -39,6 +51,7 @@ export interface AppSettings {
 export class AppSettingsService {
   private readonly cacheKey = 'app-settings'
   private readonly fallbackSettings: AppSettings = {
+    appLanguage: DEFAULT_APP_LANGUAGE,
     defaultQueryRows: 50,
     connectionExpirationMinutes: 30,
     sqlSyntaxValidationEnabled: true,
@@ -48,6 +61,9 @@ export class AppSettingsService {
     autoQuoteCapitalizedColumns: true,
     sqlFormatterIndentSize: 2,
     sqlFormatterUppercaseKeywords: true,
+    sqlFormatterCommaStyle: 'trailing',
+    sqlFormatterBlankLineBetweenStatements: true,
+    sqlFormatterIndentCreateBody: true,
     sqlHighlightMode: 'dbolt-dark',
     sqlHighlightColors: this.getSqlHighlightPresetColors('dbolt-dark')
   }
@@ -57,6 +73,7 @@ export class AppSettingsService {
     { value: 'classic-sql', label: 'Classic SQL' },
     { value: 'custom', label: 'Custom' }
   ]
+  readonly appLanguageOptions: AppLanguageOption[] = APP_LANGUAGE_OPTIONS
   private readonly sqlHighlightPresets: Record<Exclude<SqlHighlightMode, 'custom'>, SqlHighlightColors> = {
     'dbolt-dark': {
       keyword: '#739eca',
@@ -153,6 +170,10 @@ export class AppSettingsService {
     return settings
   }
 
+  getAppLanguage(): AppLanguage {
+    return this.getSettings().appLanguage
+  }
+
   getDefaultQueryRows(): number {
     return this.getSettings().defaultQueryRows
   }
@@ -189,6 +210,18 @@ export class AppSettingsService {
     return this.getSettings().sqlFormatterUppercaseKeywords
   }
 
+  getSqlFormatterCommaStyle(): SqlFormatterCommaStyle {
+    return this.getSettings().sqlFormatterCommaStyle
+  }
+
+  shouldAddBlankLineBetweenSqlStatements(): boolean {
+    return this.getSettings().sqlFormatterBlankLineBetweenStatements
+  }
+
+  shouldIndentSqlCreateBody(): boolean {
+    return this.getSettings().sqlFormatterIndentCreateBody
+  }
+
   getSqlHighlightColors(): SqlHighlightColors {
     return this.getSettings().sqlHighlightColors
   }
@@ -202,6 +235,17 @@ export class AppSettingsService {
     const settings = {
       ...this.getSettings(),
       defaultQueryRows
+    }
+
+    this.saveSettings(settings)
+
+    return settings
+  }
+
+  setAppLanguage(value: unknown): AppSettings {
+    const settings = {
+      ...this.getSettings(),
+      appLanguage: normalizeAppLanguage(value)
     }
 
     this.saveSettings(settings)
@@ -276,11 +320,20 @@ export class AppSettingsService {
     return settings
   }
 
-  setSqlFormatterSettings(indentSize: number, uppercaseKeywords: boolean): AppSettings {
+  setSqlFormatterSettings(
+    indentSize: number,
+    uppercaseKeywords: boolean,
+    commaStyle: unknown = this.getSettings().sqlFormatterCommaStyle,
+    blankLineBetweenStatements: boolean = this.getSettings().sqlFormatterBlankLineBetweenStatements,
+    indentCreateBody: boolean = this.getSettings().sqlFormatterIndentCreateBody
+  ): AppSettings {
     const settings = {
       ...this.getSettings(),
       sqlFormatterIndentSize: this.normalizeIndentSize(indentSize),
-      sqlFormatterUppercaseKeywords: Boolean(uppercaseKeywords)
+      sqlFormatterUppercaseKeywords: Boolean(uppercaseKeywords),
+      sqlFormatterCommaStyle: this.normalizeSqlFormatterCommaStyle(commaStyle),
+      sqlFormatterBlankLineBetweenStatements: Boolean(blankLineBetweenStatements),
+      sqlFormatterIndentCreateBody: Boolean(indentCreateBody)
     }
 
     this.saveSettings(settings)
@@ -377,6 +430,10 @@ export class AppSettingsService {
     return value === 'fuzzy' ? 'fuzzy' : 'contains'
   }
 
+  normalizeSqlFormatterCommaStyle(value: unknown): SqlFormatterCommaStyle {
+    return value === 'leading' ? 'leading' : 'trailing'
+  }
+
   getSqlHighlightPresetColors(mode: Exclude<SqlHighlightMode, 'custom'>): SqlHighlightColors {
     const preset = this.sqlHighlightPresets?.[mode]
     if (preset) return { ...preset }
@@ -402,6 +459,7 @@ export class AppSettingsService {
       : this.getSqlHighlightPresetColors(sqlHighlightMode)
 
     return {
+      appLanguage: normalizeAppLanguage(settings?.appLanguage),
       defaultQueryRows: this.normalizeRows(settings?.defaultQueryRows),
       connectionExpirationMinutes: this.normalizeExpirationMinutes(settings?.connectionExpirationMinutes),
       sqlSyntaxValidationEnabled: settings?.sqlSyntaxValidationEnabled ?? this.fallbackSettings.sqlSyntaxValidationEnabled,
@@ -411,6 +469,9 @@ export class AppSettingsService {
       autoQuoteCapitalizedColumns: settings?.autoQuoteCapitalizedColumns ?? this.fallbackSettings.autoQuoteCapitalizedColumns,
       sqlFormatterIndentSize: this.normalizeIndentSize(settings?.sqlFormatterIndentSize),
       sqlFormatterUppercaseKeywords: settings?.sqlFormatterUppercaseKeywords ?? this.fallbackSettings.sqlFormatterUppercaseKeywords,
+      sqlFormatterCommaStyle: this.normalizeSqlFormatterCommaStyle(settings?.sqlFormatterCommaStyle),
+      sqlFormatterBlankLineBetweenStatements: settings?.sqlFormatterBlankLineBetweenStatements ?? this.fallbackSettings.sqlFormatterBlankLineBetweenStatements,
+      sqlFormatterIndentCreateBody: settings?.sqlFormatterIndentCreateBody ?? this.fallbackSettings.sqlFormatterIndentCreateBody,
       sqlHighlightMode,
       sqlHighlightColors
     }
