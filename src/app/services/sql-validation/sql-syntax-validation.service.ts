@@ -51,6 +51,10 @@ export class SqlSyntaxValidationService {
       return []
     }
 
+    if (this.shouldSkipParser(sql, context)) {
+      return []
+    }
+
     try {
       const database = this.resolveParserDatabase(context)
       const parser = await this.getParser(database)
@@ -78,6 +82,44 @@ export class SqlSyntaxValidationService {
     if (database === 'mysql') return 'mysql'
 
     return 'transactsql'
+  }
+
+  private shouldSkipParser(sql: string, context?: any): boolean {
+    const database = String(context?.sgbd || context?.database || '').toLowerCase()
+
+    return database === 'hana' && this.isHanaRoutineDefinition(sql)
+  }
+
+  private isHanaRoutineDefinition(sql: string): boolean {
+    const normalizedSql = this.stripLeadingSqlComments(sql).trimStart()
+
+    return /^(create\s+(or\s+replace\s+)?|alter\s+)(procedure|function)\b/i.test(normalizedSql)
+  }
+
+  private stripLeadingSqlComments(sql: string): string {
+    let remainingSql = sql
+
+    while (true) {
+      const nextSql = remainingSql.trimStart()
+
+      if (nextSql.startsWith('--')) {
+        const lineBreakIndex = nextSql.search(/\r\n|\r|\n/)
+        if (lineBreakIndex === -1) return ''
+
+        remainingSql = nextSql.slice(lineBreakIndex)
+        continue
+      }
+
+      if (nextSql.startsWith('/*')) {
+        const commentEndIndex = nextSql.indexOf('*/')
+        if (commentEndIndex === -1) return ''
+
+        remainingSql = nextSql.slice(commentEndIndex + 2)
+        continue
+      }
+
+      return nextSql
+    }
   }
 
   private getParser(database: ParserDatabase): Promise<SqlParser> {
