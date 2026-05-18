@@ -36,6 +36,16 @@ export const ptBrTranslations: TranslationCatalog = {
   'home.languageModalTitle': 'Idioma',
   'home.languageModalDescription': 'Escolha o idioma usado nas telas suportadas.',
 
+  'appUpdate.title': 'Atualização disponível',
+  'appUpdate.message': 'A versão estável {targetVersion} está disponível. Você está usando {currentVersion}. Deseja baixar e abrir o instalador agora?',
+  'appUpdate.platform': 'Plataforma',
+  'appUpdate.file': 'Arquivo',
+  'appUpdate.later': 'Agora não',
+  'appUpdate.updateNow': 'Atualizar',
+  'appUpdate.updating': 'Atualizando...',
+  'appUpdate.downloading': 'Baixando atualização e abrindo o instalador...',
+  'appUpdate.installFailed': 'Não foi possível baixar ou abrir o instalador.',
+
   'help.title': 'Ajuda do DBolt',
   'help.subtitle': 'Uso do app, dúvidas comuns e comportamento dos drivers.',
   'help.originalRepo': 'Repositório original',
