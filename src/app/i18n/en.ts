@@ -36,6 +36,16 @@ export const enTranslations: TranslationCatalog = {
   'home.languageModalTitle': 'Language',
   'home.languageModalDescription': 'Choose the language used on supported screens.',
 
+  'appUpdate.title': 'Update available',
+  'appUpdate.message': 'Stable version {targetVersion} is available. You are using {currentVersion}. Do you want to download and open the installer now?',
+  'appUpdate.platform': 'Platform',
+  'appUpdate.file': 'File',
+  'appUpdate.later': 'Not now',
+  'appUpdate.updateNow': 'Update',
+  'appUpdate.updating': 'Updating...',
+  'appUpdate.downloading': 'Downloading the update and opening the installer...',
+  'appUpdate.installFailed': 'Could not download or open the installer.',
+
   'help.title': 'DBolt Help',
   'help.subtitle': 'App usage, common questions, and driver behavior.',
   'help.originalRepo': 'Original repo',
