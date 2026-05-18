@@ -4,3 +4,12 @@
 </div>
 
 <app-loading [global]="true"></app-loading>
+
+<app-update-modal
+    *ngIf="isUpdateModalOpen"
+    [update]="availableUpdate"
+    [isInstalling]="isInstallingUpdate"
+    [errorMessage]="updateErrorMessage"
+    (closeAction)="closeUpdateModal()"
+    (updateAction)="installUpdate()">
+</app-update-modal>
