@@ -7,6 +7,7 @@ import {
   INTERNAL_API_TOKEN_HEADER,
   getInternalApiSessionToken
 } from './api/services/security/internal-session-token.js';
+import { registerAppUpdateIpc } from './electron/services/app-update.js';
 
 const { app, BrowserWindow, ipcMain, shell } = require('electron') as typeof import('electron');
 const appRoot = path.resolve(__dirname, '..');
@@ -63,6 +64,13 @@ ipcMain.handle(INTERNAL_API_SESSION_CHANNEL, async (event) => {
     token: getInternalApiSessionToken(),
     tokenHeader: INTERNAL_API_TOKEN_HEADER
   };
+});
+
+registerAppUpdateIpc({
+  app,
+  ipcMain,
+  shell,
+  isTrustedRendererUrl
 });
 
 function createWindow(): void {
