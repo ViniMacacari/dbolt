@@ -118,12 +118,16 @@ class SQuerySQLServerV1 {
       throw new Error('No schema selected');
     }
 
-    const regex = /(?:from|join)\s+([\w\d]+(?:\.[\w\d]+)?)(\s+[as]?\s+\w+)?/gi;
+    const identifierPattern = String.raw`(?:\[[^\]]+\]|[\w\d]+)`;
+    const regex = new RegExp(
+      String.raw`(?:from|join)\s+(${identifierPattern}(?:\.${identifierPattern})?)(\s+(?:as\s+)?\w+)?`,
+      'gi'
+    );
     const cteNames = this.getCteNames(sql);
     const quotedCurrentSchema = quoteSqlServerIdentifier(currentSchema, 'Schema name');
 
     return sql.replace(regex, (match, table: string) => {
-      if (table.includes('.') || cteNames.has(table.toLowerCase())) {
+      if (table.includes('.') || cteNames.has(this.unquoteIdentifier(table).toLowerCase())) {
         return match;
       }
 
@@ -142,6 +146,12 @@ class SQuerySQLServerV1 {
     }
 
     return cteNames;
+  }
+
+  private unquoteIdentifier(identifier: string): string {
+    return String(identifier || '')
+      .replace(/^\[|\]$/g, '')
+      .replace(/]]/g, ']');
   }
 }
 
