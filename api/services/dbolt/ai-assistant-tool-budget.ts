@@ -14,8 +14,8 @@ class AiAssistantToolBudgetService {
       maxIterations: 2,
       maxToolCalls: 4,
       maxToolCallsPerIteration: 2,
-      maxToolResultChars: 4500,
-      maxToolTranscriptChars: 11000,
+      maxToolResultChars: 9000,
+      maxToolTranscriptChars: 18000,
       iterationsUsed: 0,
       toolCallsUsed: 0
     };
