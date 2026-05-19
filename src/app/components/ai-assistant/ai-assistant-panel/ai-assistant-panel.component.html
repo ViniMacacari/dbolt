@@ -2,11 +2,11 @@
     <div class="sidebar-actions my-2">
         <button type="button" class="sidebar-action-button menu-button" (click)="close.emit()"
             [title]="t('generic.back')">
-            <img src="icons/menu.png" height="24px" class="toogle-img" [alt]="t('generic.back')">
+            <img src="icons/close.png" height="24px" class="toogle-img" [alt]="t('generic.back')">
         </button>
         <button type="button" class="sidebar-action-button home-button" (click)="showSettings = false"
             [title]="t('aiAssistant.chat')">
-            <img src="icons/ai.png" height="17px" width="17px" [alt]="t('aiAssistant.chat')">
+            <img src="icons/chat.png" height="17px" width="17px" [alt]="t('aiAssistant.chat')">
         </button>
         <button type="button" class="sidebar-action-button settings-button" (click)="showSettings = !showSettings"
             [title]="t('aiAssistant.configure')">
