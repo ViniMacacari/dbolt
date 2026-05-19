@@ -19,11 +19,12 @@ import { ProcedureInfoComponent } from '../../components/elements/procedure-info
 import { QueryVersionCompareComponent } from '../../components/elements/query-version-compare/query-version-compare.component'
 import { QuerySaveService } from '../../services/query-save/query-save.service'
 import { AppLanguageService } from '../../services/language/app-language.service'
+import { AiAssistantPanelComponent } from '../../components/ai-assistant/ai-assistant-panel/ai-assistant-panel.component'
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent],
+  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
@@ -50,6 +51,7 @@ export class DatabaseManagerComponent {
   queryAssistantOpen: boolean = false
   selectBuilderOpen: boolean = false
   queryCompareOpen: boolean = false
+  aiAssistantOpen: boolean = false
   dbInfoInitialized: boolean = false
   tableInfoInitialized: boolean = false
   procedureInfoInitialized: boolean = false
@@ -322,6 +324,14 @@ export class DatabaseManagerComponent {
 
   onSettingsRequested(): void {
     this.tabsComponent.openSettingsTab()
+  }
+
+  openAiAssistant(): void {
+    this.aiAssistantOpen = true
+  }
+
+  closeAiAssistant(): void {
+    this.aiAssistantOpen = false
   }
 
   async onSqlScriptRequested(event: any): Promise<void> {
