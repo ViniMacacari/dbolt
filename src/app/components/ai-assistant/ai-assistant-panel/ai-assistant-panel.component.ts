@@ -108,13 +108,10 @@ export class AiAssistantPanelComponent implements OnInit {
     this.errorMessage = ''
 
     try {
-      const readonlyContext = event.allowDatabaseContext
-        ? this.databaseContext.buildReadonlyContext(this.selectedSchemaDB, this.dbSchemasData, this.tabInfo)
-        : undefined
       const readonlyToolContext = event.allowDatabaseContext
         ? this.databaseContext.buildReadonlyToolContext(this.selectedSchemaDB, this.dbSchemasData)
         : undefined
-      const response = await this.chatService.sendMessage(this.toApiMessages(), readonlyContext, readonlyToolContext)
+      const response = await this.chatService.sendMessage(this.toApiMessages(), readonlyToolContext)
       this.messages = [...this.messages, this.createMessage('assistant', response.message)]
     } catch (error: unknown) {
       this.messages = [
@@ -133,10 +130,17 @@ export class AiAssistantPanelComponent implements OnInit {
   private toApiMessages(): AiAssistantApiMessage[] {
     return this.messages
       .filter((message) => !message.error)
+      .slice(-6)
       .map((message) => ({
         role: message.role,
-        content: message.content
+        content: message.content.length > this.getMessagePromptLimit(message.role)
+          ? `${message.content.slice(0, this.getMessagePromptLimit(message.role))}...`
+          : message.content
       }))
+  }
+
+  private getMessagePromptLimit(role: 'user' | 'assistant'): number {
+    return role === 'assistant' ? 900 : 1400
   }
 
   private createMessage(role: 'user' | 'assistant', content: string, error: boolean = false): AiChatMessage {
