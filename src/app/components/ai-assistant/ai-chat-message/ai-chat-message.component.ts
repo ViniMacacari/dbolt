@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common'
-import { Component, Input, OnDestroy } from '@angular/core'
+import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core'
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser'
 
 import { AiChatMessage } from '../../../services/ai-assistant/ai-assistant.model'
@@ -13,8 +13,10 @@ import { QueryResultExportService } from '../../../services/query-result-export/
   templateUrl: './ai-chat-message.component.html',
   styleUrl: './ai-chat-message.component.scss'
 })
-export class AiChatMessageComponent implements OnDestroy {
+export class AiChatMessageComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) message!: AiChatMessage
+
+  formattedContent!: SafeHtml
 
   copyState: 'idle' | 'copied' | 'error' = 'idle'
   private copyResetTimer?: ReturnType<typeof setTimeout>
@@ -25,14 +27,16 @@ export class AiChatMessageComponent implements OnDestroy {
     private clipboard: QueryResultExportService
   ) { }
 
+  ngOnChanges(_changes: SimpleChanges): void {
+    this.formattedContent = this.sanitizer.bypassSecurityTrustHtml(
+      this.formatMarkdown(this.message.content || '')
+    )
+  }
+
   get authorLabel(): string {
     return this.message.role === 'assistant'
       ? this.language.translate('aiAssistant.assistant')
       : this.language.translate('aiAssistant.user')
-  }
-
-  get formattedContent(): SafeHtml {
-    return this.sanitizer.bypassSecurityTrustHtml(this.formatMarkdown(this.message.content || ''))
   }
 
   get copyLabel(): string {

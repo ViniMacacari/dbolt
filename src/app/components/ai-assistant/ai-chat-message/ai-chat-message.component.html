@@ -6,8 +6,8 @@
     <div class="bubble">
         <div class="message-header">
             <strong class="subtitle-min">{{ authorLabel }}</strong>
-            <button type="button" class="copy-message" *ngIf="message.role === 'assistant'"
-                [ngClass]="copyState" [title]="copyLabel" (click)="copyMessage($event)">
+            <button type="button" class="copy-message" *ngIf="message.role === 'assistant'" [ngClass]="copyState"
+                [title]="copyLabel" (mousedown)="$event.preventDefault()" (click)="copyMessage($event)">
                 {{ copyLabel }}
             </button>
         </div>
