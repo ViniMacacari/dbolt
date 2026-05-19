@@ -5,18 +5,23 @@ import { homedir } from 'os';
 import SecureStorage from './secure-storage.js';
 
 const SETTINGS_FILENAME = 'settings.json';
-const DEFAULT_BASE_URL = 'https://api.openai.com/v1/chat/completions';
-const DEFAULT_MODEL = 'gpt-5.4-mini';
+const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1/chat/completions';
+const DEFAULT_OPENAI_MODEL = 'gpt-5.4-mini';
+const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
+
+export type AiAssistantProvider = 'openai' | 'gemini';
 
 export interface AiAssistantPublicSettings {
-  provider: 'openai-compatible';
+  provider: AiAssistantProvider;
   baseUrl: string;
   model: string;
   hasApiKey: boolean;
+  hasApiKeys: Record<AiAssistantProvider, boolean>;
   maskedApiKey?: string;
 }
 
 export interface AiAssistantSettingsInput {
+  provider?: AiAssistantProvider;
   baseUrl?: string;
   model?: string;
   apiKey?: string;
@@ -24,15 +29,17 @@ export interface AiAssistantSettingsInput {
 }
 
 export interface AiAssistantResolvedSettings {
+  provider: AiAssistantProvider;
   baseUrl: string;
   model: string;
   apiKey: string;
 }
 
 interface StoredAiAssistantSettings {
-  provider: 'openai-compatible';
+  provider: AiAssistantProvider;
   baseUrl: string;
   model: string;
+  encryptedApiKeys?: Partial<Record<AiAssistantProvider, string>>;
   encryptedApiKey?: string;
   updatedAt?: string;
 }
@@ -51,19 +58,29 @@ class AiAssistantSettingsService {
 
   async saveSettings(input: AiAssistantSettingsInput): Promise<AiAssistantPublicSettings> {
     const storedSettings = await this.readSettingsFile();
+    const provider = this.normalizeProvider(input.provider ?? storedSettings.provider);
+    const encryptedApiKeys = {
+      ...(storedSettings.encryptedApiKeys || {})
+    };
+
     const nextSettings: StoredAiAssistantSettings = {
       ...storedSettings,
-      baseUrl: this.normalizeBaseUrl(input.baseUrl ?? storedSettings.baseUrl),
+      provider,
+      encryptedApiKeys,
+      baseUrl: provider === 'openai'
+        ? this.normalizeBaseUrl(input.baseUrl ?? storedSettings.baseUrl)
+        : storedSettings.baseUrl,
       model: this.normalizeModel(input.model ?? storedSettings.model),
       updatedAt: new Date().toISOString()
     };
 
     if (input.clearApiKey) {
-      delete nextSettings.encryptedApiKey;
+      delete encryptedApiKeys[provider];
     } else if (typeof input.apiKey === 'string' && input.apiKey.trim()) {
-      nextSettings.encryptedApiKey = await SecureStorage.encryptString(input.apiKey.trim());
+      encryptedApiKeys[provider] = await SecureStorage.encryptString(input.apiKey.trim());
     }
 
+    delete nextSettings.encryptedApiKey;
     await this.writeSettingsFile(nextSettings);
 
     return this.toPublicSettings(nextSettings);
@@ -71,14 +88,16 @@ class AiAssistantSettingsService {
 
   async getResolvedSettings(): Promise<AiAssistantResolvedSettings> {
     const storedSettings = await this.readSettingsFile();
+    const encryptedApiKey = storedSettings.encryptedApiKeys?.[storedSettings.provider];
 
-    if (!storedSettings.encryptedApiKey) {
+    if (!encryptedApiKey) {
       throw new Error('API key do assistente de IA não configurada.');
     }
 
-    const apiKey = await SecureStorage.decryptString(storedSettings.encryptedApiKey);
+    const apiKey = await SecureStorage.decryptString(encryptedApiKey);
 
     return {
+      provider: storedSettings.provider,
       baseUrl: storedSettings.baseUrl,
       model: storedSettings.model,
       apiKey
@@ -91,12 +110,21 @@ class AiAssistantSettingsService {
     try {
       const payload = await fs.readFile(this.getSettingsFilePath(), 'utf8');
       const parsed = JSON.parse(payload) as Partial<StoredAiAssistantSettings>;
+      const provider = this.normalizeProvider(parsed.provider);
+      const legacyEncryptedApiKey = parsed.encryptedApiKey;
+      const encryptedApiKeys = {
+        ...(parsed.encryptedApiKeys || {})
+      };
+
+      if (legacyEncryptedApiKey && !encryptedApiKeys.openai) {
+        encryptedApiKeys.openai = legacyEncryptedApiKey;
+      }
 
       return {
-        provider: 'openai-compatible',
-        baseUrl: this.normalizeBaseUrl(parsed.baseUrl || DEFAULT_BASE_URL),
-        model: this.normalizeModel(parsed.model || DEFAULT_MODEL),
-        encryptedApiKey: parsed.encryptedApiKey,
+        provider,
+        baseUrl: this.normalizeBaseUrl(parsed.baseUrl || DEFAULT_OPENAI_BASE_URL),
+        model: this.normalizeModel(parsed.model || this.defaultModelForProvider(provider)),
+        encryptedApiKeys,
         updatedAt: parsed.updatedAt
       };
     } catch (error: unknown) {
@@ -128,20 +156,39 @@ class AiAssistantSettingsService {
 
   private defaultSettings(): StoredAiAssistantSettings {
     return {
-      provider: 'openai-compatible',
-      baseUrl: DEFAULT_BASE_URL,
-      model: DEFAULT_MODEL
+      provider: 'openai',
+      baseUrl: DEFAULT_OPENAI_BASE_URL,
+      model: DEFAULT_OPENAI_MODEL,
+      encryptedApiKeys: {}
     };
   }
 
   private toPublicSettings(settings: StoredAiAssistantSettings): AiAssistantPublicSettings {
+    const hasApiKeys = {
+      openai: Boolean(settings.encryptedApiKeys?.openai),
+      gemini: Boolean(settings.encryptedApiKeys?.gemini)
+    };
+
     return {
-      provider: 'openai-compatible',
+      provider: settings.provider,
       baseUrl: settings.baseUrl,
       model: settings.model,
-      hasApiKey: Boolean(settings.encryptedApiKey),
-      maskedApiKey: settings.encryptedApiKey ? '••••••••' : undefined
+      hasApiKey: hasApiKeys[settings.provider],
+      hasApiKeys,
+      maskedApiKey: hasApiKeys[settings.provider] ? '••••••••' : undefined
     };
+  }
+
+  private normalizeProvider(provider: unknown): AiAssistantProvider {
+    if (provider === 'gemini') {
+      return 'gemini';
+    }
+
+    return 'openai';
+  }
+
+  private defaultModelForProvider(provider: AiAssistantProvider): string {
+    return provider === 'gemini' ? DEFAULT_GEMINI_MODEL : DEFAULT_OPENAI_MODEL;
   }
 
   private normalizeModel(model: string): string {

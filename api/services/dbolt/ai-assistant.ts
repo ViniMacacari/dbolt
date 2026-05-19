@@ -1,4 +1,4 @@
-import AiAssistantSettings from './ai-assistant-settings.js';
+import AiAssistantSettings, { type AiAssistantProvider } from './ai-assistant-settings.js';
 
 export interface AiAssistantChatMessage {
   role: 'user' | 'assistant';
@@ -31,29 +31,62 @@ interface ChatCompletionErrorResponse {
   message?: string;
 }
 
+interface GeminiGenerateContentResponse {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+      }>;
+    };
+  }>;
+}
+
 class AiAssistantService {
   async chat(request: AiAssistantChatRequest): Promise<AiAssistantChatResult> {
     const messages = this.normalizeMessages(request.messages);
     const settings = await AiAssistantSettings.getResolvedSettings();
     const contextMessage = this.createDatabaseContextMessage(request.databaseContext);
+    const systemPrompt = [
+      this.getSystemPrompt(),
+      contextMessage?.content
+    ].filter(Boolean).join('\n\n');
 
+    if (settings.provider === 'gemini') {
+      return await this.chatWithGemini(settings.model, settings.apiKey, systemPrompt, messages);
+    }
+
+    return await this.chatWithOpenAiCompatible(
+      settings.baseUrl,
+      settings.model,
+      settings.apiKey,
+      systemPrompt,
+      messages
+    );
+  }
+
+  private async chatWithOpenAiCompatible(
+    baseUrl: string,
+    model: string,
+    apiKey: string,
+    systemPrompt: string,
+    messages: AiAssistantChatMessage[]
+  ): Promise<AiAssistantChatResult> {
     const payload = {
-      model: settings.model,
+      model,
       messages: [
         {
           role: 'system',
-          content: this.getSystemPrompt()
+          content: systemPrompt
         },
-        ...(contextMessage ? [contextMessage] : []),
         ...messages
       ],
       temperature: 0.2
     };
 
-    const response = await fetch(settings.baseUrl, {
+    const response = await fetch(baseUrl, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${settings.apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
@@ -72,7 +105,56 @@ class AiAssistantService {
 
     return {
       message,
-      model: completion.model || settings.model
+      model: completion.model || model
+    };
+  }
+
+  private async chatWithGemini(
+    model: string,
+    apiKey: string,
+    systemPrompt: string,
+    messages: AiAssistantChatMessage[]
+  ): Promise<AiAssistantChatResult> {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: systemPrompt }]
+          },
+          contents: messages.map((message) => ({
+            role: message.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: message.content }]
+          })),
+          generationConfig: {
+            temperature: 0.2
+          }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(await this.extractErrorMessage(response));
+    }
+
+    const completion = (await response.json()) as GeminiGenerateContentResponse;
+    const message = completion.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text || '')
+      .join('')
+      .trim();
+
+    if (!message) {
+      throw new Error('A IA não retornou uma resposta válida.');
+    }
+
+    return {
+      message,
+      model
     };
   }
 
