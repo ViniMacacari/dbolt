@@ -1,0 +1,13 @@
+<div class="chat-input">
+    <label class="readonly-toggle" [class.disabled]="!databaseContextAvailable">
+        <input type="checkbox" [(ngModel)]="allowDatabaseContext" [disabled]="disabled || !databaseContextAvailable">
+        <span>Readonly DB</span>
+    </label>
+
+    <textarea [(ngModel)]="message" rows="3" [disabled]="disabled" placeholder="Pergunte algo..."
+        (keydown.ctrl.enter)="submit()"></textarea>
+
+    <button type="button" (click)="submit()" [disabled]="!canSend">
+        Enviar
+    </button>
+</div>

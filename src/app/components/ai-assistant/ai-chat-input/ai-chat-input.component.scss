@@ -1,0 +1,63 @@
+.chat-input {
+    border-top: 1px solid #302d2d;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 10px;
+}
+
+.readonly-toggle {
+    align-items: center;
+    color: #d7d7d7;
+    display: flex;
+    font-size: .74em;
+    gap: 7px;
+    margin: 0;
+
+    &.disabled {
+        color: #777;
+    }
+
+    input {
+        accent-color: #6c58a8;
+    }
+}
+
+textarea {
+    background: #1b1b1b;
+    border: 1px solid #363232;
+    border-radius: 8px;
+    color: #f2f2f2;
+    font-family: 'Nunito';
+    font-size: .82em;
+    min-height: 76px;
+    outline: none;
+    padding: 9px;
+    resize: none;
+    width: 100%;
+
+    &:focus {
+        border-color: #5c4d83;
+    }
+}
+
+button {
+    background: #2d2c2c;
+    border: none;
+    border-radius: 8px;
+    color: #f2f2f2;
+    cursor: pointer;
+    font-family: 'Nunito';
+    font-size: .8em;
+    font-weight: 700;
+    height: 34px;
+
+    &:hover:not(:disabled) {
+        background: #383535;
+    }
+
+    &:disabled {
+        color: #777;
+        cursor: default;
+    }
+}
