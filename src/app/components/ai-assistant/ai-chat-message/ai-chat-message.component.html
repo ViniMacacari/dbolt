@@ -1,0 +1,10 @@
+<article class="message" [ngClass]="[message.role, message.error ? 'error' : '']">
+    <div class="avatar">
+        <img *ngIf="message.role === 'assistant'" src="icons/ai.png" alt="IA">
+        <span *ngIf="message.role === 'user'">U</span>
+    </div>
+    <div class="bubble">
+        <strong class="subtitle-min">{{ authorLabel }}</strong>
+        <p class="text-min">{{ message.content }}</p>
+    </div>
+</article>
