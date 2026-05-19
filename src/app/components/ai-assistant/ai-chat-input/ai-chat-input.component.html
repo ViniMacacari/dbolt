@@ -1,8 +1,7 @@
 <div class="chat-input">
-    <label class="readonly-toggle" [class.disabled]="!databaseContextAvailable">
-        <input type="checkbox" [(ngModel)]="allowDatabaseContext" [disabled]="disabled || !databaseContextAvailable">
-        <span>{{ t('aiAssistant.readonlyDb') }}</span>
-    </label>
+    <app-checkbox [checked]="allowDatabaseContext" (checkedChange)="allowDatabaseContext = $event"
+        [disabled]="disabled || !databaseContextAvailable" [label]="t('aiAssistant.readonlyDb')">
+    </app-checkbox>
 
     <textarea class="input-page chat-textarea" [(ngModel)]="message" rows="3" [disabled]="disabled"
         [placeholder]="t('aiAssistant.askPlaceholder')"

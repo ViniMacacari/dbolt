@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms'
 
 import { AiChatInputSubmit } from '../../../services/ai-assistant/ai-assistant.model'
 import { AppLanguageService } from '../../../services/language/app-language.service'
+import { CheckboxComponent } from '../../elements/checkbox/checkbox.component'
 
 @Component({
   selector: 'app-ai-chat-input',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CheckboxComponent],
   templateUrl: './ai-chat-input.component.html',
   styleUrl: './ai-chat-input.component.scss'
 })

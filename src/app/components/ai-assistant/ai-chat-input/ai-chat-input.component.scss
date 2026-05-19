@@ -6,21 +6,8 @@
     padding-top: 10px;
 }
 
-.readonly-toggle {
-    align-items: center;
-    color: #d7d7d7;
-    display: flex;
-    font-size: .74em;
-    gap: 7px;
-    margin: 0;
-
-    &.disabled {
-        color: #777;
-    }
-
-    input {
-        accent-color: #6c58a8;
-    }
+app-checkbox {
+    max-width: 100%;
 }
 
 textarea {
