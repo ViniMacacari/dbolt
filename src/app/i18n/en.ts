@@ -327,6 +327,7 @@ export const enTranslations: TranslationCatalog = {
   'aiAssistant.chat': 'Chat',
   'aiAssistant.configure': 'Configure AI',
   'aiAssistant.apiKey': 'API key',
+  'aiAssistant.apiKeyPlaceholder': 'Paste the selected provider API key',
   'aiAssistant.apiKeyConfigured': 'Key already configured',
   'aiAssistant.provider': 'Provider',
   'aiAssistant.model': 'Model',
