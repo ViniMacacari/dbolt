@@ -6,7 +6,7 @@ import SecureStorage from './secure-storage.js';
 
 const SETTINGS_FILENAME = 'settings.json';
 const DEFAULT_BASE_URL = 'https://api.openai.com/v1/chat/completions';
-const DEFAULT_MODEL = 'gpt-4o-mini';
+const DEFAULT_MODEL = 'gpt-5.4-mini';
 
 export interface AiAssistantPublicSettings {
   provider: 'openai-compatible';

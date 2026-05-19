@@ -14,8 +14,11 @@
     </div>
 
     <div class="settings-row">
-        <label for="ai-model">{{ t('aiAssistant.model') }}</label>
-        <input id="ai-model" class="input-page" type="text" [(ngModel)]="model" name="model" [disabled]="saving">
+        <label>{{ t('aiAssistant.model') }}</label>
+        <app-input-list [list]="modelOptions" [displayKey]="'label'" [valueKey]="'value'"
+            [selectedValue]="model" [width]="'100%'" [placeholder]="t('aiAssistant.model')"
+            (itemSelected)="onModelSelected($event)">
+        </app-input-list>
     </div>
 
     <app-checkbox [checked]="customEndpointEnabled" (checkedChange)="onCustomEndpointChanged($event)"
