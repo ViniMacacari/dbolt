@@ -1,15 +1,18 @@
 export type AiChatRole = 'user' | 'assistant'
+export type AiAssistantProvider = 'openai' | 'gemini'
 
 export interface AiAssistantSettings {
-  provider: 'openai-compatible'
+  provider: AiAssistantProvider
   baseUrl: string
   model: string
   hasApiKey: boolean
+  hasApiKeys?: Record<AiAssistantProvider, boolean>
   maskedApiKey?: string
 }
 
 export interface AiAssistantSettingsUpdate {
-  baseUrl: string
+  provider: AiAssistantProvider
+  baseUrl?: string
   model: string
   apiKey?: string
   clearApiKey?: boolean
