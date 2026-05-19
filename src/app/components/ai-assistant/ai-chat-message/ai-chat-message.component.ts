@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common'
-import { Component, Input } from '@angular/core'
+import { Component, Input, OnDestroy } from '@angular/core'
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser'
 
 import { AiChatMessage } from '../../../services/ai-assistant/ai-assistant.model'
 import { AppLanguageService } from '../../../services/language/app-language.service'
+import { QueryResultExportService } from '../../../services/query-result-export/query-result-export.service'
 
 @Component({
   selector: 'app-ai-chat-message',
@@ -12,12 +13,16 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
   templateUrl: './ai-chat-message.component.html',
   styleUrl: './ai-chat-message.component.scss'
 })
-export class AiChatMessageComponent {
+export class AiChatMessageComponent implements OnDestroy {
   @Input({ required: true }) message!: AiChatMessage
+
+  copyState: 'idle' | 'copied' | 'error' = 'idle'
+  private copyResetTimer?: ReturnType<typeof setTimeout>
 
   constructor(
     private language: AppLanguageService,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private clipboard: QueryResultExportService
   ) { }
 
   get authorLabel(): string {
@@ -28,6 +33,33 @@ export class AiChatMessageComponent {
 
   get formattedContent(): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(this.formatMarkdown(this.message.content || ''))
+  }
+
+  get copyLabel(): string {
+    if (this.copyState === 'copied') return this.language.translate('aiAssistant.copied')
+    if (this.copyState === 'error') return this.language.translate('aiAssistant.copyFailed')
+
+    return this.language.translate('aiAssistant.copyAnswer')
+  }
+
+  async copyMessage(event: MouseEvent): Promise<void> {
+    event.stopPropagation()
+    this.clearCopyResetTimer()
+
+    try {
+      await this.clipboard.copyText(this.message.content || '')
+      this.copyState = 'copied'
+    } catch (_error: unknown) {
+      this.copyState = 'error'
+    }
+
+    this.copyResetTimer = setTimeout(() => {
+      this.copyState = 'idle'
+    }, 1600)
+  }
+
+  ngOnDestroy(): void {
+    this.clearCopyResetTimer()
   }
 
   private formatMarkdown(content: string): string {
@@ -139,5 +171,12 @@ export class AiChatMessageComponent {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;')
+  }
+
+  private clearCopyResetTimer(): void {
+    if (!this.copyResetTimer) return
+
+    clearTimeout(this.copyResetTimer)
+    this.copyResetTimer = undefined
   }
 }

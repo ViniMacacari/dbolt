@@ -49,19 +49,65 @@
     max-width: calc(100% - 36px);
     padding: 9px 10px;
     word-break: break-word;
+    user-select: text;
 
-    > strong {
-        display: block;
-        font-weight: 800;
+    .message-header {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+        justify-content: space-between;
         margin-bottom: 4px;
+
+        > strong {
+            display: block;
+            font-weight: 800;
+        }
+    }
+
+    .copy-message {
+        background: #292727;
+        border: 1px solid #3b3b3b;
+        border-radius: 8px;
+        color: #c9c9c9;
+        cursor: pointer;
+        flex: 0 0 auto;
+        font-family: 'Nunito';
+        font-size: .68em;
+        font-weight: 800;
+        line-height: 1;
+        min-height: 24px;
+        padding: 0 8px;
+        user-select: none;
+        white-space: nowrap;
+
+        &:hover {
+            background: #303030;
+        }
+
+        &.copied {
+            border-color: #345c3e;
+            color: #9be0aa;
+        }
+
+        &.error {
+            border-color: #6b3030;
+            color: #ffb4b4;
+        }
     }
 
     .message-content {
+        cursor: text;
         line-height: 1.45;
         user-select: text;
+        -webkit-user-select: text;
     }
 
     ::ng-deep {
+        * {
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
         p {
             margin: 0 0 9px;
 
