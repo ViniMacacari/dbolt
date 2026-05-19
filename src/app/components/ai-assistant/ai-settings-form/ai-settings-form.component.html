@@ -7,10 +7,10 @@
 
     <div class="settings-row">
         <label>{{ t('aiAssistant.provider') }}</label>
-        <app-input-list [list]="endpointOptions" [displayKey]="'label'" [valueKey]="'value'"
-            [selectedValue]="selectedEndpoint" [width]="'100%'" [placeholder]="t('aiAssistant.provider')"
-            (itemSelected)="onEndpointSelected($event)">
-        </app-input-list>
+        <div class="provider-display">
+            <img src="icons/ai.png" height="15px" width="15px">
+            <span class="text-min">OpenAI</span>
+        </div>
     </div>
 
     <div class="settings-row">
@@ -18,10 +18,14 @@
         <input id="ai-model" class="input-page" type="text" [(ngModel)]="model" name="model" [disabled]="saving">
     </div>
 
-    <div class="settings-row">
+    <app-checkbox [checked]="customEndpointEnabled" (checkedChange)="onCustomEndpointChanged($event)"
+        [disabled]="saving" [label]="t('aiAssistant.customEndpoint')">
+    </app-checkbox>
+
+    <div class="settings-row" *ngIf="customEndpointEnabled">
         <label for="ai-base-url">{{ t('aiAssistant.endpoint') }}</label>
         <input id="ai-base-url" class="input-page" type="text" [(ngModel)]="baseUrl" name="baseUrl"
-            [disabled]="saving || selectedEndpoint === 'openai'">
+            [disabled]="saving">
     </div>
 
     <label class="clear-key" *ngIf="settings?.hasApiKey">
