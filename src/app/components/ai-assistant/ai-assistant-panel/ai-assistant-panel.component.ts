@@ -1,5 +1,16 @@
 import { CommonModule } from '@angular/common'
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core'
+import {
+  AfterViewChecked,
+  Component,
+  ElementRef,
+  EventEmitter,
+  Input,
+  OnInit,
+  Output,
+  QueryList,
+  ViewChild,
+  ViewChildren
+} from '@angular/core'
 
 import { AiChatInputComponent } from '../ai-chat-input/ai-chat-input.component'
 import { AiChatMessageComponent } from '../ai-chat-message/ai-chat-message.component'
@@ -23,7 +34,7 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
   templateUrl: './ai-assistant-panel.component.html',
   styleUrl: './ai-assistant-panel.component.scss'
 })
-export class AiAssistantPanelComponent implements OnInit {
+export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
   @Input() selectedSchemaDB: unknown
   @Input() dbSchemasData: unknown
   @Input() tabInfo: unknown
@@ -37,6 +48,14 @@ export class AiAssistantPanelComponent implements OnInit {
   sending: boolean = false
   errorMessage: string = ''
 
+  @ViewChild('messagesContainer')
+  private messagesContainer?: ElementRef<HTMLDivElement>
+
+  @ViewChildren('messageItem')
+  private messageItems?: QueryList<ElementRef<HTMLElement>>
+
+  private lastScrolledMessageId: string = ''
+
   constructor(
     private settingsService: AiAssistantSettingsService,
     private chatService: AiAssistantChatService,
@@ -46,6 +65,34 @@ export class AiAssistantPanelComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     await this.loadSettings()
+  }
+
+  ngAfterViewChecked(): void {
+    const lastMessage = this.messages[this.messages.length - 1]
+
+    if (!lastMessage) return
+    if (lastMessage.id === this.lastScrolledMessageId) return
+
+    const container = this.messagesContainer?.nativeElement
+    const lastElement = this.messageItems?.last?.nativeElement
+
+    if (!container || !lastElement) return
+
+    if (lastMessage.role === 'user') {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
+
+    if (lastMessage.role === 'assistant') {
+      lastElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      })
+    }
+
+    this.lastScrolledMessageId = lastMessage.id
   }
 
   get canChat(): boolean {
