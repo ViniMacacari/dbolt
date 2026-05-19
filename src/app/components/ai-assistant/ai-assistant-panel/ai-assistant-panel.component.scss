@@ -1,113 +1,46 @@
+@use "../../sidebar/sidebar.component.scss";
+
+:host {
+    display: flex;
+    height: 100%;
+}
+
 .ai-assistant-sidebar {
-    background: #131313;
     box-sizing: border-box;
     color: #f2f2f2;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    height: 100%;
     min-width: 320px;
-    padding: 10px;
     width: 320px;
 }
 
-.ai-header {
-    align-items: center;
-    display: grid;
-    gap: 8px;
-    grid-template-columns: 38px minmax(0, 1fr) 38px;
+.context-summary:disabled {
+    cursor: default;
+    opacity: .7;
 }
 
-.close-button,
-.settings-button {
-    align-items: center;
-    background: #232020;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    display: flex;
-    height: 38px;
-    justify-content: center;
-    padding: 0;
-    width: 38px;
-
-    &:hover {
-        background: #303030;
-    }
-
-    img {
-        height: 16px;
-        object-fit: contain;
-        width: 16px;
-    }
-}
-
-.ai-title {
-    align-items: center;
-    background: #232020;
-    border-radius: 12px;
-    display: flex;
-    gap: 10px;
-    min-width: 0;
-    padding: 8px 10px;
-
-    img {
-        height: 20px;
-        object-fit: contain;
-        width: 20px;
-    }
-
-    div {
-        min-width: 0;
-    }
-
-    p,
-    span {
-        display: block;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    p {
-        color: #f2f2f2;
-        font-size: .84em;
-        font-weight: 700;
-        margin: 0;
-    }
-
-    span {
-        color: #9f9f9f;
-        font-size: .7em;
-    }
-}
-
-.status {
-    background: #2d2020;
+.ai-status {
+    background: #2d2020 !important;
     border: 1px solid #5a2b2b;
-    border-radius: 8px;
     color: #ffb4b4;
     font-size: .76em;
     line-height: 1.35;
-    padding: 8px;
 }
 
-.chat-body {
+.ai-chat {
     flex: 1;
+    max-height: none !important;
     min-height: 0;
     overflow-y: auto;
-    padding-right: 2px;
 }
 
-.empty-state {
+.ai-empty {
     align-items: center;
-    color: #9f9f9f;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    height: 100%;
     justify-content: center;
-    padding: 20px;
+    min-height: 150px;
     text-align: center;
 
     img {
@@ -117,30 +50,11 @@
     }
 
     p {
-        font-size: .78em;
         line-height: 1.35;
         margin: 0;
     }
 }
 
 .typing {
-    background: #232020;
-    border-radius: 8px;
-    color: #bcbcbc;
-    font-size: .78em;
-    margin-bottom: 10px;
-    padding: 9px 10px;
-}
-
-::-webkit-scrollbar {
-    width: 5px;
-}
-
-::-webkit-scrollbar-track {
-    background-color: #1b1b1b;
-}
-
-::-webkit-scrollbar-thumb {
-    background-color: #353535;
-    border-radius: 15px;
+    cursor: default !important;
 }

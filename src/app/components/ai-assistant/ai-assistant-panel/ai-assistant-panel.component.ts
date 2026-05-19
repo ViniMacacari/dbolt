@@ -14,6 +14,7 @@ import {
 } from '../../../services/ai-assistant/ai-assistant.model'
 import { AiDatabaseContextService } from '../../../services/ai-assistant/ai-database-context.service'
 import { AiAssistantSettingsService } from '../../../services/ai-assistant/ai-assistant-settings.service'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 @Component({
   selector: 'app-ai-assistant-panel',
@@ -39,7 +40,8 @@ export class AiAssistantPanelComponent implements OnInit {
   constructor(
     private settingsService: AiAssistantSettingsService,
     private chatService: AiAssistantChatService,
-    private databaseContext: AiDatabaseContextService
+    private databaseContext: AiDatabaseContextService,
+    private language: AppLanguageService
   ) { }
 
   async ngOnInit(): Promise<void> {
@@ -54,6 +56,16 @@ export class AiAssistantPanelComponent implements OnInit {
     return this.databaseContext.hasDatabaseContext(this.selectedSchemaDB, this.dbSchemasData)
   }
 
+  get contextDatabaseLabel(): string {
+    const context = this.asRecord(this.selectedSchemaDB)
+    return this.readContextValue(context, 'database') || this.t('aiAssistant.noContext')
+  }
+
+  get contextSchemaLabel(): string {
+    const context = this.asRecord(this.selectedSchemaDB)
+    return this.readContextValue(context, 'schema') || this.t('aiAssistant.readonlyUnavailable')
+  }
+
   async loadSettings(): Promise<void> {
     this.loadingSettings = true
     this.errorMessage = ''
@@ -62,7 +74,7 @@ export class AiAssistantPanelComponent implements OnInit {
       this.settings = await this.settingsService.loadSettings()
       this.showSettings = !this.settings.hasApiKey
     } catch (error: unknown) {
-      this.errorMessage = this.getErrorMessage(error, 'Não foi possível carregar a configuração da IA.')
+      this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.loadSettingsError'))
       this.showSettings = true
     } finally {
       this.loadingSettings = false
@@ -77,7 +89,7 @@ export class AiAssistantPanelComponent implements OnInit {
       this.settings = await this.settingsService.saveSettings(update)
       this.showSettings = !this.settings.hasApiKey
     } catch (error: unknown) {
-      this.errorMessage = this.getErrorMessage(error, 'Não foi possível salvar a configuração da IA.')
+      this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.saveSettingsError'))
     } finally {
       this.savingSettings = false
     }
@@ -86,7 +98,7 @@ export class AiAssistantPanelComponent implements OnInit {
   async onSend(event: AiChatInputSubmit): Promise<void> {
     if (!this.settings?.hasApiKey) {
       this.showSettings = true
-      this.errorMessage = 'Configure a API key antes de enviar mensagens.'
+      this.errorMessage = this.t('aiAssistant.apiKeyRequired')
       return
     }
 
@@ -104,7 +116,7 @@ export class AiAssistantPanelComponent implements OnInit {
     } catch (error: unknown) {
       this.messages = [
         ...this.messages,
-        this.createMessage('assistant', this.getErrorMessage(error, 'Não foi possível obter resposta da IA.'), true)
+        this.createMessage('assistant', this.getErrorMessage(error, this.t('aiAssistant.responseError')), true)
       ]
     } finally {
       this.sending = false
@@ -145,5 +157,18 @@ export class AiAssistantPanelComponent implements OnInit {
     }
 
     return fallback
+  }
+
+  private readContextValue(context: Record<string, unknown>, key: string): string {
+    const value = context[key]
+    return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> {
+    return value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 }

@@ -1,23 +1,37 @@
-<aside class="ai-assistant-sidebar">
-    <div class="ai-header">
-        <button type="button" class="close-button" (click)="close.emit()" title="Voltar">
-            <img src="icons/close.png" alt="Voltar">
+<aside class="sidebar ai-assistant-sidebar">
+    <div class="sidebar-actions my-2">
+        <button type="button" class="sidebar-action-button menu-button" (click)="close.emit()"
+            [title]="t('generic.back')">
+            <img src="icons/menu.png" height="24px" class="toogle-img" [alt]="t('generic.back')">
         </button>
-
-        <div class="ai-title">
-            <img src="icons/ai.png" alt="IA">
-            <div>
-                <p>Assistente I.A</p>
-                <span>{{ settings?.model || 'Configurar' }}</span>
-            </div>
-        </div>
-
-        <button type="button" class="settings-button" (click)="showSettings = !showSettings" title="Configurar IA">
-            <img src="icons/settings.png" alt="Configurar">
+        <button type="button" class="sidebar-action-button home-button" (click)="showSettings = false"
+            [title]="t('aiAssistant.chat')">
+            <img src="icons/ai.png" height="17px" width="17px" [alt]="t('aiAssistant.chat')">
+        </button>
+        <button type="button" class="sidebar-action-button settings-button" (click)="showSettings = !showSettings"
+            [title]="t('aiAssistant.configure')">
+            <img src="icons/settings.png" height="17px" width="17px" [alt]="t('aiAssistant.configure')">
         </button>
     </div>
+    <div class="py-2"></div>
 
-    <div class="status" *ngIf="errorMessage">
+    <p class="selected-title">{{ t('aiAssistant.title') }}</p>
+    <button type="button" class="sgbd" (click)="showSettings = false">
+        <img src="icons/ai.png" height="15px" width="15px">
+        <p class="text-min w-100">{{ settings?.model || t('aiAssistant.configure') }}</p>
+    </button>
+    <button type="button" class="database context-summary" [disabled]="!databaseContextAvailable">
+        <img src="icons/database.png" height="15px" width="15px">
+        <p class="text-min w-100">{{ contextDatabaseLabel }}</p>
+    </button>
+    <button type="button" class="schema context-summary" [disabled]="!databaseContextAvailable">
+        <img src="icons/schema.png" height="15px" width="15px">
+        <p class="text-min w-100">{{ contextSchemaLabel }}</p>
+    </button>
+
+    <div class="separator my-3"></div>
+
+    <div class="connection ai-status" *ngIf="errorMessage">
         {{ errorMessage }}
     </div>
 
@@ -25,21 +39,22 @@
         (save)="saveSettings($event)" (cancel)="showSettings = false">
     </app-ai-settings-form>
 
-    <div class="chat-body">
-        <div class="empty-state" *ngIf="messages.length === 0">
+    <div class="connections ai-chat" *ngIf="!showSettings">
+        <div class="connection ai-empty" *ngIf="messages.length === 0">
             <img src="icons/ai.png" alt="IA">
-            <p>Faça uma pergunta sobre SQL ou sobre o schema atual.</p>
+            <p class="text-min-gray">{{ t('aiAssistant.emptyState') }}</p>
         </div>
 
         <app-ai-chat-message *ngFor="let message of messages; trackBy: trackMessage" [message]="message">
         </app-ai-chat-message>
 
-        <div class="typing" *ngIf="sending">
-            Respondendo...
+        <div class="connection typing text-min-gray" *ngIf="sending">
+            {{ t('aiAssistant.answering') }}
         </div>
     </div>
 
-    <app-ai-chat-input [disabled]="sending || !canChat" [databaseContextAvailable]="databaseContextAvailable"
+    <app-ai-chat-input *ngIf="!showSettings" [disabled]="sending || !canChat"
+        [databaseContextAvailable]="databaseContextAvailable"
         (send)="onSend($event)">
     </app-ai-chat-input>
 </aside>
