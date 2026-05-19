@@ -1,6 +1,20 @@
+:host {
+    display: block;
+    min-width: 0;
+    width: 100%;
+}
+
 .content {
-    padding: 5px 0px;
+    align-items: center;
     box-sizing: border-box;
+    min-height: 38px;
+    padding: 0;
+    width: 100%;
+
+    .add.assistant {
+        border: none;
+        justify-content: center;
+    }
 
     .add {
         position: relative;
@@ -11,11 +25,11 @@
         background-color: #1b1b1b;
         border-radius: 15px;
 
-        height: 35px;
-        max-width: 50px;
-        width: 35px;
-        min-width: 50px;
+        min-height: 35px;
+        min-width: 35px;
         padding: 5px 15px;
+
+        margin: 3px;
 
         cursor: pointer;
 
@@ -70,7 +84,8 @@
         align-items: center;
         overflow: auto;
 
-        width: calc(100vw - 500px);
+        width: 100%;
+        min-width: 0;
 
         flex-wrap: nowrap;
         flex: 1 1 auto;
@@ -148,6 +163,7 @@
 
 .wrap-tables {
     display: flex;
+    min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
     flex: 1 1 auto;

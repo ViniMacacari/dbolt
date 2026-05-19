@@ -1,4 +1,8 @@
 <div class="content d-flex gap-2">
+    <button type="button" class="add assistant" (click)="openAssistant($event)" [title]="t('aiAssistant.title')">
+        <img src="icons/ai.png" height="20px" alt="IA">
+    </button>
+
     <div class="add" (click)="toggleDropdown()">
         <img src="icons/add.png" height="20px">
 

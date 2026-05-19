@@ -1,0 +1,16 @@
+<article class="message" [ngClass]="[message.role, message.error ? 'error' : '']">
+    <div class="avatar">
+        <img *ngIf="message.role === 'assistant'" src="icons/ai.png" alt="IA">
+        <span *ngIf="message.role === 'user'">U</span>
+    </div>
+    <div class="bubble">
+        <div class="message-header">
+            <strong class="subtitle-min">{{ authorLabel }}</strong>
+            <button type="button" class="copy-message" *ngIf="message.role === 'assistant'" [ngClass]="copyState"
+                [title]="copyLabel" (mousedown)="$event.preventDefault()" (click)="copyMessage($event)">
+                {{ copyLabel }}
+            </button>
+        </div>
+        <div class="message-content text-min" [innerHTML]="formattedContent"></div>
+    </div>
+</article>

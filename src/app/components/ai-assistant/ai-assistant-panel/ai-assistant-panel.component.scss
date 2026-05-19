@@ -1,0 +1,61 @@
+@use "../../sidebar/sidebar.component.scss";
+
+:host {
+    display: flex;
+    height: 100%;
+}
+
+.ai-assistant-sidebar {
+    box-sizing: border-box;
+    color: #f2f2f2;
+    display: flex;
+    flex-direction: column;
+    min-width: 320px;
+    width: 320px;
+}
+
+.context-summary:disabled {
+    cursor: default;
+    opacity: .7;
+}
+
+.ai-status {
+    background: #2d2020 !important;
+    border: 1px solid #5a2b2b;
+    color: #ffb4b4;
+    font-size: .76em;
+    line-height: 1.35;
+}
+
+.ai-chat {
+    flex: 1;
+    max-height: none !important;
+    min-height: 0;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+}
+
+.ai-empty {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: center;
+    min-height: 150px;
+    text-align: center;
+
+    img {
+        height: 32px;
+        object-fit: contain;
+        width: 32px;
+    }
+
+    p {
+        line-height: 1.35;
+        margin: 0;
+    }
+}
+
+.typing {
+    cursor: default !important;
+}

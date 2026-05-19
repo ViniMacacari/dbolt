@@ -1,0 +1,9 @@
+<label class="checkbox-control" [class.disabled]="disabled" [attr.for]="inputId"
+    [attr.title]="title || label || null">
+    <span class="toggle-control">
+        <input [id]="inputId" type="checkbox" [checked]="checked" [disabled]="disabled"
+            (change)="onInputChange($event)">
+        <span class="toggle-track"></span>
+    </span>
+    <span class="checkbox-label text-min" *ngIf="label">{{ label }}</span>
+</label>

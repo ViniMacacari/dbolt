@@ -18,6 +18,7 @@ import { AppLanguageService } from '../../services/language/app-language.service
 export class TabsComponent {
   @Output() tabSelected = new EventEmitter<any>()
   @Output() tabClosed = new EventEmitter<any>()
+  @Output() assistantRequested = new EventEmitter<void>()
 
   showLoadQuery: boolean = false
   showYNModal: boolean = false
@@ -53,6 +54,12 @@ export class TabsComponent {
 
   toggleDropdown(): void {
     this.dropdownVisible = !this.dropdownVisible
+  }
+
+  openAssistant(event: MouseEvent): void {
+    event.stopPropagation()
+    this.dropdownVisible = false
+    this.assistantRequested.emit()
   }
 
   newTab(type: string, info: any, name: string | null = null): any {

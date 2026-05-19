@@ -1,0 +1,13 @@
+<div class="chat-input">
+    <app-checkbox [checked]="allowDatabaseContext" (checkedChange)="allowDatabaseContext = $event"
+        [disabled]="disabled || !databaseContextAvailable" [label]="t('aiAssistant.readonlyDb')">
+    </app-checkbox>
+
+    <textarea class="input-page chat-textarea" [(ngModel)]="message" rows="3" [disabled]="disabled"
+        [placeholder]="t('aiAssistant.askPlaceholder')"
+        (keydown.ctrl.enter)="submit()"></textarea>
+
+    <button type="button" class="btn-page-2" (click)="submit()" [disabled]="!canSend">
+        {{ t('aiAssistant.send') }}
+    </button>
+</div>
