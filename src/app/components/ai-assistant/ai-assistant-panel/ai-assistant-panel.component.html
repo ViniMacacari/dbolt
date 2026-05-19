@@ -39,14 +39,16 @@
         (save)="saveSettings($event)" (cancel)="showSettings = false">
     </app-ai-settings-form>
 
-    <div class="connections ai-chat" *ngIf="!showSettings">
+    <div class="connections ai-chat" *ngIf="!showSettings" #messagesContainer>
         <div class="connection ai-empty" *ngIf="messages.length === 0">
             <img src="icons/ai.png" alt="IA">
             <p class="text-min-gray">{{ t('aiAssistant.emptyState') }}</p>
         </div>
 
-        <app-ai-chat-message *ngFor="let message of messages; trackBy: trackMessage" [message]="message">
-        </app-ai-chat-message>
+        <div #messageItem *ngFor="let message of messages; trackBy: trackMessage">
+            <app-ai-chat-message [message]="message">
+            </app-ai-chat-message>
+        </div>
 
         <div class="connection typing text-min-gray" *ngIf="sending">
             {{ t('aiAssistant.answering') }}
@@ -54,7 +56,6 @@
     </div>
 
     <app-ai-chat-input *ngIf="!showSettings" [disabled]="sending || !canChat"
-        [databaseContextAvailable]="databaseContextAvailable"
-        (send)="onSend($event)">
+        [databaseContextAvailable]="databaseContextAvailable" (send)="onSend($event)">
     </app-ai-chat-input>
 </aside>
