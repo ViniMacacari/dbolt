@@ -89,4 +89,57 @@ router.post('/readonly/table-columns', async (req, res) => {
   }
 });
 
+router.post('/readonly/search-objects', async (req, res) => {
+  try {
+    const context = req.body?.context;
+    const search = String(req.body?.search || '').trim();
+
+    if (!context || typeof context !== 'object') {
+      sendBadRequest(res, 'No readonly database context provided');
+      return;
+    }
+
+    if (!search) {
+      sendBadRequest(res, 'No object search term provided');
+      return;
+    }
+
+    const result = await AiAssistantReadonlyDatabase.searchObjects(
+      context,
+      search,
+      Number(req.body?.limit),
+      Array.isArray(req.body?.types) ? req.body.types : undefined
+    );
+    res.status(200).json({ success: true, data: result });
+  } catch (error: unknown) {
+    sendInternalError(res, error, 'Failed to search readonly database objects');
+  }
+});
+
+router.post('/readonly/query', async (req, res) => {
+  try {
+    const context = req.body?.context;
+    const sql = String(req.body?.sql || '').trim();
+
+    if (!context || typeof context !== 'object') {
+      sendBadRequest(res, 'No readonly database context provided');
+      return;
+    }
+
+    if (!sql) {
+      sendBadRequest(res, 'No readonly SQL provided');
+      return;
+    }
+
+    const result = await AiAssistantReadonlyDatabase.runReadOnlyQuery(
+      context,
+      sql,
+      Number(req.body?.maxRows)
+    );
+    res.status(200).json({ success: true, data: result });
+  } catch (error: unknown) {
+    sendInternalError(res, error, 'Failed to execute readonly database query');
+  }
+});
+
 export default router;
