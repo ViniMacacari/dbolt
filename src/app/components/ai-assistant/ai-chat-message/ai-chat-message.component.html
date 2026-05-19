@@ -5,6 +5,6 @@
     </div>
     <div class="bubble">
         <strong class="subtitle-min">{{ authorLabel }}</strong>
-        <p class="text-min">{{ message.content }}</p>
+        <div class="message-content text-min" [innerHTML]="formattedContent"></div>
     </div>
 </article>

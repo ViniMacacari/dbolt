@@ -48,18 +48,116 @@
     color: #f2f2f2;
     max-width: calc(100% - 36px);
     padding: 9px 10px;
-    white-space: pre-wrap;
     word-break: break-word;
 
-    strong {
+    > strong {
         display: block;
         font-weight: 800;
         margin-bottom: 4px;
     }
 
-    p {
+    .message-content {
         line-height: 1.45;
-        margin: 0;
         user-select: text;
+    }
+
+    ::ng-deep {
+        p {
+            margin: 0 0 9px;
+
+            &:last-child {
+                margin-bottom: 0;
+            }
+        }
+
+        h3,
+        h4,
+        h5,
+        h6 {
+            color: #e8eaed;
+            font-family: 'Nunito';
+            font-size: .96em;
+            font-weight: 850;
+            margin: 11px 0 6px;
+
+            &:first-child {
+                margin-top: 0;
+            }
+        }
+
+        ul {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin: 4px 0 10px;
+            padding-left: 18px;
+        }
+
+        li {
+            padding-left: 2px;
+        }
+
+        strong {
+            color: #f1f1f1;
+            font-weight: 850;
+        }
+
+        em {
+            color: #d7d7d7;
+            font-style: italic;
+        }
+
+        code {
+            background: #1b1b1b;
+            border: 1px solid #353535;
+            border-radius: 6px;
+            color: #d8e9fb;
+            font-family: Consolas, 'Courier New', monospace;
+            font-size: .92em;
+            padding: 1px 5px;
+            user-select: text;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #353535;
+            margin: 10px 0;
+            opacity: 1;
+        }
+
+        .md-code-block {
+            background: #1b1b1b;
+            border: 1px solid #353535;
+            border-radius: 10px;
+            margin: 8px 0 10px;
+            overflow: hidden;
+        }
+
+        .md-code-language {
+            border-bottom: 1px solid #353535;
+            color: #969696;
+            display: block;
+            font-family: 'Nunito';
+            font-size: .72em;
+            font-weight: 800;
+            padding: 6px 9px;
+            text-transform: uppercase;
+        }
+
+        pre {
+            margin: 0;
+            max-width: 100%;
+            overflow: auto;
+            padding: 9px;
+            white-space: pre;
+        }
+
+        pre code {
+            background: transparent;
+            border: none;
+            color: #e8eaed;
+            display: block;
+            padding: 0;
+        }
     }
 }

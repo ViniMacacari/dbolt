@@ -111,7 +111,10 @@ export class AiAssistantPanelComponent implements OnInit {
       const readonlyContext = event.allowDatabaseContext
         ? this.databaseContext.buildReadonlyContext(this.selectedSchemaDB, this.dbSchemasData, this.tabInfo)
         : undefined
-      const response = await this.chatService.sendMessage(this.toApiMessages(), readonlyContext)
+      const readonlyToolContext = event.allowDatabaseContext
+        ? this.databaseContext.buildReadonlyToolContext(this.selectedSchemaDB, this.dbSchemasData)
+        : undefined
+      const response = await this.chatService.sendMessage(this.toApiMessages(), readonlyContext, readonlyToolContext)
       this.messages = [...this.messages, this.createMessage('assistant', response.message)]
     } catch (error: unknown) {
       this.messages = [
