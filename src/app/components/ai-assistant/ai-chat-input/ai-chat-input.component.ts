@@ -3,6 +3,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core'
 import { FormsModule } from '@angular/forms'
 
 import { AiChatInputSubmit } from '../../../services/ai-assistant/ai-assistant.model'
+import { AppLanguageService } from '../../../services/language/app-language.service'
 
 @Component({
   selector: 'app-ai-chat-input',
@@ -18,6 +19,8 @@ export class AiChatInputComponent {
 
   message: string = ''
   allowDatabaseContext: boolean = false
+
+  constructor(private language: AppLanguageService) { }
 
   get canSend(): boolean {
     return !this.disabled && this.message.trim().length > 0
@@ -36,5 +39,9 @@ export class AiChatInputComponent {
     })
 
     this.message = ''
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 }

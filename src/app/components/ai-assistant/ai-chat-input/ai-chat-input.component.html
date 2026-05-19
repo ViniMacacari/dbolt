@@ -1,13 +1,14 @@
 <div class="chat-input">
     <label class="readonly-toggle" [class.disabled]="!databaseContextAvailable">
         <input type="checkbox" [(ngModel)]="allowDatabaseContext" [disabled]="disabled || !databaseContextAvailable">
-        <span>Readonly DB</span>
+        <span>{{ t('aiAssistant.readonlyDb') }}</span>
     </label>
 
-    <textarea [(ngModel)]="message" rows="3" [disabled]="disabled" placeholder="Pergunte algo..."
+    <textarea class="input-page chat-textarea" [(ngModel)]="message" rows="3" [disabled]="disabled"
+        [placeholder]="t('aiAssistant.askPlaceholder')"
         (keydown.ctrl.enter)="submit()"></textarea>
 
-    <button type="button" (click)="submit()" [disabled]="!canSend">
-        Enviar
+    <button type="button" class="btn-page-2" (click)="submit()" [disabled]="!canSend">
+        {{ t('aiAssistant.send') }}
     </button>
 </div>

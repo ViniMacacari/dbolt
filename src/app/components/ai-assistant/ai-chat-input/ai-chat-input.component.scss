@@ -24,37 +24,15 @@
 }
 
 textarea {
-    background: #1b1b1b;
-    border: 1px solid #363232;
-    border-radius: 8px;
-    color: #f2f2f2;
-    font-family: 'Nunito';
     font-size: .82em;
     min-height: 76px;
-    outline: none;
-    padding: 9px;
     resize: none;
-    width: 100%;
-
-    &:focus {
-        border-color: #5c4d83;
-    }
 }
 
 button {
-    background: #2d2c2c;
-    border: none;
-    border-radius: 8px;
-    color: #f2f2f2;
-    cursor: pointer;
-    font-family: 'Nunito';
     font-size: .8em;
-    font-weight: 700;
     height: 34px;
-
-    &:hover:not(:disabled) {
-        background: #383535;
-    }
+    width: 100%;
 
     &:disabled {
         color: #777;
