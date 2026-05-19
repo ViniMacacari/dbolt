@@ -1,4 +1,4 @@
-import AiAssistantSettings, { type AiAssistantProvider } from './ai-assistant-settings.js';
+import AiAssistantSettings from './ai-assistant-settings.js';
 import AiAssistantReadonlyDatabase, {
   type AiReadonlyDatabaseContext
 } from './ai-assistant-readonly-database.js';
@@ -10,7 +10,6 @@ export interface AiAssistantChatMessage {
 
 export interface AiAssistantChatRequest {
   messages: AiAssistantChatMessage[];
-  databaseContext?: unknown;
   readonlyContext?: AiReadonlyDatabaseContext;
 }
 
@@ -49,14 +48,12 @@ class AiAssistantService {
   async chat(request: AiAssistantChatRequest): Promise<AiAssistantChatResult> {
     const messages = this.normalizeMessages(request.messages);
     const settings = await AiAssistantSettings.getResolvedSettings();
-    const contextMessage = this.createDatabaseContextMessage(request.databaseContext);
     const readonlyLookupContext = await AiAssistantReadonlyDatabase.buildPromptContext(
       request.readonlyContext,
       messages.filter((message) => message.role === 'user')
     );
     const systemPrompt = [
       this.getSystemPrompt(),
-      contextMessage?.content,
       readonlyLookupContext
     ].filter(Boolean).join('\n\n');
 
@@ -168,11 +165,15 @@ class AiAssistantService {
   }
 
   private normalizeMessages(messages: AiAssistantChatMessage[] = []): AiAssistantChatMessage[] {
+    const maxMessages = 6;
     const normalizedMessages = messages
       .filter((message) => message && (message.role === 'user' || message.role === 'assistant'))
       .map((message) => ({
         role: message.role,
-        content: String(message.content || '').trim()
+        content: this.truncateText(
+          String(message.content || '').trim(),
+          this.getMessagePromptLimit(message.role)
+        )
       }))
       .filter((message) => message.content.length > 0);
 
@@ -180,33 +181,30 @@ class AiAssistantService {
       throw new Error('Mensagem do chat não informada.');
     }
 
-    return normalizedMessages.slice(-20);
-  }
-
-  private createDatabaseContextMessage(databaseContext: unknown): { role: 'system'; content: string } | null {
-    if (!databaseContext || typeof databaseContext !== 'object') {
-      return null;
-    }
-
-    const contextPayload = JSON.stringify(databaseContext).slice(0, 30000);
-
-    return {
-      role: 'system',
-      content:
-        'Contexto readonly autorizado pelo usuário. Use somente estes metadados para analisar o banco; ' +
-        'não assuma acesso de escrita e não invente tabelas, colunas ou objetos ausentes.\n' +
-        contextPayload
-    };
+    return normalizedMessages.slice(-maxMessages);
   }
 
   private getSystemPrompt(): string {
     return [
       'Você é o assistente de IA do DBOLT Database Manager.',
       'Responda em português do Brasil, com foco em SQL, modelagem, investigação de schema e produtividade.',
-      'Quando houver contexto readonly do banco, use-o apenas para análise e sugestões.',
+      'Quando houver dados readonly consultados pelo DBOLT, trate-os como a fonte factual da resposta.',
+      'Não invente tabelas, colunas ou resultados que não estejam nos dados consultados.',
       'Não solicite senhas, tokens ou chaves da API.',
       'Se sugerir SQL destrutivo ou de alteração, deixe o risco explícito e prefira alternativas de leitura.'
     ].join(' ');
+  }
+
+  private truncateText(value: string, maxLength: number): string {
+    if (value.length <= maxLength) {
+      return value;
+    }
+
+    return `${value.slice(0, maxLength)}...`;
+  }
+
+  private getMessagePromptLimit(role: 'user' | 'assistant'): number {
+    return role === 'assistant' ? 900 : 1400;
   }
 
   private async extractErrorMessage(response: Response): Promise<string> {
