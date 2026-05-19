@@ -1,6 +1,15 @@
+:host {
+    display: block;
+    min-width: 0;
+    width: 100%;
+}
+
 .content {
-    padding: 0px 5px;
+    align-items: center;
     box-sizing: border-box;
+    min-height: 38px;
+    padding: 0;
+    width: 100%;
 
     .add.assistant {
         border: none;
@@ -73,7 +82,8 @@
         align-items: center;
         overflow: auto;
 
-        width: calc(100vw - 500px);
+        width: 100%;
+        min-width: 0;
 
         flex-wrap: nowrap;
         flex: 1 1 auto;
@@ -151,6 +161,7 @@
 
 .wrap-tables {
     display: flex;
+    min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
     flex: 1 1 auto;
