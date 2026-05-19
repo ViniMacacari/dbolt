@@ -1,6 +1,10 @@
 import { Injectable } from '@angular/core'
 
-import { AiDatabaseObjectSummary, AiReadonlyDatabaseContext } from './ai-assistant.model'
+import {
+  AiDatabaseObjectSummary,
+  AiReadonlyDatabaseContext,
+  AiReadonlyDatabaseToolContext
+} from './ai-assistant.model'
 
 const MAX_OBJECTS_PER_TYPE = 120
 
@@ -63,6 +67,20 @@ export class AiDatabaseContextService {
       this.asArray(schemaData['views']).length ||
       this.asArray(schemaData['procedures']).length
     )
+  }
+
+  buildReadonlyToolContext(selectedSchemaDB: unknown, dbSchemasData: unknown): AiReadonlyDatabaseToolContext {
+    const schemaData = this.asRecord(dbSchemasData)
+    const selectedContext = this.asRecord(selectedSchemaDB)
+    const connection = this.asRecord(schemaData['connection'])
+
+    return {
+      sgbd: this.readString(connection, selectedContext, 'sgbd'),
+      version: this.readString(connection, selectedContext, 'version'),
+      database: this.readString(connection, selectedContext, 'database'),
+      schema: this.readString(connection, selectedContext, 'schema'),
+      connectionKey: this.readString(connection, selectedContext, 'connectionKey')
+    }
   }
 
   private getObjectList(value: unknown): AiDatabaseObjectSummary[] {
