@@ -43,7 +43,7 @@ class AiAssistantToolsService {
   getToolInstructions(): string {
     return [
       'Ferramentas readonly disponíveis quando o usuário autorizou contexto do banco:',
-      '- searchObjects: busca tabelas/views por nome parcial. Args: {"search":"texto","types":["table","view"],"limit":20}. Use antes de getTableColumns quando não souber o nome exato.',
+      '- searchObjects: busca tabelas/views por nome parcial. Args: {"search":"texto","types":["table","view"],"limit":160}. Use antes de getTableColumns quando não souber o nome exato.',
       '- getTableColumns: lista metadados de colunas de uma tabela/view. Args: {"tableName":"OINV","limit":60}.',
       '- getSchemaSummary: resumo pequeno de tabelas/views. Args: {"search":"opcional","limit":30}. Use só quando uma busca específica não bastar.',
       '- runReadonlyQuery: executa somente SELECT/WITH com limite. Args: {"sql":"SELECT ...","maxRows":50}. Nunca use para INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, EXEC ou múltiplas instruções.',
@@ -83,7 +83,7 @@ class AiAssistantToolsService {
       return this.formatObjectSearch(await AiAssistantReadonlyDatabase.searchObjects(
         context,
         this.readString(toolCall.arguments, 'search'),
-        this.readLimit(toolCall.arguments, 'limit', 20, 50),
+        this.readLimit(toolCall.arguments, 'limit', 160, 300),
         this.readObjectTypes(toolCall.arguments)
       ));
     }
@@ -99,7 +99,7 @@ class AiAssistantToolsService {
     if (toolCall.name === 'getSchemaSummary') {
       return this.formatSchemaSummary(await AiAssistantReadonlyDatabase.getSchemaSummary(
         context,
-        this.readLimit(toolCall.arguments, 'limit', 30, 60),
+        this.readLimit(toolCall.arguments, 'limit', 120, 250),
         this.readOptionalString(toolCall.arguments, 'search')
       ));
     }
