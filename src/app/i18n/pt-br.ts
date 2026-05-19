@@ -331,6 +331,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'aiAssistant.provider': 'Provedor',
   'aiAssistant.model': 'Modelo',
   'aiAssistant.endpoint': 'Endpoint',
+  'aiAssistant.customEndpoint': 'Usar endpoint personalizado',
   'aiAssistant.clearApiKey': 'Remover chave salva',
   'aiAssistant.readonlyDb': 'Contexto readonly do banco',
   'aiAssistant.askPlaceholder': 'Pergunte algo...',

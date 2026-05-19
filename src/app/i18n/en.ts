@@ -331,6 +331,7 @@ export const enTranslations: TranslationCatalog = {
   'aiAssistant.provider': 'Provider',
   'aiAssistant.model': 'Model',
   'aiAssistant.endpoint': 'Endpoint',
+  'aiAssistant.customEndpoint': 'Use custom endpoint',
   'aiAssistant.clearApiKey': 'Remove saved key',
   'aiAssistant.readonlyDb': 'Readonly database context',
   'aiAssistant.askPlaceholder': 'Ask something...',
