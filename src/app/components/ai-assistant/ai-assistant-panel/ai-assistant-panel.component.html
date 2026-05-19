@@ -1,0 +1,45 @@
+<aside class="ai-assistant-sidebar">
+    <div class="ai-header">
+        <button type="button" class="close-button" (click)="close.emit()" title="Voltar">
+            <img src="icons/close.png" alt="Voltar">
+        </button>
+
+        <div class="ai-title">
+            <img src="icons/ai.png" alt="IA">
+            <div>
+                <p>Assistente I.A</p>
+                <span>{{ settings?.model || 'Configurar' }}</span>
+            </div>
+        </div>
+
+        <button type="button" class="settings-button" (click)="showSettings = !showSettings" title="Configurar IA">
+            <img src="icons/settings.png" alt="Configurar">
+        </button>
+    </div>
+
+    <div class="status" *ngIf="errorMessage">
+        {{ errorMessage }}
+    </div>
+
+    <app-ai-settings-form *ngIf="showSettings" [settings]="settings" [saving]="savingSettings"
+        (save)="saveSettings($event)" (cancel)="showSettings = false">
+    </app-ai-settings-form>
+
+    <div class="chat-body">
+        <div class="empty-state" *ngIf="messages.length === 0">
+            <img src="icons/ai.png" alt="IA">
+            <p>Faça uma pergunta sobre SQL ou sobre o schema atual.</p>
+        </div>
+
+        <app-ai-chat-message *ngFor="let message of messages; trackBy: trackMessage" [message]="message">
+        </app-ai-chat-message>
+
+        <div class="typing" *ngIf="sending">
+            Respondendo...
+        </div>
+    </div>
+
+    <app-ai-chat-input [disabled]="sending || !canChat" [databaseContextAvailable]="databaseContextAvailable"
+        (send)="onSend($event)">
+    </app-ai-chat-input>
+</aside>
