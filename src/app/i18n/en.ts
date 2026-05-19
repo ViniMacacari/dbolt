@@ -330,6 +330,7 @@ export const enTranslations: TranslationCatalog = {
   'aiAssistant.apiKeyConfigured': 'Key already configured',
   'aiAssistant.provider': 'Provider',
   'aiAssistant.model': 'Model',
+  'aiAssistant.currentModel': 'current',
   'aiAssistant.endpoint': 'Endpoint',
   'aiAssistant.customEndpoint': 'Use custom endpoint',
   'aiAssistant.clearApiKey': 'Remove saved key',

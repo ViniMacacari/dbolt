@@ -330,6 +330,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'aiAssistant.apiKeyConfigured': 'Chave já configurada',
   'aiAssistant.provider': 'Provedor',
   'aiAssistant.model': 'Modelo',
+  'aiAssistant.currentModel': 'atual',
   'aiAssistant.endpoint': 'Endpoint',
   'aiAssistant.customEndpoint': 'Usar endpoint personalizado',
   'aiAssistant.clearApiKey': 'Remover chave salva',
