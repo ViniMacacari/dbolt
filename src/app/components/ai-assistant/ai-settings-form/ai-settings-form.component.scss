@@ -1,0 +1,54 @@
+.settings-form {
+    background: #1b1b1b;
+    border: 1px solid #302d2d;
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+}
+
+.settings-row {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+label {
+    color: #cfcfcf;
+    font-size: .72em;
+    font-weight: 700;
+    margin: 0;
+}
+
+.input-page {
+    font-size: .78em;
+    padding: 10px;
+}
+
+.clear-key {
+    align-items: center;
+    display: flex;
+    gap: 7px;
+
+    input {
+        accent-color: #6c58a8;
+    }
+}
+
+.settings-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+button {
+    font-size: .78em;
+    width: 100%;
+
+    &:disabled {
+        color: #777;
+        cursor: default;
+    }
+}

@@ -1,0 +1,40 @@
+<form class="settings-form" (ngSubmit)="submit()">
+    <div class="settings-row">
+        <label for="ai-api-key">{{ t('aiAssistant.apiKey') }}</label>
+        <input id="ai-api-key" class="input-page" type="password" [(ngModel)]="apiKey" name="apiKey"
+            [placeholder]="settings?.hasApiKey ? t('aiAssistant.apiKeyConfigured') : 'sk-...'" [disabled]="saving">
+    </div>
+
+    <div class="settings-row">
+        <label>{{ t('aiAssistant.provider') }}</label>
+        <app-input-list [list]="endpointOptions" [displayKey]="'label'" [valueKey]="'value'"
+            [selectedValue]="selectedEndpoint" [width]="'100%'" [placeholder]="t('aiAssistant.provider')"
+            (itemSelected)="onEndpointSelected($event)">
+        </app-input-list>
+    </div>
+
+    <div class="settings-row">
+        <label for="ai-model">{{ t('aiAssistant.model') }}</label>
+        <input id="ai-model" class="input-page" type="text" [(ngModel)]="model" name="model" [disabled]="saving">
+    </div>
+
+    <div class="settings-row">
+        <label for="ai-base-url">{{ t('aiAssistant.endpoint') }}</label>
+        <input id="ai-base-url" class="input-page" type="text" [(ngModel)]="baseUrl" name="baseUrl"
+            [disabled]="saving || selectedEndpoint === 'openai'">
+    </div>
+
+    <label class="clear-key" *ngIf="settings?.hasApiKey">
+        <input type="checkbox" [(ngModel)]="clearApiKey" name="clearApiKey" [disabled]="saving">
+        <span>{{ t('aiAssistant.clearApiKey') }}</span>
+    </label>
+
+    <div class="settings-actions">
+        <button type="button" class="btn-cancel" (click)="cancel.emit()" [disabled]="saving">
+            {{ t('generic.cancel') }}
+        </button>
+        <button type="submit" class="btn-page-2" [disabled]="saving || !model.trim() || !baseUrl.trim()">
+            {{ t('settings.actions.save') }}
+        </button>
+    </div>
+</form>
