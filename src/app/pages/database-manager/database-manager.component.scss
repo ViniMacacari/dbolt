@@ -6,7 +6,7 @@
 .user-content {
     background-color: #292727;
 
-    border-radius: 0 0 25px 25px;
+    border-radius: 25px;
     padding: 10px 15px;
 
     height: 100%;
@@ -34,15 +34,15 @@
 }
 
 .main-area > .tabs {
-    align-items: center;
-    background-color: #292727;
-    border-bottom: 1px solid #353535;
-    border-radius: 25px 25px 0 0;
+    align-items: flex-start;
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
     box-sizing: border-box;
     display: flex;
-    margin: 1rem 1rem 0 1rem;
-    min-height: 58px;
-    padding: 10px 15px !important;
+    margin: 16px 1rem 8px 16px;
+    min-height: 38px;
+    padding: 0 !important;
 
     app-tabs {
         display: block;
@@ -53,7 +53,7 @@
 
 .organize {
     flex: 1;
-    padding: 0 1rem 1rem;
+    padding: 0 1rem 1rem 1rem;
     box-sizing: border-box;
     min-height: 0;
     min-width: 0;
