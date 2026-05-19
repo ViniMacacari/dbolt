@@ -1,4 +1,7 @@
 import AiAssistantSettings, { type AiAssistantProvider } from './ai-assistant-settings.js';
+import AiAssistantReadonlyDatabase, {
+  type AiReadonlyDatabaseContext
+} from './ai-assistant-readonly-database.js';
 
 export interface AiAssistantChatMessage {
   role: 'user' | 'assistant';
@@ -8,6 +11,7 @@ export interface AiAssistantChatMessage {
 export interface AiAssistantChatRequest {
   messages: AiAssistantChatMessage[];
   databaseContext?: unknown;
+  readonlyContext?: AiReadonlyDatabaseContext;
 }
 
 export interface AiAssistantChatResult {
@@ -46,9 +50,14 @@ class AiAssistantService {
     const messages = this.normalizeMessages(request.messages);
     const settings = await AiAssistantSettings.getResolvedSettings();
     const contextMessage = this.createDatabaseContextMessage(request.databaseContext);
+    const readonlyLookupContext = await AiAssistantReadonlyDatabase.buildPromptContext(
+      request.readonlyContext,
+      messages.filter((message) => message.role === 'user')
+    );
     const systemPrompt = [
       this.getSystemPrompt(),
-      contextMessage?.content
+      contextMessage?.content,
+      readonlyLookupContext
     ].filter(Boolean).join('\n\n');
 
     if (settings.provider === 'gemini') {
