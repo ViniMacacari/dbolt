@@ -78,6 +78,14 @@ export interface AiReadonlyDatabaseContext {
   truncated: boolean
 }
 
+export interface AiReadonlyDatabaseToolContext {
+  sgbd?: string
+  version?: string
+  database?: string
+  schema?: string
+  connectionKey?: string
+}
+
 export interface ApiResponse<T> {
   success: boolean
   data?: T

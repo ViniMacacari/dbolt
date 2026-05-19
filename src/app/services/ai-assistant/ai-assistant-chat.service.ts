@@ -5,6 +5,7 @@ import {
   AiAssistantApiMessage,
   AiAssistantChatResponse,
   AiReadonlyDatabaseContext,
+  AiReadonlyDatabaseToolContext,
   ApiResponse
 } from './ai-assistant.model'
 
@@ -16,11 +17,13 @@ export class AiAssistantChatService {
 
   async sendMessage(
     messages: AiAssistantApiMessage[],
-    databaseContext?: AiReadonlyDatabaseContext
+    databaseContext?: AiReadonlyDatabaseContext,
+    readonlyContext?: AiReadonlyDatabaseToolContext
   ): Promise<AiAssistantChatResponse> {
     const response = await this.internalApi.post<ApiResponse<AiAssistantChatResponse>>('/api/ai-assistant/chat', {
       messages,
-      databaseContext
+      databaseContext,
+      readonlyContext
     })
 
     if (!response.success || !response.data) {
