@@ -2,15 +2,16 @@
     <div class="settings-row">
         <label for="ai-api-key">{{ t('aiAssistant.apiKey') }}</label>
         <input id="ai-api-key" class="input-page" type="password" [(ngModel)]="apiKey" name="apiKey"
-            [placeholder]="settings?.hasApiKey ? t('aiAssistant.apiKeyConfigured') : 'sk-...'" [disabled]="saving">
+            [placeholder]="hasApiKeyForSelectedProvider ? t('aiAssistant.apiKeyConfigured') : t('aiAssistant.apiKeyPlaceholder')"
+            [disabled]="saving">
     </div>
 
     <div class="settings-row">
         <label>{{ t('aiAssistant.provider') }}</label>
-        <div class="provider-display">
-            <img src="icons/ai.png" height="15px" width="15px">
-            <span class="text-min">OpenAI</span>
-        </div>
+        <app-input-list [list]="providerOptions" [displayKey]="'label'" [valueKey]="'value'"
+            [selectedValue]="provider" [width]="'100%'" [placeholder]="t('aiAssistant.provider')"
+            (itemSelected)="onProviderSelected($event)">
+        </app-input-list>
     </div>
 
     <div class="settings-row">
@@ -21,7 +22,7 @@
         </app-input-list>
     </div>
 
-    <app-checkbox [checked]="customEndpointEnabled" (checkedChange)="onCustomEndpointChanged($event)"
+    <app-checkbox *ngIf="provider === 'openai'" [checked]="customEndpointEnabled" (checkedChange)="onCustomEndpointChanged($event)"
         [disabled]="saving" [label]="t('aiAssistant.customEndpoint')">
     </app-checkbox>
 
@@ -31,7 +32,7 @@
             [disabled]="saving">
     </div>
 
-    <label class="clear-key" *ngIf="settings?.hasApiKey">
+    <label class="clear-key" *ngIf="hasApiKeyForSelectedProvider">
         <input type="checkbox" [(ngModel)]="clearApiKey" name="clearApiKey" [disabled]="saving">
         <span>{{ t('aiAssistant.clearApiKey') }}</span>
     </label>
@@ -40,7 +41,8 @@
         <button type="button" class="btn-cancel" (click)="cancel.emit()" [disabled]="saving">
             {{ t('generic.cancel') }}
         </button>
-        <button type="submit" class="btn-page-2" [disabled]="saving || !model.trim() || !baseUrl.trim()">
+        <button type="submit" class="btn-page-2"
+            [disabled]="saving || !model.trim() || (provider === 'openai' && !baseUrl.trim())">
             {{ t('settings.actions.save') }}
         </button>
     </div>

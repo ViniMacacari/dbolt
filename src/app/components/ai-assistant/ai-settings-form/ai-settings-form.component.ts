@@ -3,6 +3,7 @@ import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from
 import { FormsModule } from '@angular/forms'
 
 import {
+  AiAssistantProvider,
   AiAssistantSettings,
   AiAssistantSettingsUpdate
 } from '../../../services/ai-assistant/ai-assistant.model'
@@ -24,11 +25,16 @@ export class AiSettingsFormComponent implements OnChanges {
   @Output() cancel = new EventEmitter<void>()
 
   apiKey: string = ''
+  provider: AiAssistantProvider = 'openai'
   model: string = 'gpt-5.4-mini'
   baseUrl: string = 'https://api.openai.com/v1/chat/completions'
   clearApiKey: boolean = false
   customEndpointEnabled: boolean = false
-  readonly defaultModelOptions: { label: string, value: string }[] = [
+  readonly providerOptions: { label: string, value: AiAssistantProvider }[] = [
+    { label: 'OpenAI', value: 'openai' },
+    { label: 'Gemini', value: 'gemini' }
+  ]
+  readonly openAiModelOptions: { label: string, value: string }[] = [
     { label: 'GPT-5.5', value: 'gpt-5.5' },
     { label: 'GPT-5.4', value: 'gpt-5.4' },
     { label: 'GPT-5.4 mini', value: 'gpt-5.4-mini' },
@@ -45,6 +51,15 @@ export class AiSettingsFormComponent implements OnChanges {
     { label: 'GPT-4o', value: 'gpt-4o' },
     { label: 'o4-mini', value: 'o4-mini' }
   ]
+  readonly geminiModelOptions: { label: string, value: string }[] = [
+    { label: 'Gemini 3.5 Flash', value: 'gemini-3.5-flash' },
+    { label: 'Gemini 3.1 Pro Preview', value: 'gemini-3.1-pro-preview' },
+    { label: 'Gemini 3.1 Flash-Lite', value: 'gemini-3.1-flash-lite' },
+    { label: 'Gemini 3 Flash Preview', value: 'gemini-3-flash-preview' },
+    { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
+    { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
+    { label: 'Gemini 2.5 Flash-Lite', value: 'gemini-2.5-flash-lite' }
+  ]
 
   constructor(private language: AppLanguageService) { }
 
@@ -53,11 +68,32 @@ export class AiSettingsFormComponent implements OnChanges {
       return
     }
 
-    this.model = this.settings?.model || this.model
+    this.provider = this.settings?.provider || 'openai'
+    this.model = this.settings?.model || this.defaultModelForProvider(this.provider)
     this.baseUrl = this.settings?.baseUrl || this.baseUrl
-    this.customEndpointEnabled = this.baseUrl !== 'https://api.openai.com/v1/chat/completions'
+    this.customEndpointEnabled = this.provider === 'openai' &&
+      this.baseUrl !== 'https://api.openai.com/v1/chat/completions'
     this.apiKey = ''
     this.clearApiKey = false
+  }
+
+  get hasApiKeyForSelectedProvider(): boolean {
+    return Boolean(this.settings?.hasApiKeys?.[this.provider])
+  }
+
+  onProviderSelected(item: { [key: string]: string | number } | null): void {
+    const provider = item?.['value'] === 'gemini' ? 'gemini' : 'openai'
+    if (provider === this.provider) return
+
+    this.provider = provider
+    this.model = this.defaultModelForProvider(provider)
+    this.customEndpointEnabled = false
+    this.apiKey = ''
+    this.clearApiKey = false
+
+    if (provider === 'openai') {
+      this.baseUrl = 'https://api.openai.com/v1/chat/completions'
+    }
   }
 
   onCustomEndpointChanged(enabled: boolean): void {
@@ -69,13 +105,17 @@ export class AiSettingsFormComponent implements OnChanges {
   }
 
   get modelOptions(): { [key: string]: string | number }[] {
-    if (!this.model || this.defaultModelOptions.some((option) => option.value === this.model)) {
-      return this.defaultModelOptions
+    const defaultModelOptions = this.provider === 'gemini'
+      ? this.geminiModelOptions
+      : this.openAiModelOptions
+
+    if (!this.model || defaultModelOptions.some((option) => option.value === this.model)) {
+      return defaultModelOptions
     }
 
     return [
       { label: `${this.model} (${this.t('aiAssistant.currentModel')})`, value: this.model },
-      ...this.defaultModelOptions
+      ...defaultModelOptions
     ]
   }
 
@@ -86,11 +126,16 @@ export class AiSettingsFormComponent implements OnChanges {
 
   submit(): void {
     this.save.emit({
+      provider: this.provider,
       model: this.model.trim(),
-      baseUrl: this.baseUrl.trim(),
+      baseUrl: this.provider === 'openai' ? this.baseUrl.trim() : undefined,
       apiKey: this.apiKey.trim() || undefined,
       clearApiKey: this.clearApiKey
     })
+  }
+
+  private defaultModelForProvider(provider: AiAssistantProvider): string {
+    return provider === 'gemini' ? 'gemini-3.5-flash' : 'gpt-5.4-mini'
   }
 
   t(key: string, params: Record<string, string | number> = {}): string {
