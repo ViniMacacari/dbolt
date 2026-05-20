@@ -19,6 +19,41 @@
     opacity: .7;
 }
 
+.context-summary-combined {
+    align-items: center;
+    display: grid !important;
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+    min-height: 44px;
+}
+
+.context-summary-item {
+    align-items: center;
+    display: flex;
+    gap: 7px;
+    min-width: 0;
+
+    img {
+        flex: 0 0 auto;
+    }
+
+    span {
+        color: #f1f1f1;
+        display: block;
+        font-size: .76em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.context-summary-divider {
+    background: #3a3535;
+    display: block;
+    height: 18px;
+    width: 1px;
+}
+
 .ai-status {
     background: #2d2020 !important;
     border: 1px solid #5a2b2b;
@@ -74,6 +109,74 @@
     min-height: 28px;
     padding: 0 4px 0 6px;
     text-transform: uppercase;
+}
+
+.conversation-current {
+    align-items: center;
+    background: #1f1f1f;
+    border: 1px solid #303030;
+    border-radius: 8px;
+    color: #f1f1f1;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    min-height: 38px;
+    padding: 7px 9px;
+    text-align: left;
+    width: 100%;
+
+    &:hover:not(:disabled) {
+        background: #283445;
+        border-color: #516986;
+    }
+
+    &:disabled {
+        cursor: default;
+        opacity: .6;
+    }
+}
+
+.conversation-current-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+
+    small,
+    strong {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    small {
+        color: #8f8f8f;
+        font-size: .62em;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    strong {
+        color: #f1f1f1;
+        font-size: .78em;
+        font-weight: 800;
+    }
+}
+
+.conversation-count {
+    align-items: center;
+    background: #232323;
+    border: 1px solid #343434;
+    border-radius: 999px;
+    color: #cfcfcf;
+    display: inline-flex;
+    font-size: .68em;
+    font-weight: 800;
+    height: 22px;
+    justify-content: center;
+    min-width: 22px;
+    padding: 0 7px;
 }
 
 .conversation-icon-button,
@@ -157,6 +260,120 @@
 .conversation-loading {
     margin: 0;
     padding: 0 6px;
+}
+
+.conversation-modal-backdrop {
+    align-items: center;
+    background-color: rgba(7, 7, 7, 0.76);
+    backdrop-filter: blur(2px);
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    left: 0;
+    padding: 24px;
+    position: fixed;
+    right: 0;
+    top: 0;
+    z-index: 1040;
+}
+
+.conversation-modal {
+    background: #1b1b1b;
+    border: 1px solid #353535;
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+    max-height: min(620px, calc(100vh - 48px));
+    max-width: 460px;
+    overflow: hidden;
+    width: min(460px, 100%);
+}
+
+.conversation-modal-header {
+    align-items: center;
+    border-bottom: 1px solid #353535;
+    display: flex;
+    justify-content: space-between;
+    padding: 16px 18px 14px;
+
+    h2,
+    p {
+        font-family: 'Nunito';
+        margin: 0;
+    }
+
+    h2 {
+        color: #e8eaed;
+        font-size: 1.02em;
+        font-weight: 800;
+    }
+
+    p {
+        color: #8f8f8f;
+        font-size: .68em;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    button {
+        align-items: center;
+        background-color: #232020;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        height: 34px;
+        justify-content: center;
+        padding: 0;
+        width: 34px;
+
+        &:hover {
+            background-color: #303030;
+        }
+    }
+}
+
+.conversation-modal-actions {
+    border-bottom: 1px solid #2b2b2b;
+    padding: 12px;
+}
+
+.conversation-new-button {
+    align-items: center;
+    background: #232020;
+    border: 1px solid #353535;
+    border-radius: 10px;
+    color: #e8eaed;
+    display: flex;
+    font-family: 'Nunito';
+    font-size: .8em;
+    font-weight: 800;
+    gap: 8px;
+    min-height: 36px;
+    padding: 0 12px;
+    width: 100%;
+
+    &:hover:not(:disabled) {
+        background: #292727;
+    }
+
+    &:disabled {
+        cursor: default;
+        opacity: .55;
+    }
+}
+
+.conversation-modal-list {
+    gap: 7px;
+    max-height: 430px;
+    padding: 12px;
+}
+
+.conversation-empty {
+    color: #969696;
+    font-family: 'Nunito';
+    font-size: .84em;
+    margin: 12px 8px;
+    text-align: center;
 }
 
 .ai-chat {

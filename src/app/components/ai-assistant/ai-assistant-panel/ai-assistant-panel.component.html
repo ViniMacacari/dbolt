@@ -20,13 +20,17 @@
         <img src="icons/ai.png" height="15px" width="15px" [alt]="t('aiAssistant.assistant')">
         <p class="text-min w-100">{{ settings?.model || t('aiAssistant.configure') }}</p>
     </button>
-    <button type="button" class="database context-summary" [disabled]="!databaseContextAvailable">
-        <img src="icons/database.png" height="15px" width="15px">
-        <p class="text-min w-100">{{ contextDatabaseLabel }}</p>
-    </button>
-    <button type="button" class="schema context-summary" [disabled]="!databaseContextAvailable">
-        <img src="icons/schema.png" height="15px" width="15px">
-        <p class="text-min w-100">{{ contextSchemaLabel }}</p>
+    <button type="button" class="database context-summary context-summary-combined"
+        [disabled]="!databaseContextAvailable" [title]="contextSummaryLabel">
+        <span class="context-summary-item">
+            <img src="icons/database.png" height="15px" width="15px">
+            <span>{{ contextDatabaseLabel }}</span>
+        </span>
+        <span class="context-summary-divider" aria-hidden="true"></span>
+        <span class="context-summary-item">
+            <img src="icons/schema.png" height="13px" width="13px">
+            <span>{{ contextSchemaLabel }}</span>
+        </span>
     </button>
 
     <div class="separator my-3"></div>
@@ -40,19 +44,15 @@
             </button>
         </div>
 
-        <div class="conversation-tabs" *ngIf="!loadingConversations">
-            <div class="conversation-tab" *ngFor="let conversation of conversations; trackBy: trackConversation"
-                [class.active]="conversation.id === activeConversationId">
-                <button type="button" class="conversation-select" (click)="selectConversation(conversation)"
-                    [disabled]="sending" [title]="getConversationTitle(conversation)">
-                    <span>{{ getConversationTitle(conversation) }}</span>
-                </button>
-                <button type="button" class="conversation-delete" (click)="requestDeleteConversation(conversation, $event)"
-                    [disabled]="sending" [title]="t('aiAssistant.deleteConversation')">
-                    <img src="icons/delete.png" height="12px" width="12px" [alt]="t('aiAssistant.deleteConversation')">
-                </button>
-            </div>
-        </div>
+        <button type="button" class="conversation-current" (click)="openConversationsModal()"
+            [disabled]="loadingConversations" [title]="t('aiAssistant.openConversations')">
+            <img src="icons/chat.png" height="16px" width="16px" [alt]="t('aiAssistant.conversations')">
+            <span class="conversation-current-copy">
+                <small>{{ t('aiAssistant.currentConversation') }}</small>
+                <strong>{{ activeConversationTitle }}</strong>
+            </span>
+            <span class="conversation-count">{{ conversations.length }}</span>
+        </button>
 
         <p class="conversation-loading text-min-gray" *ngIf="loadingConversations">
             {{ t('aiAssistant.loadingConversations') }}
@@ -95,4 +95,50 @@
         [continueLabel]="t('aiAssistant.yesDelete')" (closeAction)="cancelDeleteConversation()"
         (continueAction)="confirmDeleteConversation()">
     </app-yes-no-modal>
+
+    <div class="conversation-modal-backdrop" *ngIf="showConversationsModal" (click)="closeConversationsModal()">
+        <div class="conversation-modal" (click)="$event.stopPropagation()">
+            <div class="conversation-modal-header">
+                <div>
+                    <p>{{ t('aiAssistant.currentConversation') }}</p>
+                    <h2>{{ t('aiAssistant.conversations') }}</h2>
+                </div>
+                <button type="button" (click)="closeConversationsModal()" [title]="t('generic.close')">
+                    <img src="icons/close.png" height="16px" width="16px" [alt]="t('generic.close')">
+                </button>
+            </div>
+
+            <div class="conversation-modal-actions">
+                <button type="button" class="conversation-new-button" (click)="startNewConversation()"
+                    [disabled]="sending || loadingConversations">
+                    <img src="icons/add.png" height="13px" width="13px" [alt]="t('aiAssistant.newConversation')">
+                    <span>{{ t('aiAssistant.newConversation') }}</span>
+                </button>
+            </div>
+
+            <div class="conversation-tabs conversation-modal-list" *ngIf="!loadingConversations">
+                <div class="conversation-tab" *ngFor="let conversation of conversations; trackBy: trackConversation"
+                    [class.active]="conversation.id === activeConversationId">
+                    <button type="button" class="conversation-select" (click)="selectConversation(conversation)"
+                        [disabled]="sending" [title]="getConversationTitle(conversation)">
+                        <span>{{ getConversationTitle(conversation) }}</span>
+                    </button>
+                    <button type="button" class="conversation-delete"
+                        (click)="requestDeleteConversation(conversation, $event)" [disabled]="sending"
+                        [title]="t('aiAssistant.deleteConversation')">
+                        <img src="icons/delete.png" height="12px" width="12px"
+                            [alt]="t('aiAssistant.deleteConversation')">
+                    </button>
+                </div>
+
+                <p class="conversation-empty" *ngIf="conversations.length === 0">
+                    {{ t('aiAssistant.noConversations') }}
+                </p>
+            </div>
+
+            <p class="conversation-loading text-min-gray" *ngIf="loadingConversations">
+                {{ t('aiAssistant.loadingConversations') }}
+            </p>
+        </div>
+    </div>
 </aside>
