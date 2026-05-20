@@ -87,7 +87,7 @@ class AiAssistantAgentService {
         AiAssistantToolBudget.registerToolCall(budget);
         const result = await AiAssistantTools.execute(readonlyContext, toolCall, budget);
         toolSections.push([
-          `[tool:${result.name}:${result.success ? 'ok' : 'error'}]`,
+          `[database-action:${result.name}:${result.success ? 'ok' : 'error'}]`,
           result.content
         ].join('\n'));
       }
@@ -110,29 +110,29 @@ class AiAssistantAgentService {
     const parts = [
       'You are the AI assistant for DBOLT Database Manager.',
       `The user's selected app language is ${responseLanguage}. Write final user-facing answers in that language.`,
-      'Tool-call JSON, tool names, SQL identifiers, and database values must remain exact and must not be translated.',
+      'Database action JSON, action names, SQL identifiers, and database values must remain exact and must not be translated.',
       'The user may write in any language. Interpret the request semantically; do not rely on language-specific keyword matching.',
       'Focus on SQL, data modeling, schema investigation, and database productivity.',
       'Do not request passwords, tokens, or API keys.',
-      'Do not invent tables, columns, or results. When read-only tool data is available, treat it as factual.',
+      'Do not invent tables, columns, or results. When read-only database action data is available, treat it as factual.',
       'Never request or suggest write commands such as UPDATE, DELETE, INSERT, DROP, ALTER, TRUNCATE, EXEC, CALL, or MERGE.',
       ...(readonlyContext && allowTools ? [
         'When read-only context is authorized, you may execute SELECT/WITH queries with runReadonlyQuery to answer questions about database data.',
         'Do not say you cannot execute a query when the query is read-only. Use runReadonlyQuery instead of giving SQL for the user to run, unless the user only asks for the query text.',
-        'If the user asks about object existence, columns, counts, IDs, or database data and read-only context is authorized, use tools before answering, unless already collected read-only data answers directly.',
-        'For questions that require sequential investigation, continue using tools until you find the answer or the budget is exhausted. Example: search for the table, inspect columns, run a filtered SELECT, then answer.',
+        'If the user asks about object existence, columns, counts, IDs, or database data and read-only context is authorized, use database actions before answering, unless already collected read-only data answers directly.',
+        'For questions that require sequential investigation, continue using database actions until you find the answer or the budget is exhausted. Example: search for the table, inspect columns, run a filtered SELECT, then answer.',
         'You can investigate across multiple rounds. For example, search for a table first, then request columns for the table you found.'
       ] : []),
-      `Budget for this question: up to ${budget.maxApiCallsPerMessage} AI API calls and up to ${budget.maxToolCalls} database tool calls, up to ${budget.maxToolCallsPerIteration} database tool calls per AI API call.`,
-      `Already used before this AI API call: ${Math.max(0, budget.apiCallsUsed - 1)} AI API calls and ${budget.toolCallsUsed} database tool calls.`
+      `Budget for this question: up to ${budget.maxApiCallsPerMessage} AI API calls and up to ${budget.maxToolCalls} database actions, up to ${budget.maxToolCallsPerIteration} database actions per AI API call.`,
+      `Already used before this AI API call: ${Math.max(0, budget.apiCallsUsed - 1)} AI API calls and ${budget.toolCallsUsed} database actions.`
     ];
 
     if (allowTools && !forceFinalAnswer) {
       parts.push(AiAssistantTools.getToolInstructions());
     } else if (!readonlyContext) {
-      parts.push('No read-only database context was authorized. Answer without running database tools.');
+      parts.push('No read-only database context was authorized. Answer without running database actions.');
     } else if (!allowTools) {
-      parts.push('Do not request database tools in this response. Answer with the data already available.');
+      parts.push('Do not request database actions in this response. Answer with the data already available.');
     }
 
     const transcript = AiAssistantToolBudget.compactTranscript(toolSections, budget);
@@ -140,15 +140,15 @@ class AiAssistantAgentService {
       parts.push([
         'Read-only data already collected by DBOLT for this question:',
         transcript,
-        'Do not request a tool again if it has already returned the same data.'
+        'Do not request the same database action again if it has already returned the same data.'
       ].join('\n'));
     }
 
     if (forceFinalAnswer) {
       parts.push([
-        'The tool budget is exhausted or the investigation is sufficient.',
+        'The database action budget is exhausted or the investigation is sufficient.',
         'Answer the user now with the available data.',
-        'Do not return tool JSON in this final answer.'
+        'Do not return database action JSON in this final answer.'
       ].join('\n'));
     }
 
@@ -174,6 +174,10 @@ class AiAssistantAgentService {
   }
 
   private readRawToolCalls(parsed: Record<string, unknown>): unknown[] {
+    if (Array.isArray(parsed['databaseActions'])) return parsed['databaseActions'];
+    if (Array.isArray(parsed['actions'])) return parsed['actions'];
+    if (parsed['databaseAction']) return [parsed['databaseAction']];
+    if (parsed['action']) return [parsed['action']];
     if (Array.isArray(parsed['toolCalls'])) return parsed['toolCalls'];
     if (Array.isArray(parsed['tools'])) return parsed['tools'];
     if (parsed['toolCall']) return [parsed['toolCall']];
