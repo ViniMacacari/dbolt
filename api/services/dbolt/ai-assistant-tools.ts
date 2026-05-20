@@ -47,6 +47,7 @@ class AiAssistantToolsService {
       '- getTableColumns: lists column metadata for a table/view. Args: {"tableName":"OINV","limit":60}.',
       '- getSchemaSummary: small summary of tables/views. Args: {"search":"optional","limit":30}. Use only when a specific search is not enough.',
       '- runReadonlyQuery: runs only SELECT/WITH with a row limit. Args: {"sql":"SELECT ...","maxRows":50}. Never use it for INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, EXEC, or multiple statements.',
+      'For object discovery, choose concise search terms from the user intent and database naming context. If the first search has no useful match, try a broader or alternative term within the tool budget.',
       'Use runReadonlyQuery when the question asks for row values, IDs, emails, names, counts, or any data that depends on table contents.',
       'If you still need information to build the SELECT safely, request another tool first; if you already know the table and columns, run the read-only SELECT.',
       'To request tools, reply ONLY with valid JSON in this format:',
