@@ -32,23 +32,31 @@ class AiAssistantAgentService {
     request: AiAssistantAgentChatRequest,
     settings: AiAssistantResolvedSettings
   ): Promise<AiAssistantAgentChatResult> {
-    const messages = this.normalizeMessages(request.messages);
+    const messages = this.normalizeMessages(request.messages, settings.limits.maxContextMessages);
     const readonlyContext = request.readonlyContext?.sgbd ? request.readonlyContext : undefined;
     const responseLanguage = this.getResponseLanguage(request.appLanguage);
-    const budget = AiAssistantToolBudget.createState();
+    const budget = AiAssistantToolBudget.createState(settings.limits);
     const toolSections: string[] = [];
 
     let lastModel = settings.model;
 
-    while (AiAssistantToolBudget.beginIteration(budget)) {
+    while (AiAssistantToolBudget.canCallModel(budget) && AiAssistantToolBudget.beginIteration(budget)) {
+      const allowTools = Boolean(
+        readonlyContext &&
+        AiAssistantToolBudget.canRunTool(budget) &&
+        AiAssistantToolBudget.getRemainingApiCalls(budget) > 1
+      );
+      const forceFinalAnswer = !allowTools && toolSections.length > 0;
+      AiAssistantToolBudget.registerApiCall(budget);
+
       const completion = await AiAssistantModelClient.complete(
         settings,
-        this.buildSystemPrompt(readonlyContext, budget, toolSections, false, responseLanguage),
+        this.buildSystemPrompt(readonlyContext, budget, toolSections, forceFinalAnswer, responseLanguage, allowTools),
         messages
       );
       lastModel = completion.model;
 
-      const toolCalls = readonlyContext
+      const toolCalls = allowTools
         ? this.parseToolCalls(completion.content)
         : [];
 
@@ -85,15 +93,9 @@ class AiAssistantAgentService {
       }
     }
 
-    const finalCompletion = await AiAssistantModelClient.complete(
-      settings,
-      this.buildSystemPrompt(readonlyContext, budget, toolSections, true, responseLanguage),
-      messages
-    );
-
     return {
-      message: this.cleanFinalAnswer(finalCompletion.content),
-      model: finalCompletion.model || lastModel
+      message: 'I could not finish the answer before the configured AI request limit. Increase the AI limits or refine the question.',
+      model: lastModel
     };
   }
 
@@ -102,7 +104,8 @@ class AiAssistantAgentService {
     budget: AiAssistantToolBudgetState,
     toolSections: string[],
     forceFinalAnswer: boolean,
-    responseLanguage: string
+    responseLanguage: string,
+    allowTools: boolean
   ): string {
     const parts = [
       'You are the AI assistant for DBOLT Database Manager.',
@@ -113,18 +116,23 @@ class AiAssistantAgentService {
       'Do not request passwords, tokens, or API keys.',
       'Do not invent tables, columns, or results. When read-only tool data is available, treat it as factual.',
       'Never request or suggest write commands such as UPDATE, DELETE, INSERT, DROP, ALTER, TRUNCATE, EXEC, CALL, or MERGE.',
-      'When read-only context is authorized, you may execute SELECT/WITH queries with runReadonlyQuery to answer questions about database data.',
-      'Do not say you cannot execute a query when the query is read-only. Use runReadonlyQuery instead of giving SQL for the user to run, unless the user only asks for the query text.',
-      'If the user asks about object existence, columns, counts, IDs, or database data and read-only context is authorized, use tools before answering, unless already collected read-only data answers directly.',
-      'For questions that require sequential investigation, continue using tools until you find the answer or the budget is exhausted. Example: search for the table, inspect columns, run a filtered SELECT, then answer.',
-      'You can investigate across multiple rounds. For example, search for a table first, then request columns for the table you found.',
-      `Budget for this question: up to ${budget.maxToolCalls} total tool calls, up to ${budget.maxToolCallsPerIteration} per round. Already used: ${budget.toolCallsUsed}.`
+      ...(readonlyContext && allowTools ? [
+        'When read-only context is authorized, you may execute SELECT/WITH queries with runReadonlyQuery to answer questions about database data.',
+        'Do not say you cannot execute a query when the query is read-only. Use runReadonlyQuery instead of giving SQL for the user to run, unless the user only asks for the query text.',
+        'If the user asks about object existence, columns, counts, IDs, or database data and read-only context is authorized, use tools before answering, unless already collected read-only data answers directly.',
+        'For questions that require sequential investigation, continue using tools until you find the answer or the budget is exhausted. Example: search for the table, inspect columns, run a filtered SELECT, then answer.',
+        'You can investigate across multiple rounds. For example, search for a table first, then request columns for the table you found.'
+      ] : []),
+      `Budget for this question: up to ${budget.maxApiCallsPerMessage} AI API calls and up to ${budget.maxToolCalls} database tool calls, up to ${budget.maxToolCallsPerIteration} database tool calls per AI API call.`,
+      `Already used before this AI API call: ${Math.max(0, budget.apiCallsUsed - 1)} AI API calls and ${budget.toolCallsUsed} database tool calls.`
     ];
 
-    if (readonlyContext && !forceFinalAnswer && AiAssistantToolBudget.canRunTool(budget)) {
+    if (allowTools && !forceFinalAnswer) {
       parts.push(AiAssistantTools.getToolInstructions());
     } else if (!readonlyContext) {
       parts.push('No read-only database context was authorized. Answer without running database tools.');
+    } else if (!allowTools) {
+      parts.push('Do not request database tools in this response. Answer with the data already available.');
     }
 
     const transcript = AiAssistantToolBudget.compactTranscript(toolSections, budget);
@@ -207,8 +215,7 @@ class AiAssistantAgentService {
     return candidate.slice(start, end + 1);
   }
 
-  private normalizeMessages(messages: AiAssistantAgentChatMessage[] = []): AiModelMessage[] {
-    const maxMessages = 10;
+  private normalizeMessages(messages: AiAssistantAgentChatMessage[] = [], maxMessages = 10): AiModelMessage[] {
     const normalizedMessages = messages
       .filter((message) => message && (message.role === 'user' || message.role === 'assistant'))
       .map((message) => ({
