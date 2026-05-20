@@ -1,6 +1,6 @@
 <article class="message" [ngClass]="[message.role, message.error ? 'error' : '']">
     <div class="avatar">
-        <img *ngIf="message.role === 'assistant'" src="icons/ai.png" alt="IA">
+        <img *ngIf="message.role === 'assistant'" src="icons/ai.png" [alt]="authorLabel">
         <span *ngIf="message.role === 'user'">U</span>
     </div>
     <div class="bubble">

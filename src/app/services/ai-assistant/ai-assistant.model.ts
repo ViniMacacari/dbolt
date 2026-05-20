@@ -26,6 +26,19 @@ export interface AiChatMessage {
   error?: boolean
 }
 
+export interface AiAssistantConversation {
+  id: string
+  title: string
+  messages: AiChatMessage[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AiAssistantConversationsState {
+  activeConversationId: string
+  conversations: AiAssistantConversation[]
+}
+
 export interface AiChatInputSubmit {
   message: string
   allowDatabaseContext: boolean

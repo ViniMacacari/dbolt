@@ -208,7 +208,7 @@ class AiAssistantAgentService {
   }
 
   private normalizeMessages(messages: AiAssistantAgentChatMessage[] = []): AiModelMessage[] {
-    const maxMessages = 6;
+    const maxMessages = 10;
     const normalizedMessages = messages
       .filter((message) => message && (message.role === 'user' || message.role === 'assistant'))
       .map((message) => ({

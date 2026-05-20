@@ -1,6 +1,7 @@
 import express from 'express';
 
 import AiAssistant from '../../services/dbolt/ai-assistant.js';
+import AiAssistantConversations from '../../services/dbolt/ai-assistant-conversations.js';
 import AiAssistantReadonlyDatabase from '../../services/dbolt/ai-assistant-readonly-database.js';
 import AiAssistantSettings from '../../services/dbolt/ai-assistant-settings.js';
 import { sendBadRequest, sendInternalError } from '../../utils/http.js';
@@ -27,6 +28,74 @@ router.put('/settings', async (req, res) => {
     res.status(200).json({ success: true, data: settings });
   } catch (error: unknown) {
     sendInternalError(res, error, 'Failed to save AI assistant settings');
+  }
+});
+
+router.get('/conversations', async (_req, res) => {
+  try {
+    const conversations = await AiAssistantConversations.getState();
+    res.status(200).json({ success: true, data: conversations });
+  } catch (error: unknown) {
+    sendInternalError(res, error, 'Failed to load AI assistant conversations');
+  }
+});
+
+router.post('/conversations', async (req, res) => {
+  try {
+    const conversations = await AiAssistantConversations.createConversation(
+      typeof req.body?.title === 'string' ? req.body.title : undefined
+    );
+    res.status(200).json({ success: true, data: conversations });
+  } catch (error: unknown) {
+    sendInternalError(res, error, 'Failed to create AI assistant conversation');
+  }
+});
+
+router.put('/conversations/active', async (req, res) => {
+  try {
+    const conversationId = String(req.body?.conversationId || '').trim();
+
+    if (!conversationId) {
+      sendBadRequest(res, 'No AI assistant conversation ID provided');
+      return;
+    }
+
+    const conversations = await AiAssistantConversations.setActiveConversation(conversationId);
+    res.status(200).json({ success: true, data: conversations });
+  } catch (error: unknown) {
+    sendInternalError(res, error, 'Failed to set active AI assistant conversation');
+  }
+});
+
+router.put('/conversations/:conversationId', async (req, res) => {
+  try {
+    const conversationId = String(req.params.conversationId || '').trim();
+
+    if (!conversationId) {
+      sendBadRequest(res, 'No AI assistant conversation ID provided');
+      return;
+    }
+
+    const conversations = await AiAssistantConversations.updateConversation(conversationId, req.body || {});
+    res.status(200).json({ success: true, data: conversations });
+  } catch (error: unknown) {
+    sendInternalError(res, error, 'Failed to save AI assistant conversation');
+  }
+});
+
+router.delete('/conversations/:conversationId', async (req, res) => {
+  try {
+    const conversationId = String(req.params.conversationId || '').trim();
+
+    if (!conversationId) {
+      sendBadRequest(res, 'No AI assistant conversation ID provided');
+      return;
+    }
+
+    const conversations = await AiAssistantConversations.deleteConversation(conversationId);
+    res.status(200).json({ success: true, data: conversations });
+  } catch (error: unknown) {
+    sendInternalError(res, error, 'Failed to delete AI assistant conversation');
   }
 });
 
