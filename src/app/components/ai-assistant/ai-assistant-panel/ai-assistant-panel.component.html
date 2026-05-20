@@ -1,8 +1,13 @@
-<aside class="sidebar ai-assistant-sidebar">
+<aside class="sidebar ai-assistant-sidebar" [class.expanded]="sidebarExpanded">
     <div class="sidebar-actions my-2">
-        <button type="button" class="sidebar-action-button menu-button" (click)="close.emit()"
+        <button type="button" class="sidebar-action-button menu-button resize-button" (click)="toggleSidebarWidth()"
+            [title]="sidebarExpanded ? t('aiAssistant.collapseSidebar') : t('aiAssistant.expandSidebar')">
+            <img [src]="sidebarExpanded ? 'icons/menu.png' : 'icons/menu.png'" height="17px" width="17px"
+                [alt]="sidebarExpanded ? t('aiAssistant.collapseSidebar') : t('aiAssistant.expandSidebar')">
+        </button>
+        <button type="button" class="sidebar-action-button back-button" (click)="close.emit()"
             [title]="t('generic.back')">
-            <img src="icons/close.png" height="24px" class="toogle-img" [alt]="t('generic.back')">
+            <img src="icons/close.png" height="17px" width="17px" [alt]="t('generic.back')">
         </button>
         <button type="button" class="sidebar-action-button home-button" (click)="errorMessage = ''"
             [title]="t('aiAssistant.chat')">

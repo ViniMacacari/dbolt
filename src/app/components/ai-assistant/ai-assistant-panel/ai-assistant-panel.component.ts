@@ -51,6 +51,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
   loadingConversations: boolean = false
   sending: boolean = false
   errorMessage: string = ''
+  sidebarExpanded: boolean = false
   showDeleteConversationConfirm: boolean = false
   showConversationsModal: boolean = false
   pendingDeleteConversation: AiAssistantConversation | null = null
@@ -244,6 +245,10 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
     } finally {
       this.loadingConversations = false
     }
+  }
+
+  toggleSidebarWidth(): void {
+    this.sidebarExpanded = !this.sidebarExpanded
   }
 
   openConversationsModal(): void {
