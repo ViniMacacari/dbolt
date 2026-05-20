@@ -21,6 +21,7 @@
   "include": [
     "main.ts",
     "preload.ts",
+    "electron/**/*.ts",
     "api/**/*.ts"
   ],
   "exclude": [

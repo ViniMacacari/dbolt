@@ -1,13 +1,17 @@
 <div class="content d-flex w-100 h-100">
-    <app-sidebar [connections]="connections" [activeConnection]="activeConnection"
+    <app-sidebar *ngIf="!aiAssistantOpen" [connections]="connections" [activeConnection]="activeConnection"
         [dbSchemas]="databasesSchemasActiveConnections" [selectedSchemaDB]="selectedSchemaDB"
         (sidebarStatusChange)="onSidebarStatusChange($event)" (dbInfoRequested)="onDbInfoRequested($event)"
         (selectedSchemaChanged)="onSelectedSchemaChanged($event)"
         (settingsRequested)="onSettingsRequested()" (sqlScriptRequested)="onSqlScriptRequested($event)"
         (contextConnectionRequested)="onContextConnectionRequested($event)"></app-sidebar>
+    <app-ai-assistant-panel *ngIf="aiAssistantOpen" [selectedSchemaDB]="selectedSchemaDB"
+        [dbSchemasData]="dbSchemasData" [tabInfo]="tabInfo" (close)="closeAiAssistant()"
+        (settingsRequested)="onAiSettingsRequested()"></app-ai-assistant-panel>
     <div class="main-area">
         <div class="tabs pt-3 px-3">
-            <app-tabs (tabSelected)="onTabSelected($event)" (tabClosed)="onTabClosed($event)"></app-tabs>
+            <app-tabs (tabSelected)="onTabSelected($event)" (tabClosed)="onTabClosed($event)"
+                (assistantRequested)="openAiAssistant()"></app-tabs>
         </div>
         <div class="organize">
             <div class="d-flex flex-column w-100 h-100 user-content">
@@ -19,7 +23,9 @@
                 <app-procedure-info *ngIf="procedureInfoInitialized" [hidden]="!procedureInfoOpen"
                     [data]="procedureInfoData" [elementName]="procedureElementName" [tabInfo]="procedureInfoTabInfo"
                     (editRequested)="onProcedureEditRequested($event)"></app-procedure-info>
-                <app-settings *ngIf="settingsInitialized" [hidden]="!settingsOpen"></app-settings>
+                <app-settings *ngIf="settingsInitialized" [hidden]="!settingsOpen"
+                    [initialTab]="tabInfo?.info?.activeTab || null"
+                    (aiSettingsSaved)="onAiSettingsSaved()"></app-settings>
                 <app-query-assistant *ngIf="queryAssistantOpen" [tabInfo]="tabInfo"
                     (selectBuilderRequested)="onSelectBuilderRequested($event)"></app-query-assistant>
                 <app-select-builder *ngIf="selectBuilderOpen" [tabInfo]="tabInfo"

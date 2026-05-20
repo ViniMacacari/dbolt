@@ -1,0 +1,32 @@
+.chat-input {
+    border-top: 1px solid #302d2d;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 10px;
+}
+
+app-checkbox {
+    max-width: 100%;
+}
+
+.readonly-context-toggle {
+    display: none;
+}
+
+textarea {
+    font-size: .82em;
+    min-height: 76px;
+    resize: none;
+}
+
+button {
+    font-size: .8em;
+    height: 34px;
+    width: 100%;
+
+    &:disabled {
+        color: #777;
+        cursor: default;
+    }
+}

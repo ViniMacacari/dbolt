@@ -1,0 +1,37 @@
+<div class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="title text-center w-100">{{ t('appUpdate.title') }}</h5>
+        </div>
+
+        <div class="modal-body">
+            <p>
+                {{ t('appUpdate.message', { currentVersion: currentVersion, targetVersion: targetVersion }) }}
+            </p>
+
+            <dl *ngIf="update">
+                <div>
+                    <dt>{{ t('appUpdate.platform') }}</dt>
+                    <dd>{{ platformLabel }}</dd>
+                </div>
+                <div>
+                    <dt>{{ t('appUpdate.file') }}</dt>
+                    <dd>{{ update.release.fileName || update.release.format }}</dd>
+                </div>
+            </dl>
+
+            <p class="status" *ngIf="isInstalling">{{ t('appUpdate.downloading') }}</p>
+            <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-cancel" type="button" [disabled]="isInstalling" (click)="close()">
+                {{ t('appUpdate.later') }}
+            </button>
+            <button class="btn-page" type="button" [disabled]="isInstalling" (click)="updateNow()">
+                {{ isInstalling ? t('appUpdate.updating') : t('appUpdate.updateNow') }}
+            </button>
+        </div>
+    </div>
+</div>
+

@@ -1,0 +1,52 @@
+<form class="settings-form" (ngSubmit)="submit()">
+    <div class="settings-row">
+        <label for="ai-api-key">{{ t('aiAssistant.apiKey') }}</label>
+        <input id="ai-api-key" class="input-page" type="password" [(ngModel)]="apiKey" name="apiKey"
+            [placeholder]="hasApiKeyForSelectedProvider ? t('aiAssistant.apiKeyConfigured') : t('aiAssistant.apiKeyPlaceholder')"
+            [disabled]="saving">
+    </div>
+
+    <div class="settings-row">
+        <label>{{ t('aiAssistant.provider') }}</label>
+        <app-input-list [list]="providerOptions" [displayKey]="'label'" [valueKey]="'value'"
+            [selectedValue]="provider" [width]="'100%'" [placeholder]="t('aiAssistant.provider')"
+            (itemSelected)="onProviderSelected($event)">
+        </app-input-list>
+    </div>
+
+    <div class="settings-row">
+        <label>{{ t('aiAssistant.model') }}</label>
+        <input *ngIf="provider === 'openrouter'" class="input-list-style-input" type="text" [value]="model" name="model"
+            [placeholder]="t('settings.ai.openRouterModelPlaceholder')" [disabled]="saving"
+            (input)="onModelInput($event)">
+        <app-input-list *ngIf="provider !== 'openrouter'" [list]="modelOptions" [displayKey]="'label'" [valueKey]="'value'"
+            [selectedValue]="model" [width]="'100%'" [placeholder]="t('aiAssistant.model')"
+            (itemSelected)="onModelSelected($event)">
+        </app-input-list>
+    </div>
+
+    <app-checkbox *ngIf="provider === 'openai'" [checked]="customEndpointEnabled" (checkedChange)="onCustomEndpointChanged($event)"
+        [disabled]="saving" [label]="t('aiAssistant.customEndpoint')">
+    </app-checkbox>
+
+    <div class="settings-row" *ngIf="customEndpointEnabled">
+        <label for="ai-base-url">{{ t('aiAssistant.endpoint') }}</label>
+        <input id="ai-base-url" class="input-page" type="text" [(ngModel)]="baseUrl" name="baseUrl"
+            [disabled]="saving">
+    </div>
+
+    <label class="clear-key" *ngIf="hasApiKeyForSelectedProvider">
+        <input type="checkbox" [(ngModel)]="clearApiKey" name="clearApiKey" [disabled]="saving">
+        <span>{{ t('aiAssistant.clearApiKey') }}</span>
+    </label>
+
+    <div class="settings-actions">
+        <button type="button" class="btn-cancel" (click)="cancel.emit()" [disabled]="saving">
+            {{ t('generic.cancel') }}
+        </button>
+        <button type="submit" class="btn-page-2"
+            [disabled]="saving || !model.trim() || ((provider === 'openai' || provider === 'openrouter') && !baseUrl.trim())">
+            {{ t('settings.actions.save') }}
+        </button>
+    </div>
+</form>

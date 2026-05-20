@@ -18,6 +18,7 @@ import { AppLanguageService } from '../../services/language/app-language.service
 export class TabsComponent {
   @Output() tabSelected = new EventEmitter<any>()
   @Output() tabClosed = new EventEmitter<any>()
+  @Output() assistantRequested = new EventEmitter<void>()
 
   showLoadQuery: boolean = false
   showYNModal: boolean = false
@@ -53,6 +54,12 @@ export class TabsComponent {
 
   toggleDropdown(): void {
     this.dropdownVisible = !this.dropdownVisible
+  }
+
+  openAssistant(event: MouseEvent): void {
+    event.stopPropagation()
+    this.dropdownVisible = false
+    this.assistantRequested.emit()
   }
 
   newTab(type: string, info: any, name: string | null = null): any {
@@ -116,10 +123,17 @@ export class TabsComponent {
     }, 100)
   }
 
-  openSettingsTab(): void {
+  openSettingsTab(activeSettingsTab: string | null = null): void {
     const existingIndex = this.tabs.findIndex(tab => tab.type === 'settings')
 
     if (existingIndex >= 0) {
+      if (activeSettingsTab) {
+        this.tabs[existingIndex].info = {
+          ...this.tabs[existingIndex].info,
+          activeTab: activeSettingsTab
+        }
+      }
+
       this.selectTab(existingIndex)
       return
     }
@@ -128,7 +142,7 @@ export class TabsComponent {
       id: 'settings',
       name: this.t('tabs.settings'),
       type: 'settings',
-      info: {},
+      info: activeSettingsTab ? { activeTab: activeSettingsTab } : {},
       icon: 'SETTINGS'
     }
 

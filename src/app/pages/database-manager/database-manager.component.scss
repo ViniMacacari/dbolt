@@ -33,9 +33,27 @@
     overflow: hidden;
 }
 
+.main-area > .tabs {
+    align-items: flex-start;
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    box-sizing: border-box;
+    display: flex;
+    margin: 16px 1rem 8px 16px;
+    min-height: 38px;
+    padding: 0 !important;
+
+    app-tabs {
+        display: block;
+        min-width: 0;
+        width: 100%;
+    }
+}
+
 .organize {
     flex: 1;
-    padding: 1rem;
+    padding: 0 1rem 1rem 1rem;
     box-sizing: border-box;
     min-height: 0;
     min-width: 0;

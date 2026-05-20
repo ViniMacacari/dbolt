@@ -41,48 +41,31 @@ class ListObjectsSQLServerV1 {
         { name: 'schemaName', type: sql.NVarChar, value: selectedSchema.schema }
       ];
 
-      const tables = (await this.db.executeQuery(`
-        SELECT TABLE_NAME AS name, 'table' AS type
-        FROM INFORMATION_SCHEMA.TABLES
-        WHERE TABLE_TYPE = 'BASE TABLE'
-          AND TABLE_SCHEMA = @schemaName
-        ORDER BY TABLE_NAME
-      `, parameters, connectionKey)) as NamedObjectRow[];
-
-      const views = (await this.db.executeQuery(`
-        SELECT TABLE_NAME AS name, 'view' AS type
-        FROM INFORMATION_SCHEMA.VIEWS
-        WHERE TABLE_SCHEMA = @schemaName
-        ORDER BY TABLE_NAME
-      `, parameters, connectionKey)) as NamedObjectRow[];
-
-      const procedures = (await this.db.executeQuery(`
-        SELECT ROUTINE_NAME AS name, 'procedure' AS type
-        FROM INFORMATION_SCHEMA.ROUTINES
-        WHERE ROUTINE_TYPE = 'PROCEDURE'
-          AND ROUTINE_SCHEMA = @schemaName
-        ORDER BY ROUTINE_NAME
-      `, parameters, connectionKey)) as NamedObjectRow[];
-
-      const indexes = (await this.db.executeQuery(`
+      const objects = (await this.db.executeQuery(`
         SELECT
-            i.name AS index_name,
-            t.name AS table_name,
-            i.type_desc AS index_type,
-            'index' AS type
-        FROM sys.indexes i
-        INNER JOIN sys.tables t ON i.object_id = t.object_id
-        INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
-        WHERE i.index_id > 0
-          AND i.name IS NOT NULL
-          AND s.name = @schemaName
-        ORDER BY t.name, i.name
-      `, parameters, connectionKey)) as IndexRow[];
+            o.name,
+            CASE
+              WHEN o.type = 'U' THEN 'table'
+              WHEN o.type = 'V' THEN 'view'
+              ELSE 'procedure'
+            END AS type
+        FROM sys.objects o
+        WHERE o.schema_id = SCHEMA_ID(@schemaName)
+          AND o.type IN ('U', 'V', 'P', 'PC')
+          AND o.is_ms_shipped = 0
+        ORDER BY
+          CASE
+            WHEN o.type = 'U' THEN 0
+            WHEN o.type = 'V' THEN 1
+            ELSE 2
+          END,
+          o.name
+      `, parameters, connectionKey)) as NamedObjectRow[];
+
+      const indexes = await this.listSchemaIndexes(parameters, connectionKey);
 
       const data: DatabaseObject[] = [
-        ...tables.map((object, index) => toNamedDatabaseObject(object, 'table', index)),
-        ...views.map((object, index) => toNamedDatabaseObject(object, 'view', index)),
-        ...procedures.map((object, index) => toNamedDatabaseObject(object, 'procedure', index)),
+        ...objects.map((object, index) => toNamedDatabaseObject(object, object.type, index)),
         ...indexes.map((object, index) => toIndexDatabaseObject(object, index))
       ];
 
@@ -109,18 +92,14 @@ class ListObjectsSQLServerV1 {
       ];
 
       const objects = (await this.db.executeQuery(`
-        SELECT name, type
-        FROM (
-          SELECT TABLE_NAME AS name, 'table' AS type
-          FROM INFORMATION_SCHEMA.TABLES
-          WHERE TABLE_TYPE = 'BASE TABLE'
-            AND TABLE_SCHEMA = @schemaName
-          UNION ALL
-          SELECT TABLE_NAME AS name, 'view' AS type
-          FROM INFORMATION_SCHEMA.VIEWS
-          WHERE TABLE_SCHEMA = @schemaName
-        ) objects
-        ORDER BY name
+        SELECT
+            o.name,
+            CASE WHEN o.type = 'V' THEN 'view' ELSE 'table' END AS type
+        FROM sys.objects o
+        WHERE o.schema_id = SCHEMA_ID(@schemaName)
+          AND o.type IN ('U', 'V')
+          AND o.is_ms_shipped = 0
+        ORDER BY o.name
       `, parameters, connectionKey)) as NamedObjectRow[];
 
       const data: DatabaseObject[] = objects.map((object, index) =>
@@ -380,6 +359,32 @@ class ListObjectsSQLServerV1 {
     )) as TableLikeObjectRow[];
 
     return rows[0] || null;
+  }
+
+  private async listSchemaIndexes(
+    parameters: SqlServerQueryParameter[],
+    connectionKey?: string
+  ): Promise<IndexRow[]> {
+    try {
+      return (await this.db.executeQuery(`
+        SELECT
+            i.name AS index_name,
+            o.name AS table_name,
+            i.type_desc AS index_type,
+            'index' AS type
+        FROM sys.indexes i
+        INNER JOIN sys.objects o ON o.object_id = i.object_id
+        WHERE o.schema_id = SCHEMA_ID(@schemaName)
+          AND o.type IN ('U', 'V')
+          AND o.is_ms_shipped = 0
+          AND i.index_id > 0
+          AND i.name IS NOT NULL
+        ORDER BY o.name, i.name
+      `, parameters, connectionKey)) as IndexRow[];
+    } catch (error: unknown) {
+      console.warn('Could not list SQL Server indexes while loading schema objects:', getErrorMessage(error));
+      return [];
+    }
   }
 
   private async loadObjectColumns(object: TableLikeObjectRow, connectionKey?: string): Promise<ColumnRow[]> {
