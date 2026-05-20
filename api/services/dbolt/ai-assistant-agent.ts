@@ -1,9 +1,6 @@
 import AiAssistantModelClient, {
   type AiModelMessage
 } from './ai-assistant-model-client.js';
-import AiAssistantReadonlyDatabase, {
-  type AiReadonlyDatabaseContext
-} from './ai-assistant-readonly-database.js';
 import AiAssistantToolBudget, {
   type AiAssistantToolBudgetState
 } from './ai-assistant-tool-budget.js';
@@ -12,6 +9,7 @@ import AiAssistantTools, {
 } from './ai-assistant-tools.js';
 
 import type { AiAssistantResolvedSettings } from './ai-assistant-settings.js';
+import type { AiReadonlyDatabaseContext } from './ai-assistant-readonly-database.js';
 
 export interface AiAssistantAgentChatMessage {
   role: 'user' | 'assistant';
@@ -39,11 +37,6 @@ class AiAssistantAgentService {
     const responseLanguage = this.getResponseLanguage(request.appLanguage);
     const budget = AiAssistantToolBudget.createState();
     const toolSections: string[] = [];
-    const preloadedContext = await this.buildPreloadedContext(readonlyContext, messages);
-
-    if (preloadedContext) {
-      toolSections.push(`[preloaded-readonly-context]\n${preloadedContext}`);
-    }
 
     let lastModel = settings.model;
 
@@ -104,32 +97,6 @@ class AiAssistantAgentService {
     };
   }
 
-  private async buildPreloadedContext(
-    readonlyContext: AiReadonlyDatabaseContext | undefined,
-    messages: AiModelMessage[]
-  ): Promise<string | null> {
-    if (!readonlyContext) {
-      return null;
-    }
-
-    const lastQuestion = messages[messages.length - 1]?.content || '';
-    if (!this.shouldPreloadReadonlyContext(lastQuestion)) {
-      return null;
-    }
-
-    return await AiAssistantReadonlyDatabase.buildPromptContext(
-      readonlyContext,
-      [{ content: lastQuestion }]
-    );
-  }
-
-  private shouldPreloadReadonlyContext(question: string): boolean {
-    return /```(?:sql)?|^(select|with)\b/i.test(question.trim()) ||
-      /\b[A-Z][A-Z0-9_]{2,63}\b/.test(question) ||
-      /\b(colunas?|campos?|columns?|fields?)\b.*\b(tabela|table|view)\b/i.test(question) ||
-      /\b(quantos?|total|count)\b.*\b(registros?|linhas?|rows?)\b/i.test(question);
-  }
-
   private buildSystemPrompt(
     readonlyContext: AiReadonlyDatabaseContext | undefined,
     budget: AiAssistantToolBudgetState,
@@ -141,6 +108,7 @@ class AiAssistantAgentService {
       'You are the AI assistant for DBOLT Database Manager.',
       `The user's selected app language is ${responseLanguage}. Write final user-facing answers in that language.`,
       'Tool-call JSON, tool names, SQL identifiers, and database values must remain exact and must not be translated.',
+      'The user may write in any language. Interpret the request semantically; do not rely on language-specific keyword matching.',
       'Focus on SQL, data modeling, schema investigation, and database productivity.',
       'Do not request passwords, tokens, or API keys.',
       'Do not invent tables, columns, or results. When read-only tool data is available, treat it as factual.',
