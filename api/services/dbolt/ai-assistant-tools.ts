@@ -42,16 +42,16 @@ class AiAssistantToolsService {
 
   getToolInstructions(): string {
     return [
-      'Ferramentas readonly disponíveis quando o usuário autorizou contexto do banco:',
-      '- searchObjects: busca tabelas/views por nome parcial. Args: {"search":"texto","types":["table","view"],"limit":160}. Use antes de getTableColumns quando não souber o nome exato.',
-      '- getTableColumns: lista metadados de colunas de uma tabela/view. Args: {"tableName":"OINV","limit":60}.',
-      '- getSchemaSummary: resumo pequeno de tabelas/views. Args: {"search":"opcional","limit":30}. Use só quando uma busca específica não bastar.',
-      '- runReadonlyQuery: executa somente SELECT/WITH com limite. Args: {"sql":"SELECT ...","maxRows":50}. Nunca use para INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, EXEC ou múltiplas instruções.',
-      'Use runReadonlyQuery quando a pergunta pedir valores de linhas, IDs, e-mails, nomes, contagens ou qualquer dado que dependa do conteúdo da tabela.',
-      'Se ainda faltar informação para montar o SELECT com segurança, peça outra ferramenta primeiro; se já souber tabela e colunas, execute o SELECT readonly.',
-      'Para pedir ferramentas, responda SOMENTE com JSON válido neste formato:',
+      'Read-only tools available when the user authorized database context:',
+      '- searchObjects: searches tables/views by partial name. Args: {"search":"text","types":["table","view"],"limit":160}. Use before getTableColumns when you do not know the exact name.',
+      '- getTableColumns: lists column metadata for a table/view. Args: {"tableName":"OINV","limit":60}.',
+      '- getSchemaSummary: small summary of tables/views. Args: {"search":"optional","limit":30}. Use only when a specific search is not enough.',
+      '- runReadonlyQuery: runs only SELECT/WITH with a row limit. Args: {"sql":"SELECT ...","maxRows":50}. Never use it for INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, EXEC, or multiple statements.',
+      'Use runReadonlyQuery when the question asks for row values, IDs, emails, names, counts, or any data that depends on table contents.',
+      'If you still need information to build the SELECT safely, request another tool first; if you already know the table and columns, run the read-only SELECT.',
+      'To request tools, reply ONLY with valid JSON in this format:',
       '{"toolCalls":[{"name":"searchObjects","arguments":{"search":"OINV","types":["table","view"],"limit":20}}]}',
-      'Peça no máximo duas ferramentas por rodada. Quando tiver dados suficientes, responda normalmente ao usuário, sem JSON de ferramenta.'
+      'Request at most two tools per round. When you have enough data, answer the user normally, without tool JSON.'
     ].join('\n');
   }
 
@@ -72,7 +72,7 @@ class AiAssistantToolsService {
       return {
         name: toolCall.name,
         success: false,
-        content: `Erro ao executar ${toolCall.name}: ${this.getErrorMessage(error)}`
+        content: `Error while running ${toolCall.name}: ${this.getErrorMessage(error)}`
       };
     }
   }
@@ -176,7 +176,7 @@ class AiAssistantToolsService {
     const value = args[key];
 
     if (typeof value !== 'string' || !value.trim()) {
-      throw new Error(`Argumento obrigatório não informado: ${key}`);
+      throw new Error(`Required argument was not provided: ${key}`);
     }
 
     return value.trim();

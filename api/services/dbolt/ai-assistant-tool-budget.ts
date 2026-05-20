@@ -47,7 +47,7 @@ class AiAssistantToolBudgetService {
       return value;
     }
 
-    return `${value.slice(0, maxChars)}\n...conteudo truncado pelo orçamento da IA...`;
+    return `${value.slice(0, maxChars)}\n...content truncated by the AI budget...`;
   }
 
   compactTranscript(sections: string[], state: AiAssistantToolBudgetState): string {
