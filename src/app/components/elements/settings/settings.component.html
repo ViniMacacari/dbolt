@@ -224,18 +224,15 @@
                             <label [attr.for]="'ai-api-key-' + field.provider">{{ field.label }}</label>
                             <input [id]="'ai-api-key-' + field.provider" type="password"
                                 [value]="aiApiKeys[field.provider]" [placeholder]="getAiApiKeyPlaceholder(field.provider)"
-                                [disabled]="aiSettingsSaving || aiSettingsLoading"
+                                [disabled]="aiSettingsSaving || aiSettingsLoading || hasAiApiKeyForProvider(field.provider)"
                                 (input)="onAiApiKeyInput(field.provider, $event)">
                         </div>
 
-                        <label class="ai-clear-key" *ngIf="hasAiApiKeyForProvider(field.provider)"
-                            [attr.for]="'ai-clear-api-key-' + field.provider">
-                            <input [id]="'ai-clear-api-key-' + field.provider" type="checkbox"
-                                [checked]="aiClearApiKeys[field.provider]"
-                                [disabled]="aiSettingsSaving || aiSettingsLoading"
-                                (change)="onAiClearApiKeyChange(field.provider, $event)">
-                            <span>{{ t('settings.ai.apiKeys.clear') }}</span>
-                        </label>
+                        <button type="button" class="ai-remove-key" *ngIf="hasAiApiKeyForProvider(field.provider)"
+                            [disabled]="aiSettingsSaving || aiSettingsLoading || aiRemovingApiKey !== null"
+                            (click)="removeAiApiKey(field.provider)">
+                            {{ aiRemovingApiKey === field.provider ? t('settings.ai.apiKeys.removing') : t('settings.ai.apiKeys.clear') }}
+                        </button>
                     </div>
                 </div>
             </div>

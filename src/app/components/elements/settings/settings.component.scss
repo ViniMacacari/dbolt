@@ -441,7 +441,6 @@
     }
 }
 
-.ai-clear-key,
 .ai-toggle {
     align-items: center;
     color: #c9c9c9;
@@ -453,9 +452,27 @@
     gap: 8px;
 }
 
-.ai-clear-key {
+.ai-remove-key {
+    background: #332323;
+    border: 1px solid #5a2b2b;
+    border-radius: 10px;
+    color: #ffb4b4;
+    cursor: pointer;
+    font-family: 'Nunito';
+    font-size: .78em;
+    font-weight: 800;
     height: 36px;
+    padding: 0 12px;
     white-space: nowrap;
+
+    &:hover:not(:disabled) {
+        background: #3c2727;
+    }
+
+    &:disabled {
+        cursor: default;
+        opacity: .55;
+    }
 }
 
 .ai-toggle {
@@ -746,8 +763,9 @@
         grid-template-columns: 1fr;
     }
 
-    .ai-clear-key {
+    .ai-remove-key {
         height: auto;
+        min-height: 34px;
     }
 }
 

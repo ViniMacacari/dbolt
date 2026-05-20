@@ -84,6 +84,7 @@ export class SettingsComponent implements OnInit, OnChanges {
   aiSettings: AiAssistantSettings | null = null
   aiSettingsLoading: boolean = false
   aiSettingsSaving: boolean = false
+  aiRemovingApiKey: AiAssistantProvider | null = null
   aiSettingsMessage: string = ''
   aiSettingsError: string = ''
   aiProvider: AiAssistantProvider = 'openai'
@@ -94,11 +95,6 @@ export class SettingsComponent implements OnInit, OnChanges {
     openai: '',
     gemini: '',
     anthropic: ''
-  }
-  aiClearApiKeys: Record<AiAssistantProvider, boolean> = {
-    openai: false,
-    gemini: false,
-    anthropic: false
   }
   aiLimits: AiAssistantLimits = { ...DEFAULT_AI_LIMITS }
   readonly aiProviderOptions: { label: string, value: AiAssistantProvider }[] = [
@@ -307,14 +303,6 @@ export class SettingsComponent implements OnInit, OnChanges {
     this.aiSettingsMessage = ''
   }
 
-  onAiClearApiKeyChange(provider: AiAssistantProvider, event: Event): void {
-    this.aiClearApiKeys = {
-      ...this.aiClearApiKeys,
-      [provider]: (event.target as HTMLInputElement).checked
-    }
-    this.aiSettingsMessage = ''
-  }
-
   onAiLimitInput(key: keyof AiAssistantLimits, event: Event): void {
     const value = Number((event.target as HTMLInputElement).value)
     this.aiLimits = {
@@ -341,16 +329,11 @@ export class SettingsComponent implements OnInit, OnChanges {
 
     try {
       const apiKeys: Partial<Record<AiAssistantProvider, string>> = {}
-      const clearApiKeys: Partial<Record<AiAssistantProvider, boolean>> = {}
 
       this.aiApiKeyFields.forEach((field) => {
         const apiKey = this.aiApiKeys[field.provider].trim()
         if (apiKey) {
           apiKeys[field.provider] = apiKey
-        }
-
-        if (this.aiClearApiKeys[field.provider]) {
-          clearApiKeys[field.provider] = true
         }
       })
 
@@ -359,7 +342,6 @@ export class SettingsComponent implements OnInit, OnChanges {
         model: this.aiModel.trim(),
         baseUrl: this.aiProvider === 'openai' ? this.aiBaseUrl.trim() : undefined,
         apiKeys,
-        clearApiKeys,
         limits: this.sanitizeAiLimits(this.aiLimits)
       })
 
@@ -370,6 +352,35 @@ export class SettingsComponent implements OnInit, OnChanges {
       this.aiSettingsError = this.getErrorMessage(error, this.t('settings.ai.saveFailed'))
     } finally {
       this.aiSettingsSaving = false
+    }
+  }
+
+  async removeAiApiKey(provider: AiAssistantProvider): Promise<void> {
+    if (this.aiSettingsSaving || this.aiSettingsLoading || this.aiRemovingApiKey) return
+
+    const persistedSettings = this.aiSettings
+    const persistedProvider = persistedSettings?.provider || this.aiProvider
+
+    this.aiRemovingApiKey = provider
+    this.aiSettingsMessage = ''
+    this.aiSettingsError = ''
+
+    try {
+      const settings = await this.aiSettingsService.saveSettings({
+        provider: persistedProvider,
+        model: persistedSettings?.model || this.defaultModelForAiProvider(persistedProvider),
+        baseUrl: persistedProvider === 'openai' ? persistedSettings?.baseUrl || DEFAULT_AI_BASE_URL : undefined,
+        clearApiKeys: { [provider]: true },
+        limits: persistedSettings?.limits || DEFAULT_AI_LIMITS
+      })
+
+      this.applyAiSettings(settings)
+      this.aiSettingsSaved.emit(settings)
+      this.aiSettingsMessage = this.t('settings.ai.apiKeys.removed')
+    } catch (error: unknown) {
+      this.aiSettingsError = this.getErrorMessage(error, this.t('settings.ai.saveFailed'))
+    } finally {
+      this.aiRemovingApiKey = null
     }
   }
 
@@ -702,11 +713,6 @@ export class SettingsComponent implements OnInit, OnChanges {
       openai: '',
       gemini: '',
       anthropic: ''
-    }
-    this.aiClearApiKeys = {
-      openai: false,
-      gemini: false,
-      anthropic: false
     }
     this.aiLimits = this.sanitizeAiLimits(settings.limits || DEFAULT_AI_LIMITS)
   }
