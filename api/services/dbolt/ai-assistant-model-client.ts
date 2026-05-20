@@ -31,11 +31,23 @@ interface ChatCompletionErrorResponse {
 
 interface GeminiGenerateContentResponse {
   candidates?: Array<{
+    finishReason?: string;
     content?: {
       parts?: Array<{
         text?: string;
       }>;
     };
+    safetyRatings?: Array<{
+      category?: string;
+      probability?: string;
+    }>;
+  }>;
+}
+
+interface GeminiContent {
+  role: 'user' | 'model';
+  parts: Array<{
+    text: string;
   }>;
 }
 
@@ -98,7 +110,7 @@ class AiAssistantModelClient {
             role: 'system',
             content: systemPrompt
           },
-          ...messages
+          ...this.normalizeChatMessages(messages)
         ],
         temperature: 0.2
       })
@@ -139,10 +151,7 @@ class AiAssistantModelClient {
           systemInstruction: {
             parts: [{ text: systemPrompt }]
           },
-          contents: messages.map((message) => ({
-            role: message.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: message.content }]
-          })),
+          contents: this.normalizeGeminiMessages(messages),
           generationConfig: {
             temperature: 0.2
           }
@@ -161,7 +170,7 @@ class AiAssistantModelClient {
       .trim();
 
     if (!content) {
-      throw new Error('The AI did not return a valid response.');
+      throw new Error(this.buildEmptyGeminiResponseMessage(completion));
     }
 
     return {
@@ -186,7 +195,7 @@ class AiAssistantModelClient {
       body: JSON.stringify({
         model,
         system: systemPrompt,
-        messages: this.normalizeAnthropicMessages(messages),
+        messages: this.normalizeChatMessages(messages),
         max_tokens: 4096,
         temperature: 0.2
       })
@@ -213,10 +222,15 @@ class AiAssistantModelClient {
     };
   }
 
-  private normalizeAnthropicMessages(messages: AiModelMessage[]): AiModelMessage[] {
+  private normalizeChatMessages(messages: AiModelMessage[]): AiModelMessage[] {
     const normalizedMessages: AiModelMessage[] = [];
 
     for (const message of messages) {
+      const content = message.content.trim();
+      if (!content) {
+        continue;
+      }
+
       if (normalizedMessages.length === 0 && message.role === 'assistant') {
         continue;
       }
@@ -224,14 +238,71 @@ class AiAssistantModelClient {
       const previousMessage = normalizedMessages[normalizedMessages.length - 1];
 
       if (previousMessage?.role === message.role) {
-        previousMessage.content = `${previousMessage.content}\n\n${message.content}`;
+        previousMessage.content = `${previousMessage.content}\n\n${content}`;
         continue;
       }
 
-      normalizedMessages.push({ ...message });
+      normalizedMessages.push({
+        role: message.role,
+        content
+      });
     }
 
     return normalizedMessages;
+  }
+
+  private normalizeGeminiMessages(messages: AiModelMessage[]): GeminiContent[] {
+    const normalizedMessages: GeminiContent[] = [];
+
+    for (const message of messages) {
+      const content = message.content.trim();
+      if (!content) {
+        continue;
+      }
+
+      const role = message.role === 'assistant' ? 'model' : 'user';
+      if (normalizedMessages.length === 0 && role === 'model') {
+        continue;
+      }
+
+      const previousMessage = normalizedMessages[normalizedMessages.length - 1];
+      if (previousMessage?.role === role) {
+        previousMessage.parts[0].text = `${previousMessage.parts[0].text}\n\n${content}`;
+        continue;
+      }
+
+      normalizedMessages.push({
+        role,
+        parts: [{ text: content }]
+      });
+    }
+
+    const lastMessage = normalizedMessages[normalizedMessages.length - 1];
+    if (lastMessage?.role === 'model') {
+      normalizedMessages.push({
+        role: 'user',
+        parts: [{ text: 'Continue.' }]
+      });
+    }
+
+    return normalizedMessages;
+  }
+
+  private buildEmptyGeminiResponseMessage(completion: GeminiGenerateContentResponse): string {
+    const candidate = completion.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    const safetyCategories = candidate?.safetyRatings
+      ?.filter((rating) => rating.probability && rating.probability !== 'NEGLIGIBLE')
+      .map((rating) => `${rating.category || 'unknown'}:${rating.probability}`)
+      .join(', ');
+
+    if (finishReason) {
+      return safetyCategories
+        ? `The AI did not return a valid response. Gemini finish reason: ${finishReason}. Safety ratings: ${safetyCategories}.`
+        : `The AI did not return a valid response. Gemini finish reason: ${finishReason}.`;
+    }
+
+    return 'The AI did not return a valid response.';
   }
 
   private async extractErrorMessage(response: Response): Promise<string> {
