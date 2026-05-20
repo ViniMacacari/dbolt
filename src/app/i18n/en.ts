@@ -202,6 +202,8 @@ export const enTranslations: TranslationCatalog = {
   'settings.ai.apiKeys.placeholder': 'Paste a new API key',
   'settings.ai.apiKeys.configured': 'Key already configured',
   'settings.ai.apiKeys.clear': 'Remove saved key',
+  'settings.ai.apiKeys.removing': 'Removing...',
+  'settings.ai.apiKeys.removed': 'API key removed.',
   'settings.ai.limits.title': 'Request limits',
   'settings.ai.limits.description': 'Control how much work the assistant can do for each user message.',
   'settings.ai.limits.apiCalls.title': 'AI API calls per message',

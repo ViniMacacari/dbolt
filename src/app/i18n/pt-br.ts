@@ -202,6 +202,8 @@ export const ptBrTranslations: TranslationCatalog = {
   'settings.ai.apiKeys.placeholder': 'Cole uma nova API key',
   'settings.ai.apiKeys.configured': 'Chave já configurada',
   'settings.ai.apiKeys.clear': 'Remover chave salva',
+  'settings.ai.apiKeys.removing': 'Removendo...',
+  'settings.ai.apiKeys.removed': 'API key removida.',
   'settings.ai.limits.title': 'Limites de requisição',
   'settings.ai.limits.description': 'Controla quanto trabalho o assistente pode fazer por mensagem do usuário.',
   'settings.ai.limits.apiCalls.title': 'Chamadas de API de IA por mensagem',
