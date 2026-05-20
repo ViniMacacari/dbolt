@@ -26,6 +26,27 @@ label {
     padding: 10px;
 }
 
+.input-list-style-input {
+    background-color: #1b1b1b;
+    border: 1px solid #353535;
+    border-radius: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    color: #e8eaed;
+    font-family: 'Nunito';
+    font-size: 14px;
+    outline: none;
+    padding: 12px;
+    width: 100%;
+
+    &:focus {
+        border-color: #739eca;
+    }
+
+    &:disabled {
+        opacity: .7;
+    }
+}
+
 .clear-key {
     align-items: center;
     display: flex;

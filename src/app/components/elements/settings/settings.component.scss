@@ -416,6 +416,16 @@
             opacity: .7;
         }
     }
+
+    .input-list-style-input {
+        background-color: #1b1b1b;
+        border: 1px solid #353535;
+        border-radius: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        font-size: 14px;
+        height: auto;
+        padding: 12px;
+    }
 }
 
 .ai-key-list,

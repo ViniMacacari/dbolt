@@ -190,8 +190,12 @@
 
                     <div class="ai-field">
                         <label>{{ t('settings.ai.model') }}</label>
-                        <app-input-list [list]="aiModelOptions" [displayKey]="'label'" [valueKey]="'value'"
-                            [selectedValue]="aiModel" [width]="'100%'" [placeholder]="t('settings.ai.model')"
+                        <input *ngIf="aiProvider === 'openrouter'" class="input-list-style-input" type="text"
+                            [value]="aiModel" [placeholder]="t('settings.ai.openRouterModelPlaceholder')"
+                            (input)="onAiModelInput($event)">
+                        <app-input-list *ngIf="aiProvider !== 'openrouter'" [list]="aiModelOptions"
+                            [displayKey]="'label'" [valueKey]="'value'" [selectedValue]="aiModel" [width]="'100%'"
+                            [placeholder]="t('settings.ai.model')"
                             (itemSelected)="onAiModelSelected($event)">
                         </app-input-list>
                     </div>
@@ -306,7 +310,7 @@
 
             <div class="settings-actions-row">
                 <button type="button" (click)="saveAiSettings()"
-                    [disabled]="aiSettingsSaving || aiSettingsLoading || !aiModel.trim() || (aiProvider === 'openai' && !aiBaseUrl.trim())">
+                    [disabled]="aiSettingsSaving || aiSettingsLoading || !aiModel.trim() || ((aiProvider === 'openai' || aiProvider === 'openrouter') && !aiBaseUrl.trim())">
                     {{ t('settings.actions.save') }}
                 </button>
                 <small *ngIf="aiSettingsMessage">{{ aiSettingsMessage }}</small>

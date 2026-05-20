@@ -1,5 +1,5 @@
 export type AiChatRole = 'user' | 'assistant'
-export type AiAssistantProvider = 'openai' | 'gemini' | 'anthropic'
+export type AiAssistantProvider = 'openai' | 'gemini' | 'anthropic' | 'openrouter'
 
 export interface AiAssistantLimits {
   maxApiCallsPerMessage: number

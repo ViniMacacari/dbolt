@@ -24,6 +24,7 @@ import {
 type SettingsTab = 'query' | 'connections' | 'autocomplete' | 'highlight' | 'language' | 'ai'
 
 const DEFAULT_AI_BASE_URL = 'https://api.openai.com/v1/chat/completions'
+const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const DEFAULT_AI_LIMITS: AiAssistantLimits = {
   maxApiCallsPerMessage: 4,
   maxDatabaseRequestsPerMessage: 4,
@@ -94,18 +95,21 @@ export class SettingsComponent implements OnInit, OnChanges {
   aiApiKeys: Record<AiAssistantProvider, string> = {
     openai: '',
     gemini: '',
-    anthropic: ''
+    anthropic: '',
+    openrouter: ''
   }
   aiLimits: AiAssistantLimits = { ...DEFAULT_AI_LIMITS }
   readonly aiProviderOptions: { label: string, value: AiAssistantProvider }[] = [
     { label: 'OpenAI', value: 'openai' },
     { label: 'Gemini', value: 'gemini' },
-    { label: 'Claude', value: 'anthropic' }
+    { label: 'Claude', value: 'anthropic' },
+    { label: 'OpenRouter', value: 'openrouter' }
   ]
   readonly aiApiKeyFields: { provider: AiAssistantProvider, label: string }[] = [
     { provider: 'openai', label: 'OpenAI' },
     { provider: 'gemini', label: 'Gemini' },
-    { provider: 'anthropic', label: 'Claude' }
+    { provider: 'anthropic', label: 'Claude' },
+    { provider: 'openrouter', label: 'OpenRouter' }
   ]
   readonly openAiModelOptions: { label: string, value: string }[] = [
     { label: 'GPT-5.5', value: 'gpt-5.5' },
@@ -270,6 +274,9 @@ export class SettingsComponent implements OnInit, OnChanges {
     if (provider === 'openai') {
       this.aiBaseUrl = this.aiBaseUrl || DEFAULT_AI_BASE_URL
       this.aiCustomEndpointEnabled = this.aiBaseUrl !== DEFAULT_AI_BASE_URL
+    } else if (provider === 'openrouter') {
+      this.aiBaseUrl = DEFAULT_OPENROUTER_BASE_URL
+      this.aiCustomEndpointEnabled = false
     } else {
       this.aiCustomEndpointEnabled = false
     }
@@ -278,6 +285,11 @@ export class SettingsComponent implements OnInit, OnChanges {
   onAiModelSelected(item: { [key: string]: string | number } | null): void {
     const value = item?.['value']
     this.aiModel = typeof value === 'string' ? value : this.defaultModelForAiProvider(this.aiProvider)
+    this.aiSettingsMessage = ''
+  }
+
+  onAiModelInput(event: Event): void {
+    this.aiModel = (event.target as HTMLInputElement).value
     this.aiSettingsMessage = ''
   }
 
@@ -340,7 +352,7 @@ export class SettingsComponent implements OnInit, OnChanges {
       const settings = await this.aiSettingsService.saveSettings({
         provider: this.aiProvider,
         model: this.aiModel.trim(),
-        baseUrl: this.aiProvider === 'openai' ? this.aiBaseUrl.trim() : undefined,
+        baseUrl: this.aiProviderNeedsBaseUrl(this.aiProvider) ? this.aiBaseUrl.trim() : undefined,
         apiKeys,
         limits: this.sanitizeAiLimits(this.aiLimits)
       })
@@ -369,7 +381,9 @@ export class SettingsComponent implements OnInit, OnChanges {
       const settings = await this.aiSettingsService.saveSettings({
         provider: persistedProvider,
         model: persistedSettings?.model || this.defaultModelForAiProvider(persistedProvider),
-        baseUrl: persistedProvider === 'openai' ? persistedSettings?.baseUrl || DEFAULT_AI_BASE_URL : undefined,
+        baseUrl: this.aiProviderNeedsBaseUrl(persistedProvider)
+          ? persistedSettings?.baseUrl || this.defaultBaseUrlForAiProvider(persistedProvider)
+          : undefined,
         clearApiKeys: { [provider]: true },
         limits: persistedSettings?.limits || DEFAULT_AI_LIMITS
       })
@@ -707,12 +721,13 @@ export class SettingsComponent implements OnInit, OnChanges {
     this.aiSettings = settings
     this.aiProvider = settings.provider
     this.aiModel = settings.model || this.defaultModelForAiProvider(settings.provider)
-    this.aiBaseUrl = settings.baseUrl || DEFAULT_AI_BASE_URL
+    this.aiBaseUrl = settings.baseUrl || this.defaultBaseUrlForAiProvider(settings.provider)
     this.aiCustomEndpointEnabled = settings.provider === 'openai' && this.aiBaseUrl !== DEFAULT_AI_BASE_URL
     this.aiApiKeys = {
       openai: '',
       gemini: '',
-      anthropic: ''
+      anthropic: '',
+      openrouter: ''
     }
     this.aiLimits = this.sanitizeAiLimits(settings.limits || DEFAULT_AI_LIMITS)
   }
@@ -774,10 +789,26 @@ export class SettingsComponent implements OnInit, OnChanges {
       return 'claude-sonnet-4-6'
     }
 
+    if (provider === 'openrouter') {
+      return '~openai/gpt-latest'
+    }
+
     return provider === 'gemini' ? 'gemini-3.5-flash' : 'gpt-5.4-mini'
   }
 
+  private defaultBaseUrlForAiProvider(provider: AiAssistantProvider): string {
+    return provider === 'openrouter' ? DEFAULT_OPENROUTER_BASE_URL : DEFAULT_AI_BASE_URL
+  }
+
+  private aiProviderNeedsBaseUrl(provider: AiAssistantProvider): boolean {
+    return provider === 'openai' || provider === 'openrouter'
+  }
+
   private modelOptionsForAiProvider(provider: AiAssistantProvider): { label: string, value: string }[] {
+    if (provider === 'openrouter') {
+      return []
+    }
+
     if (provider === 'anthropic') {
       return this.anthropicModelOptions
     }
@@ -788,7 +819,7 @@ export class SettingsComponent implements OnInit, OnChanges {
   }
 
   private normalizeAiProvider(value: string | number | undefined): AiAssistantProvider {
-    if (value === 'gemini' || value === 'anthropic') {
+    if (value === 'gemini' || value === 'anthropic' || value === 'openrouter') {
       return value
     }
 

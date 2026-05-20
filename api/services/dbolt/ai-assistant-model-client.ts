@@ -15,9 +15,14 @@ export interface AiModelCompletion {
 
 interface ChatCompletionResponse {
   model?: string;
+  error?: ChatCompletionError;
   choices?: Array<{
+    finish_reason?: string | null;
+    native_finish_reason?: string | null;
+    error?: ChatCompletionError;
     message?: {
       content?: string | null;
+      error?: ChatCompletionError;
       function_call?: {
         name?: string;
         arguments?: unknown;
@@ -32,10 +37,18 @@ interface ChatCompletionResponse {
   }>;
 }
 
-interface ChatCompletionErrorResponse {
-  error?: {
-    message?: string;
+interface ChatCompletionError {
+  code?: string | number | null;
+  message?: string;
+  metadata?: {
+    provider_name?: string;
+    raw?: unknown;
+    [key: string]: unknown;
   };
+}
+
+interface ChatCompletionErrorResponse {
+  error?: ChatCompletionError;
   message?: string;
 }
 
@@ -94,12 +107,24 @@ class AiAssistantModelClient {
       return await this.completeWithAnthropic(settings.model, settings.apiKey, systemPrompt, messages);
     }
 
+    if (settings.provider === 'openrouter') {
+      return await this.completeWithOpenRouter(
+        settings.baseUrl,
+        settings.model,
+        settings.apiKey,
+        systemPrompt,
+        messages
+      );
+    }
+
     return await this.completeWithOpenAiCompatible(
       settings.baseUrl,
       settings.model,
       settings.apiKey,
       systemPrompt,
-      messages
+      messages,
+      {},
+      0.2
     );
   }
 
@@ -108,7 +133,31 @@ class AiAssistantModelClient {
       return 'Claude';
     }
 
+    if (provider === 'openrouter') {
+      return 'OpenRouter';
+    }
+
     return provider === 'gemini' ? 'Gemini' : 'OpenAI compatible';
+  }
+
+  private async completeWithOpenRouter(
+    baseUrl: string,
+    model: string,
+    apiKey: string,
+    systemPrompt: string,
+    messages: AiModelMessage[]
+  ): Promise<AiModelCompletion> {
+    return await this.completeWithOpenAiCompatible(
+      baseUrl,
+      model,
+      apiKey,
+      systemPrompt,
+      messages,
+      {
+        'X-OpenRouter-Title': 'DBOLT Database Manager'
+      },
+      undefined
+    );
   }
 
   private async completeWithOpenAiCompatible(
@@ -116,25 +165,33 @@ class AiAssistantModelClient {
     model: string,
     apiKey: string,
     systemPrompt: string,
-    messages: AiModelMessage[]
+    messages: AiModelMessage[],
+    additionalHeaders: Record<string, string>,
+    temperature: number | undefined
   ): Promise<AiModelCompletion> {
+    const body: Record<string, unknown> = {
+      model,
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt
+        },
+        ...this.normalizeChatMessages(messages)
+      ]
+    };
+
+    if (typeof temperature === 'number') {
+      body['temperature'] = temperature;
+    }
+
     const response = await fetch(baseUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...additionalHeaders
       },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
-          ...this.normalizeChatMessages(messages)
-        ],
-        temperature: 0.2
-      })
+      body: JSON.stringify(body)
     });
 
     if (!response.ok) {
@@ -142,6 +199,12 @@ class AiAssistantModelClient {
     }
 
     const completion = (await response.json()) as ChatCompletionResponse;
+    const completionError = this.readChatCompletionError(completion);
+
+    if (completionError) {
+      throw new Error(completionError);
+    }
+
     const content = completion.choices?.[0]?.message?.content?.trim();
     const nativeCallJson = this.readOpenAiNativeCallsAsJson(completion);
 
@@ -431,10 +494,113 @@ class AiAssistantModelClient {
 
     try {
       const parsed = JSON.parse(responseText) as ChatCompletionErrorResponse;
-      return parsed.error?.message || parsed.message || fallbackMessage;
+      return this.formatProviderError(parsed.error) || parsed.message || fallbackMessage;
     } catch (_error: unknown) {
       return responseText.slice(0, 500) || fallbackMessage;
     }
+  }
+
+  private readChatCompletionError(completion: ChatCompletionResponse): string {
+    const topLevelError = this.formatProviderError(completion.error);
+    if (topLevelError) {
+      return topLevelError;
+    }
+
+    for (const choice of completion.choices || []) {
+      const choiceError = this.formatProviderError(choice.error) || this.formatProviderError(choice.message?.error);
+      if (choiceError) {
+        return choiceError;
+      }
+
+      if (choice.finish_reason === 'error') {
+        return [
+          'Provider returned error',
+          choice.native_finish_reason ? `Native finish reason: ${choice.native_finish_reason}` : ''
+        ].filter(Boolean).join(' - ');
+      }
+    }
+
+    return '';
+  }
+
+  private formatProviderError(error: ChatCompletionError | undefined): string {
+    if (!error) {
+      return '';
+    }
+
+    const message = error.message || 'Provider returned error';
+    const providerName = typeof error.metadata?.provider_name === 'string'
+      ? error.metadata.provider_name
+      : '';
+    const rawMessage = this.extractRawProviderMessage(error.metadata?.raw);
+
+    return [
+      providerName ? `${providerName}: ${message}` : message,
+      rawMessage && rawMessage !== message ? rawMessage : ''
+    ].filter(Boolean).join(' - ');
+  }
+
+  private extractRawProviderMessage(raw: unknown): string {
+    if (typeof raw === 'string') {
+      const trimmedRaw = raw.trim();
+
+      if (!trimmedRaw) {
+        return '';
+      }
+
+      try {
+        const parsedRaw = JSON.parse(trimmedRaw) as unknown;
+        const parsedMessage = this.extractRawProviderMessage(parsedRaw);
+        if (parsedMessage) {
+          return parsedMessage;
+        }
+      } catch (_error: unknown) {
+        // Keep the original raw string when the provider did not return JSON.
+      }
+
+      return trimmedRaw.slice(0, 800);
+    }
+
+    if (!raw || typeof raw !== 'object') {
+      return '';
+    }
+
+    const directMessage = this.findStringProperty(raw, ['message', 'error_description', 'detail', 'error']);
+    if (directMessage) {
+      return directMessage.slice(0, 800);
+    }
+
+    const record = raw as Record<string, unknown>;
+    const nestedError = record['error'];
+    if (nestedError && typeof nestedError === 'object') {
+      const nestedMessage = this.findStringProperty(nestedError, ['message', 'error_description', 'detail', 'error']);
+      if (nestedMessage) {
+        return nestedMessage.slice(0, 800);
+      }
+    }
+
+    try {
+      return JSON.stringify(raw).slice(0, 800);
+    } catch (_error: unknown) {
+      return '';
+    }
+  }
+
+  private findStringProperty(value: unknown, keys: string[]): string {
+    if (!value || typeof value !== 'object') {
+      return '';
+    }
+
+    const record = value as Record<string, unknown>;
+
+    for (const key of keys) {
+      const property = record[key];
+      if (typeof property === 'string' && property.trim()) {
+        return property.trim();
+      }
+    }
+
+    return '';
   }
 }
 

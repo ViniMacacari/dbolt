@@ -16,7 +16,10 @@
 
     <div class="settings-row">
         <label>{{ t('aiAssistant.model') }}</label>
-        <app-input-list [list]="modelOptions" [displayKey]="'label'" [valueKey]="'value'"
+        <input *ngIf="provider === 'openrouter'" class="input-list-style-input" type="text" [value]="model" name="model"
+            [placeholder]="t('settings.ai.openRouterModelPlaceholder')" [disabled]="saving"
+            (input)="onModelInput($event)">
+        <app-input-list *ngIf="provider !== 'openrouter'" [list]="modelOptions" [displayKey]="'label'" [valueKey]="'value'"
             [selectedValue]="model" [width]="'100%'" [placeholder]="t('aiAssistant.model')"
             (itemSelected)="onModelSelected($event)">
         </app-input-list>
@@ -42,7 +45,7 @@
             {{ t('generic.cancel') }}
         </button>
         <button type="submit" class="btn-page-2"
-            [disabled]="saving || !model.trim() || (provider === 'openai' && !baseUrl.trim())">
+            [disabled]="saving || !model.trim() || ((provider === 'openai' || provider === 'openrouter') && !baseUrl.trim())">
             {{ t('settings.actions.save') }}
         </button>
     </div>
