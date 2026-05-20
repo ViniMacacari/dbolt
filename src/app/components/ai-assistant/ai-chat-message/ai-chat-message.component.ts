@@ -106,13 +106,23 @@ export class AiChatMessageComponent implements OnChanges, OnDestroy {
       listItems = []
     }
 
-    lines.forEach((line) => {
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index]
       const trimmedLine = line.trim()
 
       if (!trimmedLine) {
         flushParagraph()
         flushList()
-        return
+        continue
+      }
+
+      const table = this.tryReadMarkdownTable(lines, index)
+      if (table) {
+        flushParagraph()
+        flushList()
+        html.push(table.html)
+        index = table.nextIndex - 1
+        continue
       }
 
       const heading = trimmedLine.match(/^(#{1,4})\s+(.+)$/)
@@ -121,31 +131,122 @@ export class AiChatMessageComponent implements OnChanges, OnDestroy {
         flushList()
         const level = Math.min(4, heading[1].length + 2)
         html.push(`<h${level}>${this.formatInline(heading[2])}</h${level}>`)
-        return
+        continue
       }
 
       if (/^---+$/.test(trimmedLine)) {
         flushParagraph()
         flushList()
         html.push('<hr>')
-        return
+        continue
       }
 
       const listItem = trimmedLine.match(/^[-*]\s+(.+)$/)
       if (listItem) {
         flushParagraph()
         listItems.push(`<li>${this.formatInline(listItem[1])}</li>`)
-        return
+        continue
       }
 
       flushList()
       paragraph.push(trimmedLine)
-    })
+    }
 
     flushParagraph()
     flushList()
 
     return html.join('')
+  }
+
+  private tryReadMarkdownTable(lines: string[], startIndex: number): { html: string, nextIndex: number } | null {
+    const header = this.splitMarkdownTableRow(lines[startIndex])
+    const separator = this.splitMarkdownTableRow(lines[startIndex + 1] || '')
+
+    if (header.length < 2) return null
+    if (!this.isMarkdownTableSeparator(separator)) return null
+
+    const rows: string[][] = []
+    let nextIndex = startIndex + 2
+
+    while (nextIndex < lines.length) {
+      const row = this.splitMarkdownTableRow(lines[nextIndex])
+      if (row.length < 2) break
+
+      rows.push(row)
+      nextIndex += 1
+    }
+
+    const columnCount = header.length
+    const alignments = separator.slice(0, columnCount).map((cell) => this.getMarkdownTableAlignment(cell))
+    const cellsFor = (cells: string[]): string[] => Array.from({ length: columnCount }, (_value, index) => cells[index] || '')
+    const alignmentClass = (alignment: string): string => alignment === 'left' ? '' : ` class="align-${alignment}"`
+
+    const headHtml = cellsFor(header)
+      .map((cell, index) => `<th${alignmentClass(alignments[index])}>${this.formatInline(cell)}</th>`)
+      .join('')
+    const bodyHtml = rows
+      .map((row) => {
+        const rowHtml = cellsFor(row)
+          .map((cell, index) => `<td${alignmentClass(alignments[index])}>${this.formatInline(cell)}</td>`)
+          .join('')
+        return `<tr>${rowHtml}</tr>`
+      })
+      .join('')
+
+    return {
+      html: [
+        '<div class="md-table-wrapper">',
+        '<table class="md-table">',
+        `<thead><tr>${headHtml}</tr></thead>`,
+        bodyHtml ? `<tbody>${bodyHtml}</tbody>` : '',
+        '</table>',
+        '</div>'
+      ].join(''),
+      nextIndex
+    }
+  }
+
+  private splitMarkdownTableRow(line: string): string[] {
+    const trimmedLine = line.trim()
+    if (!trimmedLine.includes('|')) return []
+
+    const row = trimmedLine
+      .replace(/^\|/, '')
+      .replace(/\|$/, '')
+
+    const cells: string[] = []
+    let currentCell = ''
+
+    for (let index = 0; index < row.length; index += 1) {
+      const character = row[index]
+      if (character === '\\' && row[index + 1] === '|') {
+        currentCell += '|'
+        index += 1
+        continue
+      }
+
+      if (character === '|') {
+        cells.push(currentCell.trim())
+        currentCell = ''
+        continue
+      }
+
+      currentCell += character
+    }
+
+    cells.push(currentCell.trim())
+    return cells
+  }
+
+  private isMarkdownTableSeparator(cells: string[]): boolean {
+    return cells.length >= 2 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s/g, '')))
+  }
+
+  private getMarkdownTableAlignment(separatorCell: string): 'left' | 'center' | 'right' {
+    const cell = separatorCell.replace(/\s/g, '')
+    if (cell.startsWith(':') && cell.endsWith(':')) return 'center'
+    if (cell.endsWith(':')) return 'right'
+    return 'left'
   }
 
   private formatInline(value: string): string {
