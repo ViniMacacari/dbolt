@@ -6,11 +6,13 @@ import SecureStorage from './secure-storage.js';
 
 const SETTINGS_FILENAME = 'settings.json';
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1/chat/completions';
+const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_OPENAI_MODEL = 'gpt-5.4-mini';
+const DEFAULT_OPENROUTER_MODEL = '~openai/gpt-latest';
 const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
 const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 
-export type AiAssistantProvider = 'openai' | 'gemini' | 'anthropic';
+export type AiAssistantProvider = 'openai' | 'gemini' | 'anthropic' | 'openrouter';
 
 export interface AiAssistantLimits {
   maxApiCallsPerMessage: number;
@@ -97,9 +99,7 @@ class AiAssistantSettingsService {
       ...storedSettings,
       provider,
       encryptedApiKeys,
-      baseUrl: provider === 'openai'
-        ? this.normalizeBaseUrl(input.baseUrl ?? storedSettings.baseUrl)
-        : storedSettings.baseUrl,
+      baseUrl: this.resolveBaseUrl(provider, storedSettings, input.baseUrl),
       model: this.normalizeModel(model),
       limits: this.normalizeLimits({
         ...(storedSettings.limits || {}),
@@ -159,7 +159,7 @@ class AiAssistantSettingsService {
 
       return {
         provider,
-        baseUrl: this.normalizeBaseUrl(parsed.baseUrl || DEFAULT_OPENAI_BASE_URL),
+        baseUrl: this.normalizeBaseUrl(parsed.baseUrl || this.defaultBaseUrlForProvider(provider)),
         model: this.normalizeModel(parsed.model || this.defaultModelForProvider(provider)),
         encryptedApiKeys,
         limits: this.normalizeLimits(parsed.limits),
@@ -206,7 +206,8 @@ class AiAssistantSettingsService {
     const hasApiKeys = {
       openai: Boolean(settings.encryptedApiKeys?.openai),
       gemini: Boolean(settings.encryptedApiKeys?.gemini),
-      anthropic: Boolean(settings.encryptedApiKeys?.anthropic)
+      anthropic: Boolean(settings.encryptedApiKeys?.anthropic),
+      openrouter: Boolean(settings.encryptedApiKeys?.openrouter)
     };
 
     return {
@@ -225,7 +226,7 @@ class AiAssistantSettingsService {
     apiKeys: Partial<Record<AiAssistantProvider, string>> | undefined,
     clearApiKeys: Partial<Record<AiAssistantProvider, boolean>> | undefined
   ): Promise<void> {
-    const providers: AiAssistantProvider[] = ['openai', 'gemini', 'anthropic'];
+    const providers: AiAssistantProvider[] = ['openai', 'gemini', 'anthropic', 'openrouter'];
 
     providers.forEach((provider) => {
       if (clearApiKeys?.[provider]) {
@@ -250,6 +251,10 @@ class AiAssistantSettingsService {
       return 'anthropic';
     }
 
+    if (provider === 'openrouter') {
+      return 'openrouter';
+    }
+
     return 'openai';
   }
 
@@ -258,7 +263,35 @@ class AiAssistantSettingsService {
       return DEFAULT_ANTHROPIC_MODEL;
     }
 
+    if (provider === 'openrouter') {
+      return DEFAULT_OPENROUTER_MODEL;
+    }
+
     return provider === 'gemini' ? DEFAULT_GEMINI_MODEL : DEFAULT_OPENAI_MODEL;
+  }
+
+  private defaultBaseUrlForProvider(provider: AiAssistantProvider): string {
+    return provider === 'openrouter' ? DEFAULT_OPENROUTER_BASE_URL : DEFAULT_OPENAI_BASE_URL;
+  }
+
+  private resolveBaseUrl(
+    provider: AiAssistantProvider,
+    storedSettings: StoredAiAssistantSettings,
+    inputBaseUrl: string | undefined
+  ): string {
+    if (provider !== 'openai' && provider !== 'openrouter') {
+      return storedSettings.baseUrl || DEFAULT_OPENAI_BASE_URL;
+    }
+
+    if (typeof inputBaseUrl === 'string' && inputBaseUrl.trim()) {
+      return this.normalizeBaseUrl(inputBaseUrl);
+    }
+
+    if (provider === storedSettings.provider && storedSettings.baseUrl) {
+      return this.normalizeBaseUrl(storedSettings.baseUrl);
+    }
+
+    return this.defaultBaseUrlForProvider(provider);
   }
 
   private normalizeModel(model: string): string {
@@ -284,7 +317,7 @@ class AiAssistantSettingsService {
       throw new Error('AI endpoint must use HTTP or HTTPS.');
     }
 
-    if (parsedUrl.pathname === '/v1') {
+    if (parsedUrl.pathname === '/v1' || parsedUrl.pathname === '/api/v1') {
       return `${trimmedUrl}/chat/completions`;
     }
 
