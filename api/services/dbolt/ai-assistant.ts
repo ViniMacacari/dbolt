@@ -9,6 +9,7 @@ export interface AiAssistantChatMessage extends AiAssistantAgentChatMessage { }
 export interface AiAssistantChatRequest {
   messages: AiAssistantChatMessage[];
   readonlyContext?: AiReadonlyDatabaseContext;
+  appLanguage?: string;
 }
 
 export interface AiAssistantChatResult {

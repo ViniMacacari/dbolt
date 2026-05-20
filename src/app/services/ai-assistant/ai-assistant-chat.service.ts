@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core'
 
 import { InternalApiService } from '../requests/internal-api.service'
+import { AppLanguageService } from '../language/app-language.service'
 import {
   AiAssistantApiMessage,
   AiAssistantChatResponse,
@@ -12,7 +13,10 @@ import {
   providedIn: 'root'
 })
 export class AiAssistantChatService {
-  constructor(private internalApi: InternalApiService) { }
+  constructor(
+    private internalApi: InternalApiService,
+    private language: AppLanguageService
+  ) { }
 
   async sendMessage(
     messages: AiAssistantApiMessage[],
@@ -20,11 +24,12 @@ export class AiAssistantChatService {
   ): Promise<AiAssistantChatResponse> {
     const response = await this.internalApi.post<ApiResponse<AiAssistantChatResponse>>('/api/ai-assistant/chat', {
       messages,
-      readonlyContext
+      readonlyContext,
+      appLanguage: this.language.getCurrentLanguage()
     })
 
     if (!response.success || !response.data) {
-      throw new Error(response.message || response.error || 'Não foi possível obter resposta da IA.')
+      throw new Error(response.message || response.error || 'Could not get an AI response.')
     }
 
     return response.data
