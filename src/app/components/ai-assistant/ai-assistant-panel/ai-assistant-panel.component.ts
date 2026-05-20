@@ -52,6 +52,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
   sending: boolean = false
   errorMessage: string = ''
   showDeleteConversationConfirm: boolean = false
+  showConversationsModal: boolean = false
   pendingDeleteConversation: AiAssistantConversation | null = null
 
   @ViewChild('messagesContainer')
@@ -125,6 +126,16 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
   get contextSchemaLabel(): string {
     const context = this.asRecord(this.selectedSchemaDB)
     return this.readContextValue(context, 'schema') || this.t('aiAssistant.readonlyUnavailable')
+  }
+
+  get contextSummaryLabel(): string {
+    return `${this.contextDatabaseLabel} / ${this.contextSchemaLabel}`
+  }
+
+  get activeConversationTitle(): string {
+    return this.activeConversation
+      ? this.getConversationTitle(this.activeConversation)
+      : this.t('aiAssistant.newConversation')
   }
 
   async loadSettings(): Promise<void> {
@@ -207,6 +218,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
 
     try {
       this.applyConversationState(await this.conversationsService.createConversation())
+      this.closeConversationsModal()
     } catch (error: unknown) {
       this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.saveConversationError'))
     } finally {
@@ -215,18 +227,33 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
   }
 
   async selectConversation(conversation: AiAssistantConversation): Promise<void> {
-    if (this.sending || conversation.id === this.activeConversationId) return
+    if (this.sending) return
+    if (conversation.id === this.activeConversationId) {
+      this.closeConversationsModal()
+      return
+    }
 
     this.loadingConversations = true
     this.errorMessage = ''
 
     try {
       this.applyConversationState(await this.conversationsService.setActiveConversation(conversation.id))
+      this.closeConversationsModal()
     } catch (error: unknown) {
       this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.loadConversationsError'))
     } finally {
       this.loadingConversations = false
     }
+  }
+
+  openConversationsModal(): void {
+    if (this.loadingConversations) return
+
+    this.showConversationsModal = true
+  }
+
+  closeConversationsModal(): void {
+    this.showConversationsModal = false
   }
 
   requestDeleteConversation(conversation: AiAssistantConversation, event: MouseEvent): void {
