@@ -47,6 +47,8 @@ class AiAssistantToolsService {
       '- getTableColumns: lista metadados de colunas de uma tabela/view. Args: {"tableName":"OINV","limit":60}.',
       '- getSchemaSummary: resumo pequeno de tabelas/views. Args: {"search":"opcional","limit":30}. Use só quando uma busca específica não bastar.',
       '- runReadonlyQuery: executa somente SELECT/WITH com limite. Args: {"sql":"SELECT ...","maxRows":50}. Nunca use para INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, EXEC ou múltiplas instruções.',
+      'Use runReadonlyQuery quando a pergunta pedir valores de linhas, IDs, e-mails, nomes, contagens ou qualquer dado que dependa do conteúdo da tabela.',
+      'Se ainda faltar informação para montar o SELECT com segurança, peça outra ferramenta primeiro; se já souber tabela e colunas, execute o SELECT readonly.',
       'Para pedir ferramentas, responda SOMENTE com JSON válido neste formato:',
       '{"toolCalls":[{"name":"searchObjects","arguments":{"search":"OINV","types":["table","view"],"limit":20}}]}',
       'Peça no máximo duas ferramentas por rodada. Quando tiver dados suficientes, responda normalmente ao usuário, sem JSON de ferramenta.'
