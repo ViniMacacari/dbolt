@@ -19,7 +19,7 @@ export class AiChatInputComponent {
   @Output() send = new EventEmitter<AiChatInputSubmit>()
 
   message: string = ''
-  allowDatabaseContext: boolean = false
+  allowDatabaseContext: boolean = true
 
   constructor(private language: AppLanguageService) { }
 
@@ -36,7 +36,7 @@ export class AiChatInputComponent {
 
     this.send.emit({
       message,
-      allowDatabaseContext: this.allowDatabaseContext && this.databaseContextAvailable
+      allowDatabaseContext: this.databaseContextAvailable
     })
 
     this.message = ''

@@ -171,6 +171,63 @@
             opacity: 1;
         }
 
+        .md-table-wrapper {
+            border: 1px solid #353535;
+            border-radius: 10px;
+            margin: 8px 0 10px;
+            max-width: 100%;
+            overflow: auto;
+        }
+
+        .md-table {
+            border-collapse: collapse;
+            font-family: 'Nunito';
+            min-width: 100%;
+            width: max-content;
+
+            th,
+            td {
+                border-bottom: 1px solid #303030;
+                border-right: 1px solid #303030;
+                max-width: 260px;
+                padding: 7px 9px;
+                text-align: left;
+                vertical-align: top;
+                white-space: nowrap;
+
+                &:last-child {
+                    border-right: none;
+                }
+            }
+
+            th {
+                background: #1b1b1b;
+                color: #e8eaed;
+                font-size: .78em;
+                font-weight: 850;
+                position: sticky;
+                top: 0;
+                z-index: 1;
+            }
+
+            td {
+                color: #d7d7d7;
+                font-size: .76em;
+            }
+
+            tbody tr:last-child td {
+                border-bottom: none;
+            }
+
+            .align-center {
+                text-align: center;
+            }
+
+            .align-right {
+                text-align: right;
+            }
+        }
+
         .md-code-block {
             background: #1b1b1b;
             border: 1px solid #353535;
