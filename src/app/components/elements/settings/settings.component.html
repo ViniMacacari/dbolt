@@ -28,6 +28,11 @@
             <img src="icons/settings.png" [title]="t('settings.language.tab')" height="15px">
             {{ t('settings.language.tab') }}
         </button>
+
+        <button type="button" class="btn" [ngClass]="{ 'active': activeTab === 'ai' }" (click)="selectTab('ai')">
+            <img src="icons/ai.png" [title]="t('settings.ai.tab')" height="15px">
+            {{ t('settings.ai.tab') }}
+        </button>
     </div>
 
     <div class="settings-panel">
@@ -163,6 +168,152 @@
                 </div>
             </div>
 
+        </div>
+
+        <div class="settings-stack" *ngIf="activeTab === 'ai'">
+            <p class="settings-error" *ngIf="aiSettingsError">{{ aiSettingsError }}</p>
+
+            <div class="settings-card ai-settings-card">
+                <div class="ai-settings-header">
+                    <h3>{{ t('settings.ai.activeModel.title') }}</h3>
+                    <p>{{ t('settings.ai.activeModel.description') }}</p>
+                </div>
+
+                <div class="ai-settings-grid">
+                    <div class="ai-field">
+                        <label>{{ t('settings.ai.provider') }}</label>
+                        <app-input-list [list]="aiProviderOptions" [displayKey]="'label'" [valueKey]="'value'"
+                            [selectedValue]="aiProvider" [width]="'100%'" [placeholder]="t('settings.ai.provider')"
+                            (itemSelected)="onAiProviderSelected($event)">
+                        </app-input-list>
+                    </div>
+
+                    <div class="ai-field">
+                        <label>{{ t('settings.ai.model') }}</label>
+                        <app-input-list [list]="aiModelOptions" [displayKey]="'label'" [valueKey]="'value'"
+                            [selectedValue]="aiModel" [width]="'100%'" [placeholder]="t('settings.ai.model')"
+                            (itemSelected)="onAiModelSelected($event)">
+                        </app-input-list>
+                    </div>
+                </div>
+
+                <label class="ai-toggle" for="ai-custom-endpoint" *ngIf="aiProvider === 'openai'">
+                    <span>{{ t('settings.ai.customEndpoint') }}</span>
+                    <span class="toggle-control compact-toggle">
+                        <input id="ai-custom-endpoint" type="checkbox" [checked]="aiCustomEndpointEnabled"
+                            (change)="onAiCustomEndpointChanged($event)">
+                        <span></span>
+                    </span>
+                </label>
+
+                <div class="ai-field" *ngIf="aiProvider === 'openai' && aiCustomEndpointEnabled">
+                    <label for="ai-base-url">{{ t('settings.ai.endpoint') }}</label>
+                    <input id="ai-base-url" type="text" [value]="aiBaseUrl" (input)="onAiBaseUrlInput($event)">
+                </div>
+            </div>
+
+            <div class="settings-card ai-settings-card">
+                <div class="ai-settings-header">
+                    <h3>{{ t('settings.ai.apiKeys.title') }}</h3>
+                    <p>{{ t('settings.ai.apiKeys.description') }}</p>
+                </div>
+
+                <div class="ai-key-list">
+                    <div class="ai-key-row" *ngFor="let field of aiApiKeyFields">
+                        <div class="ai-field">
+                            <label [attr.for]="'ai-api-key-' + field.provider">{{ field.label }}</label>
+                            <input [id]="'ai-api-key-' + field.provider" type="password"
+                                [value]="aiApiKeys[field.provider]" [placeholder]="getAiApiKeyPlaceholder(field.provider)"
+                                [disabled]="aiSettingsSaving || aiSettingsLoading"
+                                (input)="onAiApiKeyInput(field.provider, $event)">
+                        </div>
+
+                        <label class="ai-clear-key" *ngIf="hasAiApiKeyForProvider(field.provider)"
+                            [attr.for]="'ai-clear-api-key-' + field.provider">
+                            <input [id]="'ai-clear-api-key-' + field.provider" type="checkbox"
+                                [checked]="aiClearApiKeys[field.provider]"
+                                [disabled]="aiSettingsSaving || aiSettingsLoading"
+                                (change)="onAiClearApiKeyChange(field.provider, $event)">
+                            <span>{{ t('settings.ai.apiKeys.clear') }}</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-card ai-settings-card">
+                <div class="ai-settings-header">
+                    <h3>{{ t('settings.ai.limits.title') }}</h3>
+                    <p>{{ t('settings.ai.limits.description') }}</p>
+                </div>
+
+                <div class="ai-limit-list">
+                    <div class="ai-limit-row">
+                        <div>
+                            <strong>{{ t('settings.ai.limits.apiCalls.title') }}</strong>
+                            <span>{{ t('settings.ai.limits.apiCalls.description') }}</span>
+                        </div>
+                        <input type="number" min="1" max="10" step="1" [value]="aiLimits.maxApiCallsPerMessage"
+                            (input)="onAiLimitInput('maxApiCallsPerMessage', $event)">
+                    </div>
+
+                    <div class="ai-limit-row">
+                        <div>
+                            <strong>{{ t('settings.ai.limits.databaseRequests.title') }}</strong>
+                            <span>{{ t('settings.ai.limits.databaseRequests.description') }}</span>
+                        </div>
+                        <input type="number" min="0" max="20" step="1"
+                            [value]="aiLimits.maxDatabaseRequestsPerMessage"
+                            (input)="onAiLimitInput('maxDatabaseRequestsPerMessage', $event)">
+                    </div>
+
+                    <div class="ai-limit-row">
+                        <div>
+                            <strong>{{ t('settings.ai.limits.databaseRequestsPerApiCall.title') }}</strong>
+                            <span>{{ t('settings.ai.limits.databaseRequestsPerApiCall.description') }}</span>
+                        </div>
+                        <input type="number" min="1" max="5" step="1"
+                            [value]="aiLimits.maxDatabaseRequestsPerApiCall"
+                            (input)="onAiLimitInput('maxDatabaseRequestsPerApiCall', $event)">
+                    </div>
+
+                    <div class="ai-limit-row">
+                        <div>
+                            <strong>{{ t('settings.ai.limits.contextMessages.title') }}</strong>
+                            <span>{{ t('settings.ai.limits.contextMessages.description') }}</span>
+                        </div>
+                        <input type="number" min="1" max="20" step="1" [value]="aiLimits.maxContextMessages"
+                            (input)="onAiLimitInput('maxContextMessages', $event)">
+                    </div>
+
+                    <div class="ai-limit-row">
+                        <div>
+                            <strong>{{ t('settings.ai.limits.toolResultChars.title') }}</strong>
+                            <span>{{ t('settings.ai.limits.toolResultChars.description') }}</span>
+                        </div>
+                        <input type="number" min="1000" max="50000" step="1000"
+                            [value]="aiLimits.maxToolResultChars"
+                            (input)="onAiLimitInput('maxToolResultChars', $event)">
+                    </div>
+
+                    <div class="ai-limit-row">
+                        <div>
+                            <strong>{{ t('settings.ai.limits.toolTranscriptChars.title') }}</strong>
+                            <span>{{ t('settings.ai.limits.toolTranscriptChars.description') }}</span>
+                        </div>
+                        <input type="number" min="4000" max="100000" step="1000"
+                            [value]="aiLimits.maxToolTranscriptChars"
+                            (input)="onAiLimitInput('maxToolTranscriptChars', $event)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-actions-row">
+                <button type="button" (click)="saveAiSettings()"
+                    [disabled]="aiSettingsSaving || aiSettingsLoading || !aiModel.trim() || (aiProvider === 'openai' && !aiBaseUrl.trim())">
+                    {{ t('settings.actions.save') }}
+                </button>
+                <small *ngIf="aiSettingsMessage">{{ aiSettingsMessage }}</small>
+            </div>
         </div>
 
         <div class="settings-stack" *ngIf="activeTab === 'highlight'">

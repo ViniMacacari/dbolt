@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common'
-import { Component, OnInit } from '@angular/core'
+import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core'
 import {
   AppSettingsService,
   SqlFormatterCommaStyle,
@@ -14,8 +14,24 @@ import { InputListComponent } from '../input-list/input-list.component'
 import { LoadingComponent } from '../../modal/loading/loading.component'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { AppLanguage } from '../../../services/language/language.model'
+import { AiAssistantSettingsService } from '../../../services/ai-assistant/ai-assistant-settings.service'
+import {
+  AiAssistantLimits,
+  AiAssistantProvider,
+  AiAssistantSettings
+} from '../../../services/ai-assistant/ai-assistant.model'
 
-type SettingsTab = 'query' | 'connections' | 'autocomplete' | 'highlight' | 'language'
+type SettingsTab = 'query' | 'connections' | 'autocomplete' | 'highlight' | 'language' | 'ai'
+
+const DEFAULT_AI_BASE_URL = 'https://api.openai.com/v1/chat/completions'
+const DEFAULT_AI_LIMITS: AiAssistantLimits = {
+  maxApiCallsPerMessage: 4,
+  maxDatabaseRequestsPerMessage: 4,
+  maxDatabaseRequestsPerApiCall: 2,
+  maxContextMessages: 10,
+  maxToolResultChars: 9000,
+  maxToolTranscriptChars: 18000
+}
 
 @Component({
   selector: 'app-settings',
@@ -24,7 +40,9 @@ type SettingsTab = 'query' | 'connections' | 'autocomplete' | 'highlight' | 'lan
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss'
 })
-export class SettingsComponent implements OnInit {
+export class SettingsComponent implements OnInit, OnChanges {
+  @Input() initialTab: SettingsTab | null = null
+  @Output() aiSettingsSaved = new EventEmitter<AiAssistantSettings>()
   activeTab: SettingsTab = 'query'
   defaultQueryRows: number
   connectionExpirationMinutes: number
@@ -63,12 +81,74 @@ export class SettingsComponent implements OnInit {
   defaultSchemaList: { name: string }[] = []
   selectedDefaultDatabase: string = ''
   selectedDefaultSchema: string = ''
+  aiSettings: AiAssistantSettings | null = null
+  aiSettingsLoading: boolean = false
+  aiSettingsSaving: boolean = false
+  aiSettingsMessage: string = ''
+  aiSettingsError: string = ''
+  aiProvider: AiAssistantProvider = 'openai'
+  aiModel: string = 'gpt-5.4-mini'
+  aiBaseUrl: string = DEFAULT_AI_BASE_URL
+  aiCustomEndpointEnabled: boolean = false
+  aiApiKeys: Record<AiAssistantProvider, string> = {
+    openai: '',
+    gemini: '',
+    anthropic: ''
+  }
+  aiClearApiKeys: Record<AiAssistantProvider, boolean> = {
+    openai: false,
+    gemini: false,
+    anthropic: false
+  }
+  aiLimits: AiAssistantLimits = { ...DEFAULT_AI_LIMITS }
+  readonly aiProviderOptions: { label: string, value: AiAssistantProvider }[] = [
+    { label: 'OpenAI', value: 'openai' },
+    { label: 'Gemini', value: 'gemini' },
+    { label: 'Claude', value: 'anthropic' }
+  ]
+  readonly aiApiKeyFields: { provider: AiAssistantProvider, label: string }[] = [
+    { provider: 'openai', label: 'OpenAI' },
+    { provider: 'gemini', label: 'Gemini' },
+    { provider: 'anthropic', label: 'Claude' }
+  ]
+  readonly openAiModelOptions: { label: string, value: string }[] = [
+    { label: 'GPT-5.5', value: 'gpt-5.5' },
+    { label: 'GPT-5.4', value: 'gpt-5.4' },
+    { label: 'GPT-5.4 mini', value: 'gpt-5.4-mini' },
+    { label: 'GPT-5.4 nano', value: 'gpt-5.4-nano' },
+    { label: 'GPT-5.2', value: 'gpt-5.2' },
+    { label: 'GPT-5.1', value: 'gpt-5.1' },
+    { label: 'GPT-5', value: 'gpt-5' },
+    { label: 'GPT-5 mini', value: 'gpt-5-mini' },
+    { label: 'GPT-5 nano', value: 'gpt-5-nano' },
+    { label: 'GPT-4.1 mini', value: 'gpt-4.1-mini' },
+    { label: 'GPT-4.1', value: 'gpt-4.1' },
+    { label: 'GPT-4.1 nano', value: 'gpt-4.1-nano' },
+    { label: 'GPT-4o mini', value: 'gpt-4o-mini' },
+    { label: 'GPT-4o', value: 'gpt-4o' },
+    { label: 'o4-mini', value: 'o4-mini' }
+  ]
+  readonly geminiModelOptions: { label: string, value: string }[] = [
+    { label: 'Gemini 3.5 Flash', value: 'gemini-3.5-flash' },
+    { label: 'Gemini 3.1 Pro Preview', value: 'gemini-3.1-pro-preview' },
+    { label: 'Gemini 3.1 Flash-Lite', value: 'gemini-3.1-flash-lite' },
+    { label: 'Gemini 3 Flash Preview', value: 'gemini-3-flash-preview' },
+    { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
+    { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
+    { label: 'Gemini 2.5 Flash-Lite', value: 'gemini-2.5-flash-lite' }
+  ]
+  readonly anthropicModelOptions: { label: string, value: string }[] = [
+    { label: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
+    { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
+    { label: 'Claude Haiku 4.5', value: 'claude-haiku-4-5-20251001' }
+  ]
 
   constructor(
     private settings: AppSettingsService,
     private connectionsService: ConnectionsService,
     private IAPI: InternalApiService,
-    private language: AppLanguageService
+    private language: AppLanguageService,
+    private aiSettingsService: AiAssistantSettingsService
   ) {
     this.defaultQueryRows = this.settings.getDefaultQueryRows()
     this.connectionExpirationMinutes = this.settings.getConnectionExpirationMinutes()
@@ -89,7 +169,17 @@ export class SettingsComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    await this.loadConnections()
+    this.applyInitialTab()
+    await Promise.all([
+      this.loadConnections(),
+      this.loadAiSettings()
+    ])
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['initialTab']) {
+      this.applyInitialTab()
+    }
   }
 
   selectTab(tab: SettingsTab): void {
@@ -135,12 +225,26 @@ export class SettingsComponent implements OnInit {
   }
 
   get settingsTitle(): string {
+    if (this.activeTab === 'ai') return this.t('settings.ai.title')
     if (this.activeTab === 'language') return this.t('settings.language.title')
     if (this.activeTab === 'connections') return this.t('settings.connections.title')
     if (this.activeTab === 'autocomplete') return this.t('settings.autocomplete.title')
     if (this.activeTab === 'highlight') return this.t('settings.highlight.title')
 
     return this.t('settings.query.title')
+  }
+
+  get aiModelOptions(): { [key: string]: string | number }[] {
+    const options = this.modelOptionsForAiProvider(this.aiProvider)
+
+    if (!this.aiModel || options.some((option) => option.value === this.aiModel)) {
+      return options
+    }
+
+    return [
+      { label: `${this.aiModel} (${this.t('aiAssistant.currentModel')})`, value: this.aiModel },
+      ...options
+    ]
   }
 
   onAppLanguageSelected(item: { [key: string]: string | number } | null): void {
@@ -156,6 +260,117 @@ export class SettingsComponent implements OnInit {
   saveLanguageSettings(): void {
     this.appLanguage = this.language.setLanguage(this.appLanguage)
     this.languageSavedMessage = this.t('settings.language.saved')
+  }
+
+  onAiProviderSelected(item: { [key: string]: string | number } | null): void {
+    const provider = this.normalizeAiProvider(item?.['value'])
+    if (provider === this.aiProvider) return
+
+    this.aiProvider = provider
+    this.aiModel = this.defaultModelForAiProvider(provider)
+    this.aiSettingsMessage = ''
+    this.aiSettingsError = ''
+
+    if (provider === 'openai') {
+      this.aiBaseUrl = this.aiBaseUrl || DEFAULT_AI_BASE_URL
+      this.aiCustomEndpointEnabled = this.aiBaseUrl !== DEFAULT_AI_BASE_URL
+    } else {
+      this.aiCustomEndpointEnabled = false
+    }
+  }
+
+  onAiModelSelected(item: { [key: string]: string | number } | null): void {
+    const value = item?.['value']
+    this.aiModel = typeof value === 'string' ? value : this.defaultModelForAiProvider(this.aiProvider)
+    this.aiSettingsMessage = ''
+  }
+
+  onAiCustomEndpointChanged(event: Event): void {
+    this.aiCustomEndpointEnabled = (event.target as HTMLInputElement).checked
+    this.aiSettingsMessage = ''
+
+    if (!this.aiCustomEndpointEnabled) {
+      this.aiBaseUrl = DEFAULT_AI_BASE_URL
+    }
+  }
+
+  onAiBaseUrlInput(event: Event): void {
+    this.aiBaseUrl = (event.target as HTMLInputElement).value
+    this.aiSettingsMessage = ''
+  }
+
+  onAiApiKeyInput(provider: AiAssistantProvider, event: Event): void {
+    this.aiApiKeys = {
+      ...this.aiApiKeys,
+      [provider]: (event.target as HTMLInputElement).value
+    }
+    this.aiSettingsMessage = ''
+  }
+
+  onAiClearApiKeyChange(provider: AiAssistantProvider, event: Event): void {
+    this.aiClearApiKeys = {
+      ...this.aiClearApiKeys,
+      [provider]: (event.target as HTMLInputElement).checked
+    }
+    this.aiSettingsMessage = ''
+  }
+
+  onAiLimitInput(key: keyof AiAssistantLimits, event: Event): void {
+    const value = Number((event.target as HTMLInputElement).value)
+    this.aiLimits = {
+      ...this.aiLimits,
+      [key]: this.normalizeAiLimit(key, value)
+    }
+    this.aiSettingsMessage = ''
+  }
+
+  getAiApiKeyPlaceholder(provider: AiAssistantProvider): string {
+    return this.hasAiApiKeyForProvider(provider)
+      ? this.t('settings.ai.apiKeys.configured')
+      : this.t('settings.ai.apiKeys.placeholder')
+  }
+
+  hasAiApiKeyForProvider(provider: AiAssistantProvider): boolean {
+    return Boolean(this.aiSettings?.hasApiKeys?.[provider])
+  }
+
+  async saveAiSettings(): Promise<void> {
+    this.aiSettingsSaving = true
+    this.aiSettingsMessage = ''
+    this.aiSettingsError = ''
+
+    try {
+      const apiKeys: Partial<Record<AiAssistantProvider, string>> = {}
+      const clearApiKeys: Partial<Record<AiAssistantProvider, boolean>> = {}
+
+      this.aiApiKeyFields.forEach((field) => {
+        const apiKey = this.aiApiKeys[field.provider].trim()
+        if (apiKey) {
+          apiKeys[field.provider] = apiKey
+        }
+
+        if (this.aiClearApiKeys[field.provider]) {
+          clearApiKeys[field.provider] = true
+        }
+      })
+
+      const settings = await this.aiSettingsService.saveSettings({
+        provider: this.aiProvider,
+        model: this.aiModel.trim(),
+        baseUrl: this.aiProvider === 'openai' ? this.aiBaseUrl.trim() : undefined,
+        apiKeys,
+        clearApiKeys,
+        limits: this.sanitizeAiLimits(this.aiLimits)
+      })
+
+      this.applyAiSettings(settings)
+      this.aiSettingsSaved.emit(settings)
+      this.aiSettingsMessage = this.t('generic.saved')
+    } catch (error: unknown) {
+      this.aiSettingsError = this.getErrorMessage(error, this.t('settings.ai.saveFailed'))
+    } finally {
+      this.aiSettingsSaving = false
+    }
   }
 
   get isCustomSqlHighlight(): boolean {
@@ -464,6 +679,38 @@ export class SettingsComponent implements OnInit {
     await this.saveConnectionTarget()
   }
 
+  private async loadAiSettings(): Promise<void> {
+    this.aiSettingsLoading = true
+    this.aiSettingsError = ''
+
+    try {
+      this.applyAiSettings(await this.aiSettingsService.loadSettings())
+    } catch (error: unknown) {
+      this.aiSettingsError = this.getErrorMessage(error, this.t('settings.ai.loadFailed'))
+    } finally {
+      this.aiSettingsLoading = false
+    }
+  }
+
+  private applyAiSettings(settings: AiAssistantSettings): void {
+    this.aiSettings = settings
+    this.aiProvider = settings.provider
+    this.aiModel = settings.model || this.defaultModelForAiProvider(settings.provider)
+    this.aiBaseUrl = settings.baseUrl || DEFAULT_AI_BASE_URL
+    this.aiCustomEndpointEnabled = settings.provider === 'openai' && this.aiBaseUrl !== DEFAULT_AI_BASE_URL
+    this.aiApiKeys = {
+      openai: '',
+      gemini: '',
+      anthropic: ''
+    }
+    this.aiClearApiKeys = {
+      openai: false,
+      gemini: false,
+      anthropic: false
+    }
+    this.aiLimits = this.sanitizeAiLimits(settings.limits || DEFAULT_AI_LIMITS)
+  }
+
   private async loadConnections(): Promise<void> {
     this.connections = await this.connectionsService.loadConnections()
     this.connectionOptions = this.connections.map((connection) => ({
@@ -499,6 +746,90 @@ export class SettingsComponent implements OnInit {
         throw new Error(this.t('settings.connections.schemaMissing'))
       }
     }
+  }
+
+  private applyInitialTab(): void {
+    if (this.isSettingsTab(this.initialTab)) {
+      this.activeTab = this.initialTab
+    }
+  }
+
+  private isSettingsTab(value: unknown): value is SettingsTab {
+    return value === 'query' ||
+      value === 'connections' ||
+      value === 'autocomplete' ||
+      value === 'highlight' ||
+      value === 'language' ||
+      value === 'ai'
+  }
+
+  private defaultModelForAiProvider(provider: AiAssistantProvider): string {
+    if (provider === 'anthropic') {
+      return 'claude-sonnet-4-6'
+    }
+
+    return provider === 'gemini' ? 'gemini-3.5-flash' : 'gpt-5.4-mini'
+  }
+
+  private modelOptionsForAiProvider(provider: AiAssistantProvider): { label: string, value: string }[] {
+    if (provider === 'anthropic') {
+      return this.anthropicModelOptions
+    }
+
+    return provider === 'gemini'
+      ? this.geminiModelOptions
+      : this.openAiModelOptions
+  }
+
+  private normalizeAiProvider(value: string | number | undefined): AiAssistantProvider {
+    if (value === 'gemini' || value === 'anthropic') {
+      return value
+    }
+
+    return 'openai'
+  }
+
+  private sanitizeAiLimits(limits: Partial<AiAssistantLimits>): AiAssistantLimits {
+    return {
+      maxApiCallsPerMessage: this.normalizeAiLimit('maxApiCallsPerMessage', limits.maxApiCallsPerMessage),
+      maxDatabaseRequestsPerMessage: this.normalizeAiLimit('maxDatabaseRequestsPerMessage', limits.maxDatabaseRequestsPerMessage),
+      maxDatabaseRequestsPerApiCall: this.normalizeAiLimit('maxDatabaseRequestsPerApiCall', limits.maxDatabaseRequestsPerApiCall),
+      maxContextMessages: this.normalizeAiLimit('maxContextMessages', limits.maxContextMessages),
+      maxToolResultChars: this.normalizeAiLimit('maxToolResultChars', limits.maxToolResultChars),
+      maxToolTranscriptChars: this.normalizeAiLimit('maxToolTranscriptChars', limits.maxToolTranscriptChars)
+    }
+  }
+
+  private normalizeAiLimit(key: keyof AiAssistantLimits, value: unknown): number {
+    const ranges: Record<keyof AiAssistantLimits, { fallback: number, min: number, max: number }> = {
+      maxApiCallsPerMessage: { fallback: DEFAULT_AI_LIMITS.maxApiCallsPerMessage, min: 1, max: 10 },
+      maxDatabaseRequestsPerMessage: { fallback: DEFAULT_AI_LIMITS.maxDatabaseRequestsPerMessage, min: 0, max: 20 },
+      maxDatabaseRequestsPerApiCall: { fallback: DEFAULT_AI_LIMITS.maxDatabaseRequestsPerApiCall, min: 1, max: 5 },
+      maxContextMessages: { fallback: DEFAULT_AI_LIMITS.maxContextMessages, min: 1, max: 20 },
+      maxToolResultChars: { fallback: DEFAULT_AI_LIMITS.maxToolResultChars, min: 1000, max: 50000 },
+      maxToolTranscriptChars: { fallback: DEFAULT_AI_LIMITS.maxToolTranscriptChars, min: 4000, max: 100000 }
+    }
+    const range = ranges[key]
+    const numberValue = Number(value)
+
+    if (!Number.isFinite(numberValue)) {
+      return range.fallback
+    }
+
+    return Math.min(Math.max(Math.floor(numberValue), range.min), range.max)
+  }
+
+  private getErrorMessage(error: unknown, fallback: string): string {
+    if (error && typeof error === 'object') {
+      const record = error as Record<string, unknown>
+      const message = record['message']
+      const detail = record['error']
+
+      if (typeof detail === 'string' && detail.trim()) return detail
+      if (typeof message === 'string' && message.trim()) return message
+    }
+
+    return fallback
   }
 
   t(key: string, params: Record<string, string | number> = {}): string {
