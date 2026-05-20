@@ -140,7 +140,10 @@ class AiAssistantAgentService {
       'Não solicite senhas, tokens ou chaves da API.',
       'Não invente tabelas, colunas ou resultados. Quando houver dados de ferramentas readonly, trate-os como fonte factual.',
       'Nunca peça nem sugira comandos de escrita como UPDATE, DELETE, INSERT, DROP, ALTER, TRUNCATE, EXEC, CALL ou MERGE.',
-      'Se o usuário pedir existência de objetos, colunas, contagens ou dados do banco e houver contexto readonly autorizado, use ferramentas antes de responder, salvo quando os dados readonly já coletados responderem diretamente.',
+      'Quando houver contexto readonly autorizado, você pode executar consultas SELECT/WITH com runReadonlyQuery para responder perguntas sobre dados do banco.',
+      'Não diga que não pode executar consulta quando a consulta for readonly. Use runReadonlyQuery em vez de devolver SQL para o usuário executar, salvo se o usuário pedir apenas a consulta.',
+      'Se o usuário pedir existência de objetos, colunas, contagens, IDs ou dados do banco e houver contexto readonly autorizado, use ferramentas antes de responder, salvo quando os dados readonly já coletados responderem diretamente.',
+      'Para perguntas que exigem investigação em sequência, continue usando ferramentas até encontrar a resposta ou acabar o orçamento. Exemplo: buscar tabela, buscar colunas, executar SELECT filtrado e então responder.',
       'Você pode investigar em mais de uma rodada: por exemplo, buscar uma tabela primeiro e depois pedir as colunas da tabela encontrada.',
       `Orçamento desta pergunta: até ${budget.maxToolCalls} chamadas de ferramenta no total, até ${budget.maxToolCallsPerIteration} por rodada. Já usadas: ${budget.toolCallsUsed}.`
     ];
