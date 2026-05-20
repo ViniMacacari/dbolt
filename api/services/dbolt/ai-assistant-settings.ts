@@ -8,8 +8,9 @@ const SETTINGS_FILENAME = 'settings.json';
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1/chat/completions';
 const DEFAULT_OPENAI_MODEL = 'gpt-5.4-mini';
 const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
+const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 
-export type AiAssistantProvider = 'openai' | 'gemini';
+export type AiAssistantProvider = 'openai' | 'gemini' | 'anthropic';
 
 export interface AiAssistantPublicSettings {
   provider: AiAssistantProvider;
@@ -166,7 +167,8 @@ class AiAssistantSettingsService {
   private toPublicSettings(settings: StoredAiAssistantSettings): AiAssistantPublicSettings {
     const hasApiKeys = {
       openai: Boolean(settings.encryptedApiKeys?.openai),
-      gemini: Boolean(settings.encryptedApiKeys?.gemini)
+      gemini: Boolean(settings.encryptedApiKeys?.gemini),
+      anthropic: Boolean(settings.encryptedApiKeys?.anthropic)
     };
 
     return {
@@ -184,10 +186,18 @@ class AiAssistantSettingsService {
       return 'gemini';
     }
 
+    if (provider === 'anthropic') {
+      return 'anthropic';
+    }
+
     return 'openai';
   }
 
   private defaultModelForProvider(provider: AiAssistantProvider): string {
+    if (provider === 'anthropic') {
+      return DEFAULT_ANTHROPIC_MODEL;
+    }
+
     return provider === 'gemini' ? DEFAULT_GEMINI_MODEL : DEFAULT_OPENAI_MODEL;
   }
 

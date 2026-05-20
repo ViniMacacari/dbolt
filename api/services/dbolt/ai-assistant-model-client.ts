@@ -39,6 +39,14 @@ interface GeminiGenerateContentResponse {
   }>;
 }
 
+interface AnthropicMessageResponse {
+  model?: string;
+  content?: Array<{
+    type?: string;
+    text?: string;
+  }>;
+}
+
 class AiAssistantModelClient {
   async complete(
     settings: AiAssistantResolvedSettings,
@@ -47,6 +55,10 @@ class AiAssistantModelClient {
   ): Promise<AiModelCompletion> {
     if (settings.provider === 'gemini') {
       return await this.completeWithGemini(settings.model, settings.apiKey, systemPrompt, messages);
+    }
+
+    if (settings.provider === 'anthropic') {
+      return await this.completeWithAnthropic(settings.model, settings.apiKey, systemPrompt, messages);
     }
 
     return await this.completeWithOpenAiCompatible(
@@ -59,6 +71,10 @@ class AiAssistantModelClient {
   }
 
   getProviderLabel(provider: AiAssistantProvider): string {
+    if (provider === 'anthropic') {
+      return 'Claude';
+    }
+
     return provider === 'gemini' ? 'Gemini' : 'OpenAI compatível';
   }
 
@@ -152,6 +168,70 @@ class AiAssistantModelClient {
       content,
       model
     };
+  }
+
+  private async completeWithAnthropic(
+    model: string,
+    apiKey: string,
+    systemPrompt: string,
+    messages: AiModelMessage[]
+  ): Promise<AiModelCompletion> {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'x-api-key': apiKey
+      },
+      body: JSON.stringify({
+        model,
+        system: systemPrompt,
+        messages: this.normalizeAnthropicMessages(messages),
+        max_tokens: 4096,
+        temperature: 0.2
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(await this.extractErrorMessage(response));
+    }
+
+    const completion = (await response.json()) as AnthropicMessageResponse;
+    const content = completion.content
+      ?.filter((part) => part.type === 'text' || !part.type)
+      .map((part) => part.text || '')
+      .join('')
+      .trim();
+
+    if (!content) {
+      throw new Error('A IA não retornou uma resposta válida.');
+    }
+
+    return {
+      content,
+      model: completion.model || model
+    };
+  }
+
+  private normalizeAnthropicMessages(messages: AiModelMessage[]): AiModelMessage[] {
+    const normalizedMessages: AiModelMessage[] = [];
+
+    for (const message of messages) {
+      if (normalizedMessages.length === 0 && message.role === 'assistant') {
+        continue;
+      }
+
+      const previousMessage = normalizedMessages[normalizedMessages.length - 1];
+
+      if (previousMessage?.role === message.role) {
+        previousMessage.content = `${previousMessage.content}\n\n${message.content}`;
+        continue;
+      }
+
+      normalizedMessages.push({ ...message });
+    }
+
+    return normalizedMessages;
   }
 
   private async extractErrorMessage(response: Response): Promise<string> {
