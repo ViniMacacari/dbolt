@@ -357,6 +357,8 @@ export const ptBrTranslations: TranslationCatalog = {
   'aiAssistant.user': 'Você',
   'aiAssistant.chat': 'Chat',
   'aiAssistant.configure': 'Configurar IA',
+  'aiAssistant.expandSidebar': 'Expandir sidebar',
+  'aiAssistant.collapseSidebar': 'Reduzir sidebar',
   'aiAssistant.apiKey': 'API key',
   'aiAssistant.apiKeyPlaceholder': 'Cole a API key do provedor selecionado',
   'aiAssistant.apiKeyConfigured': 'Chave já configurada',
