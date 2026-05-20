@@ -33,7 +33,8 @@ export class AiSettingsFormComponent implements OnChanges {
   readonly providerOptions: { label: string, value: AiAssistantProvider }[] = [
     { label: 'OpenAI', value: 'openai' },
     { label: 'Gemini', value: 'gemini' },
-    { label: 'Claude', value: 'anthropic' }
+    { label: 'Claude', value: 'anthropic' },
+    { label: 'OpenRouter', value: 'openrouter' }
   ]
   readonly openAiModelOptions: { label: string, value: string }[] = [
     { label: 'GPT-5.5', value: 'gpt-5.5' },
@@ -76,7 +77,7 @@ export class AiSettingsFormComponent implements OnChanges {
 
     this.provider = this.settings?.provider || 'openai'
     this.model = this.settings?.model || this.defaultModelForProvider(this.provider)
-    this.baseUrl = this.settings?.baseUrl || this.baseUrl
+    this.baseUrl = this.settings?.baseUrl || this.defaultBaseUrlForProvider(this.provider)
     this.customEndpointEnabled = this.provider === 'openai' &&
       this.baseUrl !== 'https://api.openai.com/v1/chat/completions'
     this.apiKey = ''
@@ -99,6 +100,8 @@ export class AiSettingsFormComponent implements OnChanges {
 
     if (provider === 'openai') {
       this.baseUrl = 'https://api.openai.com/v1/chat/completions'
+    } else if (provider === 'openrouter') {
+      this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions'
     }
   }
 
@@ -128,11 +131,15 @@ export class AiSettingsFormComponent implements OnChanges {
     this.model = typeof value === 'string' ? value : ''
   }
 
+  onModelInput(event: Event): void {
+    this.model = (event.target as HTMLInputElement).value
+  }
+
   submit(): void {
     this.save.emit({
       provider: this.provider,
       model: this.model.trim(),
-      baseUrl: this.provider === 'openai' ? this.baseUrl.trim() : undefined,
+      baseUrl: this.provider === 'openai' || this.provider === 'openrouter' ? this.baseUrl.trim() : undefined,
       apiKey: this.apiKey.trim() || undefined,
       clearApiKey: this.clearApiKey
     })
@@ -143,10 +150,24 @@ export class AiSettingsFormComponent implements OnChanges {
       return 'claude-sonnet-4-6'
     }
 
+    if (provider === 'openrouter') {
+      return '~openai/gpt-latest'
+    }
+
     return provider === 'gemini' ? 'gemini-3.5-flash' : 'gpt-5.4-mini'
   }
 
+  private defaultBaseUrlForProvider(provider: AiAssistantProvider): string {
+    return provider === 'openrouter'
+      ? 'https://openrouter.ai/api/v1/chat/completions'
+      : 'https://api.openai.com/v1/chat/completions'
+  }
+
   private modelOptionsForProvider(provider: AiAssistantProvider): { label: string, value: string }[] {
+    if (provider === 'openrouter') {
+      return []
+    }
+
     if (provider === 'anthropic') {
       return this.anthropicModelOptions
     }
@@ -157,7 +178,7 @@ export class AiSettingsFormComponent implements OnChanges {
   }
 
   private normalizeProvider(value: string | number | undefined): AiAssistantProvider {
-    if (value === 'gemini' || value === 'anthropic') {
+    if (value === 'gemini' || value === 'anthropic' || value === 'openrouter') {
       return value
     }
 
