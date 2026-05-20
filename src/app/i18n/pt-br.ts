@@ -191,6 +191,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'settings.ai.title': 'Configurações de IA',
   'settings.ai.provider': 'Provedor',
   'settings.ai.model': 'Modelo',
+  'settings.ai.openRouterModelPlaceholder': 'Slug do modelo OpenRouter, ex: ~openai/gpt-latest',
   'settings.ai.customEndpoint': 'Usar endpoint OpenAI personalizado',
   'settings.ai.endpoint': 'Endpoint',
   'settings.ai.loadFailed': 'Não foi possível carregar as configurações de IA.',

@@ -191,6 +191,7 @@ export const enTranslations: TranslationCatalog = {
   'settings.ai.title': 'AI settings',
   'settings.ai.provider': 'Provider',
   'settings.ai.model': 'Model',
+  'settings.ai.openRouterModelPlaceholder': 'OpenRouter model slug, e.g. ~openai/gpt-latest',
   'settings.ai.customEndpoint': 'Use custom OpenAI endpoint',
   'settings.ai.endpoint': 'Endpoint',
   'settings.ai.loadFailed': 'Could not load AI settings.',
