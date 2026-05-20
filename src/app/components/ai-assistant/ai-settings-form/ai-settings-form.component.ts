@@ -32,7 +32,8 @@ export class AiSettingsFormComponent implements OnChanges {
   customEndpointEnabled: boolean = false
   readonly providerOptions: { label: string, value: AiAssistantProvider }[] = [
     { label: 'OpenAI', value: 'openai' },
-    { label: 'Gemini', value: 'gemini' }
+    { label: 'Gemini', value: 'gemini' },
+    { label: 'Claude', value: 'anthropic' }
   ]
   readonly openAiModelOptions: { label: string, value: string }[] = [
     { label: 'GPT-5.5', value: 'gpt-5.5' },
@@ -60,6 +61,11 @@ export class AiSettingsFormComponent implements OnChanges {
     { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
     { label: 'Gemini 2.5 Flash-Lite', value: 'gemini-2.5-flash-lite' }
   ]
+  readonly anthropicModelOptions: { label: string, value: string }[] = [
+    { label: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
+    { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
+    { label: 'Claude Haiku 4.5', value: 'claude-haiku-4-5-20251001' }
+  ]
 
   constructor(private language: AppLanguageService) { }
 
@@ -82,7 +88,7 @@ export class AiSettingsFormComponent implements OnChanges {
   }
 
   onProviderSelected(item: { [key: string]: string | number } | null): void {
-    const provider = item?.['value'] === 'gemini' ? 'gemini' : 'openai'
+    const provider = this.normalizeProvider(item?.['value'])
     if (provider === this.provider) return
 
     this.provider = provider
@@ -105,9 +111,7 @@ export class AiSettingsFormComponent implements OnChanges {
   }
 
   get modelOptions(): { [key: string]: string | number }[] {
-    const defaultModelOptions = this.provider === 'gemini'
-      ? this.geminiModelOptions
-      : this.openAiModelOptions
+    const defaultModelOptions = this.modelOptionsForProvider(this.provider)
 
     if (!this.model || defaultModelOptions.some((option) => option.value === this.model)) {
       return defaultModelOptions
@@ -135,7 +139,29 @@ export class AiSettingsFormComponent implements OnChanges {
   }
 
   private defaultModelForProvider(provider: AiAssistantProvider): string {
+    if (provider === 'anthropic') {
+      return 'claude-sonnet-4-6'
+    }
+
     return provider === 'gemini' ? 'gemini-3.5-flash' : 'gpt-5.4-mini'
+  }
+
+  private modelOptionsForProvider(provider: AiAssistantProvider): { label: string, value: string }[] {
+    if (provider === 'anthropic') {
+      return this.anthropicModelOptions
+    }
+
+    return provider === 'gemini'
+      ? this.geminiModelOptions
+      : this.openAiModelOptions
+  }
+
+  private normalizeProvider(value: string | number | undefined): AiAssistantProvider {
+    if (value === 'gemini' || value === 'anthropic') {
+      return value
+    }
+
+    return 'openai'
   }
 
   t(key: string, params: Record<string, string | number> = {}): string {
