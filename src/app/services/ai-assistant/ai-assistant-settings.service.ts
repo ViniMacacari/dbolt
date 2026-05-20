@@ -13,7 +13,7 @@ export class AiAssistantSettingsService {
     const response = await this.internalApi.get<ApiResponse<AiAssistantSettings>>('/api/ai-assistant/settings')
 
     if (!response.success || !response.data) {
-      throw new Error(response.message || response.error || 'Não foi possível carregar as configurações da IA.')
+      throw new Error(response.message || response.error || 'Could not load AI settings.')
     }
 
     return response.data
@@ -23,7 +23,7 @@ export class AiAssistantSettingsService {
     const response = await this.internalApi.put<ApiResponse<AiAssistantSettings>>('/api/ai-assistant/settings', settings)
 
     if (!response.success || !response.data) {
-      throw new Error(response.message || response.error || 'Não foi possível salvar as configurações da IA.')
+      throw new Error(response.message || response.error || 'Could not save AI settings.')
     }
 
     return response.data
