@@ -27,6 +27,37 @@
     line-height: 1.35;
 }
 
+.ai-config-needed {
+    align-items: stretch;
+    background: #20252d !important;
+    border: 1px solid #34475d;
+    cursor: default !important;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    p {
+        color: #d8e9fb;
+        font-family: 'Nunito';
+        font-size: .76em;
+        line-height: 1.35;
+        margin: 0;
+    }
+
+    button {
+        align-self: flex-start;
+        background: #2b3340;
+        border: 1px solid rgba(115, 158, 202, 0.35);
+        border-radius: 8px;
+        color: #d8e9fb;
+        font-family: 'Nunito';
+        font-size: .74em;
+        font-weight: 800;
+        height: 30px;
+        padding: 0 10px;
+    }
+}
+
 .conversation-section {
     display: flex;
     flex-direction: column;

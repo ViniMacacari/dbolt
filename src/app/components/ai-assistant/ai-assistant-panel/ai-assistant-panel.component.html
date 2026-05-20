@@ -4,11 +4,11 @@
             [title]="t('generic.back')">
             <img src="icons/close.png" height="24px" class="toogle-img" [alt]="t('generic.back')">
         </button>
-        <button type="button" class="sidebar-action-button home-button" (click)="showSettings = false"
+        <button type="button" class="sidebar-action-button home-button" (click)="errorMessage = ''"
             [title]="t('aiAssistant.chat')">
             <img src="icons/chat.png" height="17px" width="17px" [alt]="t('aiAssistant.chat')">
         </button>
-        <button type="button" class="sidebar-action-button settings-button" (click)="showSettings = !showSettings"
+        <button type="button" class="sidebar-action-button settings-button" (click)="settingsRequested.emit()"
             [title]="t('aiAssistant.configure')">
             <img src="icons/settings.png" height="17px" width="17px" [alt]="t('aiAssistant.configure')">
         </button>
@@ -16,7 +16,7 @@
     <div class="py-2"></div>
 
     <p class="selected-title">{{ t('aiAssistant.title') }}</p>
-    <button type="button" class="sgbd" (click)="showSettings = false">
+    <button type="button" class="sgbd" (click)="settingsRequested.emit()">
         <img src="icons/ai.png" height="15px" width="15px" [alt]="t('aiAssistant.assistant')">
         <p class="text-min w-100">{{ settings?.model || t('aiAssistant.configure') }}</p>
     </button>
@@ -31,7 +31,7 @@
 
     <div class="separator my-3"></div>
 
-    <div class="conversation-section" *ngIf="!showSettings">
+    <div class="conversation-section">
         <div class="conversation-header">
             <span>{{ t('aiAssistant.conversations') }}</span>
             <button type="button" class="conversation-icon-button" (click)="startNewConversation()"
@@ -59,17 +59,18 @@
         </p>
     </div>
 
-    <div class="separator my-3" *ngIf="!showSettings"></div>
+    <div class="separator my-3"></div>
 
     <div class="connection ai-status" *ngIf="errorMessage">
         {{ errorMessage }}
     </div>
 
-    <app-ai-settings-form *ngIf="showSettings" [settings]="settings" [saving]="savingSettings"
-        (save)="saveSettings($event)" (cancel)="showSettings = false">
-    </app-ai-settings-form>
+    <div class="connection ai-config-needed" *ngIf="!loadingSettings && !settings?.hasApiKey">
+        <p>{{ t('aiAssistant.settingsRequired') }}</p>
+        <button type="button" (click)="settingsRequested.emit()">{{ t('aiAssistant.openSettings') }}</button>
+    </div>
 
-    <div class="connections ai-chat" *ngIf="!showSettings" #messagesContainer>
+    <div class="connections ai-chat" #messagesContainer>
         <div class="connection ai-empty" *ngIf="messages.length === 0">
             <img src="icons/ai.png" [alt]="t('aiAssistant.assistant')">
             <p class="text-min-gray">{{ t('aiAssistant.emptyState') }}</p>
@@ -85,7 +86,7 @@
         </div>
     </div>
 
-    <app-ai-chat-input *ngIf="!showSettings" [disabled]="sending || !canChat || loadingConversations"
+    <app-ai-chat-input [disabled]="sending || !canChat || loadingConversations"
         [databaseContextAvailable]="databaseContextAvailable" (send)="onSend($event)">
     </app-ai-chat-input>
 
