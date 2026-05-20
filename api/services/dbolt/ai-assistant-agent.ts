@@ -35,7 +35,12 @@ class AiAssistantAgentService {
     const messages = this.normalizeMessages(request.messages, settings.limits.maxContextMessages);
     const readonlyContext = request.readonlyContext?.sgbd ? request.readonlyContext : undefined;
     const responseLanguage = this.getResponseLanguage(request.appLanguage);
-    const budget = AiAssistantToolBudget.createState(settings.limits);
+    const budget = AiAssistantToolBudget.createState({
+      ...settings.limits,
+      maxApiCallsPerMessage: readonlyContext
+        ? Math.max(2, settings.limits.maxApiCallsPerMessage)
+        : settings.limits.maxApiCallsPerMessage
+    });
     const toolSections: string[] = [];
 
     let lastModel = settings.model;
@@ -158,21 +163,35 @@ class AiAssistantAgentService {
   }
 
   private parseToolCalls(content: string): AiAssistantToolCall[] {
-    const jsonText = this.extractJsonObject(content);
-    if (!jsonText) {
+    const jsonTexts = this.extractJsonObjects(content);
+    if (jsonTexts.length === 0) {
       return [];
     }
 
-    try {
-      const parsed = JSON.parse(jsonText) as Record<string, unknown>;
-      const rawCalls = this.readRawToolCalls(parsed);
+    const toolCalls: AiAssistantToolCall[] = [];
+    const seenCalls = new Set<string>();
 
-      return rawCalls
-        .map((call) => this.normalizeToolCall(call))
-        .filter((call): call is AiAssistantToolCall => Boolean(call));
-    } catch (_error: unknown) {
-      return [];
+    for (const jsonText of jsonTexts) {
+      try {
+        const parsed = JSON.parse(jsonText) as Record<string, unknown>;
+        const rawCalls = this.readRawToolCalls(parsed);
+
+        for (const rawCall of rawCalls) {
+          const toolCall = this.normalizeToolCall(rawCall);
+          if (!toolCall) continue;
+
+          const key = JSON.stringify(toolCall);
+          if (seenCalls.has(key)) continue;
+
+          seenCalls.add(key);
+          toolCalls.push(toolCall);
+        }
+      } catch (_error: unknown) {
+        continue;
+      }
     }
+
+    return toolCalls;
   }
 
   private readRawToolCalls(parsed: Record<string, unknown>): unknown[] {
@@ -207,18 +226,57 @@ class AiAssistantAgentService {
     };
   }
 
-  private extractJsonObject(content: string): string | null {
+  private extractJsonObjects(content: string): string[] {
     const trimmed = content.trim();
     const fencedJson = trimmed.match(/^```(?:json)?\s*([\s\S]*?)```$/i);
     const candidate = fencedJson?.[1]?.trim() || trimmed;
-    const start = candidate.indexOf('{');
-    const end = candidate.lastIndexOf('}');
+    const objects: string[] = [];
+    let start = -1;
+    let depth = 0;
+    let inString = false;
+    let escaping = false;
 
-    if (start === -1 || end === -1 || end <= start) {
-      return null;
+    for (let index = 0; index < candidate.length; index++) {
+      const char = candidate[index];
+
+      if (escaping) {
+        escaping = false;
+        continue;
+      }
+
+      if (char === '\\' && inString) {
+        escaping = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) {
+        continue;
+      }
+
+      if (char === '{') {
+        if (depth === 0) {
+          start = index;
+        }
+        depth += 1;
+        continue;
+      }
+
+      if (char === '}' && depth > 0) {
+        depth -= 1;
+
+        if (depth === 0 && start >= 0) {
+          objects.push(candidate.slice(start, index + 1));
+          start = -1;
+        }
+      }
     }
 
-    return candidate.slice(start, end + 1);
+    return objects;
   }
 
   private normalizeMessages(messages: AiAssistantAgentChatMessage[] = [], maxMessages = 10): AiModelMessage[] {
