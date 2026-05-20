@@ -11,7 +11,7 @@ export interface AiAssistantToolBudgetState {
 class AiAssistantToolBudgetService {
   createState(): AiAssistantToolBudgetState {
     return {
-      maxIterations: 2,
+      maxIterations: 4,
       maxToolCalls: 4,
       maxToolCallsPerIteration: 2,
       maxToolResultChars: 9000,
