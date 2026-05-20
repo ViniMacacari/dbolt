@@ -1,5 +1,5 @@
 <div class="chat-input">
-    <app-checkbox [checked]="allowDatabaseContext" (checkedChange)="allowDatabaseContext = $event"
+    <app-checkbox class="readonly-context-toggle" [checked]="allowDatabaseContext" (checkedChange)="allowDatabaseContext = true"
         [disabled]="disabled || !databaseContextAvailable" [label]="t('aiAssistant.readonlyDb')">
     </app-checkbox>
 
