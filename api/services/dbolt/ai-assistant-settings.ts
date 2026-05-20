@@ -92,7 +92,7 @@ class AiAssistantSettingsService {
     const encryptedApiKey = storedSettings.encryptedApiKeys?.[storedSettings.provider];
 
     if (!encryptedApiKey) {
-      throw new Error('API key do assistente de IA não configurada.');
+      throw new Error('AI assistant API key is not configured.');
     }
 
     const apiKey = await SecureStorage.decryptString(encryptedApiKey);
@@ -205,7 +205,7 @@ class AiAssistantSettingsService {
     const normalized = model.trim();
 
     if (!normalized) {
-      throw new Error('Modelo da IA não informado.');
+      throw new Error('AI model was not provided.');
     }
 
     return normalized;
@@ -215,13 +215,13 @@ class AiAssistantSettingsService {
     const trimmedUrl = baseUrl.trim().replace(/\/+$/, '');
 
     if (!trimmedUrl) {
-      throw new Error('Endpoint da IA não informado.');
+      throw new Error('AI endpoint was not provided.');
     }
 
     const parsedUrl = new URL(trimmedUrl);
 
     if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-      throw new Error('Endpoint da IA precisa usar HTTP ou HTTPS.');
+      throw new Error('AI endpoint must use HTTP or HTTPS.');
     }
 
     if (parsedUrl.pathname === '/v1') {

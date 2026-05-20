@@ -1,9 +1,6 @@
 import AiAssistantModelClient, {
   type AiModelMessage
 } from './ai-assistant-model-client.js';
-import AiAssistantReadonlyDatabase, {
-  type AiReadonlyDatabaseContext
-} from './ai-assistant-readonly-database.js';
 import AiAssistantToolBudget, {
   type AiAssistantToolBudgetState
 } from './ai-assistant-tool-budget.js';
@@ -12,6 +9,7 @@ import AiAssistantTools, {
 } from './ai-assistant-tools.js';
 
 import type { AiAssistantResolvedSettings } from './ai-assistant-settings.js';
+import type { AiReadonlyDatabaseContext } from './ai-assistant-readonly-database.js';
 
 export interface AiAssistantAgentChatMessage {
   role: 'user' | 'assistant';
@@ -21,6 +19,7 @@ export interface AiAssistantAgentChatMessage {
 export interface AiAssistantAgentChatRequest {
   messages: AiAssistantAgentChatMessage[];
   readonlyContext?: AiReadonlyDatabaseContext;
+  appLanguage?: string;
 }
 
 export interface AiAssistantAgentChatResult {
@@ -35,20 +34,16 @@ class AiAssistantAgentService {
   ): Promise<AiAssistantAgentChatResult> {
     const messages = this.normalizeMessages(request.messages);
     const readonlyContext = request.readonlyContext?.sgbd ? request.readonlyContext : undefined;
+    const responseLanguage = this.getResponseLanguage(request.appLanguage);
     const budget = AiAssistantToolBudget.createState();
     const toolSections: string[] = [];
-    const preloadedContext = await this.buildPreloadedContext(readonlyContext, messages);
-
-    if (preloadedContext) {
-      toolSections.push(`[contexto-readonly-precarregado]\n${preloadedContext}`);
-    }
 
     let lastModel = settings.model;
 
     while (AiAssistantToolBudget.beginIteration(budget)) {
       const completion = await AiAssistantModelClient.complete(
         settings,
-        this.buildSystemPrompt(readonlyContext, budget, toolSections, false),
+        this.buildSystemPrompt(readonlyContext, budget, toolSections, false, responseLanguage),
         messages
       );
       lastModel = completion.model;
@@ -66,7 +61,7 @@ class AiAssistantAgentService {
 
       if (!readonlyContext) {
         return {
-          message: 'Não há contexto readonly de banco autorizado para executar consultas.',
+          message: 'No read-only database context was authorized for query execution.',
           model: lastModel
         };
       }
@@ -84,7 +79,7 @@ class AiAssistantAgentService {
         AiAssistantToolBudget.registerToolCall(budget);
         const result = await AiAssistantTools.execute(readonlyContext, toolCall, budget);
         toolSections.push([
-          `[ferramenta:${result.name}:${result.success ? 'ok' : 'erro'}]`,
+          `[tool:${result.name}:${result.success ? 'ok' : 'error'}]`,
           result.content
         ].join('\n'));
       }
@@ -92,7 +87,7 @@ class AiAssistantAgentService {
 
     const finalCompletion = await AiAssistantModelClient.complete(
       settings,
-      this.buildSystemPrompt(readonlyContext, budget, toolSections, true),
+      this.buildSystemPrompt(readonlyContext, budget, toolSections, true, responseLanguage),
       messages
     );
 
@@ -102,69 +97,50 @@ class AiAssistantAgentService {
     };
   }
 
-  private async buildPreloadedContext(
-    readonlyContext: AiReadonlyDatabaseContext | undefined,
-    messages: AiModelMessage[]
-  ): Promise<string | null> {
-    if (!readonlyContext) {
-      return null;
-    }
-
-    const lastQuestion = messages[messages.length - 1]?.content || '';
-    if (!this.shouldPreloadReadonlyContext(lastQuestion)) {
-      return null;
-    }
-
-    return await AiAssistantReadonlyDatabase.buildPromptContext(
-      readonlyContext,
-      [{ content: lastQuestion }]
-    );
-  }
-
-  private shouldPreloadReadonlyContext(question: string): boolean {
-    return /```(?:sql)?|^(select|with)\b/i.test(question.trim()) ||
-      /\b[A-Z][A-Z0-9_]{2,63}\b/.test(question) ||
-      /\b(colunas?|campos?|columns?|fields?)\b.*\b(tabela|table|view)\b/i.test(question) ||
-      /\b(quantos?|total|count)\b.*\b(registros?|linhas?|rows?)\b/i.test(question);
-  }
-
   private buildSystemPrompt(
     readonlyContext: AiReadonlyDatabaseContext | undefined,
     budget: AiAssistantToolBudgetState,
     toolSections: string[],
-    forceFinalAnswer: boolean
+    forceFinalAnswer: boolean,
+    responseLanguage: string
   ): string {
     const parts = [
-      'Você é o assistente de IA do DBOLT Database Manager.',
-      'Responda em português do Brasil, com foco em SQL, modelagem, investigação de schema e produtividade.',
-      'Não solicite senhas, tokens ou chaves da API.',
-      'Não invente tabelas, colunas ou resultados. Quando houver dados de ferramentas readonly, trate-os como fonte factual.',
-      'Nunca peça nem sugira comandos de escrita como UPDATE, DELETE, INSERT, DROP, ALTER, TRUNCATE, EXEC, CALL ou MERGE.',
-      'Se o usuário pedir existência de objetos, colunas, contagens ou dados do banco e houver contexto readonly autorizado, use ferramentas antes de responder, salvo quando os dados readonly já coletados responderem diretamente.',
-      'Você pode investigar em mais de uma rodada: por exemplo, buscar uma tabela primeiro e depois pedir as colunas da tabela encontrada.',
-      `Orçamento desta pergunta: até ${budget.maxToolCalls} chamadas de ferramenta no total, até ${budget.maxToolCallsPerIteration} por rodada. Já usadas: ${budget.toolCallsUsed}.`
+      'You are the AI assistant for DBOLT Database Manager.',
+      `The user's selected app language is ${responseLanguage}. Write final user-facing answers in that language.`,
+      'Tool-call JSON, tool names, SQL identifiers, and database values must remain exact and must not be translated.',
+      'The user may write in any language. Interpret the request semantically; do not rely on language-specific keyword matching.',
+      'Focus on SQL, data modeling, schema investigation, and database productivity.',
+      'Do not request passwords, tokens, or API keys.',
+      'Do not invent tables, columns, or results. When read-only tool data is available, treat it as factual.',
+      'Never request or suggest write commands such as UPDATE, DELETE, INSERT, DROP, ALTER, TRUNCATE, EXEC, CALL, or MERGE.',
+      'When read-only context is authorized, you may execute SELECT/WITH queries with runReadonlyQuery to answer questions about database data.',
+      'Do not say you cannot execute a query when the query is read-only. Use runReadonlyQuery instead of giving SQL for the user to run, unless the user only asks for the query text.',
+      'If the user asks about object existence, columns, counts, IDs, or database data and read-only context is authorized, use tools before answering, unless already collected read-only data answers directly.',
+      'For questions that require sequential investigation, continue using tools until you find the answer or the budget is exhausted. Example: search for the table, inspect columns, run a filtered SELECT, then answer.',
+      'You can investigate across multiple rounds. For example, search for a table first, then request columns for the table you found.',
+      `Budget for this question: up to ${budget.maxToolCalls} total tool calls, up to ${budget.maxToolCallsPerIteration} per round. Already used: ${budget.toolCallsUsed}.`
     ];
 
     if (readonlyContext && !forceFinalAnswer && AiAssistantToolBudget.canRunTool(budget)) {
       parts.push(AiAssistantTools.getToolInstructions());
     } else if (!readonlyContext) {
-      parts.push('Nenhum contexto readonly de banco foi autorizado. Responda sem executar ferramentas de banco.');
+      parts.push('No read-only database context was authorized. Answer without running database tools.');
     }
 
     const transcript = AiAssistantToolBudget.compactTranscript(toolSections, budget);
     if (transcript) {
       parts.push([
-        'Dados readonly já coletados pelo DBOLT nesta pergunta:',
+        'Read-only data already collected by DBOLT for this question:',
         transcript,
-        'Não peça novamente uma ferramenta que já tenha retornado estes mesmos dados.'
+        'Do not request a tool again if it has already returned the same data.'
       ].join('\n'));
     }
 
     if (forceFinalAnswer) {
       parts.push([
-        'O orçamento de ferramentas acabou ou a investigação foi suficiente.',
-        'Responda agora ao usuário com os dados disponíveis.',
-        'Não retorne JSON de ferramenta nesta resposta final.'
+        'The tool budget is exhausted or the investigation is sufficient.',
+        'Answer the user now with the available data.',
+        'Do not return tool JSON in this final answer.'
       ].join('\n'));
     }
 
@@ -245,7 +221,7 @@ class AiAssistantAgentService {
       .filter((message) => message.content.length > 0);
 
     if (normalizedMessages.length === 0) {
-      throw new Error('Mensagem do chat não informada.');
+      throw new Error('Chat message was not provided.');
     }
 
     return normalizedMessages.slice(-maxMessages);
@@ -255,10 +231,14 @@ class AiAssistantAgentService {
     const toolCalls = this.parseToolCalls(content);
 
     if (toolCalls.length > 0) {
-      return 'Não consegui finalizar a resposta antes do limite de consultas readonly. Refine a pergunta ou informe o nome exato da tabela/view.';
+      return 'I could not finish the answer before the read-only query limit. Refine the question or provide the exact table/view name.';
     }
 
     return content.trim();
+  }
+
+  private getResponseLanguage(appLanguage: unknown): string {
+    return appLanguage === 'pt-BR' ? 'Brazilian Portuguese (pt-BR)' : 'English (en)';
   }
 
   private truncateText(value: string, maxLength: number): string {

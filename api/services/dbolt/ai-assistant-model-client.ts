@@ -75,7 +75,7 @@ class AiAssistantModelClient {
       return 'Claude';
     }
 
-    return provider === 'gemini' ? 'Gemini' : 'OpenAI compatível';
+    return provider === 'gemini' ? 'Gemini' : 'OpenAI compatible';
   }
 
   private async completeWithOpenAiCompatible(
@@ -112,7 +112,7 @@ class AiAssistantModelClient {
     const content = completion.choices?.[0]?.message?.content?.trim();
 
     if (!content) {
-      throw new Error('A IA não retornou uma resposta válida.');
+      throw new Error('The AI did not return a valid response.');
     }
 
     return {
@@ -161,7 +161,7 @@ class AiAssistantModelClient {
       .trim();
 
     if (!content) {
-      throw new Error('A IA não retornou uma resposta válida.');
+      throw new Error('The AI did not return a valid response.');
     }
 
     return {
@@ -204,7 +204,7 @@ class AiAssistantModelClient {
       .trim();
 
     if (!content) {
-      throw new Error('A IA não retornou uma resposta válida.');
+      throw new Error('The AI did not return a valid response.');
     }
 
     return {
@@ -235,7 +235,7 @@ class AiAssistantModelClient {
   }
 
   private async extractErrorMessage(response: Response): Promise<string> {
-    const fallbackMessage = `Falha ao chamar a IA (${response.status}).`;
+    const fallbackMessage = `Failed to call the AI provider (${response.status}).`;
     const responseText = await response.text().catch(() => '');
 
     if (!responseText) {
