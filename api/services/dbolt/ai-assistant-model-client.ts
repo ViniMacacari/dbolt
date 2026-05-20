@@ -94,12 +94,23 @@ class AiAssistantModelClient {
       return await this.completeWithAnthropic(settings.model, settings.apiKey, systemPrompt, messages);
     }
 
+    if (settings.provider === 'openrouter') {
+      return await this.completeWithOpenRouter(
+        settings.baseUrl,
+        settings.model,
+        settings.apiKey,
+        systemPrompt,
+        messages
+      );
+    }
+
     return await this.completeWithOpenAiCompatible(
       settings.baseUrl,
       settings.model,
       settings.apiKey,
       systemPrompt,
-      messages
+      messages,
+      {}
     );
   }
 
@@ -108,7 +119,30 @@ class AiAssistantModelClient {
       return 'Claude';
     }
 
+    if (provider === 'openrouter') {
+      return 'OpenRouter';
+    }
+
     return provider === 'gemini' ? 'Gemini' : 'OpenAI compatible';
+  }
+
+  private async completeWithOpenRouter(
+    baseUrl: string,
+    model: string,
+    apiKey: string,
+    systemPrompt: string,
+    messages: AiModelMessage[]
+  ): Promise<AiModelCompletion> {
+    return await this.completeWithOpenAiCompatible(
+      baseUrl,
+      model,
+      apiKey,
+      systemPrompt,
+      messages,
+      {
+        'X-OpenRouter-Title': 'DBOLT Database Manager'
+      }
+    );
   }
 
   private async completeWithOpenAiCompatible(
@@ -116,13 +150,15 @@ class AiAssistantModelClient {
     model: string,
     apiKey: string,
     systemPrompt: string,
-    messages: AiModelMessage[]
+    messages: AiModelMessage[],
+    additionalHeaders: Record<string, string>
   ): Promise<AiModelCompletion> {
     const response = await fetch(baseUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...additionalHeaders
       },
       body: JSON.stringify({
         model,
