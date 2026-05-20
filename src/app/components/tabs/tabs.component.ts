@@ -123,10 +123,17 @@ export class TabsComponent {
     }, 100)
   }
 
-  openSettingsTab(): void {
+  openSettingsTab(activeSettingsTab: string | null = null): void {
     const existingIndex = this.tabs.findIndex(tab => tab.type === 'settings')
 
     if (existingIndex >= 0) {
+      if (activeSettingsTab) {
+        this.tabs[existingIndex].info = {
+          ...this.tabs[existingIndex].info,
+          activeTab: activeSettingsTab
+        }
+      }
+
       this.selectTab(existingIndex)
       return
     }
@@ -135,7 +142,7 @@ export class TabsComponent {
       id: 'settings',
       name: this.t('tabs.settings'),
       type: 'settings',
-      info: {},
+      info: activeSettingsTab ? { activeTab: activeSettingsTab } : {},
       icon: 'SETTINGS'
     }
 

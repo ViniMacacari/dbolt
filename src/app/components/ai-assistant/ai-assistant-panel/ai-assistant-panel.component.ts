@@ -14,7 +14,6 @@ import {
 
 import { AiChatInputComponent } from '../ai-chat-input/ai-chat-input.component'
 import { AiChatMessageComponent } from '../ai-chat-message/ai-chat-message.component'
-import { AiSettingsFormComponent } from '../ai-settings-form/ai-settings-form.component'
 import { YesNoModalComponent } from '../../modal/yes-no-modal/yes-no-modal.component'
 import { AiAssistantChatService } from '../../../services/ai-assistant/ai-assistant-chat.service'
 import {
@@ -22,7 +21,6 @@ import {
   AiAssistantConversation,
   AiAssistantConversationsState,
   AiAssistantSettings,
-  AiAssistantSettingsUpdate,
   AiChatInputSubmit,
   AiChatMessage
 } from '../../../services/ai-assistant/ai-assistant.model'
@@ -34,7 +32,7 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
 @Component({
   selector: 'app-ai-assistant-panel',
   standalone: true,
-  imports: [CommonModule, AiChatInputComponent, AiChatMessageComponent, AiSettingsFormComponent, YesNoModalComponent],
+  imports: [CommonModule, AiChatInputComponent, AiChatMessageComponent, YesNoModalComponent],
   templateUrl: './ai-assistant-panel.component.html',
   styleUrl: './ai-assistant-panel.component.scss'
 })
@@ -43,15 +41,14 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
   @Input() dbSchemasData: unknown
   @Input() tabInfo: unknown
   @Output() close = new EventEmitter<void>()
+  @Output() settingsRequested = new EventEmitter<void>()
 
   settings: AiAssistantSettings | null = null
   conversations: AiAssistantConversation[] = []
   activeConversationId: string = ''
   messages: AiChatMessage[] = []
-  showSettings: boolean = false
   loadingSettings: boolean = false
   loadingConversations: boolean = false
-  savingSettings: boolean = false
   sending: boolean = false
   errorMessage: string = ''
   showDeleteConversationConfirm: boolean = false
@@ -136,10 +133,8 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
 
     try {
       this.settings = await this.settingsService.loadSettings()
-      this.showSettings = !this.settings.hasApiKey
     } catch (error: unknown) {
       this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.loadSettingsError'))
-      this.showSettings = true
     } finally {
       this.loadingSettings = false
     }
@@ -157,24 +152,10 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
     }
   }
 
-  async saveSettings(update: AiAssistantSettingsUpdate): Promise<void> {
-    this.savingSettings = true
-    this.errorMessage = ''
-
-    try {
-      this.settings = await this.settingsService.saveSettings(update)
-      this.showSettings = !this.settings.hasApiKey
-    } catch (error: unknown) {
-      this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.saveSettingsError'))
-    } finally {
-      this.savingSettings = false
-    }
-  }
-
   async onSend(event: AiChatInputSubmit): Promise<void> {
     if (!this.settings?.hasApiKey) {
-      this.showSettings = true
       this.errorMessage = this.t('aiAssistant.apiKeyRequired')
+      this.settingsRequested.emit()
       return
     }
 
@@ -225,7 +206,6 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
     this.errorMessage = ''
 
     try {
-      this.showSettings = false
       this.applyConversationState(await this.conversationsService.createConversation())
     } catch (error: unknown) {
       this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.saveConversationError'))
@@ -241,7 +221,6 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
     this.errorMessage = ''
 
     try {
-      this.showSettings = false
       this.applyConversationState(await this.conversationsService.setActiveConversation(conversation.id))
     } catch (error: unknown) {
       this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.loadConversationsError'))
@@ -300,7 +279,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
   private toApiMessages(): AiAssistantApiMessage[] {
     return this.messages
       .filter((message) => !message.error)
-      .slice(-10)
+      .slice(-this.getMaxContextMessages())
       .map((message) => ({
         role: message.role,
         content: message.content.length > this.getMessagePromptLimit(message.role)
@@ -311,6 +290,16 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
 
   private getMessagePromptLimit(role: 'user' | 'assistant'): number {
     return role === 'assistant' ? 900 : 1400
+  }
+
+  private getMaxContextMessages(): number {
+    const value = Number(this.settings?.limits?.maxContextMessages || 10)
+
+    if (!Number.isFinite(value)) {
+      return 10
+    }
+
+    return Math.min(Math.max(Math.floor(value), 1), 20)
   }
 
   private async ensureActiveConversation(): Promise<string> {

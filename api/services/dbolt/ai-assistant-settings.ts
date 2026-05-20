@@ -12,6 +12,24 @@ const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 
 export type AiAssistantProvider = 'openai' | 'gemini' | 'anthropic';
 
+export interface AiAssistantLimits {
+  maxApiCallsPerMessage: number;
+  maxDatabaseRequestsPerMessage: number;
+  maxDatabaseRequestsPerApiCall: number;
+  maxContextMessages: number;
+  maxToolResultChars: number;
+  maxToolTranscriptChars: number;
+}
+
+const DEFAULT_LIMITS: AiAssistantLimits = {
+  maxApiCallsPerMessage: 4,
+  maxDatabaseRequestsPerMessage: 4,
+  maxDatabaseRequestsPerApiCall: 2,
+  maxContextMessages: 10,
+  maxToolResultChars: 9000,
+  maxToolTranscriptChars: 18000
+};
+
 export interface AiAssistantPublicSettings {
   provider: AiAssistantProvider;
   baseUrl: string;
@@ -19,6 +37,7 @@ export interface AiAssistantPublicSettings {
   hasApiKey: boolean;
   hasApiKeys: Record<AiAssistantProvider, boolean>;
   maskedApiKey?: string;
+  limits: AiAssistantLimits;
 }
 
 export interface AiAssistantSettingsInput {
@@ -27,6 +46,9 @@ export interface AiAssistantSettingsInput {
   model?: string;
   apiKey?: string;
   clearApiKey?: boolean;
+  apiKeys?: Partial<Record<AiAssistantProvider, string>>;
+  clearApiKeys?: Partial<Record<AiAssistantProvider, boolean>>;
+  limits?: Partial<AiAssistantLimits>;
 }
 
 export interface AiAssistantResolvedSettings {
@@ -34,6 +56,7 @@ export interface AiAssistantResolvedSettings {
   baseUrl: string;
   model: string;
   apiKey: string;
+  limits: AiAssistantLimits;
 }
 
 interface StoredAiAssistantSettings {
@@ -42,6 +65,7 @@ interface StoredAiAssistantSettings {
   model: string;
   encryptedApiKeys?: Partial<Record<AiAssistantProvider, string>>;
   encryptedApiKey?: string;
+  limits?: AiAssistantLimits;
   updatedAt?: string;
 }
 
@@ -63,6 +87,11 @@ class AiAssistantSettingsService {
     const encryptedApiKeys = {
       ...(storedSettings.encryptedApiKeys || {})
     };
+    const model = typeof input.model === 'string'
+      ? input.model
+      : provider === storedSettings.provider
+        ? storedSettings.model
+        : this.defaultModelForProvider(provider);
 
     const nextSettings: StoredAiAssistantSettings = {
       ...storedSettings,
@@ -71,7 +100,11 @@ class AiAssistantSettingsService {
       baseUrl: provider === 'openai'
         ? this.normalizeBaseUrl(input.baseUrl ?? storedSettings.baseUrl)
         : storedSettings.baseUrl,
-      model: this.normalizeModel(input.model ?? storedSettings.model),
+      model: this.normalizeModel(model),
+      limits: this.normalizeLimits({
+        ...(storedSettings.limits || {}),
+        ...(input.limits || {})
+      }),
       updatedAt: new Date().toISOString()
     };
 
@@ -80,6 +113,8 @@ class AiAssistantSettingsService {
     } else if (typeof input.apiKey === 'string' && input.apiKey.trim()) {
       encryptedApiKeys[provider] = await SecureStorage.encryptString(input.apiKey.trim());
     }
+
+    await this.applyApiKeyUpdates(encryptedApiKeys, input.apiKeys, input.clearApiKeys);
 
     delete nextSettings.encryptedApiKey;
     await this.writeSettingsFile(nextSettings);
@@ -101,7 +136,8 @@ class AiAssistantSettingsService {
       provider: storedSettings.provider,
       baseUrl: storedSettings.baseUrl,
       model: storedSettings.model,
-      apiKey
+      apiKey,
+      limits: this.normalizeLimits(storedSettings.limits)
     };
   }
 
@@ -126,6 +162,7 @@ class AiAssistantSettingsService {
         baseUrl: this.normalizeBaseUrl(parsed.baseUrl || DEFAULT_OPENAI_BASE_URL),
         model: this.normalizeModel(parsed.model || this.defaultModelForProvider(provider)),
         encryptedApiKeys,
+        limits: this.normalizeLimits(parsed.limits),
         updatedAt: parsed.updatedAt
       };
     } catch (error: unknown) {
@@ -160,7 +197,8 @@ class AiAssistantSettingsService {
       provider: 'openai',
       baseUrl: DEFAULT_OPENAI_BASE_URL,
       model: DEFAULT_OPENAI_MODEL,
-      encryptedApiKeys: {}
+      encryptedApiKeys: {},
+      limits: DEFAULT_LIMITS
     };
   }
 
@@ -177,8 +215,30 @@ class AiAssistantSettingsService {
       model: settings.model,
       hasApiKey: hasApiKeys[settings.provider],
       hasApiKeys,
-      maskedApiKey: hasApiKeys[settings.provider] ? '••••••••' : undefined
+      maskedApiKey: hasApiKeys[settings.provider] ? '••••••••' : undefined,
+      limits: this.normalizeLimits(settings.limits)
     };
+  }
+
+  private async applyApiKeyUpdates(
+    encryptedApiKeys: Partial<Record<AiAssistantProvider, string>>,
+    apiKeys: Partial<Record<AiAssistantProvider, string>> | undefined,
+    clearApiKeys: Partial<Record<AiAssistantProvider, boolean>> | undefined
+  ): Promise<void> {
+    const providers: AiAssistantProvider[] = ['openai', 'gemini', 'anthropic'];
+
+    providers.forEach((provider) => {
+      if (clearApiKeys?.[provider]) {
+        delete encryptedApiKeys[provider];
+      }
+    });
+
+    for (const provider of providers) {
+      const apiKey = apiKeys?.[provider];
+      if (typeof apiKey === 'string' && apiKey.trim()) {
+        encryptedApiKeys[provider] = await SecureStorage.encryptString(apiKey.trim());
+      }
+    }
   }
 
   private normalizeProvider(provider: unknown): AiAssistantProvider {
@@ -229,6 +289,32 @@ class AiAssistantSettingsService {
     }
 
     return trimmedUrl;
+  }
+
+  private normalizeLimits(limits: Partial<AiAssistantLimits> | undefined): AiAssistantLimits {
+    return {
+      maxApiCallsPerMessage: this.normalizeIntegerLimit(limits?.maxApiCallsPerMessage, DEFAULT_LIMITS.maxApiCallsPerMessage, 1, 10),
+      maxDatabaseRequestsPerMessage: this.normalizeIntegerLimit(limits?.maxDatabaseRequestsPerMessage, DEFAULT_LIMITS.maxDatabaseRequestsPerMessage, 0, 20),
+      maxDatabaseRequestsPerApiCall: this.normalizeIntegerLimit(limits?.maxDatabaseRequestsPerApiCall, DEFAULT_LIMITS.maxDatabaseRequestsPerApiCall, 1, 5),
+      maxContextMessages: this.normalizeIntegerLimit(limits?.maxContextMessages, DEFAULT_LIMITS.maxContextMessages, 1, 20),
+      maxToolResultChars: this.normalizeIntegerLimit(limits?.maxToolResultChars, DEFAULT_LIMITS.maxToolResultChars, 1000, 50000),
+      maxToolTranscriptChars: this.normalizeIntegerLimit(limits?.maxToolTranscriptChars, DEFAULT_LIMITS.maxToolTranscriptChars, 4000, 100000)
+    };
+  }
+
+  private normalizeIntegerLimit(
+    value: unknown,
+    fallback: number,
+    min: number,
+    max: number
+  ): number {
+    const numberValue = Number(value);
+
+    if (!Number.isFinite(numberValue)) {
+      return fallback;
+    }
+
+    return Math.min(Math.max(Math.floor(numberValue), min), max);
   }
 }
 

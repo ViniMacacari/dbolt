@@ -1,33 +1,55 @@
 export interface AiAssistantToolBudgetState {
-  maxIterations: number;
+  maxApiCallsPerMessage: number;
   maxToolCalls: number;
   maxToolCallsPerIteration: number;
   maxToolResultChars: number;
   maxToolTranscriptChars: number;
+  apiCallsUsed: number;
   iterationsUsed: number;
   toolCallsUsed: number;
 }
 
+export interface AiAssistantToolBudgetInput {
+  maxApiCallsPerMessage?: number;
+  maxDatabaseRequestsPerMessage?: number;
+  maxDatabaseRequestsPerApiCall?: number;
+  maxToolResultChars?: number;
+  maxToolTranscriptChars?: number;
+}
+
 class AiAssistantToolBudgetService {
-  createState(): AiAssistantToolBudgetState {
+  createState(input: AiAssistantToolBudgetInput = {}): AiAssistantToolBudgetState {
     return {
-      maxIterations: 4,
-      maxToolCalls: 4,
-      maxToolCallsPerIteration: 2,
-      maxToolResultChars: 9000,
-      maxToolTranscriptChars: 18000,
+      maxApiCallsPerMessage: this.normalizeInteger(input.maxApiCallsPerMessage, 4, 1, 10),
+      maxToolCalls: this.normalizeInteger(input.maxDatabaseRequestsPerMessage, 4, 0, 20),
+      maxToolCallsPerIteration: this.normalizeInteger(input.maxDatabaseRequestsPerApiCall, 2, 1, 5),
+      maxToolResultChars: this.normalizeInteger(input.maxToolResultChars, 9000, 1000, 50000),
+      maxToolTranscriptChars: this.normalizeInteger(input.maxToolTranscriptChars, 18000, 4000, 100000),
+      apiCallsUsed: 0,
       iterationsUsed: 0,
       toolCallsUsed: 0
     };
   }
 
   beginIteration(state: AiAssistantToolBudgetState): boolean {
-    if (state.iterationsUsed >= state.maxIterations) {
+    if (state.iterationsUsed >= state.maxApiCallsPerMessage) {
       return false;
     }
 
     state.iterationsUsed += 1;
     return true;
+  }
+
+  getRemainingApiCalls(state: AiAssistantToolBudgetState): number {
+    return Math.max(0, state.maxApiCallsPerMessage - state.apiCallsUsed);
+  }
+
+  canCallModel(state: AiAssistantToolBudgetState): boolean {
+    return this.getRemainingApiCalls(state) > 0;
+  }
+
+  registerApiCall(state: AiAssistantToolBudgetState): void {
+    state.apiCallsUsed += 1;
   }
 
   getRemainingToolCalls(state: AiAssistantToolBudgetState): number {
@@ -58,6 +80,16 @@ class AiAssistantToolBudgetService {
     }
 
     return this.limitText(transcript.slice(-state.maxToolTranscriptChars), state.maxToolTranscriptChars);
+  }
+
+  private normalizeInteger(value: unknown, fallback: number, min: number, max: number): number {
+    const numberValue = Number(value);
+
+    if (!Number.isFinite(numberValue)) {
+      return fallback;
+    }
+
+    return Math.min(Math.max(Math.floor(numberValue), min), max);
   }
 }
 

@@ -1,6 +1,15 @@
 export type AiChatRole = 'user' | 'assistant'
 export type AiAssistantProvider = 'openai' | 'gemini' | 'anthropic'
 
+export interface AiAssistantLimits {
+  maxApiCallsPerMessage: number
+  maxDatabaseRequestsPerMessage: number
+  maxDatabaseRequestsPerApiCall: number
+  maxContextMessages: number
+  maxToolResultChars: number
+  maxToolTranscriptChars: number
+}
+
 export interface AiAssistantSettings {
   provider: AiAssistantProvider
   baseUrl: string
@@ -8,6 +17,7 @@ export interface AiAssistantSettings {
   hasApiKey: boolean
   hasApiKeys?: Record<AiAssistantProvider, boolean>
   maskedApiKey?: string
+  limits: AiAssistantLimits
 }
 
 export interface AiAssistantSettingsUpdate {
@@ -16,6 +26,9 @@ export interface AiAssistantSettingsUpdate {
   model: string
   apiKey?: string
   clearApiKey?: boolean
+  apiKeys?: Partial<Record<AiAssistantProvider, string>>
+  clearApiKeys?: Partial<Record<AiAssistantProvider, boolean>>
+  limits?: Partial<AiAssistantLimits>
 }
 
 export interface AiChatMessage {
