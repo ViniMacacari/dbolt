@@ -115,7 +115,9 @@ class AiAssistantAgentService {
       'Focus on SQL, data modeling, schema investigation, and database productivity.',
       'Do not request passwords, tokens, or API keys.',
       'Do not invent tables, columns, or results. When read-only database action data is available, treat it as factual.',
-      'Never request or suggest write commands such as UPDATE, DELETE, INSERT, DROP, ALTER, TRUNCATE, EXEC, CALL, or MERGE.',
+      'Distinguish SQL generation from SQL execution. You may provide DDL/DML scripts as plain text or code blocks when the user asks for them.',
+      'Never execute or request DBOLT database actions for write commands such as UPDATE, DELETE, INSERT, CREATE, DROP, ALTER, TRUNCATE, EXEC, CALL, or MERGE.',
+      'If you provide a write/DDL/DML script, make clear it is only a script for the user to review and run manually; do not claim it was executed.',
       ...(readonlyContext && allowTools ? [
         'When read-only context is authorized, you may execute SELECT/WITH queries with runReadonlyQuery to answer questions about database data.',
         'Do not say you cannot execute a query when the query is read-only. Use runReadonlyQuery instead of giving SQL for the user to run, unless the user only asks for the query text.',
