@@ -1,5 +1,5 @@
 export type AiChatRole = 'user' | 'assistant'
-export type AiAssistantProvider = 'openai' | 'gemini'
+export type AiAssistantProvider = 'openai' | 'gemini' | 'anthropic'
 
 export interface AiAssistantSettings {
   provider: AiAssistantProvider
