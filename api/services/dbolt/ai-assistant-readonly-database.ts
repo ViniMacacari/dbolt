@@ -102,7 +102,7 @@ class AiAssistantReadonlyDatabaseService {
     const result = await provider.listTableObjects(context.connectionKey);
 
     if (!result.success) {
-      throw new Error(this.getServiceErrorMessage(result, 'Não foi possível consultar os objetos do banco.'));
+      throw new Error(this.getServiceErrorMessage(result, 'Could not query database objects.'));
     }
 
     const normalizedSearch = search.trim().toLowerCase();
@@ -132,7 +132,7 @@ class AiAssistantReadonlyDatabaseService {
   ): Promise<AiReadonlyTableColumns> {
     const normalizedTableName = tableName.trim();
     if (!normalizedTableName) {
-      throw new Error('Nome da tabela não informado.');
+      throw new Error('Table name was not provided.');
     }
 
     const provider = this.getDatabaseInfoProvider(context);
@@ -140,7 +140,7 @@ class AiAssistantReadonlyDatabaseService {
     const result = await provider.tableColumns(normalizedTableName, context.connectionKey);
 
     if (!result.success) {
-      throw new Error(this.getServiceErrorMessage(result, 'Não foi possível consultar as colunas da tabela.'));
+      throw new Error(this.getServiceErrorMessage(result, 'Could not query table columns.'));
     }
 
     const columns = (result.data || []) as QueryRow[];
@@ -161,7 +161,7 @@ class AiAssistantReadonlyDatabaseService {
   ): Promise<AiReadonlyObjectSearch> {
     const normalizedSearch = String(search || '').trim();
     if (!normalizedSearch) {
-      throw new Error('Termo de busca não informado.');
+      throw new Error('Search term was not provided.');
     }
 
     const normalizedLimit = this.normalizeLimit(limit, DEFAULT_SEARCH_LIMIT, MAX_SEARCH_LIMIT);
@@ -200,7 +200,7 @@ class AiAssistantReadonlyDatabaseService {
     const result = await provider.query(executableSql, rowLimit, context.connectionKey);
 
     if (!result.success) {
-      throw new Error(this.getServiceErrorMessage(result, 'Não foi possível executar a consulta readonly.'));
+      throw new Error(this.getServiceErrorMessage(result, 'Could not execute the read-only query.'));
     }
 
     const rows = Array.isArray(result.result) ? result.result as QueryRow[] : [];
@@ -233,7 +233,7 @@ class AiAssistantReadonlyDatabaseService {
       try {
         sections.push(this.formatQueryResult(await this.runReadOnlyQuery(context, sql)));
       } catch (error: unknown) {
-        sections.push(`Não foi possível executar a consulta readonly: ${this.getErrorMessage(error)}`);
+        sections.push(`Could not execute the read-only query: ${this.getErrorMessage(error)}`);
       }
     }
 
@@ -243,7 +243,7 @@ class AiAssistantReadonlyDatabaseService {
           await this.searchObjects(context, search.term, DEFAULT_SEARCH_LIMIT, search.types)
         ));
       } catch (error: unknown) {
-        sections.push(`Não foi possível buscar objetos por "${search.term}": ${this.getErrorMessage(error)}`);
+        sections.push(`Could not search objects for "${search.term}": ${this.getErrorMessage(error)}`);
       }
     }
 
@@ -256,7 +256,7 @@ class AiAssistantReadonlyDatabaseService {
             1
           )));
         } catch (error: unknown) {
-          sections.push(`Não foi possível contar registros de ${tableName}: ${this.getErrorMessage(error)}`);
+          sections.push(`Could not count rows from ${tableName}: ${this.getErrorMessage(error)}`);
         }
       }
     }
@@ -269,7 +269,7 @@ class AiAssistantReadonlyDatabaseService {
           const columns = await this.getTableColumns(context, tableName);
           sections.push(this.formatTableColumns(columns, includeColumnList));
         } catch (error: unknown) {
-          sections.push(`Não foi possível consultar colunas de ${tableName}: ${this.getErrorMessage(error)}`);
+          sections.push(`Could not query columns from ${tableName}: ${this.getErrorMessage(error)}`);
         }
       }
     }
@@ -278,7 +278,7 @@ class AiAssistantReadonlyDatabaseService {
       try {
         sections.push(this.formatSchemaSummary(await this.getSchemaSummary(context, 30)));
       } catch (error: unknown) {
-        sections.push(`Não foi possível consultar resumo do schema: ${this.getErrorMessage(error)}`);
+        sections.push(`Could not query schema summary: ${this.getErrorMessage(error)}`);
       }
     }
 
@@ -287,9 +287,9 @@ class AiAssistantReadonlyDatabaseService {
     }
 
     return [
-      'Dados readonly consultados pelo DBOLT antes de responder. Use estes dados como fonte factual.',
-      'O contexto foi limitado de propósito para economizar tokens; não assuma objetos ou colunas fora dos dados abaixo.',
-      'Não execute nem sugira comandos de escrita como UPDATE, DELETE, INSERT, DROP, ALTER ou TRUNCATE.',
+      'Read-only data queried by DBOLT before answering. Use this data as factual source material.',
+      'The context was intentionally limited to save tokens; do not assume objects or columns outside the data below.',
+      'Do not execute or suggest write commands such as UPDATE, DELETE, INSERT, DROP, ALTER, or TRUNCATE.',
       ...sections
     ].join('\n');
   }
@@ -450,7 +450,7 @@ class AiAssistantReadonlyDatabaseService {
     const result = await provider.listTableObjects(context.connectionKey);
 
     if (!result.success) {
-      throw new Error(this.getServiceErrorMessage(result, 'Não foi possível consultar os objetos do banco.'));
+      throw new Error(this.getServiceErrorMessage(result, 'Could not query database objects.'));
     }
 
     return {
@@ -463,19 +463,19 @@ class AiAssistantReadonlyDatabaseService {
     const executableSql = trimStatementTerminator(String(sql || '').trim());
 
     if (!executableSql) {
-      throw new Error('SQL não informado.');
+      throw new Error('SQL was not provided.');
     }
 
     if (!isReadOnlySelectQuery(executableSql)) {
-      throw new Error('A IA só pode executar consultas readonly começando com SELECT ou WITH.');
+      throw new Error('The AI can only execute read-only queries starting with SELECT or WITH.');
     }
 
     if (this.hasAdditionalSqlStatements(executableSql)) {
-      throw new Error('A IA só pode executar uma consulta readonly por vez.');
+      throw new Error('The AI can only execute one read-only query at a time.');
     }
 
     if (this.containsBlockedSqlKeyword(executableSql)) {
-      throw new Error('A consulta contém comando não permitido para o modo readonly.');
+      throw new Error('The query contains a command that is not allowed in read-only mode.');
     }
 
     return executableSql;
@@ -604,36 +604,36 @@ class AiAssistantReadonlyDatabaseService {
   }
 
   private formatSchemaSummary(summary: AiReadonlySchemaSummary): string {
-    const tables = summary.tables.map((object) => object.name).join(', ') || 'nenhuma no limite consultado';
-    const views = summary.views.map((object) => object.name).join(', ') || 'nenhuma no limite consultado';
+    const tables = summary.tables.map((object) => object.name).join(', ') || 'none within the queried limit';
+    const views = summary.views.map((object) => object.name).join(', ') || 'none within the queried limit';
 
     return [
-      `Resumo do schema ${summary.connection.schema || summary.connection.database || ''}:`,
-      `Total de tabelas: ${summary.counts.tables}. Total de views: ${summary.counts.views}.`,
-      `Tabelas retornadas (${summary.tables.length}): ${tables}.`,
-      `Views retornadas (${summary.views.length}): ${views}.`,
-      summary.truncated ? 'Resultado truncado pelo limite readonly.' : ''
+      `Schema summary ${summary.connection.schema || summary.connection.database || ''}:`,
+      `Total tables: ${summary.counts.tables}. Total views: ${summary.counts.views}.`,
+      `Returned tables (${summary.tables.length}): ${tables}.`,
+      `Returned views (${summary.views.length}): ${views}.`,
+      summary.truncated ? 'Result truncated by the read-only limit.' : ''
     ].filter(Boolean).join('\n');
   }
 
   private formatObjectSearch(search: AiReadonlyObjectSearch): string {
     const typeLabel = search.types.length === 1
-      ? (search.types[0] === 'view' ? 'views' : 'tabelas')
-      : 'tabelas/views';
+      ? (search.types[0] === 'view' ? 'views' : 'tables')
+      : 'tables/views';
     const matches = search.matches
       .map((object) => `- ${object.type}: ${object.name}`)
-      .join('\n') || '- nenhum objeto encontrado';
+      .join('\n') || '- no object found';
 
     return [
-      `Busca readonly em ${typeLabel} por "${search.query}": ${search.totalMatches} encontrado(s).`,
-      `Schema possui ${search.counts.tables} tabela(s) e ${search.counts.views} view(s).`,
+      `Read-only ${typeLabel} search for "${search.query}": ${search.totalMatches} found.`,
+      `Schema has ${search.counts.tables} table(s) and ${search.counts.views} view(s).`,
       matches,
-      search.truncated ? 'Resultado truncado pelo limite readonly.' : ''
+      search.truncated ? 'Result truncated by the read-only limit.' : ''
     ].filter(Boolean).join('\n');
   }
 
   private formatTableColumns(columns: AiReadonlyTableColumns, includeColumnList: boolean): string {
-    const lines = [`Tabela/view ${columns.tableName}: ${columns.totalColumns} coluna(s).`];
+    const lines = [`Table/view ${columns.tableName}: ${columns.totalColumns} column(s).`];
 
     if (includeColumnList) {
       const columnLines = columns.columns
@@ -645,13 +645,13 @@ class AiAssistantReadonlyDatabaseService {
         })
         .filter((line) => line !== '- ');
 
-      lines.push(columnLines.join('\n') || '- nenhuma coluna retornada');
+      lines.push(columnLines.join('\n') || '- no columns returned');
 
       if (columns.totalColumns > PROMPT_COLUMN_LIMIT || columns.truncated) {
-        lines.push('Lista de colunas truncada pelo limite readonly.');
+        lines.push('Column list truncated by the read-only limit.');
       }
     } else {
-      lines.push('Lista de colunas omitida por economia de tokens; a pergunta pediu apenas contagem/resumo.');
+      lines.push('Column list omitted to save tokens; the question only asked for a count/summary.');
     }
 
     return lines.join('\n');
@@ -659,12 +659,12 @@ class AiAssistantReadonlyDatabaseService {
 
   private formatQueryResult(result: AiReadonlyQueryExecution): string {
     return [
-      'Consulta readonly executada:',
+      'Read-only query executed:',
       `SQL: ${this.truncateText(result.sql, 500)}`,
-      `Linhas retornadas pela consulta: ${result.returnedRows}. Amostra enviada ao modelo: ${result.rows.length}. Total informado pelo banco: ${result.totalRows ?? 'indisponível'}.`,
-      `Colunas: ${result.columns.join(', ') || 'indisponíveis'}.`,
-      `Amostra JSON: ${JSON.stringify(result.rows)}`,
-      result.truncated ? 'Resultado truncado pelo limite readonly.' : ''
+      `Rows returned by the query: ${result.returnedRows}. Sample sent to the model: ${result.rows.length}. Total reported by the database: ${result.totalRows ?? 'unavailable'}.`,
+      `Columns: ${result.columns.join(', ') || 'unavailable'}.`,
+      `JSON sample: ${JSON.stringify(result.rows)}`,
+      result.truncated ? 'Result truncated by the read-only limit.' : ''
     ].filter(Boolean).join('\n');
   }
 
@@ -737,7 +737,7 @@ class AiAssistantReadonlyDatabaseService {
     if (database === 'sqlserver') return ListObjectsSQLServerV1;
     if (database === 'sqlite') return ListObjectsSQLiteV3;
 
-    throw new Error(`Banco de dados não suportado pelo contexto readonly da IA: ${context.sgbd || 'desconhecido'}`);
+    throw new Error(`Database not supported by the AI read-only context: ${context.sgbd || 'unknown'}`);
   }
 
   private getDatabaseQueryProvider(context: AiReadonlyDatabaseContext): DatabaseQueryProvider {
@@ -749,7 +749,7 @@ class AiAssistantReadonlyDatabaseService {
     if (database === 'sqlserver') return QuerySQLServerV1;
     if (database === 'sqlite') return QuerySQLiteV3;
 
-    throw new Error(`Banco de dados não suportado para consulta readonly da IA: ${context.sgbd || 'desconhecido'}`);
+    throw new Error(`Database not supported for AI read-only queries: ${context.sgbd || 'unknown'}`);
   }
 
   private normalizeLimit(limit: number, fallback: number, max: number): number {
