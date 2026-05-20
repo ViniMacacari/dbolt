@@ -42,17 +42,17 @@ class AiAssistantToolsService {
 
   getToolInstructions(): string {
     return [
-      'Read-only tools available when the user authorized database context:',
+      'Read-only database actions available when the user authorized database context:',
       '- searchObjects: searches tables/views by partial name. Args: {"search":"text","types":["table","view"],"limit":160}. Use before getTableColumns when you do not know the exact name.',
       '- getTableColumns: lists column metadata for a table/view. Args: {"tableName":"OINV","limit":60}.',
       '- getSchemaSummary: small summary of tables/views. Args: {"search":"optional","limit":30}. Use only when a specific search is not enough.',
       '- runReadonlyQuery: runs only SELECT/WITH with a row limit. Args: {"sql":"SELECT ...","maxRows":50}. Never use it for INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, EXEC, or multiple statements.',
-      'For object discovery, choose concise search terms from the user intent and database naming context. If the first search has no useful match, try a broader or alternative term within the tool budget.',
+      'For object discovery, choose concise search terms from the user intent and database naming context. If the first search has no useful match, try a broader or alternative term within the database action budget.',
       'Use runReadonlyQuery when the question asks for row values, IDs, emails, names, counts, or any data that depends on table contents.',
-      'If you still need information to build the SELECT safely, request another tool first; if you already know the table and columns, run the read-only SELECT.',
-      'To request tools, reply ONLY with valid JSON in this format:',
-      '{"toolCalls":[{"name":"searchObjects","arguments":{"search":"OINV","types":["table","view"],"limit":20}}]}',
-      'Request at most two tools per round. When you have enough data, answer the user normally, without tool JSON.'
+      'If you still need information to build the SELECT safely, request another database action first; if you already know the table and columns, run the read-only SELECT.',
+      'To request database actions, reply ONLY with valid JSON text in this format:',
+      '{"databaseActions":[{"name":"searchObjects","arguments":{"search":"OINV","types":["table","view"],"limit":20}}]}',
+      'Request at most two database actions per round. When you have enough data, answer the user normally, without database action JSON.'
     ].join('\n');
   }
 
@@ -116,7 +116,7 @@ class AiAssistantToolsService {
 
   private formatObjectSearch(result: AiReadonlyObjectSearch): string {
     return JSON.stringify({
-      tool: 'searchObjects',
+      action: 'searchObjects',
       search: result.query,
       searchedTypes: result.types,
       totalTablesInSchema: result.counts.tables,
@@ -129,7 +129,7 @@ class AiAssistantToolsService {
 
   private formatTableColumns(result: AiReadonlyTableColumns): string {
     return JSON.stringify({
-      tool: 'getTableColumns',
+      action: 'getTableColumns',
       tableName: result.tableName,
       totalColumns: result.totalColumns,
       columns: result.columns.map((column) => this.compactColumn(column)),
@@ -139,7 +139,7 @@ class AiAssistantToolsService {
 
   private formatSchemaSummary(result: AiReadonlySchemaSummary): string {
     return JSON.stringify({
-      tool: 'getSchemaSummary',
+      action: 'getSchemaSummary',
       connection: result.connection,
       counts: result.counts,
       tables: result.tables,
@@ -150,7 +150,7 @@ class AiAssistantToolsService {
 
   private formatQueryExecution(result: AiReadonlyQueryExecution): string {
     return JSON.stringify({
-      tool: 'runReadonlyQuery',
+      action: 'runReadonlyQuery',
       sql: result.sql,
       columns: result.columns,
       returnedRows: result.returnedRows,

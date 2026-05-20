@@ -18,6 +18,16 @@ interface ChatCompletionResponse {
   choices?: Array<{
     message?: {
       content?: string | null;
+      function_call?: {
+        name?: string;
+        arguments?: unknown;
+      };
+      tool_calls?: Array<{
+        function?: {
+          name?: string;
+          arguments?: unknown;
+        };
+      }>;
     };
   }>;
 }
@@ -35,6 +45,10 @@ interface GeminiGenerateContentResponse {
     content?: {
       parts?: Array<{
         text?: string;
+        functionCall?: {
+          name?: string;
+          args?: Record<string, unknown>;
+        };
       }>;
     };
     safetyRatings?: Array<{
@@ -56,7 +70,14 @@ interface AnthropicMessageResponse {
   content?: Array<{
     type?: string;
     text?: string;
+    name?: string;
+    input?: Record<string, unknown>;
   }>;
+}
+
+interface NativeDatabaseActionCall {
+  name?: string;
+  arguments?: Record<string, unknown>;
 }
 
 class AiAssistantModelClient {
@@ -122,13 +143,14 @@ class AiAssistantModelClient {
 
     const completion = (await response.json()) as ChatCompletionResponse;
     const content = completion.choices?.[0]?.message?.content?.trim();
+    const nativeCallJson = this.readOpenAiNativeCallsAsJson(completion);
 
-    if (!content) {
+    if (!content && !nativeCallJson) {
       throw new Error('The AI did not return a valid response.');
     }
 
     return {
-      content,
+      content: content || nativeCallJson,
       model: completion.model || model
     };
   }
@@ -149,9 +171,14 @@ class AiAssistantModelClient {
         },
         body: JSON.stringify({
           systemInstruction: {
-            parts: [{ text: systemPrompt }]
+            parts: [{ text: this.buildGeminiSystemPrompt(systemPrompt) }]
           },
           contents: this.normalizeGeminiMessages(messages),
+          toolConfig: {
+            functionCallingConfig: {
+              mode: 'NONE'
+            }
+          },
           generationConfig: {
             temperature: 0.2
           }
@@ -168,13 +195,14 @@ class AiAssistantModelClient {
       ?.map((part) => part.text || '')
       .join('')
       .trim();
+    const functionCallJson = this.readGeminiFunctionCallsAsJson(completion);
 
-    if (!content) {
+    if (!content && !functionCallJson) {
       throw new Error(this.buildEmptyGeminiResponseMessage(completion));
     }
 
     return {
-      content,
+      content: content || functionCallJson,
       model
     };
   }
@@ -211,13 +239,14 @@ class AiAssistantModelClient {
       .map((part) => part.text || '')
       .join('')
       .trim();
+    const nativeCallJson = this.readAnthropicNativeCallsAsJson(completion);
 
-    if (!content) {
+    if (!content && !nativeCallJson) {
       throw new Error('The AI did not return a valid response.');
     }
 
     return {
-      content,
+      content: content || nativeCallJson,
       model: completion.model || model
     };
   }
@@ -286,6 +315,93 @@ class AiAssistantModelClient {
     }
 
     return normalizedMessages;
+  }
+
+  private buildGeminiSystemPrompt(systemPrompt: string): string {
+    return [
+      systemPrompt,
+      'Gemini transport rule: return plain text only. Do not emit native call parts. When DBOLT asks for database actions, write the database action JSON as text.'
+    ].join('\n\n');
+  }
+
+  private readGeminiFunctionCallsAsJson(completion: GeminiGenerateContentResponse): string {
+    const calls = completion.candidates?.[0]?.content?.parts
+      ?.map((part) => part.functionCall)
+      .filter((call): call is { name?: string; args?: Record<string, unknown> } => Boolean(call?.name))
+      .map((call) => ({
+        name: call.name,
+        arguments: call.args || {}
+      })) || [];
+
+    return this.buildDatabaseActionsJson(calls);
+  }
+
+  private readOpenAiNativeCallsAsJson(completion: ChatCompletionResponse): string {
+    const message = completion.choices?.[0]?.message;
+    const calls: NativeDatabaseActionCall[] = [];
+
+    for (const toolCall of message?.tool_calls || []) {
+      if (!toolCall.function?.name) {
+        continue;
+      }
+
+      calls.push({
+        name: toolCall.function.name,
+        arguments: this.parseNativeCallArguments(toolCall.function.arguments)
+      });
+    }
+
+    if (message?.function_call?.name) {
+      calls.push({
+        name: message.function_call.name,
+        arguments: this.parseNativeCallArguments(message.function_call.arguments)
+      });
+    }
+
+    return this.buildDatabaseActionsJson(calls);
+  }
+
+  private readAnthropicNativeCallsAsJson(completion: AnthropicMessageResponse): string {
+    const calls = completion.content
+      ?.filter((part) => part.type === 'tool_use' && part.name)
+      .map((part) => ({
+        name: part.name,
+        arguments: part.input || {}
+      })) || [];
+
+    return this.buildDatabaseActionsJson(calls);
+  }
+
+  private buildDatabaseActionsJson(calls: NativeDatabaseActionCall[]): string {
+    if (calls.length === 0) {
+      return '';
+    }
+
+    return JSON.stringify({
+      databaseActions: calls.map((call) => ({
+        name: call.name,
+        arguments: call.arguments || {}
+      }))
+    });
+  }
+
+  private parseNativeCallArguments(value: unknown): Record<string, unknown> {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+
+    if (typeof value !== 'string' || !value.trim()) {
+      return {};
+    }
+
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : {};
+    } catch (_error: unknown) {
+      return {};
+    }
   }
 
   private buildEmptyGeminiResponseMessage(completion: GeminiGenerateContentResponse): string {
