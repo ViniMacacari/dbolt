@@ -31,6 +31,7 @@ import { AiAssistantPanelComponent } from '../../components/ai-assistant/ai-assi
 export class DatabaseManagerComponent {
   @ViewChild(TabsComponent) tabsComponent!: TabsComponent
   @ViewChild(ToastComponent) toast!: ToastComponent
+  @ViewChild(AiAssistantPanelComponent) aiAssistantPanel?: AiAssistantPanelComponent
   @Output() dbInfo = new EventEmitter<any>()
 
   activeConnection: any = {}
@@ -324,6 +325,16 @@ export class DatabaseManagerComponent {
 
   onSettingsRequested(): void {
     this.tabsComponent.openSettingsTab()
+  }
+
+  onAiSettingsRequested(): void {
+    this.tabsComponent.openSettingsTab('ai')
+  }
+
+  onAiSettingsSaved(): void {
+    if (this.aiAssistantOpen) {
+      void this.aiAssistantPanel?.loadSettings()
+    }
   }
 
   openAiAssistant(): void {
