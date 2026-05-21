@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { pathToFileURL } from 'url';
-import type { IpcMainInvokeEvent } from 'electron';
+import type { Input, IpcMainInvokeEvent } from 'electron';
 
 import { getInternalApiBaseUrl, internalApiReady } from './api/server.js';
 import {
@@ -90,11 +90,24 @@ function getEventWindow(event: IpcMainInvokeEvent): InstanceType<typeof BrowserW
 
 function getWindowState(targetWindow: InstanceType<typeof BrowserWindow>) {
   return {
-    canToggleDevTools: !app.isPackaged,
     isFullScreen: targetWindow.isFullScreen(),
     isMaximized: targetWindow.isMaximized(),
     platform: process.platform
   };
+}
+
+function isBlockedBrowserShortcut(input: Input): boolean {
+  if (input.type !== 'keyDown') {
+    return false;
+  }
+
+  const key = input.key.toLowerCase();
+  const ctrlOrMeta = input.control || input.meta;
+
+  return key === 'f5' ||
+    key === 'f12' ||
+    (ctrlOrMeta && key === 'r') ||
+    (ctrlOrMeta && input.shift && ['i', 'j', 'c'].includes(key));
 }
 
 function sendWindowState(targetWindow: InstanceType<typeof BrowserWindow>): void {
@@ -133,17 +146,6 @@ ipcMain.handle(WINDOW_ACTION_CHANNEL, async (event, action: string) => {
       break;
     case 'quit':
       app.quit();
-      break;
-    case 'reload':
-      webContents.reload();
-      break;
-    case 'force-reload':
-      webContents.reloadIgnoringCache();
-      break;
-    case 'toggle-devtools':
-      if (!app.isPackaged) {
-        webContents.toggleDevTools();
-      }
       break;
     case 'reset-zoom':
       webContents.setZoomLevel(0);
@@ -210,7 +212,7 @@ function createWindow(): void {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      devTools: !app.isPackaged
+      devTools: false
     },
     autoHideMenuBar: false,
     resizable: true
@@ -230,6 +232,12 @@ function createWindow(): void {
 
   win.webContents.on('did-finish-load', () => {
     win?.webContents.setZoomFactor(1.0);
+  });
+
+  win.webContents.on('before-input-event', (event, input) => {
+    if (isBlockedBrowserShortcut(input)) {
+      event.preventDefault();
+    }
   });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
