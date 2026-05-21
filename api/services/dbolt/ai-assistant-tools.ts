@@ -53,6 +53,7 @@ class AiAssistantToolsService {
       'If you still need information to build the SELECT safely, request another database action first; if you already know the table and columns, run the read-only SELECT.',
       'To request database actions, reply ONLY with valid JSON text in this format:',
       '{"databaseActions":[{"name":"searchObjects","arguments":{"search":"OINV","types":["table","view"],"limit":20}}]}',
+      'Do not use bracket syntax such as [database-action:getTableColumns:tableName=users]. That is not the preferred request format.',
       'Request at most two database actions per round. When you have enough data, answer the user normally, without database action JSON.'
     ].join('\n');
   }
