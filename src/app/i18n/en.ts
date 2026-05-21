@@ -378,7 +378,7 @@ export const enTranslations: TranslationCatalog = {
   'aiAssistant.copied': 'Copied',
   'aiAssistant.copyFailed': 'Copy failed',
   'aiAssistant.emptyState': 'Ask a question about the current schema.',
-  'aiAssistant.answering': 'Answering...',
+  'aiAssistant.answering': 'Thinking...',
   'aiAssistant.conversations': 'Conversations',
   'aiAssistant.currentConversation': 'Current chat',
   'aiAssistant.openConversations': 'Open chats',
