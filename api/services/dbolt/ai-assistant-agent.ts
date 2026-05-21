@@ -92,7 +92,7 @@ class AiAssistantAgentService {
         AiAssistantToolBudget.registerToolCall(budget);
         const result = await AiAssistantTools.execute(readonlyContext, toolCall, budget);
         toolSections.push([
-          `[database-action:${result.name}:${result.success ? 'ok' : 'error'}]`,
+          `DBOLT read-only result. Executed action: ${result.name}. Status: ${result.success ? 'ok' : 'error'}.`,
           result.content
         ].join('\n'));
       }
@@ -152,6 +152,7 @@ class AiAssistantAgentService {
       parts.push([
         'Read-only data already collected by DBOLT for this question:',
         transcript,
+        'The text above is DBOLT execution output, not a request syntax. To request more database actions, use only the databaseActions JSON format from the tool instructions.',
         'Do not request the same database action again if it has already returned the same data.'
       ].join('\n'));
     }
@@ -183,32 +184,30 @@ class AiAssistantAgentService {
 
   private parseToolCalls(content: string): AiAssistantToolCall[] {
     const jsonTexts = this.extractJsonValues(content);
-    if (jsonTexts.length === 0) {
-      return [];
-    }
-
     const toolCalls: AiAssistantToolCall[] = [];
     const seenCalls = new Set<string>();
+    const addToolCall = (rawCall: unknown): void => {
+      const toolCall = this.normalizeToolCall(rawCall);
+      if (!toolCall) return;
+
+      const key = JSON.stringify(toolCall);
+      if (seenCalls.has(key)) return;
+
+      seenCalls.add(key);
+      toolCalls.push(toolCall);
+    };
 
     for (const jsonText of jsonTexts) {
       try {
         const parsed = JSON.parse(jsonText) as unknown;
         const rawCalls = this.readRawToolCalls(parsed);
-
-        for (const rawCall of rawCalls) {
-          const toolCall = this.normalizeToolCall(rawCall);
-          if (!toolCall) continue;
-
-          const key = JSON.stringify(toolCall);
-          if (seenCalls.has(key)) continue;
-
-          seenCalls.add(key);
-          toolCalls.push(toolCall);
-        }
+        rawCalls.forEach(addToolCall);
       } catch (_error: unknown) {
         continue;
       }
     }
+
+    this.readLegacyBracketToolCalls(content).forEach(addToolCall);
 
     return toolCalls;
   }
@@ -432,6 +431,13 @@ class AiAssistantAgentService {
       normalizedArgs['search'] = normalizedArgs['query'] || normalizedArgs['term'] || normalizedArgs['text'] || '';
     }
 
+    if (toolName === 'searchObjects' && typeof normalizedArgs['types'] === 'string') {
+      normalizedArgs['types'] = normalizedArgs['types']
+        .split(',')
+        .map((type) => type.trim())
+        .filter(Boolean);
+    }
+
     if (toolName === 'getTableColumns' && typeof normalizedArgs['tableName'] !== 'string') {
       normalizedArgs['tableName'] = normalizedArgs['table'] || normalizedArgs['table_name'] || normalizedArgs['name'] || '';
     }
@@ -447,6 +453,84 @@ class AiAssistantAgentService {
     }
 
     return normalizedArgs;
+  }
+
+  private readLegacyBracketToolCalls(content: string): unknown[] {
+    const calls: unknown[] = [];
+    const pattern = /\[\s*(?:database-action|databaseAction|dbolt-action)\s*:\s*([A-Za-z_][\w-]*)\s*(?::\s*([^\]]*))?\]/g;
+
+    for (const match of content.matchAll(pattern)) {
+      const name = this.normalizeToolName(match[1]);
+      if (!name) continue;
+
+      calls.push({
+        name,
+        arguments: this.readLegacyBracketArguments(name, match[2] || '')
+      });
+    }
+
+    return calls;
+  }
+
+  private readLegacyBracketArguments(
+    toolName: AiAssistantToolCall['name'],
+    value: string
+  ): Record<string, unknown> {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return {};
+    }
+
+    const args: Record<string, unknown> = {};
+    const pairPattern = /([A-Za-z_][\w-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^;,]+))/g;
+
+    for (const match of trimmed.matchAll(pairPattern)) {
+      args[match[1]] = this.normalizeLegacyBracketValue(match[2] ?? match[3] ?? match[4] ?? '');
+    }
+
+    if (Object.keys(args).length === 0) {
+      args[this.getDefaultArgumentName(toolName)] = trimmed;
+    }
+
+    return this.normalizeToolArgumentAliases(toolName, args);
+  }
+
+  private normalizeLegacyBracketValue(value: string): unknown {
+    const trimmed = value.trim();
+
+    if (/^-?\d+$/.test(trimmed)) {
+      return Number(trimmed);
+    }
+
+    if (
+      (trimmed.startsWith('[') && trimmed.endsWith(']')) ||
+      (trimmed.startsWith('{') && trimmed.endsWith('}'))
+    ) {
+      try {
+        return JSON.parse(trimmed) as unknown;
+      } catch (_error: unknown) {
+        return trimmed;
+      }
+    }
+
+    return trimmed;
+  }
+
+  private getDefaultArgumentName(toolName: AiAssistantToolCall['name']): string {
+    if (toolName === 'searchObjects') {
+      return 'search';
+    }
+
+    if (toolName === 'getTableColumns') {
+      return 'tableName';
+    }
+
+    if (toolName === 'runReadonlyQuery') {
+      return 'sql';
+    }
+
+    return 'search';
   }
 
   private extractJsonValues(content: string): string[] {
