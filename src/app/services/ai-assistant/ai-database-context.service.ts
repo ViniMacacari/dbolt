@@ -88,6 +88,7 @@ export class AiDatabaseContextService {
     ]
 
     return {
+      connectionName: this.readFirstString(contexts, ['name', 'connectionName', 'connection_name', 'title']),
       sgbd: this.readFirstString(contexts, ['sgbd', 'databaseType']),
       version: this.readFirstString(contexts, ['version']),
       database: this.readFirstString(contexts, ['database']),
