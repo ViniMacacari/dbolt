@@ -105,6 +105,7 @@ export interface AiReadonlyDatabaseContext {
 }
 
 export interface AiReadonlyDatabaseToolContext {
+  connectionName?: string
   sgbd?: string
   version?: string
   database?: string
