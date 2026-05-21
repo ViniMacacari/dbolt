@@ -5,8 +5,7 @@
     </div>
 
     <nav class="application-menu" [attr.aria-label]="t('applicationMenu.ariaLabel')">
-        <div class="menu-group" *ngFor="let menu of menus" [class.open]="openMenuId === menu.id"
-            (mouseenter)="openMenuOnHover(menu.id)">
+        <div class="menu-group" *ngFor="let menu of menus" [class.open]="openMenuId === menu.id">
             <button type="button" class="menu-trigger" [attr.aria-haspopup]="true"
                 [attr.aria-expanded]="openMenuId === menu.id" (mousedown)="keepMenuFocus($event)"
                 (click)="toggleMenu(menu.id, $event)">
