@@ -38,7 +38,7 @@ class AiAssistantAgentService {
     const budget = AiAssistantToolBudget.createState({
       ...settings.limits,
       maxApiCallsPerMessage: readonlyContext
-        ? Math.max(2, settings.limits.maxApiCallsPerMessage)
+        ? Math.max(4, settings.limits.maxApiCallsPerMessage)
         : settings.limits.maxApiCallsPerMessage
     });
     const toolSections: string[] = [];
@@ -120,18 +120,23 @@ class AiAssistantAgentService {
       'Focus on SQL, data modeling, schema investigation, and database productivity.',
       'Do not request passwords, tokens, or API keys.',
       'Do not invent tables, columns, or results. When read-only database action data is available, treat it as factual.',
+      'Never guess column names when a read-only database context is available. If the exact columns for a table are not confirmed in the current DBOLT read-only data, request getTableColumns before writing or executing a SELECT that references columns.',
       'Distinguish SQL generation from SQL execution. You may provide DDL/DML scripts as plain text or code blocks when the user asks for them.',
       'Never execute or request DBOLT database actions for write commands such as UPDATE, DELETE, INSERT, CREATE, DROP, ALTER, TRUNCATE, EXEC, CALL, or MERGE.',
       'If you provide a write/DDL/DML script, make clear it is only a script for the user to review and run manually; do not claim it was executed.',
+      'Database action and AI API call limits apply only to the current user message. They reset for every new user message and are not accumulated across the conversation.',
       ...(readonlyContext && allowTools ? [
         'When read-only context is authorized, you may execute SELECT/WITH queries with runReadonlyQuery to answer questions about database data.',
         'Do not say you cannot execute a query when the query is read-only. Use runReadonlyQuery instead of giving SQL for the user to run, unless the user only asks for the query text.',
         'If the user asks about object existence, columns, counts, IDs, or database data and read-only context is authorized, use database actions before answering, unless already collected read-only data answers directly.',
         'For questions that require sequential investigation, continue using database actions until you find the answer or the budget is exhausted. Example: search for the table, inspect columns, run a filtered SELECT, then answer.',
-        'You can investigate across multiple rounds. For example, search for a table first, then request columns for the table you found.'
+        'You can investigate across multiple rounds. For example, search for a table first, then request columns for the table you found.',
+        'If a runReadonlyQuery action fails because a column or table is invalid, do not stop with a manual SQL example. Request getTableColumns or searchObjects next, then retry with exact metadata names.',
+        'When the user asks for actual database data, answer from runReadonlyQuery results. Do not provide only an example script while read-only actions are still available.'
       ] : []),
-      `Budget for this question: up to ${budget.maxApiCallsPerMessage} AI API calls and up to ${budget.maxToolCalls} database actions, up to ${budget.maxToolCallsPerIteration} database actions per AI API call.`,
-      `Already used before this AI API call: ${Math.max(0, budget.apiCallsUsed - 1)} AI API calls and ${budget.toolCallsUsed} database actions.`
+      ...this.getDialectPromptRules(readonlyContext),
+      `Current user message budget: up to ${budget.maxApiCallsPerMessage} AI API calls and up to ${budget.maxToolCalls} database actions, up to ${budget.maxToolCallsPerIteration} database actions per AI API call.`,
+      `Already used for this current user message before this AI API call: ${Math.max(0, budget.apiCallsUsed - 1)} AI API calls and ${budget.toolCallsUsed} database actions.`
     ];
 
     if (allowTools && !forceFinalAnswer) {
@@ -162,8 +167,22 @@ class AiAssistantAgentService {
     return parts.join('\n\n');
   }
 
+  private getDialectPromptRules(readonlyContext: AiReadonlyDatabaseContext | undefined): string[] {
+    const database = String(readonlyContext?.sgbd || '').toLowerCase();
+
+    if (database !== 'hana') {
+      return [];
+    }
+
+    return [
+      'SAP HANA dialect rule: use double quotes around table and column identifiers using the exact case returned by metadata, especially mixed-case SAP Business One columns such as "DocEntry" and "DocDate".',
+      'SAP HANA uppercases unquoted identifiers, so DocEntry without quotes becomes DOCENTRY and can fail. Do not use brackets or backticks for HANA identifiers.',
+      'SAP HANA example shape after columns are confirmed: SELECT TOP 1 "DocEntry", "DocDate" FROM "OINV" ORDER BY "DocEntry" DESC.'
+    ];
+  }
+
   private parseToolCalls(content: string): AiAssistantToolCall[] {
-    const jsonTexts = this.extractJsonObjects(content);
+    const jsonTexts = this.extractJsonValues(content);
     if (jsonTexts.length === 0) {
       return [];
     }
@@ -173,7 +192,7 @@ class AiAssistantAgentService {
 
     for (const jsonText of jsonTexts) {
       try {
-        const parsed = JSON.parse(jsonText) as Record<string, unknown>;
+        const parsed = JSON.parse(jsonText) as unknown;
         const rawCalls = this.readRawToolCalls(parsed);
 
         for (const rawCall of rawCalls) {
@@ -194,15 +213,50 @@ class AiAssistantAgentService {
     return toolCalls;
   }
 
-  private readRawToolCalls(parsed: Record<string, unknown>): unknown[] {
-    if (Array.isArray(parsed['databaseActions'])) return parsed['databaseActions'];
-    if (Array.isArray(parsed['actions'])) return parsed['actions'];
-    if (parsed['databaseAction']) return [parsed['databaseAction']];
-    if (parsed['action']) return [parsed['action']];
-    if (Array.isArray(parsed['toolCalls'])) return parsed['toolCalls'];
-    if (Array.isArray(parsed['tools'])) return parsed['tools'];
-    if (parsed['toolCall']) return [parsed['toolCall']];
-    if (parsed['tool']) return [parsed];
+  private readRawToolCalls(parsed: unknown): unknown[] {
+    if (Array.isArray(parsed)) {
+      return parsed.flatMap((item) => this.readRawToolCalls(item));
+    }
+
+    if (!parsed || typeof parsed !== 'object') {
+      return [];
+    }
+
+    const record = parsed as Record<string, unknown>;
+
+    for (const key of ['databaseActions', 'actions', 'toolCalls', 'tools']) {
+      if (key in record) {
+        return this.readRawToolCallList(record[key]);
+      }
+    }
+
+    if ('action' in record) {
+      return typeof record['action'] === 'string'
+        ? [record]
+        : this.readRawToolCallList(record['action']);
+    }
+
+    for (const key of ['databaseAction', 'toolCall']) {
+      if (key in record) {
+        return this.readRawToolCallList(record[key]);
+      }
+    }
+
+    if (this.normalizeToolName(record['name']) || this.normalizeToolName(record['tool'])) {
+      return [record];
+    }
+
+    const directToolEntry = this.readDirectToolEntry(record);
+    if (directToolEntry) {
+      return [{
+        name: directToolEntry.name,
+        arguments: record[directToolEntry.key]
+      }];
+    }
+
+    if ('tool' in record) {
+      return [record];
+    }
 
     return [];
   }
@@ -213,26 +267,195 @@ class AiAssistantAgentService {
     }
 
     const record = call as Record<string, unknown>;
-    const name = String(record['name'] || record['tool'] || '').trim();
-    const args = record['arguments'] || record['args'] || {};
+    const directToolEntry = this.readDirectToolEntry(record);
+    const name = this.normalizeToolName(record['name'])
+      || this.normalizeToolName(record['tool'])
+      || this.normalizeToolName(record['action'])
+      || directToolEntry?.name
+      || '';
+    const args = directToolEntry
+      ? this.normalizeToolArguments(directToolEntry.name, record[directToolEntry.key], record)
+      : this.normalizeToolArguments(name, record['arguments'] ?? record['args'] ?? record['parameters'] ?? record['input'], record);
 
-    if (!AiAssistantTools.isValidToolName(name) || !args || typeof args !== 'object' || Array.isArray(args)) {
+    if (!name || !AiAssistantTools.isValidToolName(name)) {
       return null;
     }
 
     return {
       name,
-      arguments: args as Record<string, unknown>
+      arguments: args
     };
   }
 
-  private extractJsonObjects(content: string): string[] {
+  private readRawToolCallList(value: unknown): unknown[] {
+    return Array.isArray(value) ? value : [value];
+  }
+
+  private normalizeToolName(value: unknown): AiAssistantToolCall['name'] | '' {
+    if (typeof value !== 'string') {
+      return '';
+    }
+
+    const normalized = value.trim().replace(/[\s_-]+/g, '').toLowerCase();
+
+    if (normalized === 'searchobjects' || normalized === 'searchobject' || normalized === 'findobjects') {
+      return 'searchObjects';
+    }
+
+    if (normalized === 'gettablecolumns' || normalized === 'tablecolumns' || normalized === 'columns') {
+      return 'getTableColumns';
+    }
+
+    if (normalized === 'getschemasummary' || normalized === 'schemasummary') {
+      return 'getSchemaSummary';
+    }
+
+    if (
+      normalized === 'runreadonlyquery' ||
+      normalized === 'runreadonlysql' ||
+      normalized === 'readonlyquery' ||
+      normalized === 'readonlysql' ||
+      normalized === 'query'
+    ) {
+      return 'runReadonlyQuery';
+    }
+
+    return '';
+  }
+
+  private normalizeDirectToolKey(value: string): AiAssistantToolCall['name'] | '' {
+    const normalized = value.trim().replace(/[\s_-]+/g, '').toLowerCase();
+
+    if (normalized === 'searchobjects' || normalized === 'searchobject') {
+      return 'searchObjects';
+    }
+
+    if (normalized === 'gettablecolumns' || normalized === 'tablecolumns') {
+      return 'getTableColumns';
+    }
+
+    if (normalized === 'getschemasummary' || normalized === 'schemasummary') {
+      return 'getSchemaSummary';
+    }
+
+    if (
+      normalized === 'runreadonlyquery' ||
+      normalized === 'runreadonlysql' ||
+      normalized === 'readonlyquery' ||
+      normalized === 'readonlysql'
+    ) {
+      return 'runReadonlyQuery';
+    }
+
+    return '';
+  }
+
+  private readDirectToolEntry(record: Record<string, unknown>): { key: string; name: AiAssistantToolCall['name'] } | null {
+    for (const key of Object.keys(record)) {
+      const toolName = this.normalizeDirectToolKey(key);
+      if (toolName) {
+        return { key, name: toolName };
+      }
+    }
+
+    return null;
+  }
+
+  private normalizeToolArguments(
+    toolName: AiAssistantToolCall['name'] | '',
+    value: unknown,
+    source: Record<string, unknown>
+  ): Record<string, unknown> {
+    const parsedValue = this.parseToolArgumentsValue(value);
+    const args = parsedValue || this.readInlineToolArguments(source);
+
+    if (!toolName) {
+      return args;
+    }
+
+    return this.normalizeToolArgumentAliases(toolName, args);
+  }
+
+  private parseToolArgumentsValue(value: unknown): Record<string, unknown> | null {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+
+    if (typeof value !== 'string' || !value.trim()) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : null;
+    } catch (_error: unknown) {
+      return null;
+    }
+  }
+
+  private readInlineToolArguments(source: Record<string, unknown>): Record<string, unknown> {
+    const reservedKeys = new Set([
+      'name',
+      'tool',
+      'arguments',
+      'args',
+      'parameters',
+      'input',
+      'databaseActions',
+      'databaseAction',
+      'actions',
+      'action',
+      'toolCalls',
+      'toolCall',
+      'tools'
+    ]);
+    const args: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(source)) {
+      if (!reservedKeys.has(key) && !this.normalizeDirectToolKey(key)) {
+        args[key] = value;
+      }
+    }
+
+    return args;
+  }
+
+  private normalizeToolArgumentAliases(
+    toolName: AiAssistantToolCall['name'],
+    args: Record<string, unknown>
+  ): Record<string, unknown> {
+    const normalizedArgs = { ...args };
+
+    if (toolName === 'searchObjects' && typeof normalizedArgs['search'] !== 'string') {
+      normalizedArgs['search'] = normalizedArgs['query'] || normalizedArgs['term'] || normalizedArgs['text'] || '';
+    }
+
+    if (toolName === 'getTableColumns' && typeof normalizedArgs['tableName'] !== 'string') {
+      normalizedArgs['tableName'] = normalizedArgs['table'] || normalizedArgs['table_name'] || normalizedArgs['name'] || '';
+    }
+
+    if (toolName === 'runReadonlyQuery') {
+      if (typeof normalizedArgs['sql'] !== 'string') {
+        normalizedArgs['sql'] = normalizedArgs['query'] || normalizedArgs['statement'] || '';
+      }
+
+      if (normalizedArgs['maxRows'] === undefined) {
+        normalizedArgs['maxRows'] = normalizedArgs['limit'] || normalizedArgs['rows'];
+      }
+    }
+
+    return normalizedArgs;
+  }
+
+  private extractJsonValues(content: string): string[] {
     const trimmed = content.trim();
     const fencedJson = trimmed.match(/^```(?:json)?\s*([\s\S]*?)```$/i);
     const candidate = fencedJson?.[1]?.trim() || trimmed;
-    const objects: string[] = [];
+    const values: string[] = [];
     let start = -1;
-    let depth = 0;
+    let closers: string[] = [];
     let inString = false;
     let escaping = false;
 
@@ -258,25 +481,34 @@ class AiAssistantAgentService {
         continue;
       }
 
-      if (char === '{') {
-        if (depth === 0) {
+      if (char === '{' || char === '[') {
+        if (closers.length === 0) {
           start = index;
         }
-        depth += 1;
+
+        closers.push(char === '{' ? '}' : ']');
         continue;
       }
 
-      if (char === '}' && depth > 0) {
-        depth -= 1;
+      if ((char === '}' || char === ']') && closers.length > 0) {
+        const expectedCloser = closers[closers.length - 1];
 
-        if (depth === 0 && start >= 0) {
-          objects.push(candidate.slice(start, index + 1));
+        if (char !== expectedCloser) {
+          closers = [];
+          start = -1;
+          continue;
+        }
+
+        closers.pop();
+
+        if (closers.length === 0 && start >= 0) {
+          values.push(candidate.slice(start, index + 1));
           start = -1;
         }
       }
     }
 
-    return objects;
+    return values;
   }
 
   private normalizeMessages(messages: AiAssistantAgentChatMessage[] = [], maxMessages = 10): AiModelMessage[] {

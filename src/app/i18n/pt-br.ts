@@ -378,7 +378,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'aiAssistant.copied': 'Copiado',
   'aiAssistant.copyFailed': 'Erro ao copiar',
   'aiAssistant.emptyState': 'Faça uma pergunta sobre o schema atual.',
-  'aiAssistant.answering': 'Respondendo...',
+  'aiAssistant.answering': 'Pensando...',
   'aiAssistant.conversations': 'Conversas',
   'aiAssistant.currentConversation': 'Conversa atual',
   'aiAssistant.openConversations': 'Abrir conversas',
