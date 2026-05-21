@@ -9,9 +9,6 @@ type WindowAction =
   | 'toggle-maximize'
   | 'close'
   | 'quit'
-  | 'reload'
-  | 'force-reload'
-  | 'toggle-devtools'
   | 'reset-zoom'
   | 'zoom-in'
   | 'zoom-out'
@@ -28,7 +25,6 @@ type WindowAction =
 type AppMenuCommand = WindowAction | 'open-help'
 
 interface WindowState {
-  canToggleDevTools: boolean
   isFullScreen: boolean
   isMaximized: boolean
   platform: string
@@ -38,7 +34,6 @@ interface ApplicationMenuItem {
   command?: AppMenuCommand
   disabledWithoutElectron?: boolean
   labelKey?: string
-  requiresDevTools?: boolean
   separator?: boolean
   shortcut?: string
 }
@@ -86,21 +81,6 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
       id: 'view',
       labelKey: 'applicationMenu.view',
       items: [
-        { labelKey: 'applicationMenu.view.reload', command: 'reload', shortcut: 'Ctrl+R', disabledWithoutElectron: true },
-        {
-          labelKey: 'applicationMenu.view.forceReload',
-          command: 'force-reload',
-          shortcut: 'Ctrl+Shift+R',
-          disabledWithoutElectron: true
-        },
-        {
-          labelKey: 'applicationMenu.view.toggleDevTools',
-          command: 'toggle-devtools',
-          shortcut: 'Ctrl+Shift+I',
-          disabledWithoutElectron: true,
-          requiresDevTools: true
-        },
-        { separator: true },
         { labelKey: 'applicationMenu.view.resetZoom', command: 'reset-zoom', shortcut: 'Ctrl+0', disabledWithoutElectron: true },
         { labelKey: 'applicationMenu.view.zoomIn', command: 'zoom-in', shortcut: 'Ctrl++', disabledWithoutElectron: true },
         { labelKey: 'applicationMenu.view.zoomOut', command: 'zoom-out', shortcut: 'Ctrl+-', disabledWithoutElectron: true },
@@ -134,7 +114,6 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
 
   openMenuId: string | null = null
   windowState: WindowState = {
-    canToggleDevTools: false,
     isFullScreen: false,
     isMaximized: false,
     platform: 'browser'
@@ -178,6 +157,12 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown', ['$event'])
   handleWindowShortcut(event: KeyboardEvent): void {
+    if (this.isBlockedBrowserShortcut(event)) {
+      event.preventDefault()
+      event.stopPropagation()
+      return
+    }
+
     if (!this.isElectron) {
       return
     }
@@ -191,12 +176,6 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
     }
 
     if (!event.ctrlKey || event.altKey) {
-      return
-    }
-
-    if (key === 'r') {
-      event.preventDefault()
-      void this.runAction(event.shiftKey ? 'force-reload' : 'reload')
       return
     }
 
@@ -217,11 +196,6 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
       void this.runAction('zoom-out')
       return
     }
-
-    if (event.shiftKey && key === 'i') {
-      event.preventDefault()
-      void this.runAction('toggle-devtools')
-    }
   }
 
   keepMenuFocus(event: MouseEvent): void {
@@ -231,12 +205,6 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
   toggleMenu(menuId: string, event: MouseEvent): void {
     event.stopPropagation()
     this.openMenuId = this.openMenuId === menuId ? null : menuId
-  }
-
-  openMenuOnHover(menuId: string): void {
-    if (this.openMenuId) {
-      this.openMenuId = menuId
-    }
   }
 
   async runMenuItem(item: ApplicationMenuItem, event: MouseEvent): Promise<void> {
@@ -257,10 +225,6 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
   }
 
   isMenuItemDisabled(item: ApplicationMenuItem): boolean {
-    if (item.requiresDevTools && !this.windowState.canToggleDevTools) {
-      return true
-    }
-
     return !!item.disabledWithoutElectron && !this.isElectron
   }
 
@@ -294,5 +258,15 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
         window.open(ORIGINAL_REPOSITORY_URL, '_blank', 'noopener')
         break
     }
+  }
+
+  private isBlockedBrowserShortcut(event: KeyboardEvent): boolean {
+    const key = event.key.toLowerCase()
+    const ctrlOrMeta = event.ctrlKey || event.metaKey
+
+    return key === 'f5' ||
+      key === 'f12' ||
+      (ctrlOrMeta && key === 'r') ||
+      (ctrlOrMeta && event.shiftKey && ['i', 'j', 'c'].includes(key))
   }
 }
