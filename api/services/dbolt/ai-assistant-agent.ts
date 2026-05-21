@@ -117,6 +117,7 @@ class AiAssistantAgentService {
       'Database action and AI API call limits apply only to the current user message. They reset for every new user message and are not accumulated across the conversation.',
       'Only say the current message limit is exhausted when DBOLT explicitly stops allowing database actions in this current request.',
       ...(readonlyContext && allowTools ? [
+        this.buildReadonlyContextPrompt(readonlyContext),
         'Read-only database context is already authorized for this message. Read-only means DBOLT will not modify data; it does not mean you are forbidden from reading table rows.',
         'You may consult any database data needed by executing SELECT/WITH queries with runReadonlyQuery.',
         'When the user asks to search, consult, show, verify, find, list actual rows, or answer a question about current database data, request databaseActions JSON and run SELECT/WITH queries through runReadonlyQuery.',
@@ -238,6 +239,22 @@ class AiAssistantAgentService {
     }
 
     return '';
+  }
+
+  private buildReadonlyContextPrompt(readonlyContext: AiReadonlyDatabaseContext): string {
+    const contextItems = [
+      ['Connection name', readonlyContext.connectionName],
+      ['Database engine/type', readonlyContext.sgbd],
+      ['Database version', readonlyContext.version]
+    ]
+      .filter((item): item is [string, string] => typeof item[1] === 'string' && item[1].trim().length > 0)
+      .map(([label, value]) => `- ${label}: ${value}`);
+
+    return [
+      'Current DBOLT read-only database context visible to you:',
+      ...(contextItems.length ? contextItems : ['- No public connection metadata was provided.']),
+      'The internal connectionKey is intentionally not shown to you.'
+    ].join('\n');
   }
 
   private getDialectPromptRules(readonlyContext: AiReadonlyDatabaseContext | undefined): string[] {
