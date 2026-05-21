@@ -1,0 +1,287 @@
+:host {
+    display: block;
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 3000;
+}
+
+.application-titlebar {
+    align-items: stretch;
+    background: #0b0b0b;
+    border-bottom: 1px solid #232020;
+    box-sizing: border-box;
+    color: #e8eaed;
+    display: flex;
+    font-family: 'Nunito';
+    height: 44px;
+    overflow: visible;
+    width: 100%;
+    -webkit-app-region: drag;
+}
+
+.brand {
+    align-items: center;
+    display: flex;
+    flex: 0 0 auto;
+    gap: 8px;
+    min-width: 132px;
+    padding: 0 12px;
+
+    img {
+        border-radius: 4px;
+        height: 18px;
+        object-fit: contain;
+        width: 18px;
+    }
+
+    span {
+        color: #e8eaed;
+        font-size: .82em;
+        font-weight: 850;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.application-menu {
+    align-items: center;
+    display: flex;
+    flex: 0 0 auto;
+    height: 100%;
+    -webkit-app-region: no-drag;
+}
+
+.menu-group {
+    align-items: center;
+    display: flex;
+    height: 100%;
+    position: relative;
+}
+
+.menu-trigger {
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: #b8b8b9;
+    cursor: pointer;
+    font-family: 'Nunito';
+    font-size: .76em;
+    font-weight: 800;
+    height: 30px;
+    margin: 0 1px;
+    padding: 0 10px;
+
+    &:hover {
+        background: #181818;
+        color: #e8eaed;
+    }
+}
+
+.menu-group.open .menu-trigger {
+    background: #232020;
+    color: #e8eaed;
+}
+
+.menu-panel {
+    background: #0f0f0f;
+    border: 1px solid #2d2d2d;
+    border-radius: 10px;
+    box-shadow: 0 18px 35px rgba(0, 0, 0, .36);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    left: 0;
+    min-width: 230px;
+    padding: 6px;
+    position: absolute;
+    top: 40px;
+    z-index: 3010;
+    -webkit-app-region: no-drag;
+}
+
+.menu-item {
+    align-items: center;
+    background: transparent;
+    border: none;
+    border-radius: 7px;
+    color: #d7d7d7;
+    cursor: pointer;
+    display: grid;
+    font-family: 'Nunito';
+    font-size: .78em;
+    font-weight: 750;
+    gap: 18px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    height: 31px;
+    justify-content: space-between;
+    padding: 0 9px;
+    text-align: left;
+    width: 100%;
+
+    span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    kbd {
+        background: transparent;
+        border: none;
+        color: #777;
+        font-family: 'Nunito';
+        font-size: .86em;
+        font-weight: 800;
+        padding: 0;
+        white-space: nowrap;
+    }
+
+    &:hover:not(:disabled),
+    &:focus-visible {
+        background: #232020;
+        color: #fff;
+        outline: none;
+
+        kbd {
+            color: #b8b8b9;
+        }
+    }
+
+    &:disabled {
+        color: #555;
+        cursor: default;
+
+        kbd {
+            color: #444;
+        }
+    }
+}
+
+.menu-separator {
+    background: #2d2d2d;
+    height: 1px;
+    margin: 4px 6px;
+}
+
+.titlebar-drag-space {
+    flex: 1 1 auto;
+    min-width: 20px;
+}
+
+.window-controls {
+    display: flex;
+    flex: 0 0 auto;
+    height: 100%;
+    -webkit-app-region: no-drag;
+}
+
+.window-control {
+    align-items: center;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    color: #b8b8b9;
+    cursor: pointer;
+    display: flex;
+    height: 100%;
+    justify-content: center;
+    padding: 0;
+    width: 46px;
+
+    &:hover {
+        background: #232020;
+        color: #e8eaed;
+    }
+
+    &.close:hover {
+        background: #8d0000;
+        color: #fff;
+    }
+}
+
+.control-icon {
+    display: block;
+    height: 14px;
+    position: relative;
+    width: 14px;
+}
+
+.control-icon.minimize::before {
+    background: currentColor;
+    content: '';
+    height: 1.5px;
+    left: 2px;
+    position: absolute;
+    top: 8px;
+    width: 10px;
+}
+
+.control-icon.maximize::before {
+    border: 1.5px solid currentColor;
+    box-sizing: border-box;
+    content: '';
+    height: 10px;
+    left: 2px;
+    position: absolute;
+    top: 2px;
+    width: 10px;
+}
+
+.control-icon.restore::before,
+.control-icon.restore::after {
+    border: 1.5px solid currentColor;
+    box-sizing: border-box;
+    content: '';
+    height: 9px;
+    position: absolute;
+    width: 9px;
+}
+
+.control-icon.restore::before {
+    left: 4px;
+    top: 1px;
+}
+
+.control-icon.restore::after {
+    background: #0b0b0b;
+    left: 1px;
+    top: 4px;
+}
+
+.window-control:hover .control-icon.restore::after {
+    background: #232020;
+}
+
+.control-icon.close-icon::before,
+.control-icon.close-icon::after {
+    background: currentColor;
+    content: '';
+    height: 1.5px;
+    left: 1px;
+    position: absolute;
+    top: 6px;
+    width: 12px;
+}
+
+.control-icon.close-icon::before {
+    transform: rotate(45deg);
+}
+
+.control-icon.close-icon::after {
+    transform: rotate(-45deg);
+}
+
+@media (max-width: 720px) {
+    .brand {
+        min-width: 46px;
+        padding: 0 10px;
+
+        span {
+            display: none;
+        }
+    }
+
+    .menu-trigger {
+        padding: 0 8px;
+    }
+}
