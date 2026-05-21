@@ -187,7 +187,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
 
     try {
       const readonlyToolContext = this.databaseContextAvailable
-        ? this.databaseContext.buildReadonlyToolContext(this.selectedSchemaDB, this.dbSchemasData)
+        ? this.databaseContext.buildReadonlyToolContext(this.selectedSchemaDB, this.dbSchemasData, this.tabInfo)
         : undefined
       const response = await this.chatService.sendMessage(this.toApiMessages(), readonlyToolContext)
       this.messages = [...this.messages, this.createMessage('assistant', response.message)]
