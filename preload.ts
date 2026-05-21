@@ -42,9 +42,6 @@ type DboltWindowAction =
   | 'toggle-maximize'
   | 'close'
   | 'quit'
-  | 'reload'
-  | 'force-reload'
-  | 'toggle-devtools'
   | 'reset-zoom'
   | 'zoom-in'
   | 'zoom-out'
@@ -59,7 +56,6 @@ type DboltWindowAction =
   | 'open-original-repository';
 
 interface DboltWindowState {
-  canToggleDevTools: boolean;
   isFullScreen: boolean;
   isMaximized: boolean;
   platform: string;
