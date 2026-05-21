@@ -1,0 +1,53 @@
+<header class="application-titlebar">
+    <div class="brand">
+        <img src="icons/dbolt-square.png" alt="">
+        <span>DBolt</span>
+    </div>
+
+    <nav class="application-menu" [attr.aria-label]="t('applicationMenu.ariaLabel')">
+        <div class="menu-group" *ngFor="let menu of menus" [class.open]="openMenuId === menu.id"
+            (mouseenter)="openMenuOnHover(menu.id)">
+            <button type="button" class="menu-trigger" [attr.aria-haspopup]="true"
+                [attr.aria-expanded]="openMenuId === menu.id" (mousedown)="keepMenuFocus($event)"
+                (click)="toggleMenu(menu.id, $event)">
+                {{ t(menu.labelKey) }}
+            </button>
+
+            <div class="menu-panel" *ngIf="openMenuId === menu.id" role="menu">
+                <ng-container *ngFor="let item of menu.items">
+                    <div *ngIf="item.separator" class="menu-separator" role="separator"></div>
+
+                    <button *ngIf="!item.separator" type="button" class="menu-item" role="menuitem"
+                        [disabled]="isMenuItemDisabled(item)" (mousedown)="keepMenuFocus($event)"
+                        (click)="runMenuItem(item, $event)">
+                        <span>{{ t(item.labelKey || '') }}</span>
+                        <kbd *ngIf="item.shortcut">{{ item.shortcut }}</kbd>
+                    </button>
+                </ng-container>
+            </div>
+        </div>
+    </nav>
+
+    <div class="titlebar-drag-space"></div>
+
+    <div class="window-controls" *ngIf="isElectron">
+        <button type="button" class="window-control" [title]="t('applicationMenu.window.minimize')"
+            [attr.aria-label]="t('applicationMenu.window.minimize')" (click)="runAction('minimize')"
+            (mousedown)="keepMenuFocus($event)">
+            <span class="control-icon minimize"></span>
+        </button>
+
+        <button type="button" class="window-control" [title]="t('applicationMenu.window.maximizeRestore')"
+            [attr.aria-label]="t('applicationMenu.window.maximizeRestore')" (click)="runAction('toggle-maximize')"
+            (mousedown)="keepMenuFocus($event)">
+            <span class="control-icon" [class.maximize]="!windowState.isMaximized"
+                [class.restore]="windowState.isMaximized"></span>
+        </button>
+
+        <button type="button" class="window-control close" [title]="t('applicationMenu.window.close')"
+            [attr.aria-label]="t('applicationMenu.window.close')" (click)="runAction('close')"
+            (mousedown)="keepMenuFocus($event)">
+            <span class="control-icon close-icon"></span>
+        </button>
+    </div>
+</header>
