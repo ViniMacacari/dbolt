@@ -49,6 +49,7 @@ class AiAssistantToolsService {
       '- runReadonlyQuery: runs only SELECT/WITH with a row limit. Args: {"sql":"SELECT ...","maxRows":50}. Never use it for INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, EXEC, or multiple statements.',
       'For object discovery, choose concise search terms from the user intent and database naming context. If the first search has no useful match, try a broader or alternative term within the database action budget.',
       'Use runReadonlyQuery when the question asks for row values, IDs, emails, names, counts, or any data that depends on table contents.',
+      'Before runReadonlyQuery, use getTableColumns when the exact column names for the target table have not already been returned in the current DBOLT read-only data. Do not guess columns.',
       'If you still need information to build the SELECT safely, request another database action first; if you already know the table and columns, run the read-only SELECT.',
       'To request database actions, reply ONLY with valid JSON text in this format:',
       '{"databaseActions":[{"name":"searchObjects","arguments":{"search":"OINV","types":["table","view"],"limit":20}}]}',
@@ -73,7 +74,7 @@ class AiAssistantToolsService {
       return {
         name: toolCall.name,
         success: false,
-        content: `Error while running ${toolCall.name}: ${this.getErrorMessage(error)}`
+        content: this.buildToolErrorContent(context, toolCall, error)
       };
     }
   }
@@ -218,6 +219,32 @@ class AiAssistantToolsService {
 
   private getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
+  }
+
+  private buildToolErrorContent(
+    context: AiReadonlyDatabaseContext,
+    toolCall: AiAssistantToolCall,
+    error: unknown
+  ): string {
+    const message = this.getErrorMessage(error);
+    const guidance: string[] = [];
+    const lowerMessage = message.toLowerCase();
+
+    if (
+      toolCall.name === 'runReadonlyQuery' &&
+      /\b(column|table|object|identifier)\b/.test(lowerMessage)
+    ) {
+      guidance.push('Do not guess table or column names. Request getTableColumns for the target table or searchObjects if the table is uncertain, then retry with exact metadata names.');
+    }
+
+    if (toolCall.name === 'runReadonlyQuery' && String(context.sgbd || '').toLowerCase() === 'hana') {
+      guidance.push('For SAP HANA, quote table and column identifiers with double quotes using exact metadata case, for example "DocEntry". Unquoted mixed-case identifiers are uppercased by HANA.');
+    }
+
+    return [
+      `Error while running ${toolCall.name}: ${message}`,
+      ...guidance
+    ].join('\n');
   }
 }
 
