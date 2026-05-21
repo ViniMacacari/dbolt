@@ -33,7 +33,7 @@ class AiAssistantAgentService {
     settings: AiAssistantResolvedSettings
   ): Promise<AiAssistantAgentChatResult> {
     const messages = this.normalizeMessages(request.messages, settings.limits.maxContextMessages);
-    const readonlyContext = request.readonlyContext?.sgbd ? request.readonlyContext : undefined;
+    const readonlyContext = this.normalizeReadonlyContext(request.readonlyContext);
     const responseLanguage = this.getResponseLanguage(request.appLanguage);
     const budget = AiAssistantToolBudget.createState({
       ...settings.limits,
@@ -166,6 +166,54 @@ class AiAssistantAgentService {
     }
 
     return parts.join('\n\n');
+  }
+
+  private normalizeReadonlyContext(context: AiReadonlyDatabaseContext | undefined): AiReadonlyDatabaseContext | undefined {
+    if (!context) {
+      return undefined;
+    }
+
+    const inferredSgbd = this.normalizeSupportedDatabaseName(context.sgbd)
+      || this.normalizeSupportedDatabaseName(context.database);
+
+    if (!inferredSgbd) {
+      return undefined;
+    }
+
+    return {
+      ...context,
+      sgbd: inferredSgbd
+    };
+  }
+
+  private normalizeSupportedDatabaseName(value: unknown): string {
+    if (typeof value !== 'string') {
+      return '';
+    }
+
+    const normalized = value.trim().toLowerCase();
+
+    if (normalized === 'postgres' || normalized === 'postgresql') {
+      return 'postgres';
+    }
+
+    if (normalized === 'mysql') {
+      return 'mysql';
+    }
+
+    if (normalized === 'hana' || normalized === 'sap hana') {
+      return 'hana';
+    }
+
+    if (normalized === 'sqlserver' || normalized === 'sql server' || normalized === 'mssql') {
+      return 'sqlserver';
+    }
+
+    if (normalized === 'sqlite') {
+      return 'sqlite';
+    }
+
+    return '';
   }
 
   private getDialectPromptRules(readonlyContext: AiReadonlyDatabaseContext | undefined): string[] {
