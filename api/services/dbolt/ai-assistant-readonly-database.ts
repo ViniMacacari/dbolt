@@ -41,6 +41,7 @@ type DatabaseQueryProvider = {
 };
 
 export interface AiReadonlyDatabaseContext {
+  connectionName?: string;
   sgbd?: string;
   version?: string;
   database?: string;
@@ -462,10 +463,9 @@ class AiAssistantReadonlyDatabaseService {
 
   private toPublicContext(context: AiReadonlyDatabaseContext): Omit<AiReadonlyDatabaseContext, 'connectionKey'> {
     return {
+      connectionName: context.connectionName,
       sgbd: context.sgbd,
-      version: context.version,
-      database: context.database,
-      schema: context.schema
+      version: context.version
     };
   }
 
