@@ -1,5 +1,33 @@
 export {};
 
+type DboltWindowAction =
+  | 'minimize'
+  | 'toggle-maximize'
+  | 'close'
+  | 'quit'
+  | 'reload'
+  | 'force-reload'
+  | 'toggle-devtools'
+  | 'reset-zoom'
+  | 'zoom-in'
+  | 'zoom-out'
+  | 'toggle-fullscreen'
+  | 'undo'
+  | 'redo'
+  | 'cut'
+  | 'copy'
+  | 'paste'
+  | 'delete'
+  | 'select-all'
+  | 'open-original-repository';
+
+interface DboltWindowState {
+  canToggleDevTools: boolean;
+  isFullScreen: boolean;
+  isMaximized: boolean;
+  platform: string;
+}
+
 declare global {
   interface Window {
     dboltInternalApi?: {
@@ -21,6 +49,11 @@ declare global {
       }): Promise<{
         filePath: string;
       }>;
+    };
+    dboltWindow?: {
+      getState(): Promise<DboltWindowState>;
+      invoke(action: DboltWindowAction): Promise<DboltWindowState>;
+      onStateChanged(callback: (state: DboltWindowState) => void): () => void;
     };
   }
 }
