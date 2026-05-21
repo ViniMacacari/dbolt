@@ -38,8 +38,14 @@ class AiAssistantAgentService {
     const budget = AiAssistantToolBudget.createState({
       ...settings.limits,
       maxApiCallsPerMessage: readonlyContext
-        ? Math.max(4, settings.limits.maxApiCallsPerMessage)
-        : settings.limits.maxApiCallsPerMessage
+        ? Math.max(6, settings.limits.maxApiCallsPerMessage)
+        : settings.limits.maxApiCallsPerMessage,
+      maxDatabaseRequestsPerMessage: readonlyContext
+        ? Math.max(10, settings.limits.maxDatabaseRequestsPerMessage)
+        : settings.limits.maxDatabaseRequestsPerMessage,
+      maxDatabaseRequestsPerApiCall: readonlyContext
+        ? Math.max(3, settings.limits.maxDatabaseRequestsPerApiCall)
+        : settings.limits.maxDatabaseRequestsPerApiCall
     });
     const toolSections: string[] = [];
 
@@ -61,9 +67,7 @@ class AiAssistantAgentService {
       );
       lastModel = completion.model;
 
-      const toolCalls = allowTools
-        ? this.parseToolCalls(completion.content)
-        : [];
+      const toolCalls = this.parseToolCalls(completion.content);
 
       if (toolCalls.length === 0) {
         return {
@@ -79,22 +83,8 @@ class AiAssistantAgentService {
         };
       }
 
-      const executableCalls = toolCalls.slice(
-        0,
-        Math.min(budget.maxToolCallsPerIteration, AiAssistantToolBudget.getRemainingToolCalls(budget))
-      );
-
-      if (executableCalls.length === 0 || !AiAssistantToolBudget.canRunTool(budget)) {
+      if (!await this.executeToolCalls(readonlyContext, budget, toolSections, toolCalls)) {
         break;
-      }
-
-      for (const toolCall of executableCalls) {
-        AiAssistantToolBudget.registerToolCall(budget);
-        const result = await AiAssistantTools.execute(readonlyContext, toolCall, budget);
-        toolSections.push([
-          `DBOLT read-only result. Executed action: ${result.name}. Status: ${result.success ? 'ok' : 'error'}.`,
-          result.content
-        ].join('\n'));
       }
     }
 
@@ -125,10 +115,17 @@ class AiAssistantAgentService {
       'Never execute or request DBOLT database actions for write commands such as UPDATE, DELETE, INSERT, CREATE, DROP, ALTER, TRUNCATE, EXEC, CALL, or MERGE.',
       'If you provide a write/DDL/DML script, make clear it is only a script for the user to review and run manually; do not claim it was executed.',
       'Database action and AI API call limits apply only to the current user message. They reset for every new user message and are not accumulated across the conversation.',
+      'Only say the current message limit is exhausted when DBOLT explicitly stops allowing database actions in this current request.',
       ...(readonlyContext && allowTools ? [
-        'When read-only context is authorized, you may execute SELECT/WITH queries with runReadonlyQuery to answer questions about database data.',
-        'Do not say you cannot execute a query when the query is read-only. Use runReadonlyQuery instead of giving SQL for the user to run, unless the user only asks for the query text.',
+        'Read-only database context is already authorized for this message. Read-only means DBOLT will not modify data; it does not mean you are forbidden from reading table rows.',
+        'You may consult any database data needed by executing SELECT/WITH queries with runReadonlyQuery.',
+        'When the user asks to search, consult, show, verify, find, list actual rows, or answer a question about current database data, request databaseActions JSON and run SELECT/WITH queries through runReadonlyQuery.',
+        'When a database action is needed, do not answer with prose or a SQL code block. Reply only with databaseActions JSON so DBOLT can execute the read-only action.',
+        'If the user asks only for SQL/query/script/SELECT text, provide the SQL text and do not execute it.',
+        'Do not say you cannot query the database when the query is read-only. Do not tell the user to run a SELECT manually while runReadonlyQuery is available, unless the user only asks for query text.',
         'If the user asks about object existence, columns, counts, IDs, or database data and read-only context is authorized, use database actions before answering, unless already collected read-only data answers directly.',
+        'Use only these exact database action names: searchObjects, getTableColumns, getSchemaSummary, runReadonlyQuery.',
+        'To list tables or views, use getSchemaSummary. Do not invent action names such as listTables or showTables.',
         'For questions that require sequential investigation, continue using database actions until you find the answer or the budget is exhausted. Example: search for the table, inspect columns, run a filtered SELECT, then answer.',
         'You can investigate across multiple rounds. For example, search for a table first, then request columns for the table you found.',
         'If a runReadonlyQuery action fails because a column or table is invalid, do not stop with a manual SQL example. Request getTableColumns or searchObjects next, then retry with exact metadata names.',
@@ -184,6 +181,33 @@ class AiAssistantAgentService {
       ...context,
       sgbd: inferredSgbd
     };
+  }
+
+  private async executeToolCalls(
+    readonlyContext: AiReadonlyDatabaseContext,
+    budget: AiAssistantToolBudgetState,
+    toolSections: string[],
+    toolCalls: AiAssistantToolCall[]
+  ): Promise<boolean> {
+    const executableCalls = toolCalls.slice(
+      0,
+      Math.min(budget.maxToolCallsPerIteration, AiAssistantToolBudget.getRemainingToolCalls(budget))
+    );
+
+    if (executableCalls.length === 0 || !AiAssistantToolBudget.canRunTool(budget)) {
+      return false;
+    }
+
+    for (const toolCall of executableCalls) {
+      AiAssistantToolBudget.registerToolCall(budget);
+      const result = await AiAssistantTools.execute(readonlyContext, toolCall, budget);
+      toolSections.push([
+        `DBOLT read-only result. Executed action: ${result.name}. Status: ${result.success ? 'ok' : 'error'}.`,
+        result.content
+      ].join('\n'));
+    }
+
+    return true;
   }
 
   private normalizeSupportedDatabaseName(value: unknown): string {
@@ -247,7 +271,11 @@ class AiAssistantAgentService {
 
     for (const jsonText of jsonTexts) {
       try {
-        const parsed = JSON.parse(jsonText) as unknown;
+        const parsed = this.parseJsonValue(jsonText);
+        if (parsed === null) {
+          continue;
+        }
+
         const rawCalls = this.readRawToolCalls(parsed);
         rawCalls.forEach(addToolCall);
       } catch (_error: unknown) {
@@ -308,6 +336,186 @@ class AiAssistantAgentService {
     return [];
   }
 
+  private parseJsonValue(jsonText: string): unknown | null {
+    const candidates = [
+      jsonText,
+      this.escapeJsonControlCharactersInStrings(jsonText),
+      this.repairLooseDatabaseActionJson(jsonText),
+      this.escapeJsonControlCharactersInStrings(this.repairLooseDatabaseActionJson(jsonText))
+    ];
+    const seenCandidates = new Set<string>();
+
+    for (const candidate of candidates) {
+      if (seenCandidates.has(candidate)) {
+        continue;
+      }
+
+      seenCandidates.add(candidate);
+
+      try {
+        return JSON.parse(candidate) as unknown;
+      } catch (_error: unknown) {
+        continue;
+      }
+    }
+
+    return null;
+  }
+
+  private repairLooseDatabaseActionJson(value: string): string {
+    const knownKeys = new Set([
+      'databaseActions',
+      'databaseAction',
+      'actions',
+      'action',
+      'toolCalls',
+      'toolCall',
+      'tools',
+      'name',
+      'tool',
+      'arguments',
+      'args',
+      'parameters',
+      'input',
+      'search',
+      'query',
+      'term',
+      'text',
+      'types',
+      'limit',
+      'tableName',
+      'table',
+      'table_name',
+      'sql',
+      'statement',
+      'maxRows',
+      'rows'
+    ]);
+    let result = '';
+    let inString = false;
+    let escaping = false;
+    let index = 0;
+
+    while (index < value.length) {
+      const char = value[index];
+
+      if (escaping) {
+        result += char;
+        escaping = false;
+        index++;
+        continue;
+      }
+
+      if (char === '\\' && inString) {
+        result += char;
+        escaping = true;
+        index++;
+        continue;
+      }
+
+      if (char === '"') {
+        result += char;
+        inString = !inString;
+        index++;
+        continue;
+      }
+
+      if (inString || (char !== '{' && char !== ',')) {
+        result += char;
+        index++;
+        continue;
+      }
+
+      result += char;
+      index++;
+
+      const whitespaceStart = index;
+      while (index < value.length && /\s/.test(value[index])) {
+        result += value[index];
+        index++;
+      }
+
+      const keyStart = index;
+      if (!/[A-Za-z_]/.test(value[keyStart] || '')) {
+        continue;
+      }
+
+      while (index < value.length && /[A-Za-z0-9_]/.test(value[index])) {
+        index++;
+      }
+
+      const key = value.slice(keyStart, index);
+      let lookahead = index;
+
+      if (value[lookahead] === '"') {
+        lookahead++;
+      }
+
+      while (lookahead < value.length && /\s/.test(value[lookahead])) {
+        lookahead++;
+      }
+
+      if (knownKeys.has(key) && value[lookahead] === ':') {
+        result += `"${key}"`;
+        if (value[index] === '"') {
+          index++;
+        }
+        continue;
+      }
+
+      result += value.slice(keyStart, index);
+    }
+
+    return result;
+  }
+
+  private escapeJsonControlCharactersInStrings(value: string): string {
+    let result = '';
+    let inString = false;
+    let escaping = false;
+
+    for (let index = 0; index < value.length; index++) {
+      const char = value[index];
+
+      if (escaping) {
+        result += char;
+        escaping = false;
+        continue;
+      }
+
+      if (char === '\\' && inString) {
+        result += char;
+        escaping = true;
+        continue;
+      }
+
+      if (char === '"') {
+        result += char;
+        inString = !inString;
+        continue;
+      }
+
+      if (inString && char === '\n') {
+        result += '\\n';
+        continue;
+      }
+
+      if (inString && char === '\r') {
+        result += '\\r';
+        continue;
+      }
+
+      if (inString && char === '\t') {
+        result += '\\t';
+        continue;
+      }
+
+      result += char;
+    }
+
+    return result;
+  }
+
   private normalizeToolCall(call: unknown): AiAssistantToolCall | null {
     if (!call || typeof call !== 'object') {
       return null;
@@ -349,11 +557,36 @@ class AiAssistantAgentService {
       return 'searchObjects';
     }
 
-    if (normalized === 'gettablecolumns' || normalized === 'tablecolumns' || normalized === 'columns') {
+    if (
+      normalized === 'gettablecolumns' ||
+      normalized === 'tablecolumns' ||
+      normalized === 'columns' ||
+      normalized === 'getcolumns' ||
+      normalized === 'listcolumns' ||
+      normalized === 'showcolumns' ||
+      normalized === 'describetable' ||
+      normalized === 'describe'
+    ) {
       return 'getTableColumns';
     }
 
-    if (normalized === 'getschemasummary' || normalized === 'schemasummary') {
+    if (
+      normalized === 'getschemasummary' ||
+      normalized === 'schemasummary' ||
+      normalized === 'listtables' ||
+      normalized === 'showtables' ||
+      normalized === 'gettables' ||
+      normalized === 'tables' ||
+      normalized === 'listviews' ||
+      normalized === 'showviews' ||
+      normalized === 'getviews' ||
+      normalized === 'views' ||
+      normalized === 'listobjects' ||
+      normalized === 'showobjects' ||
+      normalized === 'listdatabaseobjects' ||
+      normalized === 'listschema' ||
+      normalized === 'schema'
+    ) {
       return 'getSchemaSummary';
     }
 
@@ -377,11 +610,34 @@ class AiAssistantAgentService {
       return 'searchObjects';
     }
 
-    if (normalized === 'gettablecolumns' || normalized === 'tablecolumns') {
+    if (
+      normalized === 'gettablecolumns' ||
+      normalized === 'tablecolumns' ||
+      normalized === 'getcolumns' ||
+      normalized === 'listcolumns' ||
+      normalized === 'showcolumns' ||
+      normalized === 'describetable'
+    ) {
       return 'getTableColumns';
     }
 
-    if (normalized === 'getschemasummary' || normalized === 'schemasummary') {
+    if (
+      normalized === 'getschemasummary' ||
+      normalized === 'schemasummary' ||
+      normalized === 'listtables' ||
+      normalized === 'showtables' ||
+      normalized === 'gettables' ||
+      normalized === 'tables' ||
+      normalized === 'listviews' ||
+      normalized === 'showviews' ||
+      normalized === 'getviews' ||
+      normalized === 'views' ||
+      normalized === 'listobjects' ||
+      normalized === 'showobjects' ||
+      normalized === 'listdatabaseobjects' ||
+      normalized === 'listschema' ||
+      normalized === 'schema'
+    ) {
       return 'getSchemaSummary';
     }
 
@@ -488,6 +744,10 @@ class AiAssistantAgentService {
 
     if (toolName === 'getTableColumns' && typeof normalizedArgs['tableName'] !== 'string') {
       normalizedArgs['tableName'] = normalizedArgs['table'] || normalizedArgs['table_name'] || normalizedArgs['name'] || '';
+    }
+
+    if (toolName === 'getSchemaSummary' && typeof normalizedArgs['search'] !== 'string') {
+      normalizedArgs['search'] = normalizedArgs['query'] || normalizedArgs['term'] || normalizedArgs['text'] || '';
     }
 
     if (toolName === 'runReadonlyQuery') {
@@ -649,7 +909,7 @@ class AiAssistantAgentService {
       .map((message) => ({
         role: message.role,
         content: this.truncateText(
-          String(message.content || '').trim(),
+          this.sanitizeConversationMessage(message.role, String(message.content || '').trim()),
           this.getMessagePromptLimit(message.role)
         )
       }))
@@ -660,6 +920,49 @@ class AiAssistantAgentService {
     }
 
     return normalizedMessages.slice(-maxMessages);
+  }
+
+  private sanitizeConversationMessage(role: 'user' | 'assistant', content: string): string {
+    if (role === 'user') {
+      return content;
+    }
+
+    if (this.isAssistantToolRequestOnly(content)) {
+      return '';
+    }
+
+    return this.removeToolCallSyntax(content).trim();
+  }
+
+  private isAssistantToolRequestOnly(content: string): boolean {
+    const normalized = content.trim();
+
+    if (!normalized) {
+      return true;
+    }
+
+    return this.parseToolCalls(normalized).length > 0 &&
+      this.removeToolCallSyntax(normalized).trim().length === 0;
+  }
+
+  private removeToolCallSyntax(content: string): string {
+    let result = content;
+
+    for (const jsonText of this.extractJsonValues(content)) {
+      const parsed = this.parseJsonValue(jsonText);
+      if (parsed === null) {
+        continue;
+      }
+
+      if (this.readRawToolCalls(parsed).length > 0) {
+        result = result.replace(jsonText, '');
+      }
+    }
+
+    return result.replace(
+      /\[\s*(?:database-action|databaseAction|dbolt-action)\s*:\s*([A-Za-z_][\w-]*)\s*(?::\s*([^\]]*))?\]/g,
+      ''
+    );
   }
 
   private cleanFinalAnswer(content: string): string {
