@@ -38,7 +38,7 @@ class AiAssistantAgentService {
     const budget = AiAssistantToolBudget.createState({
       ...settings.limits,
       maxApiCallsPerMessage: readonlyContext
-        ? Math.max(2, settings.limits.maxApiCallsPerMessage)
+        ? Math.max(4, settings.limits.maxApiCallsPerMessage)
         : settings.limits.maxApiCallsPerMessage
     });
     const toolSections: string[] = [];
@@ -120,6 +120,7 @@ class AiAssistantAgentService {
       'Focus on SQL, data modeling, schema investigation, and database productivity.',
       'Do not request passwords, tokens, or API keys.',
       'Do not invent tables, columns, or results. When read-only database action data is available, treat it as factual.',
+      'Never guess column names when a read-only database context is available. If the exact columns for a table are not confirmed in the current DBOLT read-only data, request getTableColumns before writing or executing a SELECT that references columns.',
       'Distinguish SQL generation from SQL execution. You may provide DDL/DML scripts as plain text or code blocks when the user asks for them.',
       'Never execute or request DBOLT database actions for write commands such as UPDATE, DELETE, INSERT, CREATE, DROP, ALTER, TRUNCATE, EXEC, CALL, or MERGE.',
       'If you provide a write/DDL/DML script, make clear it is only a script for the user to review and run manually; do not claim it was executed.',
@@ -129,8 +130,11 @@ class AiAssistantAgentService {
         'Do not say you cannot execute a query when the query is read-only. Use runReadonlyQuery instead of giving SQL for the user to run, unless the user only asks for the query text.',
         'If the user asks about object existence, columns, counts, IDs, or database data and read-only context is authorized, use database actions before answering, unless already collected read-only data answers directly.',
         'For questions that require sequential investigation, continue using database actions until you find the answer or the budget is exhausted. Example: search for the table, inspect columns, run a filtered SELECT, then answer.',
-        'You can investigate across multiple rounds. For example, search for a table first, then request columns for the table you found.'
+        'You can investigate across multiple rounds. For example, search for a table first, then request columns for the table you found.',
+        'If a runReadonlyQuery action fails because a column or table is invalid, do not stop with a manual SQL example. Request getTableColumns or searchObjects next, then retry with exact metadata names.',
+        'When the user asks for actual database data, answer from runReadonlyQuery results. Do not provide only an example script while read-only actions are still available.'
       ] : []),
+      ...this.getDialectPromptRules(readonlyContext),
       `Current user message budget: up to ${budget.maxApiCallsPerMessage} AI API calls and up to ${budget.maxToolCalls} database actions, up to ${budget.maxToolCallsPerIteration} database actions per AI API call.`,
       `Already used for this current user message before this AI API call: ${Math.max(0, budget.apiCallsUsed - 1)} AI API calls and ${budget.toolCallsUsed} database actions.`
     ];
@@ -161,6 +165,20 @@ class AiAssistantAgentService {
     }
 
     return parts.join('\n\n');
+  }
+
+  private getDialectPromptRules(readonlyContext: AiReadonlyDatabaseContext | undefined): string[] {
+    const database = String(readonlyContext?.sgbd || '').toLowerCase();
+
+    if (database !== 'hana') {
+      return [];
+    }
+
+    return [
+      'SAP HANA dialect rule: use double quotes around table and column identifiers using the exact case returned by metadata, especially mixed-case SAP Business One columns such as "DocEntry" and "DocDate".',
+      'SAP HANA uppercases unquoted identifiers, so DocEntry without quotes becomes DOCENTRY and can fail. Do not use brackets or backticks for HANA identifiers.',
+      'SAP HANA example shape after columns are confirmed: SELECT TOP 1 "DocEntry", "DocDate" FROM "OINV" ORDER BY "DocEntry" DESC.'
+    ];
   }
 
   private parseToolCalls(content: string): AiAssistantToolCall[] {
