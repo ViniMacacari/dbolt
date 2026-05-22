@@ -1123,7 +1123,6 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
         return this.decorateIndexColumnDef(columnDef)
       }
 
-      const existingCellRenderer = columnDef.cellRenderer
       const existingCellClass = columnDef.cellClass
       const existingClassRules = columnDef.cellClassRules || {}
 
@@ -1131,7 +1130,6 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
         ...columnDef,
         editable: (params: any) => this.editingEnabled && !!this.getEditableMetaForCell(params.data, field),
         valueSetter: (params: any) => this.setEditableCellValue(params, field),
-        cellRenderer: existingCellRenderer || ((params: any) => this.renderCellWithTitle(params)),
         cellClass: existingCellClass,
         cellClassRules: {
           ...existingClassRules,
@@ -1157,17 +1155,6 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       this.buildSelectionColumnDef(),
       ...decoratedColumns
     ]
-  }
-
-  private renderCellWithTitle(params: any): HTMLElement {
-    const span = document.createElement('span')
-    const value = params.valueFormatted ?? this.formatCellTitleValue(params.value)
-    const title = this.formatCellTitleValue(params.value)
-
-    span.textContent = value
-    span.title = title
-
-    return span
   }
 
   private formatCellTitleValue(value: any): string {

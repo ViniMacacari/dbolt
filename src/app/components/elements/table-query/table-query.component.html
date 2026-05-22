@@ -72,6 +72,7 @@
         <ng-container *ngIf="!errorMessage">
             <ag-grid-angular *ngIf="useInfiniteRowModel; else clientSideGrid" #agGrid class="ag-root"
                 [columnDefs]="columnDefs" [defaultColDef]="defaultColDef" [domLayout]="'normal'"
+                [enableBrowserTooltips]="true"
                 [rowModelType]="'infinite'" [datasource]="gridDataSource"
                 [cacheBlockSize]="infiniteCacheBlockSize" [maxBlocksInCache]="infiniteMaxBlocksInCache"
                 [maxConcurrentDatasourceRequests]="1" [blockLoadDebounceMillis]="infiniteBlockLoadDebounceMillis"
@@ -87,6 +88,7 @@
             <ng-template #clientSideGrid>
                 <ag-grid-angular #agGrid class="ag-root" [rowData]="displayRows" [columnDefs]="columnDefs"
                     [defaultColDef]="defaultColDef" [domLayout]="'normal'" [rowBuffer]="20"
+                    [enableBrowserTooltips]="true"
                     [rowHeight]="resultRowHeight" [headerHeight]="resultHeaderHeight"
                     [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false"
                     [suppressNoRowsOverlay]="true" [animateRows]="false" [rowClassRules]="rowClassRules"
