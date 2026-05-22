@@ -79,6 +79,7 @@
                 [rowBuffer]="20" [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false"
                 [suppressNoRowsOverlay]="true" [animateRows]="false" [rowClassRules]="rowClassRules"
                 (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)" (filterChanged)="onGridFilterChanged()"
+                (columnHeaderClicked)="onColumnHeaderClicked($event)"
                 (cellMouseDown)="onGridCellMouseDown($event)" (cellMouseOver)="onGridCellMouseOver($event)"
                 (cellContextMenu)="onGridCellContextMenu($event)">
             </ag-grid-angular>
@@ -90,6 +91,7 @@
                     [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false"
                     [suppressNoRowsOverlay]="true" [animateRows]="false" [rowClassRules]="rowClassRules"
                     (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)" (filterChanged)="onGridFilterChanged()"
+                    (columnHeaderClicked)="onColumnHeaderClicked($event)"
                     (cellMouseDown)="onGridCellMouseDown($event)" (cellMouseOver)="onGridCellMouseOver($event)"
                     (cellContextMenu)="onGridCellContextMenu($event)">
                 </ag-grid-angular>
