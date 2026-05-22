@@ -367,6 +367,12 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.filterModelChange.emit(this.agGrid?.api?.getFilterModel() || {})
   }
 
+  onColumnHeaderClicked(event: any): void {
+    if (event?.column?.getColId?.() !== this.rowIndexColumnId) return
+
+    this.selectAllRows()
+  }
+
   applyRowLimit(): void {
     this.refreshQuery.emit()
   }
@@ -493,6 +499,12 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   }
 
   onGridNativeContextMenu(event: MouseEvent): void {
+    const headerContext = this.getNativeHeaderContext(event)
+    if (headerContext) {
+      this.openHeaderSelectionMenu(headerContext.field, event)
+      return
+    }
+
     const context = this.getNativeCellContext(event)
     if (!context) return
 
@@ -732,6 +744,48 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       x: Math.max(8, Math.min(event.clientX, window.innerWidth - 190)),
       y: Math.max(8, Math.min(event.clientY, window.innerHeight - 145))
     }
+  }
+
+  private openHeaderSelectionMenu(field: string | null, event: MouseEvent): void {
+    const fields = field ? [field] : this.getVisibleFields()
+    const rowIds = this.getDisplayRowIds()
+    if (fields.length === 0 || rowIds.length === 0) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    event.stopImmediatePropagation()
+
+    this.copyErrorMessage = ''
+    this.selectedCellKeys.clear()
+    rowIds.forEach((rowId) => {
+      fields.forEach((selectedField) => this.selectedCellKeys.add(this.cellKey(rowId, selectedField)))
+    })
+
+    this.selectionAnchor = { rowId: rowIds[0], field: fields[0] }
+    this.selectionEnd = { rowId: rowIds[rowIds.length - 1], field: fields[fields.length - 1] }
+    this.isSelectingCells = false
+    this.refreshSelectionSummary()
+    this.refreshVisibleGrid()
+
+    this.cellSelectionMenu = {
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - 190)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - 145))
+    }
+  }
+
+  private getNativeHeaderContext(event: MouseEvent): { field: string | null } | null {
+    const target = event.target as HTMLElement | null
+    const headerElement = target?.closest('.ag-header-cell[col-id]') as HTMLElement | null
+    const colId = headerElement?.getAttribute('col-id')
+    if (!colId) return null
+
+    if (colId === this.rowIndexColumnId) {
+      return { field: null }
+    }
+
+    return this.getVisibleFields().includes(colId)
+      ? { field: colId }
+      : null
   }
 
   private getNativeCellContext(event: MouseEvent): { row: any, field: string } | null {
@@ -1086,9 +1140,9 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
         },
         tooltipValueGetter: (params: any) => {
           const editableMeta = this.getEditableMetaForCell(params.data, field)
-          if (!this.editingEnabled) return null
+          if (!this.editingEnabled) return this.formatCellTitleValue(params.value)
           if (!editableMeta) return this.t('results.readOnlyInEditor')
-          return this.t('results.typeTooltip', { type: editableMeta.type })
+          return `${this.formatCellTitleValue(params.value)}\n${this.t('results.typeTooltip', { type: editableMeta.type })}`
         }
       }
     })
@@ -1103,6 +1157,20 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     ]
   }
 
+  private formatCellTitleValue(value: any): string {
+    if (value === null || value === undefined) return '[NULL]'
+
+    if (typeof value === 'object') {
+      try {
+        return JSON.stringify(value)
+      } catch {
+        return String(value)
+      }
+    }
+
+    return String(value)
+  }
+
   private decorateIndexColumnDef(columnDef: ColDef): ColDef {
     if (columnDef.headerName !== '#') return columnDef
 
@@ -1113,6 +1181,8 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       filter: false,
       resizable: false,
       suppressMovable: true,
+      headerClass: ['dbolt-row-index-header'],
+      headerTooltip: this.t('results.selectAllLoadedRows'),
       cellClass: ['dbolt-row-index-cell'],
       cellClassRules: {
         ...(columnDef.cellClassRules || {}),

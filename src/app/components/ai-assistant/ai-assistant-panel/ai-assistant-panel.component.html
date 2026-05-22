@@ -20,11 +20,7 @@
     </div>
     <div class="py-2"></div>
 
-    <p class="selected-title">{{ t('aiAssistant.title') }}</p>
-    <button type="button" class="sgbd" (click)="settingsRequested.emit()">
-        <img src="icons/ai.png" height="15px" width="15px" [alt]="t('aiAssistant.assistant')">
-        <p class="text-min w-100">{{ settings?.model || t('aiAssistant.configure') }}</p>
-    </button>
+    <p class="selected-title">{{ t('aiAssistant.model') }} - {{ settings?.model || t('aiAssistant.configure') }}</p>
     <button type="button" class="database context-summary context-summary-combined"
         [disabled]="!databaseContextAvailable" [title]="contextSummaryLabel">
         <span class="context-summary-item">
@@ -38,26 +34,20 @@
         </span>
     </button>
 
-    <div class="separator my-1"></div>
-
     <div class="conversation-section">
         <div class="conversation-header">
             <span>{{ t('aiAssistant.conversations') }}</span>
-            <button type="button" class="conversation-icon-button" (click)="startNewConversation()"
-                [disabled]="sending || loadingConversations" [title]="t('aiAssistant.newConversation')">
-                <img src="icons/add.png" height="13px" width="13px" [alt]="t('aiAssistant.newConversation')">
-            </button>
+            <div class="d-flex w-100 justify-content-end align-items-center gap-1">
+                <button type="button" class="conversation-icon-button" (click)="startNewConversation()"
+                    [disabled]="sending || loadingConversations" [title]="t('aiAssistant.newConversation')">
+                    <img src="icons/add.png" height="13px" width="13px" [alt]="t('aiAssistant.newConversation')">
+                </button>
+                <button type="button" class="conversation-icon-button" (click)="openConversationsModal()"
+                    [disabled]="sending || loadingConversations" [title]="t('aiAssistant.openConversations')">
+                    <img src="icons/history.png" height="13px" width="13px" [alt]="t('aiAssistant.openConversations')">
+                </button>
+            </div>
         </div>
-
-        <button type="button" class="conversation-current" (click)="openConversationsModal()"
-            [disabled]="loadingConversations" [title]="t('aiAssistant.openConversations')">
-            <img src="icons/chat.png" height="16px" width="16px" [alt]="t('aiAssistant.conversations')">
-            <span class="conversation-current-copy">
-                <small>{{ t('aiAssistant.currentConversation') }}</small>
-                <strong>{{ activeConversationTitle }}</strong>
-            </span>
-            <span class="conversation-count">{{ conversations.length }}</span>
-        </button>
 
         <p class="conversation-loading text-min-gray" *ngIf="loadingConversations">
             {{ t('aiAssistant.loadingConversations') }}

@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common'
 import { Component, OnInit } from '@angular/core'
 import { RouterOutlet } from '@angular/router'
+import { ApplicationMenuComponent } from './components/application-menu/application-menu.component'
 import { LoadingComponent } from "./components/modal/loading/loading.component"
 import { AppUpdateComponent } from './components/modal/app-update/app-update.component'
 import { AppUpdateCheckResult } from './services/app-update/app-update.model'
@@ -11,7 +12,7 @@ import { AppLanguageService } from './services/language/app-language.service'
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, LoadingComponent, AppUpdateComponent],
+  imports: [CommonModule, RouterOutlet, ApplicationMenuComponent, LoadingComponent, AppUpdateComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })

@@ -44,15 +44,18 @@ class AiAssistantToolsService {
     return [
       'Read-only database actions available when the user authorized database context:',
       '- searchObjects: searches tables/views by partial name. Args: {"search":"text","types":["table","view"],"limit":160}. Use before getTableColumns when you do not know the exact name.',
-      '- getTableColumns: lists column metadata for a table/view. Args: {"tableName":"OINV","limit":60}.',
+      '- getTableColumns: lists column metadata for a table/view. Args: {"tableName":"TABLE_NAME","limit":60}.',
       '- getSchemaSummary: small summary of tables/views. Args: {"search":"optional","limit":30}. Use only when a specific search is not enough.',
       '- runReadonlyQuery: runs only SELECT/WITH with a row limit. Args: {"sql":"SELECT ...","maxRows":50}. Never use it for INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, EXEC, or multiple statements.',
       'For object discovery, choose concise search terms from the user intent and database naming context. If the first search has no useful match, try a broader or alternative term within the database action budget.',
       'Use runReadonlyQuery when the question asks for row values, IDs, emails, names, counts, or any data that depends on table contents.',
       'Before runReadonlyQuery, use getTableColumns when the exact column names for the target table have not already been returned in the current DBOLT read-only data. Do not guess columns.',
       'If you still need information to build the SELECT safely, request another database action first; if you already know the table and columns, run the read-only SELECT.',
+      'When the user asks for current database data and a database action is needed, do not answer with a SQL code block or prose. Reply only with databaseActions JSON.',
+      'Only provide SQL text instead of databaseActions when the user explicitly asks for SQL/query/script text rather than asking you to consult the data.',
       'To request database actions, reply ONLY with valid JSON text in this format:',
-      '{"databaseActions":[{"name":"searchObjects","arguments":{"search":"OINV","types":["table","view"],"limit":20}}]}',
+      '{"databaseActions":[{"name":"searchObjects","arguments":{"search":"TABLE_NAME","types":["table","view"],"limit":20}}]}',
+      'Do not use bracket syntax such as [database-action:getTableColumns:tableName=users]. That is not the preferred request format.',
       'Request at most two database actions per round. When you have enough data, answer the user normally, without database action JSON.'
     ].join('\n');
   }
