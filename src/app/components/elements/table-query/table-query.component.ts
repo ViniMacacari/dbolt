@@ -1123,6 +1123,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
         return this.decorateIndexColumnDef(columnDef)
       }
 
+      const existingCellRenderer = columnDef.cellRenderer
       const existingCellClass = columnDef.cellClass
       const existingClassRules = columnDef.cellClassRules || {}
 
@@ -1130,6 +1131,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
         ...columnDef,
         editable: (params: any) => this.editingEnabled && !!this.getEditableMetaForCell(params.data, field),
         valueSetter: (params: any) => this.setEditableCellValue(params, field),
+        cellRenderer: existingCellRenderer || ((params: any) => this.renderCellWithTitle(params)),
         cellClass: existingCellClass,
         cellClassRules: {
           ...existingClassRules,
@@ -1140,9 +1142,9 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
         },
         tooltipValueGetter: (params: any) => {
           const editableMeta = this.getEditableMetaForCell(params.data, field)
-          if (!this.editingEnabled) return null
+          if (!this.editingEnabled) return this.formatCellTitleValue(params.value)
           if (!editableMeta) return this.t('results.readOnlyInEditor')
-          return this.t('results.typeTooltip', { type: editableMeta.type })
+          return `${this.formatCellTitleValue(params.value)}\n${this.t('results.typeTooltip', { type: editableMeta.type })}`
         }
       }
     })
@@ -1155,6 +1157,31 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       this.buildSelectionColumnDef(),
       ...decoratedColumns
     ]
+  }
+
+  private renderCellWithTitle(params: any): HTMLElement {
+    const span = document.createElement('span')
+    const value = params.valueFormatted ?? this.formatCellTitleValue(params.value)
+    const title = this.formatCellTitleValue(params.value)
+
+    span.textContent = value
+    span.title = title
+
+    return span
+  }
+
+  private formatCellTitleValue(value: any): string {
+    if (value === null || value === undefined) return '[NULL]'
+
+    if (typeof value === 'object') {
+      try {
+        return JSON.stringify(value)
+      } catch {
+        return String(value)
+      }
+    }
+
+    return String(value)
   }
 
   private decorateIndexColumnDef(columnDef: ColDef): ColDef {
