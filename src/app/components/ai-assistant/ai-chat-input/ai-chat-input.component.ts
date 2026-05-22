@@ -42,6 +42,15 @@ export class AiChatInputComponent {
     this.message = ''
   }
 
+  onTextareaKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter' || event.isComposing || event.ctrlKey || event.metaKey) {
+      return
+    }
+
+    event.preventDefault()
+    this.submit()
+  }
+
   t(key: string, params: Record<string, string | number> = {}): string {
     return this.language.translate(key, params)
   }
