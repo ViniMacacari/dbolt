@@ -43,12 +43,32 @@ export class AiChatInputComponent {
   }
 
   onTextareaKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Enter' || event.isComposing || event.ctrlKey || event.metaKey) {
+    if (event.key !== 'Enter' || event.isComposing) {
       return
     }
 
+    event.stopPropagation()
     event.preventDefault()
+
+    if (event.ctrlKey || event.metaKey) {
+      this.insertLineBreak(event.target as HTMLTextAreaElement | null)
+      return
+    }
+
     this.submit()
+  }
+
+  private insertLineBreak(textarea: HTMLTextAreaElement | null): void {
+    if (!textarea) {
+      this.message = `${this.message}\n`
+      return
+    }
+
+    const start = textarea.selectionStart ?? textarea.value.length
+    const end = textarea.selectionEnd ?? textarea.value.length
+
+    textarea.setRangeText('\n', start, end, 'end')
+    this.message = textarea.value
   }
 
   t(key: string, params: Record<string, string | number> = {}): string {
