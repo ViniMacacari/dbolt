@@ -309,7 +309,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'results.executingQuery': 'Executando query...',
   'results.queryError': 'Erro na query',
   'results.noRowsReturned': 'Nenhuma linha retornada.',
-  'results.rowsLoadedOf': '{loaded} carregadas de {total} linhas',
+  'results.rowsLoadedOf': '{loaded} de {total} linhas',
   'results.rows': '{count} linhas',
   'results.copyQueryErrorFailed': 'Não foi possível copiar o erro da query.',
   'results.copySelectedCellsFailed': 'Não foi possível copiar as células selecionadas.',

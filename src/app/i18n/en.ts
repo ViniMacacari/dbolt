@@ -309,7 +309,7 @@ export const enTranslations: TranslationCatalog = {
   'results.executingQuery': 'Executing query...',
   'results.queryError': 'Query error',
   'results.noRowsReturned': 'No rows returned.',
-  'results.rowsLoadedOf': '{loaded} loaded of {total} rows',
+  'results.rowsLoadedOf': '{loaded} of {total} rows',
   'results.rows': '{count} rows',
   'results.copyQueryErrorFailed': 'Could not copy query error.',
   'results.copySelectedCellsFailed': 'Could not copy selected cells.',
