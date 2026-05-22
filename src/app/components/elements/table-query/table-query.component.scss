@@ -104,6 +104,14 @@
         text-align: center;
     }
 
+    .dbolt-row-index-header {
+        cursor: pointer;
+
+        .ag-header-cell-label {
+            justify-content: center;
+        }
+    }
+
     .dbolt-row-index-selected {
         background-color: rgba(115, 158, 202, .32) !important;
         box-shadow: inset 3px 0 0 #d8e9fb;
