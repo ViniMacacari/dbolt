@@ -1,9 +1,14 @@
-<div class="app-toast-container" aria-live="polite" aria-atomic="true">
-    <div *ngFor="let toast of toasts" class="app-toast" role="status" [style.--toast-color]="toast.color">
-        <span class="app-toast-accent" aria-hidden="true"></span>
-        <p class="app-toast-message">{{ toast.message }}</p>
-        <button type="button" class="app-toast-close" aria-label="Close" (click)="removeToast(toast)">
-            &times;
-        </button>
+<div #toastContainer class="toast-container position-fixed top-0 end-0 p-3">
+    <div *ngFor="let toast of toasts" class="toast show align-items-center text-white border-0 animate-toast">
+        <div class="d-flex toast-pai p-0">
+            <div class="toast-body d-flex justify-content-center align-items-center"
+                [ngStyle]="{'background-color': toast.color}">
+            </div>
+            <p [ngStyle]="{'color': toast.color}" class="w-100 m-0 d-flex mx-2 align-items-center py-1">
+                {{ toast.message
+                }}</p>
+            <i class="d-flex align-items-center justify-content-center fa-solid fa-xmark px-2 pointer"
+                [ngStyle]="{'color': toast.color}" (click)="removeToast(toast)"></i>
+        </div>
     </div>
 </div>
