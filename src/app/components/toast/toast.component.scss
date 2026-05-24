@@ -1,34 +1,77 @@
-.toast-container {
-    max-width: 350px;
+:host {
+    display: block;
+    pointer-events: none;
+    position: fixed;
+    right: 16px;
+    top: 16px;
+    width: min(350px, calc(100vw - 32px));
+    z-index: 2147483000;
 }
 
-.toast {
+.app-toast-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+.app-toast {
     animation: slideIn 0.25s ease-out, fadeOut 0.25s ease-in 2.5s forwards;
+    align-items: stretch;
+    background: #f8f9fa;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-left: 0;
+    border-radius: 6px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .32);
+    color: #1b1b1b;
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1fr) 34px;
+    min-height: 48px;
+    overflow: hidden;
+    pointer-events: auto;
+    width: 100%;
+}
 
-    .toast-body {
-        display: flex;
-        align-items: center;
+.app-toast-accent {
+    background: var(--toast-color, #0d6efd);
+    display: block;
+    min-height: 48px;
+}
 
-        width: 30px !important;
+.app-toast-message {
+    align-items: center;
+    color: var(--toast-color, #0d6efd);
+    display: flex;
+    font-family: 'Nunito';
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    margin: 0;
+    min-height: 48px;
+    overflow-wrap: anywhere;
+    padding: 10px 12px;
+    user-select: text;
+}
 
-        border: none;
-        border-radius: 5px 0 0 5px;
+.app-toast-close {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: var(--toast-color, #0d6efd);
+    cursor: pointer;
+    display: flex;
+    font-size: 22px;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+    width: 34px;
+
+    &:focus {
+        outline: none;
     }
 
-    .btn-close {
-        opacity: 0.7;
-        color: inherit;
-
-        &:hover {
-            opacity: 1;
-        }
-
-        color: inherit !important;
-
-        &:focus {
-            outline: none;
-            box-shadow: none;
-        }
+    &:hover {
+        background: rgba(0, 0, 0, .06);
     }
 }
 
