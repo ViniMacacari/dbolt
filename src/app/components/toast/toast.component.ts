@@ -1,7 +1,5 @@
-import { Component, ElementRef, Renderer2 } from '@angular/core'
+import { Component } from '@angular/core'
 import { CommonModule } from '@angular/common'
-
-declare var bootstrap: any
 
 @Component({
   selector: 'app-toast',
