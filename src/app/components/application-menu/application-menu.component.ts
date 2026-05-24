@@ -3,6 +3,7 @@ import { Component, HostListener, OnDestroy, OnInit } from '@angular/core'
 import { Router } from '@angular/router'
 
 import { AppLanguageService } from '../../services/language/app-language.service'
+import { AppPlatformService } from '../../services/platform/app-platform.service'
 
 type WindowAction =
   | 'minimize'
@@ -124,7 +125,8 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
 
   constructor(
     private router: Router,
-    private language: AppLanguageService
+    private language: AppLanguageService,
+    private platform: AppPlatformService
   ) { }
 
   ngOnInit(): void {
@@ -266,6 +268,7 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
 
     return key === 'f5' ||
       key === 'f12' ||
+      (this.platform.isLinuxElectron() && ctrlOrMeta && key === 's') ||
       (ctrlOrMeta && key === 'r') ||
       (ctrlOrMeta && event.shiftKey && ['i', 'j', 'c'].includes(key))
   }

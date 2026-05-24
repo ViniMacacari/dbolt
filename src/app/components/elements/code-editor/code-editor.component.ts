@@ -15,6 +15,7 @@ import { SqlSyntaxMonacoMarkersService } from '../../../services/sql-validation/
 import { QuerySaveService, SavedQuery, SavedQueryInput } from '../../../services/query-save/query-save.service'
 import { KeyboardShortcutService } from '../../../services/keyboard-shortcuts/keyboard-shortcut.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
+import { AppPlatformService } from '../../../services/platform/app-platform.service'
 
 let sqlTokenizerConfigured = false
 
@@ -35,6 +36,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   @Input() active: boolean = false
 
   @ViewChild('editorContainer') editorContainer!: ElementRef
+  @ViewChild('editorShell') editorShell!: ElementRef<HTMLElement>
   @ViewChild('codeEditorPanel') codeEditorPanel!: ElementRef<HTMLDivElement>
   @ViewChild(ToastComponent) toast!: ToastComponent
   @ViewChild(TableQueryComponent) tableQuery?: TableQueryComponent
@@ -81,7 +83,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     private sqlSyntaxMarkers: SqlSyntaxMonacoMarkersService,
     private querySave: QuerySaveService,
     private keyboardShortcuts: KeyboardShortcutService,
-    private language: AppLanguageService
+    private language: AppLanguageService,
+    private platform: AppPlatformService
   ) {
     this.settingsSubscription = this.appSettings.settingsChanges$.subscribe((settings) => {
       this.applySqlHighlightTheme(settings.sqlHighlightColors)
@@ -408,6 +411,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       return true
     }
 
+    if (
+      this.platform.isLinuxElectron() &&
+      this.keyboardShortcuts.isEventInside(event, this.editorShell?.nativeElement)
+    ) {
+      return true
+    }
+
     if (this.isTextInputTarget(target)) {
       return false
     }
@@ -594,8 +604,11 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   async saveQuery(): Promise<void> {
     if (!this.tabInfo?.persisted) {
-      await this.saveAs()
-      return
+      const recoveredPersistedQuery = await this.recoverLinuxPersistedQueryIdentity()
+      if (!recoveredPersistedQuery) {
+        await this.saveAs()
+        return
+      }
     }
 
     try {
@@ -827,6 +840,59 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.tabInfo.versions = savedQuery.versions || []
     this.tabInfo.persisted = true
     this.tabInfo.icon = 'CODE'
+  }
+
+  private async recoverLinuxPersistedQueryIdentity(): Promise<boolean> {
+    if (!this.platform.isLinuxElectron() || !this.tabInfo) return false
+
+    try {
+      const savedQueries = await this.querySave.loadQueries()
+      const recoveredQuery = this.findMatchingSavedQuery(savedQueries)
+      if (!recoveredQuery) return false
+
+      this.tabInfo.id = recoveredQuery.id
+      this.tabInfo.name = recoveredQuery.name
+      this.tabInfo.dbInfo = recoveredQuery.dbSchema || this.tabInfo.dbInfo
+      this.tabInfo.folderPath = recoveredQuery.folderPath || ''
+      this.tabInfo.versioningEnabled = Boolean(recoveredQuery.versioningEnabled)
+      this.tabInfo.updatedAt = recoveredQuery.updatedAt
+      this.tabInfo.createdAt = recoveredQuery.createdAt
+      this.tabInfo.versions = recoveredQuery.versions || []
+      this.tabInfo.persisted = true
+
+      return true
+    } catch (error) {
+      console.warn('Could not recover saved query identity on Linux:', error)
+      return false
+    }
+  }
+
+  private findMatchingSavedQuery(savedQueries: SavedQuery[]): SavedQuery | null {
+    const tabId = Number(this.tabInfo?.id)
+
+    if (Number.isFinite(tabId)) {
+      const queryById = savedQueries.find((query) => Number(query.id) === tabId)
+      if (queryById) return queryById
+    }
+
+    const tabName = String(this.tabInfo?.name || '').trim().toLowerCase()
+    if (!tabName) return null
+
+    const hasSavedQueryMetadata = Boolean(
+      this.tabInfo?.createdAt ||
+      this.tabInfo?.updatedAt ||
+      this.tabInfo?.folderPath ||
+      this.tabInfo?.versions?.length
+    )
+    if (!hasSavedQueryMetadata) return null
+
+    const tabFolderPath = this.querySave.normalizeFolderPath(this.tabInfo?.folderPath || '').toLowerCase()
+    const queriesByPath = savedQueries.filter((query) =>
+      query.name.trim().toLowerCase() === tabName &&
+      this.querySave.normalizeFolderPath(query.folderPath || '').toLowerCase() === tabFolderPath
+    )
+
+    return queriesByPath.length === 1 ? queriesByPath[0] : null
   }
 
   private isQueryNotFoundError(error: any): boolean {
