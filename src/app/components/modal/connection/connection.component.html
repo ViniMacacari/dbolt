@@ -37,7 +37,9 @@
             </div>
             <div *ngIf="sgbd && sgbdVersion" class="d-flex flex-column w-100 gap-2">
                 <div class="d-flex w-100 gap-2">
-                    <input [(ngModel)]="connectionConfig.host" type="text" class="input-page" [placeholder]="getHostPlaceholder()" />
+                    <app-sqlite-file-explorer *ngIf="isSQLite" [(selectedPath)]="connectionConfig.host"></app-sqlite-file-explorer>
+                    <input *ngIf="!isSQLite" [(ngModel)]="connectionConfig.host" type="text" class="input-page"
+                        [placeholder]="getHostPlaceholder()" />
                     <input *ngIf="!isSQLite" [(ngModel)]="connectionConfig.port" type="number" class="input-page input-min"
                         [placeholder]="t('connection.portPlaceholder')" />
                 </div>
