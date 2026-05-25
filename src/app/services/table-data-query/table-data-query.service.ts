@@ -54,7 +54,7 @@ export class TableDataQueryService {
     }
 
     if (model.filterType === 'date') {
-      return this.buildDateExpression(column, model)
+      return this.buildDateExpression(column, model, dbContext)
     }
 
     return this.buildTextExpression(column, model, dbContext)
@@ -62,21 +62,34 @@ export class TableDataQueryService {
 
   private buildTextExpression(column: string, model: any, dbContext: any): string {
     const type = String(model.type || 'contains')
-    const textColumn = this.textComparableExpression(column, dbContext)
     const value = String(model.filter ?? '')
-    const normalizedValue = value.toLowerCase()
+    const textColumn = this.textComparableExpression(column, dbContext)
+    const comparableValue = value.toLowerCase()
 
     if (type === 'blank') return `(${column} is null or ${textColumn} = '')`
     if (type === 'notBlank') return `(${column} is not null and ${textColumn} <> '')`
     if (!value) return ''
 
-    if (type === 'equals') return `${textColumn} = ${this.quoteString(normalizedValue)}`
-    if (type === 'notEqual') return `${textColumn} <> ${this.quoteString(normalizedValue)}`
-    if (type === 'startsWith') return `${textColumn} like ${this.quoteLike(`${normalizedValue}%`)} escape '\\'`
-    if (type === 'endsWith') return `${textColumn} like ${this.quoteLike(`%${normalizedValue}`)} escape '\\'`
-    if (type === 'notContains') return `${textColumn} not like ${this.quoteLike(`%${normalizedValue}%`)} escape '\\'`
+    if (this.shouldUsePostgresTextSearch(dbContext)) {
+      const loweredColumn = `lower(${textColumn})`
+      const loweredValue = this.quoteString(value.toLowerCase())
 
-    return `${textColumn} like ${this.quoteLike(`%${normalizedValue}%`)} escape '\\'`
+      if (type === 'equals') return `${loweredColumn} = ${loweredValue}`
+      if (type === 'notEqual') return `${loweredColumn} <> ${loweredValue}`
+      if (type === 'startsWith') return `left(${loweredColumn}, length(${loweredValue})) = ${loweredValue}`
+      if (type === 'endsWith') return `right(${loweredColumn}, length(${loweredValue})) = ${loweredValue}`
+      if (type === 'notContains') return `strpos(${loweredColumn}, ${loweredValue}) = 0`
+
+      return `strpos(${loweredColumn}, ${loweredValue}) > 0`
+    }
+
+    if (type === 'equals') return `${textColumn} = ${this.quoteString(comparableValue)}`
+    if (type === 'notEqual') return `${textColumn} <> ${this.quoteString(comparableValue)}`
+    if (type === 'startsWith') return `${textColumn} like ${this.quoteLike(`${comparableValue}%`)} escape ${this.quoteString('\\')}`
+    if (type === 'endsWith') return `${textColumn} like ${this.quoteLike(`%${comparableValue}`)} escape ${this.quoteString('\\')}`
+    if (type === 'notContains') return `${textColumn} not like ${this.quoteLike(`%${comparableValue}%`)} escape ${this.quoteString('\\')}`
+
+    return `${textColumn} like ${this.quoteLike(`%${comparableValue}%`)} escape ${this.quoteString('\\')}`
   }
 
   private buildNumberExpression(column: string, model: any): string {
@@ -98,8 +111,9 @@ export class TableDataQueryService {
     return `${column} = ${value}`
   }
 
-  private buildDateExpression(column: string, model: any): string {
+  private buildDateExpression(column: string, model: any, dbContext: any): string {
     const type = String(model.type || 'equals')
+    const dateColumn = this.dateComparableExpression(column, dbContext)
     const value = this.dateLiteral(model.dateFrom || model.filter)
     const valueTo = this.dateLiteral(model.dateTo || model.filterTo)
 
@@ -107,21 +121,33 @@ export class TableDataQueryService {
     if (type === 'notBlank') return `${column} is not null`
     if (!value) return ''
 
-    if (type === 'notEqual') return `${column} <> ${value}`
-    if (type === 'lessThan') return `${column} < ${value}`
-    if (type === 'lessThanOrEqual') return `${column} <= ${value}`
-    if (type === 'greaterThan') return `${column} > ${value}`
-    if (type === 'greaterThanOrEqual') return `${column} >= ${value}`
-    if (type === 'inRange' && valueTo) return `(${column} >= ${value} and ${column} <= ${valueTo})`
+    if (type === 'notEqual') return `${dateColumn} <> ${value}`
+    if (type === 'lessThan') return `${dateColumn} < ${value}`
+    if (type === 'lessThanOrEqual') return `${dateColumn} <= ${value}`
+    if (type === 'greaterThan') return `${dateColumn} > ${value}`
+    if (type === 'greaterThanOrEqual') return `${dateColumn} >= ${value}`
+    if (type === 'inRange' && valueTo) return `(${dateColumn} >= ${value} and ${dateColumn} <= ${valueTo})`
 
-    return `${column} = ${value}`
+    return `${dateColumn} = ${value}`
   }
 
   private buildSetExpression(column: string, model: any): string {
-    const values = (model.values || []).map((value: any) => this.quoteValue(value))
-    if (values.length === 0) return ''
+    const rawValues = model.values || []
+    const values = rawValues
+      .filter((value: any) => value !== null && value !== undefined)
+      .map((value: any) => this.quoteValue(value))
+    const includesNull = rawValues.some((value: any) => value === null || value === undefined)
+    const expressions: string[] = []
 
-    return `${column} in (${values.join(', ')})`
+    if (values.length > 0) {
+      expressions.push(`${column} in (${values.join(', ')})`)
+    }
+
+    if (includesNull) {
+      expressions.push(`${column} is null`)
+    }
+
+    return this.joinExpressions(expressions, 'or')
   }
 
   private getConditions(model: any): any[] {
@@ -147,8 +173,22 @@ export class TableDataQueryService {
     if (sgbd === 'sqlite') return `lower(cast(${column} as text))`
     if (sgbd === 'sqlserver') return `lower(cast(${column} as nvarchar(max)))`
     if (sgbd === 'hana') return `lower(cast(${column} as nvarchar(5000)))`
+    if (sgbd === 'postgres' || sgbd === 'postgresql') return `cast(${column} as text)`
 
     return `lower(cast(${column} as varchar(5000)))`
+  }
+
+  private shouldUsePostgresTextSearch(dbContext: any): boolean {
+    const sgbd = String(dbContext?.sgbd || '').toLowerCase()
+    return sgbd === 'postgres' || sgbd === 'postgresql'
+  }
+
+  private dateComparableExpression(column: string, dbContext: any): string {
+    const sgbd = String(dbContext?.sgbd || '').toLowerCase()
+
+    if (sgbd === 'mysql' || sgbd === 'sqlite') return `date(${column})`
+
+    return `cast(${column} as date)`
   }
 
   private quoteIdentifier(identifier: string, dbContext: any): string {
