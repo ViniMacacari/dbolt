@@ -128,6 +128,22 @@
     border: none !important;
 }
 
+:host ::ng-deep .monaco-editor .dbolt-sql-navigation-link {
+    color: #b58cff !important;
+    cursor: pointer !important;
+    text-decoration: underline !important;
+    text-decoration-color: #b58cff !important;
+    text-underline-offset: 3px !important;
+}
+
+:host ::ng-deep .monaco-editor.dbolt-sql-navigation-pointer,
+:host ::ng-deep .monaco-editor.dbolt-sql-navigation-pointer .view-line,
+:host ::ng-deep .monaco-editor.dbolt-sql-navigation-pointer .view-lines,
+:host ::ng-deep .monaco-editor.dbolt-sql-navigation-pointer .monaco-mouse-cursor-text,
+:host ::ng-deep .monaco-editor.dbolt-sql-navigation-pointer .lines-content {
+    cursor: pointer !important;
+}
+
 .monaco-editor .margin-view-overlays {
     background-color: transparent !important;
     border-right: none !important;

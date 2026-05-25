@@ -19,6 +19,21 @@ import { AppPlatformService } from '../../../services/platform/app-platform.serv
 
 let sqlTokenizerConfigured = false
 
+interface SqlNavigationToken {
+  value: string
+  lower: string
+  start: number
+  end: number
+}
+
+interface SqlNavigationLink {
+  target: {
+    name: string
+    initialView?: 'columns'
+  }
+  range: monaco.IRange
+}
+
 @Component({
   selector: 'app-code-editor',
   standalone: true,
@@ -31,6 +46,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   @Output() sqlContentChange = new EventEmitter<string>()
   @Output() savedName = new EventEmitter<SavedQuery>()
   @Output() savedQuery = new EventEmitter<any>()
+  @Output() objectInfoRequested = new EventEmitter<any>()
   @Input() widthTable: number = 300
   @Input() tabInfo: any
   @Input() active: boolean = false
@@ -50,6 +66,37 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private languageSubscription?: Subscription
   private shortcutDisposers: Array<() => void> = []
   private editorActionDisposables: monaco.IDisposable[] = []
+  private editorMouseDisposables: monaco.IDisposable[] = []
+  private sqlNavigationDecorationIds: string[] = []
+  private sqlNavigationModifierPressed = false
+  private lastMousePosition: monaco.Position | null = null
+  private readonly sqlNavigationReservedWords = new Set([
+    'as',
+    'by',
+    'case',
+    'cross',
+    'delete',
+    'distinct',
+    'else',
+    'end',
+    'from',
+    'full',
+    'group',
+    'having',
+    'inner',
+    'join',
+    'left',
+    'limit',
+    'not',
+    'offset',
+    'on',
+    'order',
+    'outer',
+    'right',
+    'select',
+    'union',
+    'where'
+  ])
   private readonly defaultResultHeight = 300
   private readonly minimumResultHeight = 120
   private readonly minimumEditorHeight = 120
@@ -134,6 +181,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.languageSubscription?.unsubscribe()
     this.unregisterKeyboardShortcuts()
     this.disposeEditorContextMenuActions()
+    this.disposeEditorMouseActions()
 
     if (this.editor) {
       this.editor.dispose()
@@ -155,6 +203,29 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     this.persistQueryState()
     this.layoutEditor()
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent): void {
+    if (event.key !== 'Control' && event.key !== 'Meta') return
+
+    this.sqlNavigationModifierPressed = true
+    this.updateSqlNavigationHover()
+  }
+
+  @HostListener('window:keyup', ['$event'])
+  onWindowKeyUp(event: KeyboardEvent): void {
+    if (event.key !== 'Control' && event.key !== 'Meta') return
+    if (event.ctrlKey || event.metaKey) return
+
+    this.sqlNavigationModifierPressed = false
+    this.clearSqlNavigationHover()
+  }
+
+  @HostListener('window:blur')
+  onWindowBlur(): void {
+    this.sqlNavigationModifierPressed = false
+    this.clearSqlNavigationHover()
   }
 
   private initializeEditor(): void {
@@ -341,6 +412,35 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         this.sqlContentChange.emit(value)
       }
     })
+
+    const mouseDownDisposable = this.editor?.onMouseDown((event) => {
+      void this.handleEditorMouseDown(event)
+    })
+    const mouseMoveDisposable = this.editor?.onMouseMove((event) => {
+      this.lastMousePosition = event.target.position || null
+      this.sqlNavigationModifierPressed = event.event.ctrlKey || event.event.metaKey
+      this.updateSqlNavigationHover()
+    })
+    const mouseLeaveDisposable = this.editor?.onMouseLeave(() => {
+      this.lastMousePosition = null
+      this.clearSqlNavigationHover()
+    })
+
+    if (mouseDownDisposable) {
+      this.editorMouseDisposables.push(mouseDownDisposable)
+    }
+    if (mouseMoveDisposable) {
+      this.editorMouseDisposables.push(mouseMoveDisposable)
+    }
+    if (mouseLeaveDisposable) {
+      this.editorMouseDisposables.push(mouseLeaveDisposable)
+    }
+  }
+
+  private disposeEditorMouseActions(): void {
+    this.editorMouseDisposables.forEach((disposable) => disposable.dispose())
+    this.editorMouseDisposables = []
+    this.clearSqlNavigationHover()
   }
 
   private registerEditorContextMenuActions(): void {
@@ -364,6 +464,459 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private disposeEditorContextMenuActions(): void {
     this.editorActionDisposables.forEach((disposable) => disposable.dispose())
     this.editorActionDisposables = []
+  }
+
+  private async handleEditorMouseDown(event: monaco.editor.IEditorMouseEvent): Promise<void> {
+    if (!this.active || !this.editor || !event.target.position) return
+    if (!event.event.ctrlKey && !event.event.metaKey) return
+
+    const browserEvent = event.event.browserEvent
+    if (browserEvent instanceof MouseEvent && browserEvent.button !== 0) return
+
+    const navigationLink = this.resolveSqlNavigationLink(event.target.position)
+    if (!navigationLink) return
+
+    event.event.preventDefault()
+    browserEvent?.preventDefault()
+
+    this.objectInfoRequested.emit({
+      ...navigationLink.target,
+      context: this.tabInfo?.dbInfo,
+      info: this.tabInfo?.dbInfo
+    })
+  }
+
+  private updateSqlNavigationHover(): void {
+    if (!this.sqlNavigationModifierPressed || !this.active || !this.lastMousePosition) {
+      this.clearSqlNavigationHover()
+      return
+    }
+
+    const navigationLink = this.resolveSqlNavigationLink(this.lastMousePosition)
+    if (!navigationLink) {
+      this.clearSqlNavigationHover()
+      return
+    }
+
+    this.sqlNavigationDecorationIds = this.editor?.deltaDecorations(this.sqlNavigationDecorationIds, [{
+      range: navigationLink.range,
+      options: {
+        inlineClassName: 'dbolt-sql-navigation-link'
+      }
+    }]) || []
+
+    this.editor?.getDomNode()?.classList.add('dbolt-sql-navigation-pointer')
+  }
+
+  private clearSqlNavigationHover(): void {
+    this.sqlNavigationDecorationIds = this.editor?.deltaDecorations(this.sqlNavigationDecorationIds, []) || []
+    this.editor?.getDomNode()?.classList.remove('dbolt-sql-navigation-pointer')
+  }
+
+  private resolveSqlNavigationLink(position: monaco.Position): SqlNavigationLink | null {
+    const model = this.editor?.getModel()
+    if (!model) return null
+
+    const clickedIdentifier = this.getIdentifierAtPosition(model, position)
+    if (!clickedIdentifier) return null
+
+    const sql = model.getValue()
+    const sanitizedSql = this.replaceStringsAndComments(sql)
+    const statementSql = this.extractCurrentStatement(sanitizedSql, clickedIdentifier.offset)
+    const tokens = this.tokenizeSql(statementSql)
+    const aliases = this.resolveStatementTableAliases(tokens)
+    const clickedName = this.normalizeIdentifier(clickedIdentifier.value)
+    const clickedKey = clickedName.toLowerCase()
+    const previousToken = this.findPreviousToken(tokens, clickedIdentifier.statementOffset)
+    const currentToken = tokens.find((token) => token.start <= clickedIdentifier.statementOffset && clickedIdentifier.statementOffset < token.end)
+    const nextToken = currentToken ? tokens[tokens.indexOf(currentToken) + 1] : null
+
+    if (aliases.has(clickedKey)) {
+      return {
+        target: {
+          name: aliases.get(clickedKey) || clickedName
+        },
+        range: clickedIdentifier.range
+      }
+    }
+
+    if (this.sqlNavigationReservedWords.has(clickedKey)) {
+      return null
+    }
+
+    if (nextToken?.value === '(' && previousToken?.value !== '.') {
+      return null
+    }
+
+    if (previousToken?.value === '.') {
+      const qualifier = this.findTokenBefore(tokens, previousToken.start)
+      const tableName = qualifier ? aliases.get(this.normalizeIdentifier(qualifier.value).toLowerCase()) : ''
+
+      if (tableName) {
+        return {
+          target: {
+            name: tableName,
+            initialView: 'columns'
+          },
+          range: clickedIdentifier.range
+        }
+      }
+    }
+
+    if (this.isTableReferenceToken(tokens, clickedIdentifier.statementOffset)) {
+      return {
+        target: {
+          name: clickedName
+        },
+        range: clickedIdentifier.range
+      }
+    }
+
+    const uniqueTableName = this.getUniqueStatementTableName(aliases)
+    if (uniqueTableName) {
+      return {
+        target: {
+          name: uniqueTableName,
+          initialView: 'columns'
+        },
+        range: clickedIdentifier.range
+      }
+    }
+
+    return null
+  }
+
+  private getIdentifierAtPosition(
+    model: monaco.editor.ITextModel,
+    position: monaco.Position
+  ): { value: string, offset: number, statementOffset: number, range: monaco.IRange } | null {
+    const word = model.getWordAtPosition(position)
+    if (!word?.word) return null
+
+    const offset = model.getOffsetAt({
+      lineNumber: position.lineNumber,
+      column: word.startColumn
+    })
+    const statementStart = this.getCurrentStatementStartOffset(model.getValue(), offset)
+
+    return {
+      value: word.word,
+      offset,
+      statementOffset: offset - statementStart,
+      range: {
+        startLineNumber: position.lineNumber,
+        endLineNumber: position.lineNumber,
+        startColumn: word.startColumn,
+        endColumn: word.endColumn
+      }
+    }
+  }
+
+  private resolveStatementTableAliases(tokens: SqlNavigationToken[]): Map<string, string> {
+    const aliases = new Map<string, string>()
+
+    for (let index = 0; index < tokens.length; index++) {
+      const token = tokens[index]
+
+      if (token.lower === 'from') {
+        index = this.collectFromNavigationAliases(tokens, index + 1, aliases)
+      } else if (token.lower === 'join') {
+        this.collectSingleNavigationAlias(tokens, index + 1, aliases)
+      }
+    }
+
+    return aliases
+  }
+
+  private collectFromNavigationAliases(
+    tokens: SqlNavigationToken[],
+    startIndex: number,
+    aliases: Map<string, string>
+  ): number {
+    let index = startIndex
+
+    while (index < tokens.length) {
+      const token = tokens[index]
+      if (!token || this.isFromNavigationTerminator(token.lower)) {
+        return Math.max(index - 1, startIndex)
+      }
+
+      const result = this.collectSingleNavigationAlias(tokens, index, aliases)
+      if (!result) {
+        index++
+        continue
+      }
+
+      index = result.nextIndex
+      if (tokens[index]?.value === ',') {
+        index++
+        continue
+      }
+
+      return Math.max(index - 1, startIndex)
+    }
+
+    return index
+  }
+
+  private collectSingleNavigationAlias(
+    tokens: SqlNavigationToken[],
+    startIndex: number,
+    aliases: Map<string, string>
+  ): { nextIndex: number } | null {
+    const tableReference = this.readIdentifierChain(tokens, startIndex)
+    if (!tableReference) return null
+
+    let nextIndex = tableReference.nextIndex
+    if (tokens[nextIndex]?.lower === 'as') {
+      nextIndex++
+    }
+
+    const tableName = this.normalizeIdentifier(this.getIdentifierLastPart(tableReference.value))
+    const implicitAlias = this.normalizeIdentifier(this.getIdentifierLastPart(tableReference.value))
+    this.addNavigationAlias(aliases, implicitAlias, tableName)
+
+    const aliasToken = tokens[nextIndex]
+    if (aliasToken && this.isAliasNavigationToken(aliasToken)) {
+      this.addNavigationAlias(aliases, this.normalizeIdentifier(aliasToken.value), tableName)
+      nextIndex++
+    }
+
+    return { nextIndex }
+  }
+
+  private addNavigationAlias(aliases: Map<string, string>, alias: string, tableName: string): void {
+    const normalizedAlias = alias.trim().toLowerCase()
+    const normalizedTableName = tableName.trim()
+    if (!normalizedAlias || !normalizedTableName) return
+
+    aliases.set(normalizedAlias, normalizedTableName)
+  }
+
+  private isTableReferenceToken(tokens: SqlNavigationToken[], statementOffset: number): boolean {
+    const clickedToken = tokens.find((token) => token.start <= statementOffset && statementOffset < token.end)
+    if (!clickedToken) return false
+
+    for (let index = tokens.indexOf(clickedToken) - 1; index >= 0; index--) {
+      const token = tokens[index].lower
+
+      if (token === 'from' || token === 'join') {
+        return true
+      }
+
+      if (this.isFromNavigationTerminator(token) || token === ',' || token === 'on') {
+        return false
+      }
+    }
+
+    return false
+  }
+
+  private getUniqueStatementTableName(aliases: Map<string, string>): string {
+    const tableNames = new Set(Array.from(aliases.values()).map((name) => name.toLowerCase()))
+    if (tableNames.size !== 1) return ''
+
+    return aliases.values().next().value || ''
+  }
+
+  private readIdentifierChain(
+    tokens: SqlNavigationToken[],
+    startIndex: number
+  ): { value: string, nextIndex: number } | null {
+    const firstToken = tokens[startIndex]
+    if (!this.isIdentifierNavigationToken(firstToken)) return null
+
+    const parts = [firstToken.value]
+    let index = startIndex + 1
+
+    while (tokens[index]?.value === '.' && this.isIdentifierNavigationToken(tokens[index + 1])) {
+      parts.push(tokens[index].value, tokens[index + 1].value)
+      index += 2
+    }
+
+    return { value: parts.join(''), nextIndex: index }
+  }
+
+  private findPreviousToken(tokens: SqlNavigationToken[], statementOffset: number): SqlNavigationToken | null {
+    const previousTokens = tokens.filter((token) => token.end <= statementOffset)
+    return previousTokens[previousTokens.length - 1] || null
+  }
+
+  private findTokenBefore(tokens: SqlNavigationToken[], statementOffset: number): SqlNavigationToken | null {
+    const previousTokens = tokens.filter((token) => token.end <= statementOffset)
+    return previousTokens[previousTokens.length - 1] || null
+  }
+
+  private isIdentifierNavigationToken(token?: SqlNavigationToken): boolean {
+    if (!token) return false
+
+    return (
+      /^[A-Za-z_$#][A-Za-z0-9_$#]*$/.test(token.value) ||
+      /^`[^`]*`$/.test(token.value) ||
+      /^"[^"]*"$/.test(token.value) ||
+      /^\[[^\]]*\]$/.test(token.value)
+    )
+  }
+
+  private isAliasNavigationToken(token: SqlNavigationToken): boolean {
+    return this.isIdentifierNavigationToken(token) && !this.sqlNavigationReservedWords.has(token.lower)
+  }
+
+  private isFromNavigationTerminator(token: string): boolean {
+    return [
+      'where',
+      'join',
+      'inner',
+      'left',
+      'right',
+      'full',
+      'cross',
+      'on',
+      'group',
+      'order',
+      'having',
+      'limit',
+      'offset',
+      'with',
+      'union'
+    ].includes(token)
+  }
+
+  private tokenizeSql(sql: string): SqlNavigationToken[] {
+    const tokens: SqlNavigationToken[] = []
+    const pattern = /`[^`]*`|"[^"]*"|\[[^\]]*\]|[A-Za-z_$#][A-Za-z0-9_$#]*|[.,;()]/g
+    let match: RegExpExecArray | null
+
+    while ((match = pattern.exec(sql)) !== null) {
+      const value = match[0]
+      tokens.push({
+        value,
+        lower: this.normalizeIdentifier(value).toLowerCase(),
+        start: match.index,
+        end: match.index + value.length
+      })
+    }
+
+    return tokens
+  }
+
+  private extractCurrentStatement(sql: string, offset: number): string {
+    const start = this.getCurrentStatementStartOffset(sql, offset)
+    const end = sql.indexOf(';', offset)
+
+    return sql.slice(start, end === -1 ? sql.length : end)
+  }
+
+  private getCurrentStatementStartOffset(sql: string, offset: number): number {
+    return sql.lastIndexOf(';', Math.max(0, offset - 1)) + 1
+  }
+
+  private replaceStringsAndComments(sql: string): string {
+    let result = ''
+    let quote: string | null = null
+    let identifierQuote: string | null = null
+    let lineComment = false
+    let blockComment = false
+
+    for (let index = 0; index < sql.length; index++) {
+      const current = sql[index]
+      const next = sql[index + 1]
+
+      if (lineComment) {
+        if (current === '\n' || current === '\r') {
+          result += current
+          lineComment = false
+        } else {
+          result += ' '
+        }
+        continue
+      }
+
+      if (blockComment) {
+        if (current === '*' && next === '/') {
+          result += '  '
+          index++
+          blockComment = false
+        } else {
+          result += ' '
+        }
+        continue
+      }
+
+      if (identifierQuote) {
+        result += current
+
+        if (current === identifierQuote) {
+          if (
+            (identifierQuote === ']' && next === ']') ||
+            (identifierQuote === '"' && next === '"') ||
+            (identifierQuote === '`' && next === '`')
+          ) {
+            result += next
+            index++
+          } else {
+            identifierQuote = null
+          }
+        }
+        continue
+      }
+
+      if (quote) {
+        result += ' '
+
+        if (current === quote) {
+          if (next === quote) {
+            result += ' '
+            index++
+          } else {
+            quote = null
+          }
+        }
+        continue
+      }
+
+      if (current === '-' && next === '-') {
+        result += '  '
+        index++
+        lineComment = true
+        continue
+      }
+
+      if (current === '/' && next === '*') {
+        result += '  '
+        index++
+        blockComment = true
+        continue
+      }
+
+      if (current === '\'') {
+        result += ' '
+        quote = current
+        continue
+      }
+
+      if (current === '"' || current === '`' || current === '[') {
+        result += current
+        identifierQuote = current === '[' ? ']' : current
+        continue
+      }
+
+      result += current
+    }
+
+    return result
+  }
+
+  private normalizeIdentifier(value: string): string {
+    return value
+      .trim()
+      .replace(/^[`"\[]+/, '')
+      .replace(/[`"\]]+$/, '')
+  }
+
+  private getIdentifierLastPart(value: string): string {
+    const parts = value.split('.')
+    return parts.pop() || value
   }
 
   private registerKeyboardShortcuts(): void {

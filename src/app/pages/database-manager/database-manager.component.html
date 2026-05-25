@@ -37,7 +37,8 @@
                 <app-code-editor *ngFor="let tab of openTabs; trackBy: trackTabByIdentity"
                     [hidden]="!isActiveSqlTab(tab)" [active]="isActiveSqlTab(tab)" [sqlContent]="tab.info?.sql || ''"
                     [widthTable]="widthTable" [tabInfo]="tab" (sqlContentChange)="onSqlContentChange($event, tab)"
-                    (savedName)="onSavedQuery($event, tab)" (savedQuery)="onExistingSavedQuery($event)">
+                    (savedName)="onSavedQuery($event, tab)" (savedQuery)="onExistingSavedQuery($event)"
+                    (objectInfoRequested)="onSqlObjectInfoRequested($event)">
                 </app-code-editor>
             </div>
         </div>
