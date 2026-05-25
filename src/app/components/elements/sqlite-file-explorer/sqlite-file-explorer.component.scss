@@ -1,0 +1,190 @@
+:host {
+    display: block;
+    min-width: 0;
+    width: 100%;
+}
+
+.sqlite-explorer {
+    position: relative;
+    width: 100%;
+}
+
+.sqlite-explorer-open {
+    flex: 0 0 110px;
+}
+
+.sqlite-explorer-overlay {
+    align-items: center;
+    background-color: rgba(0, 0, 0, .55);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    padding: 24px;
+    position: fixed;
+    z-index: 1200;
+}
+
+.sqlite-explorer-panel {
+    background-color: #1b1b1b;
+    border: 1px solid #353535;
+    border-radius: 15px;
+    box-shadow: 0 18px 42px rgba(0, 0, 0, .55);
+    max-width: 680px;
+    padding: 14px;
+    width: min(680px, 100%);
+}
+
+.sqlite-explorer-header {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 2px 12px;
+
+    .title {
+        font-size: 1.15em;
+        margin: 0;
+    }
+}
+
+.sqlite-explorer-icon-btn {
+    align-items: center;
+    background-color: #292727;
+    border: 1px solid #353535;
+    border-radius: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    height: 34px;
+    justify-content: center;
+    transition: background-color .2s ease-in-out;
+    width: 34px;
+
+    &:hover {
+        background-color: #303030;
+    }
+}
+
+.sqlite-explorer-toolbar {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+
+.sqlite-explorer-nav {
+    align-items: center;
+    display: inline-flex;
+    gap: 6px;
+    justify-content: center;
+    min-width: 95px;
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: .45;
+    }
+}
+
+.sqlite-explorer-search {
+    padding: 10px;
+}
+
+.sqlite-explorer-roots {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 10px 2px 2px;
+}
+
+.sqlite-explorer-root {
+    background-color: #292727;
+    border: 1px solid #353535;
+    border-radius: 12px;
+    color: #e8eaed;
+    cursor: pointer;
+    flex: 0 0 auto;
+    font-family: 'Nunito';
+    min-width: 48px;
+    padding: 7px 10px;
+    transition: background-color .2s ease-in-out, border-color .2s ease-in-out;
+
+    &:hover,
+    &.active {
+        background-color: #303030;
+        border-color: #4a4a4a;
+    }
+}
+
+.sqlite-explorer-path {
+    overflow: hidden;
+    padding: 8px 2px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sqlite-explorer-list {
+    border: 1px solid #353535;
+    border-radius: 12px;
+    height: min(430px, 48vh);
+    overflow-y: auto;
+}
+
+.sqlite-explorer-item {
+    align-items: center;
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid #2d2d2d;
+    color: #e8eaed;
+    cursor: pointer;
+    display: flex;
+    font-family: 'Nunito';
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 10px;
+    text-align: left;
+    transition: background-color .2s ease-in-out;
+    width: 100%;
+
+    &:hover {
+        background-color: #141414;
+    }
+
+    &:last-child {
+        border-bottom: none;
+    }
+
+    small {
+        color: #969696;
+        margin-left: auto;
+    }
+}
+
+.sqlite-explorer-item.file {
+    background-color: #202020;
+}
+
+.sqlite-explorer-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sqlite-explorer-status {
+    color: #b8b8b9;
+    padding: 16px;
+    text-align: center;
+}
+
+.sqlite-explorer-error {
+    color: #ff8c8c;
+}
+
+.sqlite-explorer-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 10px;
+}
+
+.sqlite-explorer-close {
+    border-radius: 15px;
+    padding: 8px 12px;
+    width: 110px;
+}

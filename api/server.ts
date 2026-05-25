@@ -8,6 +8,7 @@ import aiAssistant from './router/dbolt/ai-assistant.js';
 import databases from './router/dbolt/databases.js';
 import connections from './router/dbolt/connections.js';
 import query from './router/dbolt/query.js';
+import sqliteFiles from './router/dbolt/sqlite-files.js';
 import hanaV1 from './router/hana/hana-v1.js';
 import pgV9 from './router/postgres/v9.js';
 import mysql5 from './router/mysql/mysql5.js';
@@ -50,6 +51,7 @@ class InternalServer {
     this.app.use('/api/databases', databases);
     this.app.use('/api/connections', connections);
     this.app.use('/api/query', query);
+    this.app.use('/api/sqlite-files', sqliteFiles);
     this.app.use('/api/Hana', hanaV1);
     this.app.use('/api/Postgres/v9', pgV9);
     this.app.use('/api/MySQL/v5', mysql5);
