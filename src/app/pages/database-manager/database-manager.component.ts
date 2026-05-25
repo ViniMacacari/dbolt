@@ -670,6 +670,22 @@ export class DatabaseManagerComponent {
     }, (event.name || event.NAME))
   }
 
+  onSqlObjectInfoRequested(event: any): void {
+    const objectName = event?.name || event?.NAME
+    if (!objectName) return
+
+    const activeContext = event?.context || this.tabsComponent.getActiveTab()?.dbInfo || this.selectedSchemaDB
+    const tableInfoState = event?.initialView
+      ? { activeView: event.initialView }
+      : undefined
+
+    this.tabsComponent.newTab('table', {
+      name: objectName,
+      info: event?.info || activeContext,
+      context: activeContext
+    }, objectName).tableInfoState = tableInfoState
+  }
+
   onProcedureEditRequested(event: any): void {
     this.tabsComponent.newTab('sql', {
       sql: event?.ddl || '',
