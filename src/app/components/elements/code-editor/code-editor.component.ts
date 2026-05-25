@@ -26,6 +26,14 @@ interface SqlNavigationToken {
   end: number
 }
 
+interface SqlNavigationLink {
+  target: {
+    name: string
+    initialView?: 'columns'
+  }
+  range: monaco.IRange
+}
+
 @Component({
   selector: 'app-code-editor',
   standalone: true,
@@ -59,6 +67,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private shortcutDisposers: Array<() => void> = []
   private editorActionDisposables: monaco.IDisposable[] = []
   private editorMouseDisposables: monaco.IDisposable[] = []
+  private sqlNavigationDecorationIds: string[] = []
+  private sqlNavigationModifierPressed = false
+  private lastMousePosition: monaco.Position | null = null
   private readonly sqlNavigationReservedWords = new Set([
     'as',
     'by',
@@ -192,6 +203,29 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     this.persistQueryState()
     this.layoutEditor()
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent): void {
+    if (event.key !== 'Control' && event.key !== 'Meta') return
+
+    this.sqlNavigationModifierPressed = true
+    this.updateSqlNavigationHover()
+  }
+
+  @HostListener('window:keyup', ['$event'])
+  onWindowKeyUp(event: KeyboardEvent): void {
+    if (event.key !== 'Control' && event.key !== 'Meta') return
+    if (event.ctrlKey || event.metaKey) return
+
+    this.sqlNavigationModifierPressed = false
+    this.clearSqlNavigationHover()
+  }
+
+  @HostListener('window:blur')
+  onWindowBlur(): void {
+    this.sqlNavigationModifierPressed = false
+    this.clearSqlNavigationHover()
   }
 
   private initializeEditor(): void {
@@ -382,15 +416,31 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     const mouseDownDisposable = this.editor?.onMouseDown((event) => {
       void this.handleEditorMouseDown(event)
     })
+    const mouseMoveDisposable = this.editor?.onMouseMove((event) => {
+      this.lastMousePosition = event.target.position || null
+      this.sqlNavigationModifierPressed = event.event.ctrlKey || event.event.metaKey
+      this.updateSqlNavigationHover()
+    })
+    const mouseLeaveDisposable = this.editor?.onMouseLeave(() => {
+      this.lastMousePosition = null
+      this.clearSqlNavigationHover()
+    })
 
     if (mouseDownDisposable) {
       this.editorMouseDisposables.push(mouseDownDisposable)
+    }
+    if (mouseMoveDisposable) {
+      this.editorMouseDisposables.push(mouseMoveDisposable)
+    }
+    if (mouseLeaveDisposable) {
+      this.editorMouseDisposables.push(mouseLeaveDisposable)
     }
   }
 
   private disposeEditorMouseActions(): void {
     this.editorMouseDisposables.forEach((disposable) => disposable.dispose())
     this.editorMouseDisposables = []
+    this.clearSqlNavigationHover()
   }
 
   private registerEditorContextMenuActions(): void {
@@ -423,20 +473,47 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     const browserEvent = event.event.browserEvent
     if (browserEvent instanceof MouseEvent && browserEvent.button !== 0) return
 
-    const navigationTarget = this.resolveSqlNavigationTarget(event.target.position)
-    if (!navigationTarget) return
+    const navigationLink = this.resolveSqlNavigationLink(event.target.position)
+    if (!navigationLink) return
 
     event.event.preventDefault()
     browserEvent?.preventDefault()
 
     this.objectInfoRequested.emit({
-      ...navigationTarget,
+      ...navigationLink.target,
       context: this.tabInfo?.dbInfo,
       info: this.tabInfo?.dbInfo
     })
   }
 
-  private resolveSqlNavigationTarget(position: monaco.Position): { name: string, initialView?: 'columns' } | null {
+  private updateSqlNavigationHover(): void {
+    if (!this.sqlNavigationModifierPressed || !this.active || !this.lastMousePosition) {
+      this.clearSqlNavigationHover()
+      return
+    }
+
+    const navigationLink = this.resolveSqlNavigationLink(this.lastMousePosition)
+    if (!navigationLink) {
+      this.clearSqlNavigationHover()
+      return
+    }
+
+    this.sqlNavigationDecorationIds = this.editor?.deltaDecorations(this.sqlNavigationDecorationIds, [{
+      range: navigationLink.range,
+      options: {
+        inlineClassName: 'dbolt-sql-navigation-link'
+      }
+    }]) || []
+
+    this.editor?.getDomNode()?.classList.add('dbolt-sql-navigation-pointer')
+  }
+
+  private clearSqlNavigationHover(): void {
+    this.sqlNavigationDecorationIds = this.editor?.deltaDecorations(this.sqlNavigationDecorationIds, []) || []
+    this.editor?.getDomNode()?.classList.remove('dbolt-sql-navigation-pointer')
+  }
+
+  private resolveSqlNavigationLink(position: monaco.Position): SqlNavigationLink | null {
     const model = this.editor?.getModel()
     if (!model) return null
 
@@ -456,7 +533,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     if (aliases.has(clickedKey)) {
       return {
-        name: aliases.get(clickedKey) || clickedName
+        target: {
+          name: aliases.get(clickedKey) || clickedName
+        },
+        range: clickedIdentifier.range
       }
     }
 
@@ -474,23 +554,32 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
       if (tableName) {
         return {
-          name: tableName,
-          initialView: 'columns'
+          target: {
+            name: tableName,
+            initialView: 'columns'
+          },
+          range: clickedIdentifier.range
         }
       }
     }
 
     if (this.isTableReferenceToken(tokens, clickedIdentifier.statementOffset)) {
       return {
-        name: clickedName
+        target: {
+          name: clickedName
+        },
+        range: clickedIdentifier.range
       }
     }
 
     const uniqueTableName = this.getUniqueStatementTableName(aliases)
     if (uniqueTableName) {
       return {
-        name: uniqueTableName,
-        initialView: 'columns'
+        target: {
+          name: uniqueTableName,
+          initialView: 'columns'
+        },
+        range: clickedIdentifier.range
       }
     }
 
@@ -500,7 +589,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private getIdentifierAtPosition(
     model: monaco.editor.ITextModel,
     position: monaco.Position
-  ): { value: string, offset: number, statementOffset: number } | null {
+  ): { value: string, offset: number, statementOffset: number, range: monaco.IRange } | null {
     const word = model.getWordAtPosition(position)
     if (!word?.word) return null
 
@@ -513,7 +602,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     return {
       value: word.word,
       offset,
-      statementOffset: offset - statementStart
+      statementOffset: offset - statementStart,
+      range: {
+        startLineNumber: position.lineNumber,
+        endLineNumber: position.lineNumber,
+        startColumn: word.startColumn,
+        endColumn: word.endColumn
+      }
     }
   }
 
