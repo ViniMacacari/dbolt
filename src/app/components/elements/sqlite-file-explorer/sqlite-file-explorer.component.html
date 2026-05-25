@@ -1,0 +1,72 @@
+<div class="sqlite-explorer">
+    <div class="d-flex w-100 gap-2">
+        <input class="input-page select-on" type="text" readonly [value]="selectedPath"
+            [placeholder]="t('connection.sqlitePathPlaceholder')" />
+        <button type="button" class="btn-page-2 bg-blue sqlite-explorer-open" (click)="openExplorer()">
+            {{ t('sqliteExplorer.browse') }}
+        </button>
+    </div>
+
+    <div *ngIf="isOpen" class="sqlite-explorer-overlay" (click)="closeExplorer()">
+        <div class="sqlite-explorer-panel" (click)="$event.stopPropagation()">
+            <div class="sqlite-explorer-header">
+                <h5 class="title">{{ t('sqliteExplorer.title') }}</h5>
+                <button type="button" class="sqlite-explorer-icon-btn" [title]="t('generic.close')"
+                    (click)="closeExplorer()">
+                    <img src="icons/close.png" height="13px" width="13px" alt="">
+                </button>
+            </div>
+
+            <div class="sqlite-explorer-toolbar">
+                <button type="button" class="btn-page-2 sqlite-explorer-nav" [disabled]="!parentPath || isLoading"
+                    (click)="openParent()">
+                    <img src="icons/folder.png" height="14px" width="14px" alt="">
+                    {{ t('sqliteExplorer.up') }}
+                </button>
+                <input class="input-page sqlite-explorer-search" type="text" [(ngModel)]="searchValue"
+                    [placeholder]="t('sqliteExplorer.search')" />
+            </div>
+
+            <div *ngIf="roots.length > 1" class="sqlite-explorer-roots" [attr.aria-label]="t('sqliteExplorer.drives')">
+                <span class="text-min-gray">{{ t('sqliteExplorer.drives') }}</span>
+                <button *ngFor="let root of roots" type="button" class="sqlite-explorer-root"
+                    [class.active]="currentPath.toLowerCase().startsWith(root.path.toLowerCase())"
+                    (click)="openRoot(root)">
+                    {{ root.name }}
+                </button>
+            </div>
+
+            <div class="sqlite-explorer-path text-min-gray select-on" [title]="currentPath">
+                {{ currentPath }}
+            </div>
+
+            <div class="sqlite-explorer-list">
+                <div *ngIf="isLoading" class="sqlite-explorer-status text-min">
+                    {{ t('sqliteExplorer.loading') }}
+                </div>
+                <div *ngIf="!isLoading && errorMessage" class="sqlite-explorer-status sqlite-explorer-error text-min">
+                    {{ errorMessage }}
+                </div>
+                <div *ngIf="!isLoading && !errorMessage && filteredItems.length === 0"
+                    class="sqlite-explorer-status text-min">
+                    {{ t('sqliteExplorer.empty') }}
+                </div>
+
+                <button *ngFor="let item of filteredItems" type="button" class="sqlite-explorer-item"
+                    [class.file]="item.type === 'file'"
+                    (click)="item.type === 'directory' ? openDirectory(item) : selectFile(item)">
+                    <img [src]="item.type === 'directory' ? 'icons/folder.png' : 'icons/database.png'" height="16px"
+                        width="16px" alt="">
+                    <span class="sqlite-explorer-name">{{ item.name }}</span>
+                    <small *ngIf="item.type === 'file'">{{ item.extension }}</small>
+                </button>
+            </div>
+
+            <div class="sqlite-explorer-actions">
+                <button type="button" class="btn-cancel sqlite-explorer-close" (click)="closeExplorer()">
+                    {{ t('generic.cancel') }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
