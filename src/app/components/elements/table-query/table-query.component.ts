@@ -363,7 +363,6 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   onGridFilterChanged(): void {
     if (!this.emitFilterModelChanges) return
-
     this.filterModelChange.emit(this.agGrid?.api?.getFilterModel() || {})
   }
 
@@ -1652,7 +1651,8 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
         ...(defaultColDef.filterParams || {}),
         buttons: ['apply', 'reset'],
         closeOnApply: true
-      }
+      },
+      floatingFilter: false
     }
   }
 

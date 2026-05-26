@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { InputListComponent } from "../../elements/input-list/input-list.component"
+import { SQLiteFileExplorerComponent } from '../../elements/sqlite-file-explorer/sqlite-file-explorer.component'
 import { LoadingComponent } from '../loading/loading.component'
 import { ToastComponent } from "../../toast/toast.component"
 import { ConnectionsService } from '../../../services/resolve-connections/connections.service'
@@ -15,7 +16,7 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
   standalone: true,
   templateUrl: './connection.component.html',
   styleUrls: ['./connection.component.scss'],
-  imports: [InputListComponent, CommonModule, FormsModule, ToastComponent]
+  imports: [InputListComponent, SQLiteFileExplorerComponent, CommonModule, FormsModule, ToastComponent]
 })
 export class ConnectionComponent {
   @Input() connection: SavedConnection | null = null

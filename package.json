@@ -1,9 +1,9 @@
 {
   "name": "dbolt",
-  "version": "0.7.3",
+  "version": "1.0.0",
   "description": "DBOLT Database Manager",
   "author": {
-    "name": "Vinícius Macacari de Almeida",
+    "name": "Vinícius Macacari",
     "email": "dbolt@dbolt.com"
   },
   "main": "dist-electron/main.js",

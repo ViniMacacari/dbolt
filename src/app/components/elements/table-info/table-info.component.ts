@@ -176,9 +176,7 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
     this.persistTableDataState()
 
     clearTimeout(this.dataFilterTimeout)
-    this.dataFilterTimeout = setTimeout(() => {
-      void this.loadTableData(true, false, false)
-    }, 350)
+    void this.loadTableData(true, false, false)
   }
 
   private async loadTableMetadata(): Promise<void> {
@@ -282,7 +280,7 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
       if (requestId !== this.dataRequestId) return
 
       this.dataRows = rows || []
-      this.dataColumns = this.runQuery.getQueryColumns()
+      this.dataColumns = this.resolveDataColumns(this.runQuery.getQueryColumns(), this.dataRows)
       this.dataTotalRows = this.runQuery.getQueryLines()
       this.dataExecutionTimeMs = performance.now() - start
       this.dataErrorMessage = ''
@@ -533,5 +531,23 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
     this.dataErrorMessage = ''
     this.dataFilterModel = {}
     this.dataFilterSignature = '{}'
+  }
+
+  private resolveDataColumns(columns: string[], rows: any[]): string[] {
+    if (columns?.length) {
+      return columns
+    }
+
+    if (rows?.length) {
+      return Object.keys(rows[0] || {})
+    }
+
+    if (this.dataColumns.length) {
+      return this.dataColumns
+    }
+
+    return this.columnsRows
+      .map((column) => String(column['name'] || column['column_name'] || '').trim())
+      .filter(Boolean)
   }
 }
