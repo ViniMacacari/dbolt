@@ -397,8 +397,24 @@ export class DatabaseManagerComponent {
     return (this.tabsComponent?.tabs || []).filter((tab: any) => tab?.type === 'sql')
   }
 
+  get openSchemaTabs(): any[] {
+    return (this.tabsComponent?.tabs || []).filter((tab: any) => tab?.type === 'schema')
+  }
+
+  get openTableTabs(): any[] {
+    return (this.tabsComponent?.tabs || []).filter((tab: any) => tab?.type === 'table')
+  }
+
+  get openProcedureTabs(): any[] {
+    return (this.tabsComponent?.tabs || []).filter((tab: any) => tab?.type === 'procedure')
+  }
+
   isActiveSqlTab(tab: any): boolean {
     return tab?.type === 'sql' && this.tabsComponent?.getActiveTab() === tab
+  }
+
+  isActiveContentTab(tab: any): boolean {
+    return this.tabsComponent?.getActiveTab() === tab
   }
 
   trackTabByIdentity(index: number, tab: any): any {
@@ -462,7 +478,7 @@ export class DatabaseManagerComponent {
     this.selectedSchemaDB = tabContext
     this.dbSchemaService.setSelectedSchemaDB(tabContext)
 
-    if (!activeTab) {
+    if (!activeTab || !this.shouldApplySelectedContextToTab(activeTab)) {
       return tabContext
     }
 
@@ -472,15 +488,11 @@ export class DatabaseManagerComponent {
       context: tabContext
     }
 
-    if (activeTab.type === 'schema') {
-      await this.reloadSchemaInfoTab(activeTab, tabContext)
-    } else if (activeTab.type === 'table') {
-      this.tableInfoTabInfo = { ...activeTab }
-    } else if (activeTab.type === 'procedure') {
-      this.procedureInfoTabInfo = { ...activeTab }
-    }
-
     return tabContext
+  }
+
+  private shouldApplySelectedContextToTab(tab: any): boolean {
+    return ['sql', 'query-assistant', 'select-builder'].includes(tab?.type)
   }
 
   private isSameSelectedConnection(previousContext: any, selectedSchemaDB: any): boolean {
@@ -651,22 +663,22 @@ export class DatabaseManagerComponent {
   }
 
   openMoreInfo(event: any): void {
-    const activeContext = this.tabsComponent.getActiveTab()?.dbInfo || this.selectedSchemaDB
+    const sourceContext = event?.context || event?.info || this.tabsComponent.getActiveTab()?.dbInfo || this.selectedSchemaDB
     const objectType = String(event.type || event.objectType || '').toLowerCase()
 
     if (objectType === 'procedure' || objectType === 'function') {
       this.tabsComponent.newTab('procedure', {
         name: (event.name || event.NAME),
-        info: event.info,
-        context: activeContext
+        info: sourceContext,
+        context: sourceContext
       }, (event.name || event.NAME))
       return
     }
 
     this.tabsComponent.newTab('table', {
       name: (event.name || event.NAME),
-      info: event.info,
-      context: activeContext
+      info: sourceContext,
+      context: sourceContext
     }, (event.name || event.NAME))
   }
 
