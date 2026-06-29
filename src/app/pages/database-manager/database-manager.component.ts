@@ -397,8 +397,24 @@ export class DatabaseManagerComponent {
     return (this.tabsComponent?.tabs || []).filter((tab: any) => tab?.type === 'sql')
   }
 
+  get openSchemaTabs(): any[] {
+    return (this.tabsComponent?.tabs || []).filter((tab: any) => tab?.type === 'schema')
+  }
+
+  get openTableTabs(): any[] {
+    return (this.tabsComponent?.tabs || []).filter((tab: any) => tab?.type === 'table')
+  }
+
+  get openProcedureTabs(): any[] {
+    return (this.tabsComponent?.tabs || []).filter((tab: any) => tab?.type === 'procedure')
+  }
+
   isActiveSqlTab(tab: any): boolean {
     return tab?.type === 'sql' && this.tabsComponent?.getActiveTab() === tab
+  }
+
+  isActiveContentTab(tab: any): boolean {
+    return this.tabsComponent?.getActiveTab() === tab
   }
 
   trackTabByIdentity(index: number, tab: any): any {
