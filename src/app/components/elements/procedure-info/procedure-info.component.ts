@@ -33,6 +33,7 @@ export class ProcedureInfoComponent implements OnInit, OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (
+      (changes['data'] && !changes['data'].firstChange) ||
       (changes['elementName'] && !changes['elementName'].firstChange) ||
       (changes['tabInfo'] && !changes['tabInfo'].firstChange)
     ) {

@@ -141,9 +141,12 @@ export class DbInfoComponent implements AfterViewInit, OnChanges, OnDestroy {
       return
     }
 
+    const context = this.data?.connection || this.tabInfo?.dbInfo
+
     this.moreInfo.emit({
       ...tabInfo,
-      info: this.data?.connection
+      info: context,
+      context
     })
   }
 
