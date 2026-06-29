@@ -95,6 +95,7 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
 
   ngOnChanges(changes: SimpleChanges): void {
     if (
+      (changes['data'] && !changes['data'].firstChange) ||
       (changes['elementName'] && !changes['elementName'].firstChange) ||
       (changes['tabInfo'] && !changes['tabInfo'].firstChange)
     ) {
