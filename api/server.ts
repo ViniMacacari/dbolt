@@ -22,6 +22,7 @@ import {
 const BROWSER_DEV_MODE = process.env['DBOLT_BROWSER_DEV'] === '1';
 const PORT = BROWSER_DEV_MODE ? 47953 : 0;
 export const INTERNAL_API_HOST = '127.0.0.1';
+const JSON_BODY_LIMIT = process.env['DBOLT_INTERNAL_API_JSON_LIMIT'] || '25mb';
 const ALLOWED_ORIGINS = new Set([
   'http://localhost:4200',
   'http://127.0.0.1:4200',
@@ -42,7 +43,7 @@ class InternalServer {
     }));
     this.loadBrowserDevSessionRoute();
     this.app.use(requireInternalSessionToken);
-    this.app.use(express.json());
+    this.app.use(express.json({ limit: JSON_BODY_LIMIT }));
   }
 
   loadServer(): Server {
