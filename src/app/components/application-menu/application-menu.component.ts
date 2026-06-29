@@ -4,6 +4,7 @@ import { Router } from '@angular/router'
 
 import { AppLanguageService } from '../../services/language/app-language.service'
 import { AppPlatformService } from '../../services/platform/app-platform.service'
+import { AppInfoService } from '../../services/app-info/app-info.service'
 
 type WindowAction =
   | 'minimize'
@@ -113,6 +114,8 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
     }
   ]
 
+  appVersion: string = ''
+
   openMenuId: string | null = null
   windowState: WindowState = {
     isFullScreen: false,
@@ -126,10 +129,11 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
   constructor(
     private router: Router,
     private language: AppLanguageService,
-    private platform: AppPlatformService
+    private platform: AppPlatformService,
+    private appInfo: AppInfoService
   ) { }
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     if (!this.isElectron || !window.dboltWindow) {
       return
     }
@@ -141,6 +145,8 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
     this.removeWindowStateListener = window.dboltWindow.onStateChanged((state) => {
       this.windowState = state
     })
+
+    this.appVersion = await this.appInfo.getAppInfo()
   }
 
   ngOnDestroy(): void {
