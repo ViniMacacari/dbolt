@@ -16,12 +16,15 @@
         <div class="organize">
             <div class="d-flex flex-column w-100 h-100 user-content">
                 <h3 *ngIf="firstMessage" class="subtitle-min text-center py-4">{{ t('workspace.firstMessage') }}</h3>
-                <app-db-info *ngIf="dbInfoInitialized" [hidden]="!dbInfoOpen" [data]="dbSchemasData"
-                    [tabInfo]="dbInfoTabInfo" (moreInfo)="openMoreInfo($event)"></app-db-info>
-                <app-table-info *ngIf="tableInfoInitialized" [hidden]="!tableInfoOpen" [data]="tableInfoData"
-                    [elementName]="elementName" [tabInfo]="tableInfoTabInfo"></app-table-info>
-                <app-procedure-info *ngIf="procedureInfoInitialized" [hidden]="!procedureInfoOpen"
-                    [data]="procedureInfoData" [elementName]="procedureElementName" [tabInfo]="procedureInfoTabInfo"
+                <app-db-info *ngFor="let tab of openSchemaTabs; trackBy: trackTabByIdentity"
+                    [hidden]="!isActiveContentTab(tab)" [data]="tab.info?.dbInfo" [tabInfo]="tab"
+                    (moreInfo)="openMoreInfo($event)"></app-db-info>
+                <app-table-info *ngFor="let tab of openTableTabs; trackBy: trackTabByIdentity"
+                    [hidden]="!isActiveContentTab(tab)" [data]="tab.dbInfo || tab.info?.info"
+                    [elementName]="tab.info?.name || tab.name" [tabInfo]="tab"></app-table-info>
+                <app-procedure-info *ngFor="let tab of openProcedureTabs; trackBy: trackTabByIdentity"
+                    [hidden]="!isActiveContentTab(tab)" [data]="tab.dbInfo || tab.info?.info"
+                    [elementName]="tab.info?.name || tab.name" [tabInfo]="tab"
                     (editRequested)="onProcedureEditRequested($event)"></app-procedure-info>
                 <app-settings *ngIf="settingsInitialized" [hidden]="!settingsOpen"
                     [initialTab]="tabInfo?.info?.activeTab || null"
