@@ -16,6 +16,7 @@ import { QuerySaveService, SavedQuery, SavedQueryInput } from '../../../services
 import { KeyboardShortcutService } from '../../../services/keyboard-shortcuts/keyboard-shortcut.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { AppPlatformService } from '../../../services/platform/app-platform.service'
+import { selectSqlStatementAtCursor } from '../../../utils/sql-statement-selection'
 
 let sqlTokenizerConfigured = false
 
@@ -1002,26 +1003,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       }
 
       const content = model.getValue()
-      const cursorLine = selection.startLineNumber
+      const cursorLine = selection.positionLineNumber || selection.startLineNumber
+      const cursorColumn = selection.positionColumn || selection.startColumn
+      const currentStatement = selectSqlStatementAtCursor(content, cursorLine, cursorColumn)
 
-      const blocks = content
-        .split(/(?:\n\s*\n|;)/gm)
-        .map(block => block.trim())
-        .filter(block => block.length > 0)
-
-      let currentLine = 1
-
-      for (const block of blocks) {
-        const blockLines = block.split('\n').filter(line => line.trim().length > 0)
-        const blockStartLine = currentLine
-        const blockEndLine = currentLine + blockLines.length - 1
-
-        if (cursorLine >= blockStartLine && cursorLine <= blockEndLine) {
-          this.runSql(block)
-          return
-        }
-
-        currentLine = blockEndLine + 1
+      if (currentStatement) {
+        this.runSql(currentStatement)
+        return
       }
 
       if (selection.startLineNumber === selection.endLineNumber && content.trim()) {
