@@ -134,6 +134,8 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
   ) { }
 
   async ngOnInit(): Promise<void> {
+    this.appVersion = await this.appInfo.getAppInfo()
+
     if (!this.isElectron || !window.dboltWindow) {
       return
     }
@@ -145,8 +147,6 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
     this.removeWindowStateListener = window.dboltWindow.onStateChanged((state) => {
       this.windowState = state
     })
-
-    this.appVersion = await this.appInfo.getAppInfo()
   }
 
   ngOnDestroy(): void {
