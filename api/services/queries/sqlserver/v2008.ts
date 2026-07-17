@@ -37,21 +37,22 @@ class SQuerySQLServerV1 {
     }
 
     let totalRows: number | null = null;
-    let executableSql = await this.adjustSchemaInQuery(sql, connectionKey);
-
-    try {
-      const countSql = this.addTotalRowCountQuery(executableSql);
-      const resultWithCount = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
-      totalRows = resultWithCount[0]?.total_rows ?? 0;
-    } catch (error: unknown) {
-      console.warn('Unable to count SQL Server query rows. Running main query without total row count.', error);
-    }
+    const countableSql = await this.adjustSchemaInQuery(sql, connectionKey);
+    let executableSql = countableSql;
 
     if (rowLimit) {
       executableSql = this.limitQueryResult(executableSql, rowLimit);
     }
 
     const { rows: result, columns } = await this.db.executeQueryWithColumns(executableSql, [], connectionKey);
+
+    try {
+      const countSql = this.addTotalRowCountQuery(countableSql, columns.length);
+      const resultWithCount = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
+      totalRows = resultWithCount[0]?.total_rows ?? 0;
+    } catch (error: unknown) {
+      console.warn('Unable to count SQL Server query rows. Returning the main query result without a total row count.', error);
+    }
 
     return {
       success: true,
@@ -82,11 +83,17 @@ class SQuerySQLServerV1 {
     return `${prefix} SELECT TOP (${Math.max(0, Math.floor(maxLines))}) * FROM (\n${trimStatementTerminator(mainSql)}\n) AS limited_query_result`;
   }
 
-  addTotalRowCountQuery(sql: string): string {
+  addTotalRowCountQuery(sql: string, columnCount: number = 0): string {
     const { prefix, mainSql } = splitCtePrefix(sql);
     const countableSql = removeTopLevelOrderBy(mainSql);
+    const columnAliases = columnCount > 0
+      ? ` (${Array.from(
+        { length: columnCount },
+        (_, index) => `[__dbolt_count_column_${index + 1}]`
+      ).join(', ')})`
+      : '';
 
-    return `${prefix} SELECT COUNT(*) AS total_rows FROM (\n${countableSql}\n) AS query_with_count`;
+    return `${prefix} SELECT COUNT(*) AS total_rows FROM (\n${countableSql}\n) AS query_with_count${columnAliases}`;
   }
 
   getEmptyColumnsQuery(sql: string): string {
