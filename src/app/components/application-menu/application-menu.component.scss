@@ -23,13 +23,13 @@
     align-items: center;
     display: flex;
     flex: 0 0 auto;
-    gap: 8px;
-    min-width: 132px;
-    padding: 0 12px;
+    min-width: 0;
+    padding: 0 10px 0 12px;
 
     img {
         border-radius: 4px;
         height: 18px;
+        margin-right: 8px;
         object-fit: contain;
         width: 18px;
     }
@@ -41,6 +41,14 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .brand-version {
+        color: #5e5e60;
+        font-size: .64em;
+        font-weight: 750;
+        letter-spacing: .01em;
+        margin-left: 5px;
     }
 }
 
