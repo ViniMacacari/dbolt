@@ -7,6 +7,7 @@ import sql, {
 import type {
   ConnectionStatus,
   QueryRows,
+  QueryRowsWithColumns,
   SqlServerConnectionConfig,
   SqlServerQueryParameter
 } from '../../types.js';
@@ -120,6 +121,50 @@ class SQLServerV1 {
     }
   }
 
+  async executeQueryWithColumns(
+    query: string,
+    params: readonly SqlServerQueryParameter[] = [],
+    connectionKey?: string
+  ): Promise<QueryRowsWithColumns> {
+    const state = SQLServerV1.connections.get(this.getConnectionKey(connectionKey));
+    if (!state) {
+      throw new Error('Not connected to SQL Server.');
+    }
+
+    try {
+      const request = state.pool.request();
+      request.arrayRowMode = true;
+
+      for (const parameter of params) {
+        request.input(parameter.name, parameter.type, parameter.value);
+      }
+
+      const result = await request.query(query) as unknown as {
+        recordset?: unknown[][];
+        columns?: Array<Array<{ name?: unknown }>>;
+      };
+      const rawColumns = result.columns?.[0] ?? [];
+      const columnNames = rawColumns.map((column, index) => {
+        const name = String(column?.name ?? '');
+        return name || `Column ${index + 1}`;
+      });
+      const uniqueColumnNames = this.makeUniqueColumnNames(columnNames);
+      const rows = (result.recordset ?? []).map((values) =>
+        Object.fromEntries(
+          uniqueColumnNames.map((column, index) => [column, values[index]])
+        )
+      ) as QueryRows;
+
+      return {
+        rows,
+        columns: uniqueColumnNames
+      };
+    } catch (error: unknown) {
+      console.error('Error executing query:', error);
+      throw error;
+    }
+  }
+
   getStatus(connectionKey?: string): ConnectionStatus {
     return SQLServerV1.connections.has(this.getConnectionKey(connectionKey)) ? 'connected' : 'disconnected';
   }
@@ -135,6 +180,33 @@ class SQLServerV1 {
 
   private getConnectionKey(connectionKey?: string): string {
     return connectionKey || this.defaultConnectionKey;
+  }
+
+  private makeUniqueColumnNames(columnNames: readonly string[]): string[] {
+    const reservedNames = new Set(columnNames);
+    const usedNames = new Set<string>();
+    const occurrences = new Map<string, number>();
+
+    return columnNames.map((columnName) => {
+      const occurrence = (occurrences.get(columnName) ?? 0) + 1;
+      occurrences.set(columnName, occurrence);
+
+      if (!usedNames.has(columnName)) {
+        usedNames.add(columnName);
+        return columnName;
+      }
+
+      let suffix = occurrence;
+      let uniqueName = `${columnName} (${suffix})`;
+
+      while (usedNames.has(uniqueName) || reservedNames.has(uniqueName)) {
+        suffix += 1;
+        uniqueName = `${columnName} (${suffix})`;
+      }
+
+      usedNames.add(uniqueName);
+      return uniqueName;
+    });
   }
 }
 
