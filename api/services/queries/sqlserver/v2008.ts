@@ -51,24 +51,12 @@ class SQuerySQLServerV1 {
       executableSql = this.limitQueryResult(executableSql, rowLimit);
     }
 
-    const result = await this.db.executeQuery(executableSql, [], connectionKey);
-
-    if (result.length === 0) {
-      const columnSql = this.getEmptyColumnsQuery(executableSql);
-      const columnsResult = await this.db.executeQuery(columnSql, [], connectionKey);
-      const columns = Object.keys(columnsResult[0] ?? {});
-
-      return {
-        success: true,
-        result: [],
-        columns,
-        totalRows
-      };
-    }
+    const { rows: result, columns } = await this.db.executeQueryWithColumns(executableSql, [], connectionKey);
 
     return {
       success: true,
       result,
+      columns,
       totalRows
     };
   }

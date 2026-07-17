@@ -24,6 +24,11 @@ export type QueryRowValue =
 export type QueryRow = Record<string, QueryRowValue>;
 export type QueryRows = QueryRow[];
 
+export interface QueryRowsWithColumns {
+  rows: QueryRows;
+  columns: string[];
+}
+
 export interface DatabaseConnectionConfig {
   host: string;
   port: NumericLike;
