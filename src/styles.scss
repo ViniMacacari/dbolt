@@ -259,6 +259,11 @@ body {
     user-select: none;
 }
 
+body.dbolt-sidebar-resizing,
+body.dbolt-sidebar-resizing * {
+    cursor: col-resize !important;
+}
+
 h1,
 h2,
 h3,

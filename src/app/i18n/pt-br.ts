@@ -278,6 +278,11 @@ export const ptBrTranslations: TranslationCatalog = {
   'sidebar.closeSelector': 'Fechar seletor',
   'sidebar.filterByName': 'Filtrar por nome',
   'sidebar.noOptions': 'Nenhuma opção disponível',
+  'sidebar.hide': 'Ocultar painel lateral',
+  'sidebar.show': 'Mostrar painel lateral',
+  'sidebar.resize': 'Redimensionar painel lateral',
+  'sidebar.resizeHint': 'Arraste para ajustar. Clique duas vezes para alternar o tamanho.',
+  'sidebar.navigation': 'Navegação lateral',
 
   'tabs.newQuery': 'Nova query',
   'tabs.loadQuery': 'Carregar query',

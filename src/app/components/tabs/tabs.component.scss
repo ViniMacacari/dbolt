@@ -22,16 +22,25 @@
         display: flex;
         align-items: center;
 
-        background-color: var(--dbolt-1b1b1b);
+        background-color: var(--dbolt-sidebar-control-surface);
         border-radius: 15px;
 
-        min-height: 35px;
-        min-width: 35px;
-        padding: 5px 15px;
+        box-sizing: border-box;
+        height: 38px;
+        min-height: 38px;
+        min-width: 38px;
+        padding: 0;
+        width: 38px;
 
-        margin: 3px;
+        margin: 0;
 
         cursor: pointer;
+        justify-content: center;
+        transition: background-color .16s ease;
+
+        &:hover {
+            background-color: var(--dbolt-sidebar-action-hover);
+        }
 
         .dropdown {
             position: absolute;
@@ -115,7 +124,7 @@
             background-color: var(--dbolt-1b1b1b);
             border-radius: 15px;
 
-            height: 35px;
+            height: 38px;
             width: auto;
             max-width: 250px;
             min-width: 50px;

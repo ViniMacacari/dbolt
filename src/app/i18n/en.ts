@@ -278,6 +278,11 @@ export const enTranslations: TranslationCatalog = {
   'sidebar.closeSelector': 'Close selector',
   'sidebar.filterByName': 'Filter by name',
   'sidebar.noOptions': 'No options available',
+  'sidebar.hide': 'Hide sidebar',
+  'sidebar.show': 'Show sidebar',
+  'sidebar.resize': 'Resize sidebar',
+  'sidebar.resizeHint': 'Drag to resize. Double-click to switch size.',
+  'sidebar.navigation': 'Sidebar navigation',
 
   'tabs.newQuery': 'New query',
   'tabs.loadQuery': 'Load query',

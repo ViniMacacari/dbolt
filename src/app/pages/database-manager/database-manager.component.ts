@@ -2,7 +2,7 @@ import { Component, ViewChild, Output, EventEmitter } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { ActivatedRoute } from '@angular/router'
-import { SidebarComponent } from "../../components/sidebar/sidebar.component"
+import { SidebarComponent, SidebarLayoutChange } from "../../components/sidebar/sidebar.component"
 import { TabsComponent } from "../../components/tabs/tabs.component"
 import { LoadingComponent } from '../../components/modal/loading/loading.component'
 import { CodeEditorComponent } from "../../components/elements/code-editor/code-editor.component"
@@ -69,7 +69,7 @@ export class DatabaseManagerComponent {
   elementName: string = ''
   procedureElementName: string = ''
 
-  widthTable: number = 0
+  widthTable: number = 300
 
   constructor(
     private IAPI: InternalApiService,
@@ -501,12 +501,8 @@ export class DatabaseManagerComponent {
     }
   }
 
-  onSidebarStatusChange(event: boolean): void {
-    if (!event) {
-      this.widthTable = 440
-    } else {
-      this.widthTable = 300
-    }
+  onSidebarStatusChange(event: SidebarLayoutChange): void {
+    this.widthTable = event.width + 120
   }
 
   async onSelectedSchemaChanged(selectedSchemaDB: any): Promise<void> {
