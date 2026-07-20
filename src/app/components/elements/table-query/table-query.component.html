@@ -21,6 +21,12 @@
                 {{ t('results.selectAll') }}
             </button>
 
+            <button type="button" class="result-icon-button export-result-button" *ngIf="canExportQueryResult()"
+                [attr.aria-label]="t('results.exportResult')" [title]="t('results.exportResult')"
+                (click)="openExportModal()">
+                <img src="icons/export.png" height="13px" width="13px">
+            </button>
+
             <div class="edit-actions" *ngIf="isSelectResult">
                 <button type="button" class="result-icon-button" [title]="t('results.editRows')" *ngIf="!editingEnabled"
                     [disabled]="!canStartEditing()" (click)="startEditing()">
@@ -106,6 +112,7 @@
             <button type="button" (click)="copySelectedData()">{{ t('results.copy') }}</button>
             <button type="button" (click)="copySelectedTable()">{{ t('results.copyToTable') }}</button>
             <button type="button" (click)="exportSelectedXlsx()">{{ t('results.exportXlsx') }}</button>
+            <button type="button" (click)="exportSelectedCsv()">{{ t('results.exportCsv') }}</button>
         </div>
 
         <div class="query-status loading" *ngIf="isLoading || isLoadingMore || isApplyingEdits">
@@ -127,3 +134,8 @@
         </div>
     </div>
 </div>
+
+<app-export-query *ngIf="showExportModal" [sql]="executedSql" [dbContext]="dbContext"
+    [availableColumns]="getExportableColumns()" [initialRowLimit]="rowLimit" [totalRows]="totalRows"
+    (close)="closeExportModal()">
+</app-export-query>

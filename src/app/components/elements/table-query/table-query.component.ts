@@ -27,6 +27,7 @@ import {
 } from '../../../services/query-result-export/query-result-export.service'
 import { KeyboardShortcutService } from '../../../services/keyboard-shortcuts/keyboard-shortcut.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
+import { ExportQueryComponent } from '../../modal/export-query/export-query.component'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
@@ -58,7 +59,7 @@ interface CellSelectionContextMenu {
 @Component({
   selector: 'app-table-query',
   standalone: true,
-  imports: [CommonModule, AgGridAngular],
+  imports: [CommonModule, AgGridAngular, ExportQueryComponent],
   templateUrl: './table-query.component.html',
   styleUrls: ['./table-query.component.scss'],
   encapsulation: ViewEncapsulation.None
@@ -170,6 +171,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   editErrorMessage = ''
   copyErrorMessage = ''
   cellSelectionMenu: CellSelectionContextMenu | null = null
+  showExportModal = false
   isApplyingEdits = false
   private readonly clientDefaultColDef: ColDef = {
     sortable: true,
@@ -203,6 +205,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   set query(value: any[]) {
     this.saveScrollPosition()
     this._query = value || []
+    this.showExportModal = false
     this.resetCellSelection()
     this.resetEditPreview()
     this.rebuildDisplayRows(false)
@@ -262,6 +265,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     }
 
     if (changes['executedSql'] || changes['dbContext'] || changes['isSelectResult']) {
+      this.showExportModal = false
       this.resetEditPreview()
       this.syncGridRowModel()
       this.refreshEditCapability()
@@ -537,6 +541,37 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     this.resultExport.exportXlsx(payload, 'query-result-selection.xlsx')
     this.cellSelectionMenu = null
+  }
+
+  exportSelectedCsv(): void {
+    const payload = this.getSelectionPayload()
+    if (!payload) return
+
+    this.resultExport.exportCsv(payload, 'query-result-selection.csv')
+    this.cellSelectionMenu = null
+  }
+
+  canExportQueryResult(): boolean {
+    return this.isSelectResult &&
+      !this.errorMessage &&
+      !this.isLoading &&
+      !this.isLoadingMore &&
+      !!this.executedSql?.trim() &&
+      this.getExportableColumns().length > 0
+  }
+
+  openExportModal(): void {
+    if (!this.canExportQueryResult()) return
+    this.cellSelectionMenu = null
+    this.showExportModal = true
+  }
+
+  closeExportModal(): void {
+    this.showExportModal = false
+  }
+
+  getExportableColumns(): string[] {
+    return this.getVisibleFields()
   }
 
   async copyQueryError(event: MouseEvent): Promise<void> {
