@@ -6,8 +6,8 @@
 }
 
 .help-page {
-    background: #131313;
-    color: #e8eaed;
+    background: var(--dbolt-131313);
+    color: var(--dbolt-e8eaed);
     height: 100%;
     min-height: 0;
     overflow: hidden;
@@ -41,13 +41,13 @@
     }
 
     h1 {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-size: 1.15em;
         font-weight: 800;
     }
 
     p {
-        color: #b8b8b9;
+        color: var(--dbolt-b8b8b9);
         font-size: .86em;
         margin-top: 3px;
     }
@@ -62,10 +62,10 @@
 .repo-link,
 .back-button {
     align-items: center;
-    background: #000;
-    border: 1px solid #232020;
+    background: var(--dbolt-000);
+    border: 1px solid var(--dbolt-232020);
     border-radius: 10px;
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     cursor: pointer;
     display: inline-flex;
     font-family: 'Nunito';
@@ -78,7 +78,7 @@
     text-decoration: none;
 
     &:hover {
-        background: #232020;
+        background: var(--dbolt-232020);
     }
 }
 
@@ -91,8 +91,8 @@
 }
 
 .help-section {
-    background: #000;
-    border: 1px solid #181818;
+    background: var(--dbolt-000);
+    border: 1px solid var(--dbolt-181818);
     border-radius: 18px;
     min-width: 0;
     padding: 20px;
@@ -104,14 +104,14 @@
     }
 
     h2 {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-size: .98em;
         font-weight: 850;
         margin: 0 0 10px;
     }
 
     p {
-        color: #b8b8b9;
+        color: var(--dbolt-b8b8b9);
         font-size: .82em;
         line-height: 1.45;
         margin: 0 0 14px;
@@ -126,14 +126,14 @@
     }
 
     li {
-        color: #b8b8b9;
+        color: var(--dbolt-b8b8b9);
         font-size: .8em;
         line-height: 1.42;
         padding-left: 14px;
         position: relative;
 
         &::before {
-            background: #739eca;
+            background: var(--dbolt-739eca);
             border-radius: 50%;
             content: '';
             height: 5px;

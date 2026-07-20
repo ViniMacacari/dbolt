@@ -16,9 +16,23 @@ import { QuerySaveService, SavedQuery, SavedQueryInput } from '../../../services
 import { KeyboardShortcutService } from '../../../services/keyboard-shortcuts/keyboard-shortcut.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { AppPlatformService } from '../../../services/platform/app-platform.service'
+import { AppThemeService } from '../../../services/theme/app-theme.service'
 import { selectSqlStatementAtCursor } from '../../../utils/sql-statement-selection'
 
 let sqlTokenizerConfigured = false
+
+const LIGHT_SQL_HIGHLIGHT_COLORS: SqlHighlightColors = {
+  keyword: '#005a9c',
+  function: '#795e26',
+  identifier: '#1f2933',
+  string: '#267f3a',
+  number: '#7a3e9d',
+  comment: '#5f6b76',
+  operator: '#374151',
+  type: '#6b46c1',
+  variable: '#8b3a62',
+  delimiter: '#4b5563'
+}
 
 interface SqlNavigationToken {
   value: string
@@ -64,6 +78,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private autocompleteDisposable?: monaco.IDisposable
   private syntaxValidationDisposable?: monaco.IDisposable
   private settingsSubscription?: Subscription
+  private themeSubscription?: Subscription
   private languageSubscription?: Subscription
   private shortcutDisposers: Array<() => void> = []
   private editorActionDisposables: monaco.IDisposable[] = []
@@ -132,13 +147,17 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     private querySave: QuerySaveService,
     private keyboardShortcuts: KeyboardShortcutService,
     private language: AppLanguageService,
-    private platform: AppPlatformService
+    private platform: AppPlatformService,
+    private appTheme: AppThemeService
   ) {
     this.settingsSubscription = this.appSettings.settingsChanges$.subscribe((settings) => {
       this.applySqlHighlightTheme(settings.sqlHighlightColors)
     })
     this.languageSubscription = this.language.languageChanges$.subscribe(() => {
       this.registerEditorContextMenuActions()
+    })
+    this.themeSubscription = this.appTheme.themeChanges$.subscribe(() => {
+      this.applySqlHighlightTheme(this.appSettings.getSqlHighlightColors())
     })
   }
 
@@ -179,6 +198,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.autocompleteDisposable?.dispose()
     this.syntaxValidationDisposable?.dispose()
     this.settingsSubscription?.unsubscribe()
+    this.themeSubscription?.unsubscribe()
     this.languageSubscription?.unsubscribe()
     this.unregisterKeyboardShortcuts()
     this.disposeEditorContextMenuActions()
@@ -342,30 +362,77 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private defineSqlHighlightTheme(colors: SqlHighlightColors): void {
     const normalizedColors = this.appSettings.normalizeSqlHighlightColors(colors)
+    const themeColors = this.resolveThemeHighlightColors(normalizedColors)
+    const isLightTheme = this.appTheme.getTheme() === 'light'
 
-    const transparentEditorColors = {
-      'editor.background': '#00000000',
-      'editorGutter.background': '#00000000',
-      'editorLineHighlightBorder': '#00000000',
-      'editorLineHighlightBackground': '#00000000',
-      'editorWidget.border': '#00000000',
-      'focusBorder': '#00000000'
-    }
+    const editorSurfaceColors: monaco.editor.IColors = isLightTheme
+      ? {
+        'editor.background': '#ffffff',
+        'editorGutter.background': '#f6f8fa',
+        'editorLineHighlightBorder': '#00000000',
+        'editorLineHighlightBackground': '#f3f7fb',
+        'editorWidget.background': '#ffffff',
+        'editorWidget.border': '#b8c5d1',
+        'editorSuggestWidget.background': '#ffffff',
+        'editorSuggestWidget.border': '#b8c5d1',
+        'editorSuggestWidget.foreground': '#263442',
+        'editorSuggestWidget.selectedBackground': '#d8eafb',
+        'editorSuggestWidget.selectedForeground': '#17324d',
+        'editorSuggestWidget.highlightForeground': '#005a9c',
+        'editorHoverWidget.background': '#ffffff',
+        'editorHoverWidget.border': '#b8c5d1',
+        'focusBorder': '#00000000'
+      }
+      : {
+        'editor.background': '#00000000',
+        'editorGutter.background': '#00000000',
+        'editorLineHighlightBorder': '#00000000',
+        'editorLineHighlightBackground': '#00000000',
+        'editorWidget.border': '#00000000',
+        'focusBorder': '#00000000'
+      }
 
     monaco.editor.defineTheme('dbolt-sql-configurable', {
-      base: 'vs-dark',
+      base: isLightTheme ? 'vs' : 'vs-dark',
       inherit: false,
-      rules: this.buildSqlTokenRules(normalizedColors),
+      rules: this.buildSqlTokenRules(themeColors),
       colors: {
-        ...transparentEditorColors,
-        'editor.foreground': normalizedColors.identifier,
-        'editorLineNumber.foreground': '#858585',
-        'editorLineNumber.activeForeground': '#c6c6c6',
-        'editorCursor.foreground': '#ffffff',
-        'editor.selectionBackground': '#264f78',
-        'editor.inactiveSelectionBackground': '#3a3d41'
+        ...editorSurfaceColors,
+        'editor.foreground': themeColors.identifier,
+        'editorLineNumber.foreground': isLightTheme ? '#7a8793' : '#858585',
+        'editorLineNumber.activeForeground': isLightTheme ? '#263442' : '#c6c6c6',
+        'editorCursor.foreground': isLightTheme ? '#111827' : '#ffffff',
+        'editor.selectionBackground': isLightTheme ? '#add6ff' : '#264f78',
+        'editor.inactiveSelectionBackground': isLightTheme ? '#dbeafe' : '#3a3d41'
       }
     })
+  }
+
+  private resolveThemeHighlightColors(colors: SqlHighlightColors): SqlHighlightColors {
+    if (this.appTheme.getTheme() !== 'light') {
+      return colors
+    }
+
+    return (Object.keys(colors) as Array<keyof SqlHighlightColors>).reduce((resolved, key) => ({
+      ...resolved,
+      [key]: this.hasLightBackgroundContrast(colors[key])
+        ? colors[key]
+        : LIGHT_SQL_HIGHLIGHT_COLORS[key]
+    }), {} as SqlHighlightColors)
+  }
+
+  private hasLightBackgroundContrast(color: string): boolean {
+    const normalized = color.replace('#', '')
+    if (!/^[0-9a-f]{6}$/i.test(normalized)) return false
+
+    const channels = [0, 2, 4].map(index => parseInt(normalized.slice(index, index + 2), 16) / 255)
+    const linearChannels = channels.map(channel => channel <= 0.04045
+      ? channel / 12.92
+      : Math.pow((channel + 0.055) / 1.055, 2.4)
+    )
+    const luminance = 0.2126 * linearChannels[0] + 0.7152 * linearChannels[1] + 0.0722 * linearChannels[2]
+
+    return luminance <= 0.3
   }
 
   private buildSqlTokenRules(colors: SqlHighlightColors): monaco.editor.ITokenThemeRule[] {

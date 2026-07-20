@@ -9,8 +9,8 @@
 
 .toast {
     animation: slideIn 0.25s ease-out, fadeOut 0.25s ease-in 2.5s forwards;
-    background-color: #1b1b1b !important;
-    border: 1px solid #353535 !important;
+    background-color: var(--dbolt-1b1b1b) !important;
+    border: 1px solid var(--dbolt-353535) !important;
     border-radius: 5px;
     box-shadow: 0 10px 24px rgba(0, 0, 0, .28);
     min-height: 44px;
@@ -22,7 +22,7 @@
 
     .toast-pai {
         align-items: stretch;
-        background-color: #1b1b1b;
+        background-color: var(--dbolt-1b1b1b);
         min-height: 44px;
         width: 100%;
     }
@@ -41,7 +41,7 @@
     }
 
     .toast-message {
-        background-color: #1b1b1b;
+        background-color: var(--dbolt-1b1b1b);
         flex: 1 1 auto;
         justify-content: flex-start;
         line-height: 1.2;
@@ -55,7 +55,7 @@
     }
 
     i {
-        background-color: #1b1b1b;
+        background-color: var(--dbolt-1b1b1b);
         cursor: pointer;
         flex: 0 0 34px;
         min-height: 44px;

@@ -1,12 +1,11 @@
 import { Component, Input, HostListener, EventEmitter, Output, OnChanges, SimpleChanges, ElementRef } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { FormsModule } from '@angular/forms'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 
 @Component({
   selector: 'app-input-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule],
   templateUrl: './input-list.component.html',
   styleUrls: ['./input-list.component.scss']
 })
@@ -30,17 +29,25 @@ export class InputListComponent implements OnChanges {
   ) { }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['list'] && changes['list'].currentValue) {
-      this.updateFilteredList()
-    }
-
-    if (
+    const optionsChanged = Boolean(
       changes['list'] ||
       changes['selectedValue'] ||
       changes['valueKey'] ||
       changes['displayKey']
-    ) {
+    )
+    const shouldSyncSelectedItem = Boolean(
+      changes['selectedValue'] ||
+      changes['valueKey'] ||
+      changes['displayKey'] ||
+      (changes['list'] && (!this.searchValue || this.isShowingSelectedValue()))
+    )
+
+    if (shouldSyncSelectedItem) {
       this.syncSelectedItem()
+    }
+
+    if (optionsChanged) {
+      this.updateFilteredList(this.isDropdownOpen && this.isShowingSelectedValue())
     }
   }
 
@@ -56,6 +63,11 @@ export class InputListComponent implements OnChanges {
     }
 
     this.updateFilteredList(false)
+  }
+
+  onSearchInput(event: Event): void {
+    this.searchValue = (event.target as HTMLInputElement).value
+    this.updateSearch()
   }
 
   selectItem(item: { [key: string]: string | number }): void {
@@ -115,7 +127,6 @@ export class InputListComponent implements OnChanges {
 
     this.selectedItem = selectedItem
     this.searchValue = selectedItem[this.displayKey]?.toString() || ''
-    this.updateFilteredList()
   }
 
   t(key: string, params: Record<string, string | number> = {}): string {

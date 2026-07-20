@@ -63,7 +63,7 @@
 }
 
 .editor-toolbar {
-    background-color: #1b1b1b;
+    background-color: var(--dbolt-editor-toolbar-surface);
     border-radius: 15px;
 }
 
@@ -85,8 +85,8 @@
 }
 
 .editable-div {
-    background-color: #292727;
-    color: #f8f8f2;
+    background-color: var(--dbolt-292727);
+    color: var(--dbolt-f8f8f2);
 
     border: none;
     resize: none;
@@ -103,7 +103,7 @@
     overflow-x: auto;
     overflow-y: auto;
 
-    caret-color: white;
+    caret-color: var(--dbolt-editor-caret);
 }
 
 // Monaco editor
@@ -129,10 +129,10 @@
 }
 
 :host ::ng-deep .monaco-editor .dbolt-sql-navigation-link {
-    color: #b58cff !important;
+    color: var(--dbolt-b58cff) !important;
     cursor: pointer !important;
     text-decoration: underline !important;
-    text-decoration-color: #b58cff !important;
+    text-decoration-color: var(--dbolt-b58cff) !important;
     text-underline-offset: 3px !important;
 }
 

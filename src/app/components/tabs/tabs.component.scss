@@ -22,7 +22,7 @@
         display: flex;
         align-items: center;
 
-        background-color: #1b1b1b;
+        background-color: var(--dbolt-1b1b1b);
         border-radius: 15px;
 
         min-height: 35px;
@@ -37,7 +37,7 @@
             position: absolute;
             top: 40px;
             left: 0;
-            background-color: #1b1b1b;
+            background-color: var(--dbolt-1b1b1b);
             box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
             border-radius: 15px;
             z-index: 999999;
@@ -74,7 +74,7 @@
         }
 
         .dropdown li:hover {
-            background-color: #2d2c2c;
+            background-color: var(--dbolt-2d2c2c);
         }
     }
 
@@ -112,7 +112,7 @@
 
             flex: 0 0 auto;
 
-            background-color: #1b1b1b;
+            background-color: var(--dbolt-1b1b1b);
             border-radius: 15px;
 
             height: 35px;
@@ -154,8 +154,8 @@
             }
 
             &.active {
-                background-color: #2d2c2c;
-                border: 2px solid #1d162e;
+                background-color: var(--dbolt-2d2c2c);
+                border: 2px solid var(--dbolt-1d162e);
             }
         }
     }
@@ -176,10 +176,10 @@
 }
 
 ::-webkit-scrollbar-track {
-    background-color: #1b1b1b;
+    background-color: var(--dbolt-1b1b1b);
 }
 
 ::-webkit-scrollbar-thumb {
-    background-color: #353535;
+    background-color: var(--dbolt-353535);
     border-radius: 15px;
 }

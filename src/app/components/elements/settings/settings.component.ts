@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common'
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core'
 import {
   AppSettingsService,
+  AppTheme,
   SqlFormatterCommaStyle,
   SqlHighlightColorKey,
   SqlHighlightColors,
@@ -15,13 +16,14 @@ import { LoadingComponent } from '../../modal/loading/loading.component'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { AppLanguage } from '../../../services/language/language.model'
 import { AiAssistantSettingsService } from '../../../services/ai-assistant/ai-assistant-settings.service'
+import { AppThemeService } from '../../../services/theme/app-theme.service'
 import {
   AiAssistantLimits,
   AiAssistantProvider,
   AiAssistantSettings
 } from '../../../services/ai-assistant/ai-assistant.model'
 
-type SettingsTab = 'query' | 'connections' | 'autocomplete' | 'highlight' | 'language' | 'ai'
+type SettingsTab = 'query' | 'connections' | 'autocomplete' | 'highlight' | 'appearance' | 'language' | 'ai'
 
 const DEFAULT_AI_BASE_URL = 'https://api.openai.com/v1/chat/completions'
 const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1/chat/completions'
@@ -60,13 +62,16 @@ export class SettingsComponent implements OnInit, OnChanges {
   sqlHighlightMode: SqlHighlightMode
   sqlHighlightColors: SqlHighlightColors
   appLanguage: AppLanguage
+  appTheme: AppTheme
   readonly appLanguageOptions: { value: AppLanguage, label: string }[]
+  appThemeOptions: { value: AppTheme, label: string }[]
   savedMessage: string = ''
   expirationSavedMessage: string = ''
   syntaxValidationSavedMessage: string = ''
   formatterSavedMessage: string = ''
   highlightSavedMessage: string = ''
   languageSavedMessage: string = ''
+  themeSavedMessage: string = ''
   tableAutocompleteSavedMessage: string = ''
   tableMatchModeSavedMessage: string = ''
   columnAutocompleteSavedMessage: string = ''
@@ -148,7 +153,8 @@ export class SettingsComponent implements OnInit, OnChanges {
     private connectionsService: ConnectionsService,
     private IAPI: InternalApiService,
     private language: AppLanguageService,
-    private aiSettingsService: AiAssistantSettingsService
+    private aiSettingsService: AiAssistantSettingsService,
+    private theme: AppThemeService
   ) {
     this.defaultQueryRows = this.settings.getDefaultQueryRows()
     this.connectionExpirationMinutes = this.settings.getConnectionExpirationMinutes()
@@ -165,7 +171,9 @@ export class SettingsComponent implements OnInit, OnChanges {
     this.sqlHighlightMode = this.settings.getSqlHighlightMode()
     this.sqlHighlightColors = this.settings.getSqlHighlightColors()
     this.appLanguage = this.settings.getAppLanguage()
+    this.appTheme = this.theme.getTheme()
     this.appLanguageOptions = this.language.languageOptions
+    this.appThemeOptions = this.buildAppThemeOptions()
   }
 
   async ngOnInit(): Promise<void> {
@@ -227,6 +235,7 @@ export class SettingsComponent implements OnInit, OnChanges {
   get settingsTitle(): string {
     if (this.activeTab === 'ai') return this.t('settings.ai.title')
     if (this.activeTab === 'language') return this.t('settings.language.title')
+    if (this.activeTab === 'appearance') return this.t('settings.appearance.title')
     if (this.activeTab === 'connections') return this.t('settings.connections.title')
     if (this.activeTab === 'autocomplete') return this.t('settings.autocomplete.title')
     if (this.activeTab === 'highlight') return this.t('settings.highlight.title')
@@ -259,7 +268,20 @@ export class SettingsComponent implements OnInit, OnChanges {
 
   saveLanguageSettings(): void {
     this.appLanguage = this.language.setLanguage(this.appLanguage)
+    this.appThemeOptions = this.buildAppThemeOptions()
     this.languageSavedMessage = this.t('settings.language.saved')
+  }
+
+  onAppThemeSelected(item: { [key: string]: string | number } | null): void {
+    if (!item) return
+
+    this.appTheme = this.settings.normalizeAppTheme(item['value'])
+    this.themeSavedMessage = ''
+  }
+
+  saveThemeSettings(): void {
+    this.appTheme = this.theme.setTheme(this.appTheme)
+    this.themeSavedMessage = this.t('generic.saved')
   }
 
   onAiProviderSelected(item: { [key: string]: string | number } | null): void {
@@ -780,6 +802,7 @@ export class SettingsComponent implements OnInit, OnChanges {
       value === 'connections' ||
       value === 'autocomplete' ||
       value === 'highlight' ||
+      value === 'appearance' ||
       value === 'language' ||
       value === 'ai'
   }
@@ -794,6 +817,13 @@ export class SettingsComponent implements OnInit, OnChanges {
     }
 
     return provider === 'gemini' ? 'gemini-3.5-flash' : 'gpt-5.4-mini'
+  }
+
+  private buildAppThemeOptions(): { value: AppTheme, label: string }[] {
+    return [
+      { value: 'dark', label: this.t('settings.appearance.theme.dark') },
+      { value: 'light', label: this.t('settings.appearance.theme.light') }
+    ]
   }
 
   private defaultBaseUrlForAiProvider(provider: AiAssistantProvider): string {

@@ -29,7 +29,7 @@ app-procedure-info,
 
 .procedure-info-container .editor-toolbar {
     flex: 0 0 110px;
-    background-color: #1b1b1b;
+    background-color: var(--dbolt-1b1b1b);
     border-radius: 15px;
     padding: 10px;
 
@@ -40,7 +40,7 @@ app-procedure-info,
         padding: 5px;
         gap: 10px;
         border: none;
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-size: .9em;
         font-family: 'Nunito';
         cursor: pointer;
@@ -50,7 +50,7 @@ app-procedure-info,
         text-overflow: ellipsis;
 
         &:hover:not(:disabled) {
-            background-color: #3d3a3a;
+            background-color: var(--dbolt-3d3a3a);
         }
 
         &:disabled {
@@ -61,27 +61,27 @@ app-procedure-info,
 
     .separator {
         height: 1px;
-        border-bottom: 1px solid #3d3a3a;
+        border-bottom: 1px solid var(--dbolt-3d3a3a);
     }
 }
 
 .procedure-info-container .editor-toolbar .btn.active {
-    background-color: #3d3a3a !important;
+    background-color: var(--dbolt-3d3a3a) !important;
 }
 
 .procedure-info-container .ddl-panel {
     flex: 1 1 auto;
     height: 100%;
     min-height: 0;
-    background-color: #1b1b1b;
-    border: 1px solid #363535;
+    background-color: var(--dbolt-1b1b1b);
+    border: 1px solid var(--dbolt-363535);
     border-radius: 10px;
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     padding: 14px;
     overflow: auto;
 
     pre {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-family: Consolas, 'Courier New', monospace;
         font-size: .86em;
         margin: 0;
@@ -91,12 +91,12 @@ app-procedure-info,
 }
 
 .procedure-info-container .metadata-status {
-    color: #969696;
+    color: var(--dbolt-969696);
     font-family: 'Nunito';
     font-size: .85em;
     margin: 12px;
 
     &.error {
-        color: #ff8f8f;
+        color: var(--dbolt-ff8f8f);
     }
 }

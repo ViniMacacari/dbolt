@@ -1,3 +1,248 @@
+/*
+ * The dark values below are the application's original palette. Component styles
+ * reference these exact-color tokens so the existing dark theme remains unchanged.
+ */
+:root {
+    --dbolt-query-table-text: #fff;
+    --dbolt-query-table-selected-text: #ffffff;
+    --dbolt-menu-hover-text: #fff;
+    --dbolt-editor-caret: white;
+    --dbolt-grid-separator: rgb(37, 37, 37);
+    --dbolt-modal-copy: rgb(199, 199, 199);
+    --dbolt-query-status-bg: rgba(27, 27, 27, .9);
+    --dbolt-db-info-status-bg: rgba(27, 27, 27, .88);
+    --dbolt-workspace-surface: #292727;
+    --dbolt-sidebar-surface: #131313;
+    --dbolt-sidebar-control-surface: #232020;
+    --dbolt-sidebar-action-hover: #303030;
+    --dbolt-sidebar-control-hover: #292727;
+    --dbolt-editor-toolbar-surface: #1b1b1b;
+    --dbolt-000: #000;
+    --dbolt-050505: #050505;
+    --dbolt-080808: #080808;
+    --dbolt-0b0b0b: #0b0b0b;
+    --dbolt-0f0f0f: #0f0f0f;
+    --dbolt-101010: #101010;
+    --dbolt-111: #111;
+    --dbolt-121212: #121212;
+    --dbolt-131313: #131313;
+    --dbolt-141414: #141414;
+    --dbolt-151515: #151515;
+    --dbolt-181818: #181818;
+    --dbolt-1b1b1b: #1b1b1b;
+    --dbolt-1f1f1f: #1f1f1f;
+    --dbolt-202020: #202020;
+    --dbolt-232020: #232020;
+    --dbolt-232323: #232323;
+    --dbolt-242424: #242424;
+    --dbolt-262626: #262626;
+    --dbolt-292727: #292727;
+    --dbolt-2b2b2b: #2b2b2b;
+    --dbolt-2d2c2c: #2d2c2c;
+    --dbolt-2d2d2d: #2d2d2d;
+    --dbolt-2f2f2f: #2f2f2f;
+    --dbolt-303030: #303030;
+    --dbolt-302d2d: #302d2d;
+    --dbolt-343434: #343434;
+    --dbolt-353535: #353535;
+    --dbolt-363535: #363535;
+    --dbolt-3b3b3b: #3b3b3b;
+    --dbolt-3d3a3a: #3d3a3a;
+    --dbolt-444: #444;
+    --dbolt-4a4a4a: #4a4a4a;
+    --dbolt-555: #555;
+    --dbolt-565656: #565656;
+    --dbolt-575757: #575757;
+    --dbolt-5a5a5a: #5a5a5a;
+    --dbolt-5e5e60: #5e5e60;
+    --dbolt-5f5f5f: #5f5f5f;
+    --dbolt-686868: #686868;
+    --dbolt-6f6f6f: #6f6f6f;
+    --dbolt-747474: #747474;
+    --dbolt-777: #777;
+    --dbolt-8aaed2: #8aaed2;
+    --dbolt-8d8d8d: #8d8d8d;
+    --dbolt-8d929b: #8d929b;
+    --dbolt-8f8f8f: #8f8f8f;
+    --dbolt-969696: #969696;
+    --dbolt-9fbede: #9fbede;
+    --dbolt-9fc5f0: #9fc5f0;
+    --dbolt-b8b8b9: #b8b8b9;
+    --dbolt-c9c9c9: #c9c9c9;
+    --dbolt-cfcfcf: #cfcfcf;
+    --dbolt-d7d7d7: #d7d7d7;
+    --dbolt-d8e9fb: #d8e9fb;
+    --dbolt-e8e4a4: #e8e4a4;
+    --dbolt-e8e7e6: #e8e7e6;
+    --dbolt-e8eaed: #e8eaed;
+    --dbolt-f1f1f1: #f1f1f1;
+    --dbolt-f1f3f5: #f1f3f5;
+    --dbolt-f1f4ff: #f1f4ff;
+    --dbolt-f2f2f2: #f2f2f2;
+    --dbolt-f8f8f2: #f8f8f2;
+
+    --dbolt-151932: #151932;
+    --dbolt-1c2041: #1c2041;
+    --dbolt-1d162e: #1d162e;
+    --dbolt-1f2775: #1f2775;
+    --dbolt-20252d: #20252d;
+    --dbolt-283445: #283445;
+    --dbolt-2b3340: #2b3340;
+    --dbolt-334052: #334052;
+    --dbolt-34475d: #34475d;
+    --dbolt-516986: #516986;
+    --dbolt-739eca: #739eca;
+
+    --dbolt-261111: #261111;
+    --dbolt-2d2020: #2d2020;
+    --dbolt-332323: #332323;
+    --dbolt-343232: #343232;
+    --dbolt-3a3030: #3a3030;
+    --dbolt-3a3535: #3a3535;
+    --dbolt-3c2727: #3c2727;
+    --dbolt-543030: #543030;
+    --dbolt-5a2b2b: #5a2b2b;
+    --dbolt-6b3030: #6b3030;
+    --dbolt-f0a0a0: #f0a0a0;
+    --dbolt-ff8c8c: #ff8c8c;
+    --dbolt-ff8d8d: #ff8d8d;
+    --dbolt-ff8f8f: #ff8f8f;
+    --dbolt-ffb4b4: #ffb4b4;
+    --dbolt-ffcdcd: #ffcdcd;
+    --dbolt-ffd1d1: #ffd1d1;
+
+    --dbolt-345c3e: #345c3e;
+    --dbolt-8fbc6a: #8fbc6a;
+    --dbolt-9be0aa: #9be0aa;
+    --dbolt-9fe6b8: #9fe6b8;
+    --dbolt-b58cff: #b58cff;
+}
+
+:root[data-app-theme='light'] {
+    --dbolt-query-table-text: #1f2933;
+    --dbolt-query-table-selected-text: #1f2933;
+    --dbolt-menu-hover-text: #1f2933;
+    --dbolt-editor-caret: #111827;
+    --dbolt-grid-separator: #d7dee5;
+    --dbolt-modal-copy: #526170;
+    --dbolt-query-status-bg: rgba(255, 255, 255, .92);
+    --dbolt-db-info-status-bg: rgba(255, 255, 255, .92);
+    --dbolt-workspace-surface: #ffffff;
+    --dbolt-sidebar-surface: #f3f6f8;
+    --dbolt-sidebar-control-surface: #ffffff;
+    --dbolt-sidebar-action-hover: #f4f7fa;
+    --dbolt-sidebar-control-hover: #f4f7fa;
+    --dbolt-editor-toolbar-surface: #e9eef3;
+    --dbolt-000: #ffffff;
+    --dbolt-050505: #fbfcfd;
+    --dbolt-080808: #f9fbfc;
+    --dbolt-0b0b0b: #ffffff;
+    --dbolt-0f0f0f: #ffffff;
+    --dbolt-101010: #f8fafc;
+    --dbolt-111: #f8fafc;
+    --dbolt-121212: #f7f9fb;
+    --dbolt-131313: #f3f6f8;
+    --dbolt-141414: #f5f7f9;
+    --dbolt-151515: #f3f6f8;
+    --dbolt-181818: #edf1f4;
+    --dbolt-1b1b1b: #ffffff;
+    --dbolt-1f1f1f: #e8edf2;
+    --dbolt-202020: #dfe5eb;
+    --dbolt-232020: #f7f9fb;
+    --dbolt-232323: #eef2f5;
+    --dbolt-242424: #d7dee5;
+    --dbolt-262626: #edf2f6;
+    --dbolt-292727: #edf1f5;
+    --dbolt-2b2b2b: #d8e0e7;
+    --dbolt-2d2c2c: #e5ebf1;
+    --dbolt-2d2d2d: #d3dbe3;
+    --dbolt-2f2f2f: #e3e9ee;
+    --dbolt-303030: #e2e8ee;
+    --dbolt-302d2d: #e8edf2;
+    --dbolt-343434: #d7dee5;
+    --dbolt-353535: #ccd5de;
+    --dbolt-363535: #c9d3dc;
+    --dbolt-3b3b3b: #bfcbd6;
+    --dbolt-3d3a3a: #dce4eb;
+    --dbolt-444: #b3c0cb;
+    --dbolt-4a4a4a: #a7b4c0;
+    --dbolt-555: #84929f;
+    --dbolt-565656: #8f9eab;
+    --dbolt-575757: #84929f;
+    --dbolt-5a5a5a: #7d8c99;
+    --dbolt-5e5e60: #71808e;
+    --dbolt-5f5f5f: #718096;
+    --dbolt-686868: #697887;
+    --dbolt-6f6f6f: #667585;
+    --dbolt-747474: #647382;
+    --dbolt-777: #687786;
+    --dbolt-8aaed2: #376f9e;
+    --dbolt-8d8d8d: #637282;
+    --dbolt-8d929b: #5e6d7c;
+    --dbolt-8f8f8f: #667482;
+    --dbolt-969696: #607080;
+    --dbolt-9fbede: #275f98;
+    --dbolt-9fc5f0: #245d91;
+    --dbolt-b8b8b9: #526170;
+    --dbolt-c9c9c9: #364554;
+    --dbolt-cfcfcf: #334251;
+    --dbolt-d7d7d7: #2b3947;
+    --dbolt-d8e9fb: #174e78;
+    --dbolt-e8e4a4: #6b5d00;
+    --dbolt-e8e7e6: #1f2933;
+    --dbolt-e8eaed: #1f2933;
+    --dbolt-f1f1f1: #17212b;
+    --dbolt-f1f3f5: #263442;
+    --dbolt-f1f4ff: #174e78;
+    --dbolt-f2f2f2: #17212b;
+    --dbolt-f8f8f2: #20262e;
+
+    --dbolt-151932: #e5edf9;
+    --dbolt-1c2041: #dfeafb;
+    --dbolt-1d162e: #8caed0;
+    --dbolt-1f2775: #c8dcf3;
+    --dbolt-20252d: #e6eef5;
+    --dbolt-283445: #dce8f4;
+    --dbolt-2b3340: #e1edf8;
+    --dbolt-334052: #d1e2f2;
+    --dbolt-34475d: #ccdeee;
+    --dbolt-516986: #52779c;
+    --dbolt-739eca: #2f6fa7;
+
+    --dbolt-261111: #fff3f3;
+    --dbolt-2d2020: #fff0f0;
+    --dbolt-332323: #fff0f0;
+    --dbolt-343232: #f2e8e8;
+    --dbolt-3a3030: #f3e3e3;
+    --dbolt-3a3535: #efe5e5;
+    --dbolt-3c2727: #ffe5e5;
+    --dbolt-543030: #d88f8f;
+    --dbolt-5a2b2b: #e2a1a1;
+    --dbolt-6b3030: #c87070;
+    --dbolt-f0a0a0: #a12626;
+    --dbolt-ff8c8c: #b42318;
+    --dbolt-ff8d8d: #b42318;
+    --dbolt-ff8f8f: #b42318;
+    --dbolt-ffb4b4: #9f1d1d;
+    --dbolt-ffcdcd: #922020;
+    --dbolt-ffd1d1: #922020;
+
+    --dbolt-345c3e: #d8f3e2;
+    --dbolt-8fbc6a: #3e7222;
+    --dbolt-9be0aa: #287541;
+    --dbolt-9fe6b8: #177245;
+    --dbolt-b58cff: #6f3ac8;
+}
+
+:root[data-app-theme='light'] img[src^='icons/']:not([src^='icons/dbolt-']) {
+    filter: brightness(0) saturate(100%) opacity(.78);
+}
+
+:root[data-app-theme='light'] img[src^='icons/dbolt-'] {
+    filter: none;
+    opacity: 1;
+}
+
 @font-face {
     font-family: 'Nunito';
     src: url('../public/fonts/nunito/Nunito/Nunito-VariableFont_wght.ttf');
@@ -24,44 +269,44 @@ h6 {
 }
 
 .title {
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     font-size: 1.5em;
     font-weight: 700;
 }
 
 .subtitle {
-    color: #b8b8b9;
+    color: var(--dbolt-b8b8b9);
     font-size: 1.2em;
     font-weight: 500;
 }
 
 .subtitle-min {
-    color: #b8b8b9;
+    color: var(--dbolt-b8b8b9);
     font-size: .9em;
     font-weight: 500;
 }
 
 .text {
-    color: #b8b8b9;
+    color: var(--dbolt-b8b8b9);
     font-size: 1em;
     font-weight: 300;
 }
 
 .text-min {
-    color: #b8b8b9;
+    color: var(--dbolt-b8b8b9);
     font-size: .8em;
     font-weight: 300;
 }
 
 .text-min-gray {
-    color: #969696;
+    color: var(--dbolt-969696);
     font-size: .8em;
     font-weight: 300;
 }
 
 .btn-page {
-    background-color: #1b1b1b;
-    color: #e8eaed;
+    background-color: var(--dbolt-1b1b1b);
+    color: var(--dbolt-e8eaed);
 
     border: none;
     outline: none;
@@ -75,15 +320,15 @@ h6 {
     transition: all 0.2s ease-in-out;
 
     &:hover {
-        background-color: #303030;
+        background-color: var(--dbolt-303030);
     }
 }
 
 .btn-page-2 {
     min-width: 100px;
 
-    background-color: #1b1b1b;
-    color: #e8eaed;
+    background-color: var(--dbolt-1b1b1b);
+    color: var(--dbolt-e8eaed);
 
     border: none;
     outline: none;
@@ -95,13 +340,13 @@ h6 {
     transition: all 0.2s ease-in-out;
 
     &:hover {
-        background-color: #303030;
+        background-color: var(--dbolt-303030);
     }
 }
 
 .btn-cancel {
     background-color: #8d0000;
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
 
     border: none;
     outline: none;
@@ -122,15 +367,15 @@ h6 {
 .input-page {
     width: 100%;
     padding: 12px;
-    border: 1px solid #353535;
+    border: 1px solid var(--dbolt-353535);
     border-radius: 15px;
     outline: none;
 
     font-family: 'Nunito';
     font-weight: 500;
     font-size: 14px;
-    background-color: #1b1b1b;
-    color: #e8eaed;
+    background-color: var(--dbolt-1b1b1b);
+    color: var(--dbolt-e8eaed);
 
     -moz-appearance: textfield;
     -webkit-appearance: none;
@@ -165,11 +410,11 @@ input[type='number']::-webkit-outer-spin-button {
 // Background Color
 
 .bg-blue {
-    background-color: #1c2041;
-    color: #e8eaed;
+    background-color: var(--dbolt-1c2041);
+    color: var(--dbolt-e8eaed);
 
     &:hover {
-        background-color: #1f2775;
+        background-color: var(--dbolt-1f2775);
     }
 }
 
@@ -180,16 +425,16 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 ::-webkit-scrollbar-track {
-    background-color: #1b1b1b;
+    background-color: var(--dbolt-1b1b1b);
 }
 
 ::-webkit-scrollbar-thumb {
-    background-color: #4a4a4a;
+    background-color: var(--dbolt-4a4a4a);
     border-radius: 0 !important;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background-color: #565656;
+    background-color: var(--dbolt-565656);
 }
 
 // Separators
@@ -201,20 +446,20 @@ input[type='number']::-webkit-outer-spin-button {
     margin: 7px 0px;
     border-radius: 15px;
 
-    background-color: #353535;
+    background-color: var(--dbolt-353535);
 }
 
 // Code editor
 
 .mtk23 {
     // JOIN, IS, NOT, IN, OR, AND, LIKE, ILIKE, BETWEEN, NOT BETWEEN, IS NULL, IS NOT NULL
-    color: #739eca !important;
+    color: var(--dbolt-739eca) !important;
     font-weight: bold !important;
 }
 
 .mtk24,
 .mtk10 {
-    color: #e8e4a4 !important;
+    color: var(--dbolt-e8e4a4) !important;
 }
 
 .monaco-editor .margin {
@@ -306,10 +551,10 @@ input[type='number']::-webkit-outer-spin-button {
 .ag-menu,
 .ag-filter {
     --ag-icon-filter: invert(100%) !important;
-    --ag-icon-font-color: #e8eaed !important;
-    background-color: #1b1b1b !important;
-    border: 1px solid #363535 !important;
-    color: #e8eaed !important;
+    --ag-icon-font-color: var(--dbolt-e8eaed) !important;
+    background-color: var(--dbolt-1b1b1b) !important;
+    border: 1px solid var(--dbolt-363535) !important;
+    color: var(--dbolt-e8eaed) !important;
 }
 
 .ag-popup-child {
@@ -325,28 +570,28 @@ input[type='number']::-webkit-outer-spin-button {
 .ag-popup-child .ag-menu-list,
 .ag-popup-child .ag-set-filter-list,
 .ag-popup-child .ag-set-filter-item {
-    background-color: #1b1b1b !important;
-    color: #e8eaed !important;
+    background-color: var(--dbolt-1b1b1b) !important;
+    color: var(--dbolt-e8eaed) !important;
 }
 
 .ag-popup-child .ag-filter-condition,
 .ag-popup-child .ag-filter-apply-panel {
-    border-color: #353535 !important;
+    border-color: var(--dbolt-353535) !important;
 }
 
 .ag-popup-child .ag-input-field-input,
 .ag-popup-child .ag-picker-field-wrapper,
 .ag-popup-child input,
 .ag-popup-child select {
-    background-color: #292727 !important;
-    border-color: #3b3b3b !important;
-    color: #e8eaed !important;
+    background-color: var(--dbolt-292727) !important;
+    border-color: var(--dbolt-3b3b3b) !important;
+    color: var(--dbolt-e8eaed) !important;
 }
 
 .ag-popup-child .ag-input-field-input:focus,
 .ag-popup-child input:focus,
 .ag-popup-child select:focus {
-    border-color: #739eca !important;
+    border-color: var(--dbolt-739eca) !important;
     box-shadow: none !important;
 }
 
@@ -362,7 +607,7 @@ input[type='number']::-webkit-outer-spin-button {
 .ag-popup-child .ag-label,
 .ag-popup-child .ag-picker-field-display,
 .ag-popup-child .ag-checkbox-label {
-    color: #e8eaed !important;
+    color: var(--dbolt-e8eaed) !important;
 }
 
 .ag-popup-child .ag-filter-filter .ag-input-wrapper::before,
@@ -374,24 +619,24 @@ input[type='number']::-webkit-outer-spin-button {
 
 .ag-popup-child .ag-input-field-input::placeholder,
 .ag-popup-child input::placeholder {
-    color: #969696 !important;
+    color: var(--dbolt-969696) !important;
     opacity: 1 !important;
 }
 
 .ag-popup-child .ag-list-item:hover,
 .ag-popup-child .ag-list-item.ag-active-item,
 .ag-popup-child .ag-menu-option-active {
-    background-color: #3d3a3a !important;
+    background-color: var(--dbolt-3d3a3a) !important;
 }
 
 .ag-popup-child .ag-standard-button {
-    background-color: #292727 !important;
-    border: 1px solid #3b3b3b !important;
-    color: #e8eaed !important;
+    background-color: var(--dbolt-292727) !important;
+    border: 1px solid var(--dbolt-3b3b3b) !important;
+    color: var(--dbolt-e8eaed) !important;
 }
 
 .ag-popup-child .ag-standard-button:hover {
-    background-color: #303030 !important;
+    background-color: var(--dbolt-303030) !important;
 }
 
 // Table Syles
@@ -404,9 +649,9 @@ input[type='number']::-webkit-outer-spin-button {
     bottom: 0;
     overflow: hidden;
     resize: none !important;
-    border-top: 1px solid #444;
+    border-top: 1px solid var(--dbolt-444);
 
-    background-color: #444;
+    background-color: var(--dbolt-444);
 
     max-height: 90%;
 
@@ -422,8 +667,8 @@ input[type='number']::-webkit-outer-spin-button {
     }
 
     .ag-root-wrapper {
-        background-color: #444;
-        color: #e8eaed;
+        background-color: var(--dbolt-444);
+        color: var(--dbolt-e8eaed);
 
         border-radius: 0 !important;
         border: none !important;
@@ -438,13 +683,13 @@ input[type='number']::-webkit-outer-spin-button {
         position: sticky;
         top: 0;
         z-index: 2;
-        background-color: #1b1b1b;
-        color: #e8eaed;
+        background-color: var(--dbolt-1b1b1b);
+        color: var(--dbolt-e8eaed);
     }
 
     .ag-header-cell {
-        border-left: 1px solid rgb(37, 37, 37);
-        border-right: 1px solid rgb(37, 37, 37);
+        border-left: 1px solid var(--dbolt-grid-separator);
+        border-right: 1px solid var(--dbolt-grid-separator);
     }
 
     .ag-body-viewport {
@@ -456,26 +701,26 @@ input[type='number']::-webkit-outer-spin-button {
     }
 
     .ag-horizontal-left-spacer {
-        background-color: #1b1b1b !important;
+        background-color: var(--dbolt-1b1b1b) !important;
     }
 
     .ag-row-even,
     .ag-row-odd {
-        background-color: #303030;
-        color: #e8eaed;
+        background-color: var(--dbolt-303030);
+        color: var(--dbolt-e8eaed);
 
-        border-bottom: 1px solid #444;
+        border-bottom: 1px solid var(--dbolt-444);
     }
 
     .ag-cell-value {
-        border-left: 1px solid #444;
-        border-left: 1px solid #444;
+        border-left: 1px solid var(--dbolt-444);
+        border-left: 1px solid var(--dbolt-444);
     }
 
     .ag-cell-focus {
-        background-color: #262626;
+        background-color: var(--dbolt-262626);
 
-        border: 1px solid #747474 !important;
+        border: 1px solid var(--dbolt-747474) !important;
     }
 }
 
@@ -486,7 +731,7 @@ input[type='number']::-webkit-outer-spin-button {
     left: 0;
     right: 0;
     height: 10px;
-    background: #1b1b1b;
+    background: var(--dbolt-1b1b1b);
     cursor: row-resize;
     z-index: 3;
 }
@@ -506,11 +751,11 @@ input[type='number']::-webkit-outer-spin-button {
     padding: 8px;
     text-align: left;
     white-space: nowrap;
-    color: #fff;
+    color: var(--dbolt-query-table-text);
 }
 
 .query-table th {
-    border: 1px solid #444;
+    border: 1px solid var(--dbolt-444);
 }
 
 .query-table td {
@@ -521,7 +766,7 @@ input[type='number']::-webkit-outer-spin-button {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    border: 1px solid #444;
+    border: 1px solid var(--dbolt-444);
 
 }
 
@@ -529,14 +774,14 @@ input[type='number']::-webkit-outer-spin-button {
 .query-table th {
     position: sticky;
     top: 9px;
-    background: #1b1b1b;
+    background: var(--dbolt-1b1b1b);
     z-index: 2;
 }
 
 .query-table tbody tr:nth-child(even) td {
-    background-color: #292727 !important;
+    background-color: var(--dbolt-292727) !important;
 }
 
 .query-table tbody tr:nth-child(odd) td {
-    background-color: #303030 !important;
+    background-color: var(--dbolt-303030) !important;
 }
