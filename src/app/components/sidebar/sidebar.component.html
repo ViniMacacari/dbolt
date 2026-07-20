@@ -1,7 +1,10 @@
-<div class="sidebar" [class.open]="isOpen">
+<div class="sidebar-shell" [class.sidebar-hidden]="!sidebarVisible" [class.sidebar-resizing]="resizingSidebar"
+    [style.width.px]="sidebarVisible ? sidebarWidth : sidebarCollapsedWidth">
+    <aside *ngIf="sidebarVisible" class="sidebar">
     <div class="sidebar-actions my-2">
-        <button type="button" (click)="toggle()" class="sidebar-action-button menu-button">
-            <img src="icons/menu.png" height="24px" class="toogle-img">
+        <button type="button" (click)="hideSidebar()" class="sidebar-action-button menu-button"
+            [title]="t('sidebar.hide')" [attr.aria-label]="t('sidebar.hide')">
+            <img src="icons/menu.png" height="17px" width="17px" class="toogle-img" alt="">
         </button>
         <button type="button" (click)="goToHome()" class="sidebar-action-button home-button">
             <img src="icons/home.png" height="17px" width="17px" [title]="t('sidebar.home')">
@@ -100,6 +103,31 @@
             </div>
         </div>
     </div>
+    </aside>
+
+    <nav *ngIf="!sidebarVisible" class="sidebar-collapsed-rail" [attr.aria-label]="t('sidebar.navigation')">
+        <button type="button" class="collapsed-action-button" (click)="showSidebar()"
+            [title]="t('sidebar.show')" [attr.aria-label]="t('sidebar.show')">
+            <img src="icons/menu.png" height="17px" width="17px" alt="">
+        </button>
+        <button type="button" class="collapsed-action-button" (click)="goToHome()"
+            [title]="t('sidebar.home')" [attr.aria-label]="t('sidebar.home')">
+            <img src="icons/home.png" height="17px" width="17px" alt="">
+        </button>
+        <button type="button" class="collapsed-action-button" (click)="openSettings()"
+            [title]="t('sidebar.settings')" [attr.aria-label]="t('sidebar.settings')">
+            <img src="icons/settings.png" height="17px" width="17px" alt="">
+        </button>
+    </nav>
+
+    <button *ngIf="sidebarVisible" type="button" class="sidebar-resize-handle" role="separator" tabindex="0"
+        aria-orientation="vertical" [attr.aria-label]="t('sidebar.resize')"
+        [attr.aria-valuemin]="sidebarMinWidth" [attr.aria-valuemax]="sidebarMaxWidth"
+        [attr.aria-valuenow]="sidebarWidth" [title]="t('sidebar.resizeHint')"
+        (pointerdown)="startSidebarResize($event)" (dblclick)="toggleSidebarPreset()"
+        (keydown)="onSidebarResizeKeydown($event)">
+        <span></span>
+    </button>
 </div>
 
 <app-connection *ngIf="isModalOpen" [connection]="editingConnection" (close)="closeModal()"></app-connection>

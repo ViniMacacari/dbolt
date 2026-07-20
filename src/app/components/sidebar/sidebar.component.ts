@@ -1,4 +1,4 @@
-import { Component, Input, ViewChild, EventEmitter, Output, HostListener } from '@angular/core'
+import { Component, Input, ViewChild, EventEmitter, Output, HostListener, OnDestroy, OnInit } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { LoadingComponent } from '../modal/loading/loading.component'
@@ -9,6 +9,11 @@ import { ConnectionsService } from '../../services/resolve-connections/connectio
 import { ConnectionComponent } from '../modal/connection/connection.component'
 import { AppLanguageService } from '../../services/language/app-language.service'
 
+export interface SidebarLayoutChange {
+  visible: boolean
+  width: number
+}
+
 @Component({
   selector: 'app-sidebar',
   standalone: true,
@@ -16,12 +21,12 @@ import { AppLanguageService } from '../../services/language/app-language.service
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss'
 })
-export class SidebarComponent {
+export class SidebarComponent implements OnInit, OnDestroy {
   @Input() connections: any[] = []
   @Input() activeConnection: any = { info: {}, data: [] }
   @Input() dbSchemas: any = []
   @Input() selectedSchemaDB: any
-  @Output() sidebarStatusChange = new EventEmitter<boolean>()
+  @Output() sidebarStatusChange = new EventEmitter<SidebarLayoutChange>()
   @Output() dbInfoRequested = new EventEmitter<any>()
   @Output() selectedSchemaChanged = new EventEmitter<any>()
   @Output() settingsRequested = new EventEmitter<void>()
@@ -32,13 +37,24 @@ export class SidebarComponent {
 
   isModalOpen: boolean = false
   editingConnection: any = null
-  isOpen = true
+  sidebarWidth: number = 180
+  sidebarVisible: boolean = true
+  resizingSidebar: boolean = false
   expandedConnections: Set<number> = new Set()
   expandedDatabases: Set<string> = new Set()
   clickTimeout: any = null
   quickSelectorType: 'connection' | 'database' | 'schema' | null = null
   quickSelectorFilter: string = ''
   contextMenu: any = null
+
+  readonly sidebarMinWidth: number = 160
+  readonly sidebarMaxWidth: number = 480
+  readonly sidebarCollapsedWidth: number = 54
+  private readonly sidebarCompactWidth: number = 180
+  private readonly sidebarDefaultWidth: number = 320
+  private readonly sidebarLayoutStorageKey: string = 'dbolt-sidebar-layout'
+  private resizeStartX: number = 0
+  private resizeStartWidth: number = 0
 
   constructor(
     private IAPI: InternalApiService,
@@ -48,9 +64,148 @@ export class SidebarComponent {
     private language: AppLanguageService
   ) { }
 
-  toggle() {
-    this.isOpen = !this.isOpen
-    this.sidebarStatusChange.emit(this.isOpen)
+  ngOnInit(): void {
+    this.restoreSidebarLayout()
+    this.emitSidebarLayout()
+  }
+
+  ngOnDestroy(): void {
+    document.body.classList.remove('dbolt-sidebar-resizing')
+  }
+
+  toggle(): void {
+    if (this.sidebarVisible) {
+      this.hideSidebar()
+      return
+    }
+
+    this.showSidebar()
+  }
+
+  hideSidebar(): void {
+    this.finishSidebarResize()
+    this.sidebarVisible = false
+    this.quickSelectorType = null
+    this.contextMenu = null
+    this.persistSidebarLayout()
+    this.emitSidebarLayout()
+  }
+
+  showSidebar(): void {
+    this.sidebarVisible = true
+    this.sidebarWidth = this.clampSidebarWidth(this.sidebarWidth)
+    this.persistSidebarLayout()
+    this.emitSidebarLayout()
+  }
+
+  startSidebarResize(event: PointerEvent): void {
+    if (!this.sidebarVisible || event.button !== 0) return
+
+    event.preventDefault()
+    this.resizingSidebar = true
+    this.resizeStartX = event.clientX
+    this.resizeStartWidth = this.sidebarWidth
+    document.body.classList.add('dbolt-sidebar-resizing')
+  }
+
+  @HostListener('window:pointermove', ['$event'])
+  resizeSidebar(event: PointerEvent): void {
+    if (!this.resizingSidebar) return
+
+    const nextWidth = this.resizeStartWidth + event.clientX - this.resizeStartX
+    this.sidebarWidth = this.clampSidebarWidth(nextWidth)
+    this.emitSidebarLayout()
+  }
+
+  @HostListener('window:pointerup')
+  finishSidebarResize(): void {
+    if (!this.resizingSidebar) return
+
+    this.resizingSidebar = false
+    document.body.classList.remove('dbolt-sidebar-resizing')
+    this.persistSidebarLayout()
+  }
+
+  @HostListener('window:blur')
+  cancelSidebarResize(): void {
+    this.finishSidebarResize()
+  }
+
+  @HostListener('window:resize')
+  constrainSidebarToViewport(): void {
+    const constrainedWidth = this.clampSidebarWidth(this.sidebarWidth)
+    if (constrainedWidth === this.sidebarWidth) return
+
+    this.sidebarWidth = constrainedWidth
+    this.persistSidebarLayout()
+    this.emitSidebarLayout()
+  }
+
+  toggleSidebarPreset(): void {
+    const distanceFromCompact = Math.abs(this.sidebarWidth - this.sidebarCompactWidth)
+    const distanceFromDefault = Math.abs(this.sidebarWidth - this.sidebarDefaultWidth)
+    this.sidebarWidth = this.clampSidebarWidth(
+      distanceFromCompact <= distanceFromDefault ? this.sidebarDefaultWidth : this.sidebarCompactWidth
+    )
+    this.persistSidebarLayout()
+    this.emitSidebarLayout()
+  }
+
+  onSidebarResizeKeydown(event: KeyboardEvent): void {
+    let nextWidth = this.sidebarWidth
+
+    if (event.key === 'ArrowLeft') nextWidth -= 16
+    else if (event.key === 'ArrowRight') nextWidth += 16
+    else if (event.key === 'Home') nextWidth = this.sidebarMinWidth
+    else if (event.key === 'End') nextWidth = this.getResponsiveMaxWidth()
+    else return
+
+    event.preventDefault()
+    this.sidebarWidth = this.clampSidebarWidth(nextWidth)
+    this.persistSidebarLayout()
+    this.emitSidebarLayout()
+  }
+
+  private emitSidebarLayout(): void {
+    this.sidebarStatusChange.emit({
+      visible: this.sidebarVisible,
+      width: this.sidebarVisible ? this.sidebarWidth : this.sidebarCollapsedWidth
+    })
+  }
+
+  private clampSidebarWidth(width: number): number {
+    return Math.round(Math.min(this.getResponsiveMaxWidth(), Math.max(this.sidebarMinWidth, width)))
+  }
+
+  private getResponsiveMaxWidth(): number {
+    if (typeof window === 'undefined') return this.sidebarMaxWidth
+
+    return Math.max(this.sidebarMinWidth, Math.min(this.sidebarMaxWidth, window.innerWidth - 420))
+  }
+
+  private restoreSidebarLayout(): void {
+    try {
+      const rawLayout = localStorage.getItem(this.sidebarLayoutStorageKey)
+      if (!rawLayout) return
+
+      const layout = JSON.parse(rawLayout)
+      this.sidebarWidth = this.clampSidebarWidth(Number(layout?.width) || this.sidebarWidth)
+      this.sidebarVisible = layout?.visible !== false
+    } catch {
+      this.sidebarWidth = 180
+      this.sidebarVisible = true
+    }
+  }
+
+  private persistSidebarLayout(): void {
+    try {
+      localStorage.setItem(this.sidebarLayoutStorageKey, JSON.stringify({
+        visible: this.sidebarVisible,
+        width: this.sidebarWidth
+      }))
+    } catch {
+      // The layout still works when browser storage is unavailable.
+    }
   }
 
   toggleQuickSelector(type: 'connection' | 'database' | 'schema', event: MouseEvent): void {
