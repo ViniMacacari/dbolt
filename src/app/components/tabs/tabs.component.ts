@@ -1,4 +1,4 @@
-import { Component, HostListener, Output, EventEmitter, ElementRef, AfterViewInit, ViewChild } from '@angular/core'
+import { Component, HostListener, Output, EventEmitter, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import Sortable from 'sortablejs'
 import { LoadQueryComponent } from "../modal/load-query/load-query.component"
@@ -7,6 +7,7 @@ import { GetDbschemaService } from '../../services/db-info/get-dbschema.service'
 import { ConnectionContextService } from '../../services/connection-context/connection-context.service'
 import { QueryCompareTargetService } from '../../services/query-compare-target/query-compare-target.service'
 import { AppLanguageService } from '../../services/language/app-language.service'
+import { ApplicationCloseGuardService } from '../../services/application-close/application-close-guard.service'
 
 @Component({
   selector: 'app-tabs',
@@ -15,7 +16,7 @@ import { AppLanguageService } from '../../services/language/app-language.service
   templateUrl: './tabs.component.html',
   styleUrl: './tabs.component.scss'
 })
-export class TabsComponent {
+export class TabsComponent implements OnInit, OnDestroy {
   @Output() tabSelected = new EventEmitter<any>()
   @Output() tabClosed = new EventEmitter<any>()
   @Output() assistantRequested = new EventEmitter<void>()
@@ -32,14 +33,27 @@ export class TabsComponent {
 
   icon: string = 'CODE'
 
+  private unregisterUnsavedSqlQueryCheck: (() => void) | null = null
+
   @ViewChild('tabsContainer') tabsContainer!: ElementRef
 
   constructor(
     private dbSchema: GetDbschemaService,
     private connectionContext: ConnectionContextService,
     private compareTarget: QueryCompareTargetService,
-    private language: AppLanguageService
+    private language: AppLanguageService,
+    private applicationCloseGuard: ApplicationCloseGuardService
   ) { }
+
+  ngOnInit(): void {
+    this.unregisterUnsavedSqlQueryCheck = this.applicationCloseGuard.registerUnsavedSqlQueryCheck(
+      () => this.tabs.some(tab => tab?.type === 'sql' && tab?.icon === 'CHANGE')
+    )
+  }
+
+  ngOnDestroy(): void {
+    this.unregisterUnsavedSqlQueryCheck?.()
+  }
 
   async ngAfterViewInit(): Promise<void> {
     Sortable.create(this.tabsContainer.nativeElement, {
