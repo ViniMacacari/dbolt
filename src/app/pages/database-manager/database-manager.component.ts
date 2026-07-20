@@ -17,7 +17,7 @@ import { QueryAssistantComponent } from '../../components/elements/query-assista
 import { SelectBuilderComponent } from '../../components/elements/select-builder/select-builder.component'
 import { ProcedureInfoComponent } from '../../components/elements/procedure-info/procedure-info.component'
 import { QueryVersionCompareComponent } from '../../components/elements/query-version-compare/query-version-compare.component'
-import { QuerySaveService } from '../../services/query-save/query-save.service'
+import { QuerySaveService, SavedQuery } from '../../services/query-save/query-save.service'
 import { AppLanguageService } from '../../services/language/app-language.service'
 import { AiAssistantPanelComponent } from '../../components/ai-assistant/ai-assistant-panel/ai-assistant-panel.component'
 
@@ -44,6 +44,8 @@ export class DatabaseManagerComponent {
   procedureInfoData: any
 
   firstMessage: boolean = true
+  recentQueries: SavedQuery[] = []
+  loadingRecentQueries: boolean = false
   dbInfoOpen: boolean = false
   tableInfoOpen: boolean = false
   procedureInfoOpen: boolean = false
@@ -84,6 +86,7 @@ export class DatabaseManagerComponent {
     await this.firstConnectionConfig()
     await this.pageConnectionConfig()
     LoadingComponent.hide()
+    void this.loadRecentQueries()
   }
 
   getPageId() {
@@ -313,6 +316,8 @@ export class DatabaseManagerComponent {
       return
     }
 
+    this.firstMessage = true
+    this.tabInfo = null
     this.editorOpen = false
     this.dbInfoOpen = false
     this.tableInfoOpen = false
@@ -321,6 +326,64 @@ export class DatabaseManagerComponent {
     this.queryAssistantOpen = false
     this.selectBuilderOpen = false
     this.queryCompareOpen = false
+    void this.loadRecentQueries()
+  }
+
+  openNewQueryFromHome(): void {
+    this.tabsComponent.newTab('sql', {
+      sql: '',
+      context: this.selectedSchemaDB
+    }, this.t('tabs.newQuery'))
+  }
+
+  openLatestQuery(): void {
+    const latestQuery = this.recentQueries[0]
+    if (!latestQuery) {
+      this.openQueryLibrary()
+      return
+    }
+
+    this.openRecentQuery(latestQuery)
+  }
+
+  openRecentQuery(query: SavedQuery): void {
+    this.tabsComponent.openSavedQueryTab(query)
+  }
+
+  openQueryLibrary(): void {
+    this.tabsComponent.loadTab()
+  }
+
+  formatRecentQueryDate(value?: string): string {
+    return this.querySave.formatDate(value)
+  }
+
+  trackRecentQuery(index: number, query: SavedQuery): number {
+    return query.id
+  }
+
+  private async loadRecentQueries(): Promise<void> {
+    if (this.loadingRecentQueries) return
+
+    this.loadingRecentQueries = true
+
+    try {
+      const queries = await this.querySave.loadQueries()
+      this.recentQueries = [...(queries || [])]
+        .sort((left, right) => this.getQueryTimestamp(right) - this.getQueryTimestamp(left))
+        .slice(0, 4)
+    } catch (error) {
+      console.error('Erro ao carregar queries recentes:', error)
+      this.recentQueries = []
+    } finally {
+      this.loadingRecentQueries = false
+    }
+  }
+
+  private getQueryTimestamp(query: SavedQuery): number {
+    const value = query.updatedAt || query.createdAt
+    const timestamp = value ? new Date(value).getTime() : 0
+    return Number.isNaN(timestamp) ? 0 : timestamp
   }
 
   onSettingsRequested(): void {
@@ -511,10 +574,12 @@ export class DatabaseManagerComponent {
 
   onSavedQuery(savedQuery: any, sourceTab: any = null): void {
     this.applySavedQueryToTab(savedQuery, sourceTab)
+    void this.loadRecentQueries()
   }
 
   onExistingSavedQuery(savedTab: any): void {
     this.applySavedQueryToTab(savedTab)
+    void this.loadRecentQueries()
   }
 
   onCompareEditRequested(event: any): void {
