@@ -14,3 +14,11 @@
     (closeAction)="closeUpdateModal()"
     (updateAction)="installUpdate()">
 </app-update-modal>
+
+<app-yes-no-modal
+    *ngIf="isCloseConfirmationOpen"
+    [title]="t('tabs.unsavedChangesTitle')"
+    [message]="t('applicationClose.unsavedSqlQueriesMessage')"
+    (closeAction)="cancelApplicationClose()"
+    (continueAction)="confirmApplicationClose()">
+</app-yes-no-modal>

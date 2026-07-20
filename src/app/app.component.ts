@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common'
-import { Component, OnInit } from '@angular/core'
+import { Component, OnDestroy, OnInit } from '@angular/core'
 import { RouterOutlet } from '@angular/router'
 import { ApplicationMenuComponent } from './components/application-menu/application-menu.component'
 import { LoadingComponent } from "./components/modal/loading/loading.component"
@@ -8,29 +8,57 @@ import { AppUpdateCheckResult } from './services/app-update/app-update.model'
 import { AppUpdateInstallerService } from './services/app-update/app-update-installer.service'
 import { AppUpdateService } from './services/app-update/app-update.service'
 import { AppLanguageService } from './services/language/app-language.service'
+import { YesNoModalComponent } from './components/modal/yes-no-modal/yes-no-modal.component'
+import { ApplicationCloseGuardService } from './services/application-close/application-close-guard.service'
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, ApplicationMenuComponent, LoadingComponent, AppUpdateComponent],
+  imports: [CommonModule, RouterOutlet, ApplicationMenuComponent, LoadingComponent, AppUpdateComponent, YesNoModalComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   title = 'dbolt'
   availableUpdate: AppUpdateCheckResult | null = null
   isUpdateModalOpen = false
   isInstallingUpdate = false
   updateErrorMessage = ''
+  isCloseConfirmationOpen = false
+
+  private removeCloseRequestedListener: (() => void) | null = null
 
   constructor(
     private appUpdate: AppUpdateService,
     private updateInstaller: AppUpdateInstallerService,
-    private language: AppLanguageService
+    private language: AppLanguageService,
+    private applicationCloseGuard: ApplicationCloseGuardService
   ) { }
 
   ngOnInit(): void {
     void this.checkForUpdates()
+
+    this.removeCloseRequestedListener = window.dboltWindow?.onCloseRequested(() => {
+      this.handleApplicationCloseRequest()
+    }) ?? null
+  }
+
+  ngOnDestroy(): void {
+    this.removeCloseRequestedListener?.()
+  }
+
+  cancelApplicationClose(): void {
+    this.isCloseConfirmationOpen = false
+    void window.dboltWindow?.respondToCloseRequest(false)
+  }
+
+  confirmApplicationClose(): void {
+    this.isCloseConfirmationOpen = false
+    void window.dboltWindow?.respondToCloseRequest(true)
+  }
+
+  t(key: string): string {
+    return this.language.translate(key)
   }
 
   closeUpdateModal(): void {
@@ -70,5 +98,14 @@ export class AppComponent implements OnInit {
     } catch (error) {
       console.warn('Could not check for app updates:', error)
     }
+  }
+
+  private handleApplicationCloseRequest(): void {
+    if (this.applicationCloseGuard.hasUnsavedSqlQueries()) {
+      this.isCloseConfirmationOpen = true
+      return
+    }
+
+    void window.dboltWindow?.respondToCloseRequest(true)
   }
 }
