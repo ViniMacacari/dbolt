@@ -1,0 +1,81 @@
+<div class="export-modal-overlay" (mousedown)="onBackdropMouseDown($event)">
+    <section class="export-modal" role="dialog" aria-modal="true" [attr.aria-label]="t('exportQuery.title')">
+        <header class="export-modal-header">
+            <div>
+                <small>{{ t('exportQuery.eyebrow') }}</small>
+                <h2>{{ t('exportQuery.title') }}</h2>
+                <p>{{ t('exportQuery.description') }}</p>
+            </div>
+            <button type="button" class="close-button" [disabled]="exporting" [title]="t('exportQuery.close')"
+                [attr.aria-label]="t('exportQuery.close')" (click)="close.emit()">×</button>
+        </header>
+
+        <div class="export-modal-body">
+            <section class="export-settings">
+                <div class="setting-block">
+                    <label for="export-row-limit">{{ t('exportQuery.rowLimit') }}</label>
+                    <input id="export-row-limit" type="number" min="1" step="1" [max]="maxRowLimit || null"
+                        [(ngModel)]="rowLimit" (blur)="onLimitBlur()" [disabled]="exporting">
+                    <small *ngIf="maxRowLimit !== null">
+                        {{ t('exportQuery.availableRows', { count: maxRowLimit }) }}
+                    </small>
+                    <small *ngIf="maxRowLimit === null">{{ t('exportQuery.rowLimitHint') }}</small>
+                </div>
+
+                <div class="setting-block format-block">
+                    <label>{{ t('exportQuery.fileType') }}</label>
+                    <div class="format-options" role="radiogroup" [attr.aria-label]="t('exportQuery.fileType')">
+                        <button type="button" *ngFor="let option of ['xlsx', 'csv', 'txt']"
+                            [class.active]="format === option" [disabled]="exporting"
+                            [attr.aria-checked]="format === option" role="radio"
+                            (click)="chooseFormat($any(option))">.{{ option | uppercase }}</button>
+                    </div>
+                    <small>{{ t('exportQuery.formatHint') }}</small>
+                </div>
+            </section>
+
+            <section class="columns-section">
+                <div class="columns-header">
+                    <div>
+                        <label>{{ t('exportQuery.exportedColumns') }}</label>
+                        <small>{{ t('exportQuery.selectedColumns', { selected: selectedColumnCount, total: columns.length }) }}</small>
+                    </div>
+                    <div class="columns-actions">
+                        <button type="button" [disabled]="exporting" (click)="selectAllColumns(true)">
+                            {{ t('exportQuery.selectAll') }}
+                        </button>
+                        <button type="button" [disabled]="exporting" (click)="selectAllColumns(false)">
+                            {{ t('exportQuery.clearAll') }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="column-list">
+                    <div class="column-row" *ngFor="let column of columns; trackBy: trackByColumn"
+                        [class.disabled]="!column.selected">
+                        <label class="column-toggle">
+                            <input type="checkbox" [checked]="column.selected" [disabled]="exporting"
+                                (change)="setColumnSelected(column, $any($event.target).checked)">
+                            <span>{{ column.source }}</span>
+                        </label>
+                        <span class="rename-arrow">→</span>
+                        <input class="rename-input" type="text" [(ngModel)]="column.label"
+                            [disabled]="exporting || !column.selected" [attr.aria-label]="t('exportQuery.renameColumn', { column: column.source })">
+                    </div>
+                </div>
+            </section>
+
+            <div class="export-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+        </div>
+
+        <footer class="export-modal-footer">
+            <button type="button" class="cancel-button" [disabled]="exporting" (click)="close.emit()">
+                {{ t('exportQuery.cancel') }}
+            </button>
+            <button type="button" class="export-button" [disabled]="!canExport" (click)="export()">
+                <span class="button-spinner" *ngIf="exporting"></span>
+                {{ exporting ? t('exportQuery.exporting') : t('exportQuery.export') }}
+            </button>
+        </footer>
+    </section>
+</div>

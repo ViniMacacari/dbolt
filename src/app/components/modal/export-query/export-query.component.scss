@@ -1,0 +1,397 @@
+.export-modal-overlay {
+    align-items: center;
+    background: rgba(0, 0, 0, .66);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    padding: 24px;
+    position: fixed;
+    z-index: 11000;
+}
+
+.export-modal {
+    animation: export-modal-in .18s ease-out;
+    background: var(--dbolt-0b0b0b);
+    border: 1px solid var(--dbolt-2d2d2d);
+    border-radius: 20px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
+    color: var(--dbolt-e8eaed);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 48px);
+    overflow: hidden;
+    width: min(760px, 94vw);
+}
+
+.export-modal-header {
+    align-items: flex-start;
+    border-bottom: 1px solid var(--dbolt-202020);
+    display: flex;
+    gap: 24px;
+    justify-content: space-between;
+    padding: 22px 26px 18px;
+
+    small,
+    h2,
+    p {
+        font-family: 'Nunito';
+    }
+
+    small {
+        color: var(--dbolt-9fbede);
+        font-size: .68em;
+        font-weight: 900;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    h2 {
+        color: var(--dbolt-f1f1f1);
+        font-size: 1.15em;
+        margin: 5px 0 3px;
+    }
+
+    p {
+        color: var(--dbolt-969696);
+        font-size: .78em;
+        margin: 0;
+    }
+}
+
+.close-button {
+    align-items: center;
+    background: var(--dbolt-1b1b1b);
+    border: none;
+    border-radius: 10px;
+    color: var(--dbolt-969696);
+    cursor: pointer;
+    display: flex;
+    flex: 0 0 auto;
+    font-size: 1.15em;
+    height: 34px;
+    justify-content: center;
+    width: 34px;
+
+    &:hover:not(:disabled) {
+        background: var(--dbolt-292727);
+        color: var(--dbolt-e8eaed);
+    }
+}
+
+.export-modal-body {
+    display: grid;
+    gap: 18px;
+    min-height: 0;
+    overflow: auto;
+    padding: 20px 26px;
+}
+
+.export-settings {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: minmax(180px, .72fr) minmax(300px, 1.28fr);
+}
+
+.setting-block {
+    background: var(--dbolt-131313);
+    border-radius: 14px;
+    display: grid;
+    gap: 8px;
+    padding: 14px;
+
+    > label {
+        color: var(--dbolt-c9c9c9);
+        font-family: 'Nunito';
+        font-size: .75em;
+        font-weight: 900;
+    }
+
+    > small {
+        color: var(--dbolt-8d8d8d);
+        font-family: 'Nunito';
+        font-size: .67em;
+    }
+
+    > input {
+        -moz-appearance: textfield;
+        appearance: textfield;
+        background: var(--dbolt-0b0b0b);
+        border: 1px solid var(--dbolt-3b3b3b);
+        border-radius: 10px;
+        color: var(--dbolt-e8eaed);
+        font-family: 'Nunito';
+        font-size: .82em;
+        height: 38px;
+        outline: none;
+        padding: 0 11px;
+
+        &:focus {
+            border-color: var(--dbolt-739eca);
+            box-shadow: 0 0 0 3px rgba(115, 158, 202, .12);
+        }
+
+        &::-webkit-inner-spin-button,
+        &::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    }
+}
+
+.format-options {
+    display: grid;
+    gap: 7px;
+    grid-template-columns: repeat(3, 1fr);
+
+    button {
+        background: var(--dbolt-0b0b0b);
+        border: 1px solid transparent;
+        border-radius: 10px;
+        color: var(--dbolt-969696);
+        cursor: pointer;
+        font-family: 'Nunito';
+        font-size: .74em;
+        font-weight: 900;
+        height: 38px;
+
+        &:hover:not(:disabled) {
+            background: var(--dbolt-292727);
+            color: var(--dbolt-e8eaed);
+        }
+
+        &.active {
+            background: var(--dbolt-2b3340);
+            border-color: var(--dbolt-739eca);
+            color: var(--dbolt-d8e9fb);
+        }
+    }
+}
+
+.columns-section {
+    background: var(--dbolt-131313);
+    border-radius: 14px;
+    display: grid;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.columns-header {
+    align-items: center;
+    border-bottom: 1px solid var(--dbolt-202020);
+    display: flex;
+    gap: 14px;
+    justify-content: space-between;
+    padding: 13px 14px;
+
+    label {
+        color: var(--dbolt-c9c9c9);
+        display: block;
+        font-family: 'Nunito';
+        font-size: .75em;
+        font-weight: 900;
+    }
+
+    small {
+        color: var(--dbolt-8d8d8d);
+        display: block;
+        font-family: 'Nunito';
+        font-size: .67em;
+        margin-top: 2px;
+    }
+}
+
+.columns-actions {
+    display: flex;
+    gap: 6px;
+
+    button {
+        background: transparent;
+        border: none;
+        border-radius: 8px;
+        color: var(--dbolt-9fbede);
+        cursor: pointer;
+        font-family: 'Nunito';
+        font-size: .69em;
+        font-weight: 850;
+        padding: 6px 8px;
+
+        &:hover:not(:disabled) {
+            background: var(--dbolt-292727);
+        }
+    }
+}
+
+.column-list {
+    display: grid;
+    max-height: 284px;
+    overflow: auto;
+    padding: 5px 10px 9px;
+}
+
+.column-row {
+    align-items: center;
+    border-bottom: 1px solid var(--dbolt-202020);
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) 16px minmax(170px, 1fr);
+    min-height: 49px;
+    padding: 6px 4px;
+
+    &:last-child {
+        border-bottom: none;
+    }
+
+    &.disabled .column-toggle span,
+    &.disabled .rename-arrow {
+        opacity: .42;
+    }
+}
+
+.column-toggle {
+    align-items: center;
+    color: var(--dbolt-e8eaed);
+    cursor: pointer;
+    display: flex;
+    font-family: 'Nunito';
+    font-size: .77em;
+    font-weight: 800;
+    gap: 9px;
+    min-width: 0;
+
+    input {
+        accent-color: var(--dbolt-739eca);
+        flex: 0 0 auto;
+        height: 14px;
+        width: 14px;
+    }
+
+    span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.rename-arrow {
+    color: var(--dbolt-686868);
+    font-family: 'Nunito';
+    text-align: center;
+}
+
+.rename-input {
+    background: var(--dbolt-0b0b0b);
+    border: 1px solid var(--dbolt-353535);
+    border-radius: 9px;
+    color: var(--dbolt-e8eaed);
+    font-family: 'Nunito';
+    font-size: .75em;
+    height: 34px;
+    min-width: 0;
+    outline: none;
+    padding: 0 10px;
+
+    &:focus {
+        border-color: var(--dbolt-739eca);
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: .38;
+    }
+}
+
+.export-error {
+    background: var(--dbolt-2d2020);
+    border-radius: 10px;
+    color: var(--dbolt-ffb4b4);
+    font-family: 'Nunito';
+    font-size: .75em;
+    padding: 10px 12px;
+    user-select: text;
+}
+
+.export-modal-footer {
+    align-items: center;
+    border-top: 1px solid var(--dbolt-202020);
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding: 14px 26px;
+
+    button {
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-family: 'Nunito';
+        font-size: .76em;
+        font-weight: 900;
+        height: 38px;
+        padding: 0 17px;
+
+        &:disabled {
+            cursor: not-allowed;
+            opacity: .48;
+        }
+    }
+}
+
+.cancel-button {
+    background: var(--dbolt-1b1b1b);
+    color: var(--dbolt-c9c9c9);
+
+    &:hover:not(:disabled) {
+        background: var(--dbolt-292727);
+    }
+}
+
+.export-button {
+    align-items: center;
+    background: var(--dbolt-2b3340);
+    border: 1px solid rgba(115, 158, 202, .4) !important;
+    color: var(--dbolt-d8e9fb);
+    display: inline-flex;
+    gap: 8px;
+
+    &:hover:not(:disabled) {
+        background: var(--dbolt-334052);
+    }
+}
+
+.button-spinner {
+    animation: export-spin .75s linear infinite;
+    border: 2px solid rgba(115, 158, 202, .3);
+    border-radius: 50%;
+    border-top-color: var(--dbolt-d8e9fb);
+    height: 13px;
+    width: 13px;
+}
+
+@keyframes export-modal-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(.99);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes export-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 680px) {
+    .export-modal-overlay {
+        padding: 12px;
+    }
+
+    .export-settings {
+        grid-template-columns: 1fr;
+    }
+
+    .column-row {
+        gap: 7px;
+        grid-template-columns: minmax(0, 1fr) 12px minmax(120px, 1fr);
+    }
+}
