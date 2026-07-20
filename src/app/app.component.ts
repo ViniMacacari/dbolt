@@ -10,6 +10,7 @@ import { AppUpdateService } from './services/app-update/app-update.service'
 import { AppLanguageService } from './services/language/app-language.service'
 import { YesNoModalComponent } from './components/modal/yes-no-modal/yes-no-modal.component'
 import { ApplicationCloseGuardService } from './services/application-close/application-close-guard.service'
+import { AppThemeService } from './services/theme/app-theme.service'
 
 @Component({
   selector: 'app-root',
@@ -32,10 +33,12 @@ export class AppComponent implements OnInit, OnDestroy {
     private appUpdate: AppUpdateService,
     private updateInstaller: AppUpdateInstallerService,
     private language: AppLanguageService,
-    private applicationCloseGuard: ApplicationCloseGuardService
+    private applicationCloseGuard: ApplicationCloseGuardService,
+    private appTheme: AppThemeService
   ) { }
 
   ngOnInit(): void {
+    this.appTheme.initialize()
     void this.checkForUpdates()
 
     this.removeCloseRequestedListener = window.dboltWindow?.onCloseRequested(() => {
