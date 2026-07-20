@@ -29,6 +29,12 @@
             {{ t('settings.language.tab') }}
         </button>
 
+        <button type="button" class="btn" [ngClass]="{ 'active': activeTab === 'appearance' }"
+            (click)="selectTab('appearance')">
+            <img src="icons/settings.png" [title]="t('settings.appearance.tab')" height="15px">
+            {{ t('settings.appearance.tab') }}
+        </button>
+
         <button type="button" class="btn" [ngClass]="{ 'active': activeTab === 'ai' }" (click)="selectTab('ai')">
             <img src="icons/ai.png" [title]="t('settings.ai.tab')" height="15px">
             {{ t('settings.ai.tab') }}
@@ -374,6 +380,26 @@
                     </app-input-list>
                     <button type="button" (click)="saveLanguageSettings()">{{ t('settings.language.save') }}</button>
                     <small *ngIf="languageSavedMessage">{{ languageSavedMessage }}</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-stack" *ngIf="activeTab === 'appearance'">
+            <div class="settings-card">
+                <div>
+                    <h3>{{ t('settings.appearance.theme.title') }}</h3>
+                    <p>{{ t('settings.appearance.theme.description') }}</p>
+                </div>
+
+                <div class="setting-control match-mode-control">
+                    <label>{{ t('settings.appearance.theme.field') }}</label>
+                    <app-input-list [list]="appThemeOptions" [displayKey]="'label'" [valueKey]="'value'"
+                        [selectedValue]="appTheme" [width]="'220px'"
+                        [placeholder]="t('settings.appearance.theme.placeholder')"
+                        (itemSelected)="onAppThemeSelected($event)">
+                    </app-input-list>
+                    <button type="button" (click)="saveThemeSettings()">{{ t('settings.actions.save') }}</button>
+                    <small *ngIf="themeSavedMessage">{{ themeSavedMessage }}</small>
                 </div>
             </div>
         </div>
