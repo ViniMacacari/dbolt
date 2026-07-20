@@ -26,9 +26,11 @@ export type SqlHighlightColorKey = keyof SqlHighlightColors
 export type SqlHighlightMode = 'dbolt-dark' | 'dbolt-high-contrast' | 'classic-sql' | 'custom'
 export type SqlFormatterCommaStyle = 'trailing' | 'leading'
 export type TableAutocompleteMatchMode = 'contains' | 'fuzzy'
+export type AppTheme = 'dark' | 'light'
 
 export interface AppSettings {
   appLanguage: AppLanguage
+  appTheme: AppTheme
   defaultQueryRows: number
   connectionExpirationMinutes: number
   sqlSyntaxValidationEnabled: boolean
@@ -52,6 +54,7 @@ export class AppSettingsService {
   private readonly cacheKey = 'app-settings'
   private readonly fallbackSettings: AppSettings = {
     appLanguage: DEFAULT_APP_LANGUAGE,
+    appTheme: 'dark',
     defaultQueryRows: 50,
     connectionExpirationMinutes: 30,
     sqlSyntaxValidationEnabled: true,
@@ -174,6 +177,10 @@ export class AppSettingsService {
     return this.getSettings().appLanguage
   }
 
+  getAppTheme(): AppTheme {
+    return this.getSettings().appTheme
+  }
+
   getDefaultQueryRows(): number {
     return this.getSettings().defaultQueryRows
   }
@@ -246,6 +253,17 @@ export class AppSettingsService {
     const settings = {
       ...this.getSettings(),
       appLanguage: normalizeAppLanguage(value)
+    }
+
+    this.saveSettings(settings)
+
+    return settings
+  }
+
+  setAppTheme(value: unknown): AppSettings {
+    const settings = {
+      ...this.getSettings(),
+      appTheme: this.normalizeAppTheme(value)
     }
 
     this.saveSettings(settings)
@@ -434,6 +452,10 @@ export class AppSettingsService {
     return value === 'leading' ? 'leading' : 'trailing'
   }
 
+  normalizeAppTheme(value: unknown): AppTheme {
+    return value === 'light' ? 'light' : 'dark'
+  }
+
   getSqlHighlightPresetColors(mode: Exclude<SqlHighlightMode, 'custom'>): SqlHighlightColors {
     const preset = this.sqlHighlightPresets?.[mode]
     if (preset) return { ...preset }
@@ -460,6 +482,7 @@ export class AppSettingsService {
 
     return {
       appLanguage: normalizeAppLanguage(settings?.appLanguage),
+      appTheme: this.normalizeAppTheme(settings?.appTheme),
       defaultQueryRows: this.normalizeRows(settings?.defaultQueryRows),
       connectionExpirationMinutes: this.normalizeExpirationMinutes(settings?.connectionExpirationMinutes),
       sqlSyntaxValidationEnabled: settings?.sqlSyntaxValidationEnabled ?? this.fallbackSettings.sqlSyntaxValidationEnabled,
