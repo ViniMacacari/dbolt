@@ -144,6 +144,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   private selectedCellKeys = new Set<string>()
   private selectionAnchor: CellSelectionPoint | null = null
   private selectionEnd: CellSelectionPoint | null = null
+  private rowSelectionAnchorId: number | null = null
   private isSelectingCells = false
   private gridHostElement: HTMLElement | null = null
   private removeGridContextMenuListener: (() => void) | null = null
@@ -442,6 +443,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.editableColumnsByField.clear()
     this.resultColumnsByField.clear()
     this.selectedCellKeys.clear()
+    this.rowSelectionAnchorId = null
     this.selectedFullRowIds = []
     this.selectedFullRowCount = 0
     this.canSelectAllLoadedRows = false
@@ -457,7 +459,11 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       mouseEvent.preventDefault()
       this.copyErrorMessage = ''
       this.cellSelectionMenu = null
-      this.selectEntireRow(event.data, mouseEvent.ctrlKey || mouseEvent.metaKey)
+      this.selectEntireRow(
+        event.data,
+        mouseEvent.ctrlKey || mouseEvent.metaKey,
+        mouseEvent.shiftKey
+      )
       return
     }
 
@@ -470,6 +476,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.copyErrorMessage = ''
     this.cellSelectionMenu = null
     this.isSelectingCells = true
+    this.rowSelectionAnchorId = null
     this.selectionAnchor = point
     this.selectionEnd = point
     this.updateSelectedCells()
@@ -646,6 +653,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     this.selectionAnchor = { rowId: rowIds[0], field: fields[0] }
     this.selectionEnd = { rowId: rowIds[rowIds.length - 1], field: fields[fields.length - 1] }
+    this.rowSelectionAnchorId = rowIds[0]
     this.selectedFullRowIds = rowIds
     this.selectedFullRowCount = rowIds.length
     this.canSelectAllLoadedRows = false
@@ -977,6 +985,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.selectedCellKeys.clear()
     this.selectionAnchor = null
     this.selectionEnd = null
+    this.rowSelectionAnchorId = null
     this.isSelectingCells = false
     this.cellSelectionMenu = null
     this.copyErrorMessage = ''
@@ -989,10 +998,15 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     return `${rowId}\u001F${field}`
   }
 
-  private selectEntireRow(row: any, additive = false): void {
+  private selectEntireRow(row: any, additive = false, range = false): void {
     const rowId = this.getRowId(row)
     const fields = this.getVisibleFields()
     if (!Number.isFinite(rowId) || fields.length === 0) return
+
+    if (range && this.rowSelectionAnchorId !== null) {
+      this.selectEntireRowRange(this.rowSelectionAnchorId, rowId, additive)
+      return
+    }
 
     const rowWasSelected = this.isRowFullySelected(row)
     if (!additive) {
@@ -1011,9 +1025,49 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       this.selectionEnd = { rowId, field: fields[fields.length - 1] }
     }
 
+    this.rowSelectionAnchorId = rowId
     this.isSelectingCells = false
     this.refreshSelectionSummary()
     this.refreshVisibleGrid()
+  }
+
+  private selectEntireRowRange(anchorRowId: number, targetRowId: number, additive: boolean): void {
+    const fields = this.getVisibleFields()
+    const rowIds = this.getGridOrderedRowIds()
+    const anchorIndex = rowIds.indexOf(anchorRowId)
+    const targetIndex = rowIds.indexOf(targetRowId)
+
+    if (fields.length === 0 || anchorIndex < 0 || targetIndex < 0) {
+      const targetRow = this.getDisplayRowById(targetRowId)
+      if (targetRow) this.selectEntireRow(targetRow, additive, false)
+      return
+    }
+
+    if (!additive) {
+      this.selectedCellKeys.clear()
+    }
+
+    const startIndex = Math.min(anchorIndex, targetIndex)
+    const endIndex = Math.max(anchorIndex, targetIndex)
+    rowIds.slice(startIndex, endIndex + 1).forEach((rowId) => {
+      fields.forEach((field) => this.selectedCellKeys.add(this.cellKey(rowId, field)))
+    })
+
+    this.selectionAnchor = { rowId: anchorRowId, field: fields[0] }
+    this.selectionEnd = { rowId: targetRowId, field: fields[fields.length - 1] }
+    this.isSelectingCells = false
+    this.refreshSelectionSummary()
+    this.refreshVisibleGrid()
+  }
+
+  private getGridOrderedRowIds(): number[] {
+    const rowIds: number[] = []
+    this.agGrid?.api?.forEachNodeAfterFilterAndSort((node: any) => {
+      const rowId = this.getRowId(node.data)
+      if (Number.isFinite(rowId)) rowIds.push(rowId)
+    })
+
+    return rowIds.length > 0 ? rowIds : this.getDisplayRowIds()
   }
 
   private getSelectedFullRowIds(): number[] {
