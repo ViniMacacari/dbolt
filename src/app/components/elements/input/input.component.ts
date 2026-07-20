@@ -26,6 +26,7 @@ export class InputComponent implements ControlValueAccessor {
   @Input() autocomplete = 'off'
   @Input() ariaLabel = ''
   @Input() ariaDescribedBy = ''
+  @Input({ transform: booleanAttribute }) compact = false
   @Input({ transform: booleanAttribute }) disabled = false
   @Input({ transform: booleanAttribute }) readonly = false
   @Output() blurred = new EventEmitter<FocusEvent>()
