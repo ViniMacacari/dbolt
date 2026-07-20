@@ -1,4 +1,5 @@
-<input class="input-page" [id]="id || null" [name]="name || null" [type]="type" [value]="value ?? ''"
+<input class="input-page" [class.input-page-compact]="compact" [id]="id || null" [name]="name || null"
+    [type]="type" [value]="value ?? ''"
     [placeholder]="placeholder" [attr.min]="min" [attr.max]="max" [attr.step]="step"
     [attr.maxlength]="maxlength" [attr.autocomplete]="autocomplete" [readonly]="readonly" [disabled]="isDisabled"
     [attr.aria-label]="ariaLabel || null" [attr.aria-describedby]="ariaDescribedBy || null"
