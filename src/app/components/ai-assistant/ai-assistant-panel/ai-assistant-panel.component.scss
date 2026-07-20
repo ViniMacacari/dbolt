@@ -353,6 +353,8 @@
 
 .conversation-modal-actions {
     border-bottom: 1px solid var(--dbolt-2b2b2b);
+    display: flex;
+    gap: 8px;
     padding: 12px;
 }
 
@@ -367,9 +369,10 @@
     font-size: .8em;
     font-weight: 800;
     gap: 8px;
+    flex: 1 1 auto;
     min-height: 36px;
     padding: 0 12px;
-    width: 100%;
+    width: auto;
 
     &:hover:not(:disabled) {
         background: var(--dbolt-292727);
@@ -378,6 +381,18 @@
     &:disabled {
         cursor: default;
         opacity: .55;
+    }
+}
+
+.conversation-delete-all-button {
+    background: var(--dbolt-2d2020);
+    border-color: var(--dbolt-5a2b2b);
+    color: var(--dbolt-ffcdcd);
+    flex: 0 0 auto;
+    white-space: nowrap;
+
+    &:hover:not(:disabled) {
+        background: var(--dbolt-3c2727);
     }
 }
 

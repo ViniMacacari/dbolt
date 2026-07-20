@@ -83,6 +83,15 @@ router.put('/conversations/:conversationId', async (req, res) => {
   }
 });
 
+router.delete('/conversations', async (_req, res) => {
+  try {
+    const conversations = await AiAssistantConversations.deleteAllConversations();
+    res.status(200).json({ success: true, data: conversations });
+  } catch (error: unknown) {
+    sendInternalError(res, error, 'Failed to delete all AI assistant conversations');
+  }
+});
+
 router.delete('/conversations/:conversationId', async (req, res) => {
   try {
     const conversationId = String(req.params.conversationId || '').trim();
