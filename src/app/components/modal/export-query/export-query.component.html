@@ -15,10 +15,11 @@
                 <div class="setting-block">
                     <label for="export-row-limit">{{ t('exportQuery.rowLimit') }}</label>
                     <app-input id="export-row-limit" type="number" [min]="1" [step]="1" [max]="maxRowLimit"
-                        [(ngModel)]="rowLimit" (blurred)="onLimitBlur()" [disabled]="exporting">
+                        [placeholder]="t('exportQuery.allRowsPlaceholder')" [(ngModel)]="rowLimit"
+                        (blurred)="onLimitBlur()" [disabled]="exporting">
                     </app-input>
                     <small *ngIf="maxRowLimit !== null">
-                        {{ t('exportQuery.availableRows', { count: maxRowLimit }) }}
+                        {{ t('exportQuery.allRowsAvailableHint', { count: maxRowLimit }) }}
                     </small>
                     <small *ngIf="maxRowLimit === null">{{ t('exportQuery.rowLimitHint') }}</small>
                 </div>
@@ -60,7 +61,7 @@
                             <span>{{ column.source }}</span>
                         </label>
                         <span class="rename-arrow">→</span>
-                        <app-input class="rename-input" type="text" [(ngModel)]="column.label"
+                        <app-input class="rename-input" type="text" [compact]="true" [(ngModel)]="column.label"
                             [disabled]="exporting || !column.selected"
                             [ariaLabel]="t('exportQuery.renameColumn', { column: column.source })">
                         </app-input>

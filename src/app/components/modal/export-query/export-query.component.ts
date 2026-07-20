@@ -28,11 +28,10 @@ export class ExportQueryComponent implements OnInit {
   @Input() sql = ''
   @Input() dbContext: any
   @Input() availableColumns: string[] = []
-  @Input() initialRowLimit = 50
   @Input() totalRows: number | null = null
   @Output() close = new EventEmitter<void>()
 
-  rowLimit: number | null = 50
+  rowLimit: number | null = null
   format: QueryExportFormat = 'xlsx'
   columns: QueryExportColumn[] = []
   exporting = false
@@ -45,7 +44,6 @@ export class ExportQueryComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
-    this.rowLimit = this.normalizeLimit(this.initialRowLimit)
     this.columns = this.availableColumns.map((column) => ({
       source: column,
       label: column,
@@ -118,7 +116,7 @@ export class ExportQueryComponent implements OnInit {
       this.exporting = true
       this.errorMessage = ''
 
-      const limit = this.normalizeLimit(Number(this.rowLimit))
+      const limit = this.rowLimit === null ? null : this.normalizeLimit(Number(this.rowLimit))
       const result = await this.runQuery.runSQL(this.sql, limit, this.dbContext)
       const payload: QueryResultExportPayload = {
         columns: selectedColumns.map((column) => column.label.trim() || column.source),
@@ -156,8 +154,10 @@ export class ExportQueryComponent implements OnInit {
   }
 
   private isValidLimit(value: number | null): boolean {
+    if (value === null) return true
+
     const parsed = Number(value)
-    return value !== null && Number.isFinite(parsed) && parsed >= 1
+    return Number.isFinite(parsed) && parsed >= 1
   }
 
   private readColumnValue(row: any, source: string): any {
