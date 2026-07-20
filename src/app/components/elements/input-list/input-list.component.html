@@ -1,6 +1,6 @@
 <div class="dropdown-container">
-    <input type="text" class="filter-input" [placeholder]="placeholder || t('generic.search')" [(ngModel)]="searchValue"
-        (ngModelChange)="updateSearch()" (focus)="openDropdown()" [style.width]="width" />
+    <input type="text" class="filter-input" [placeholder]="placeholder || t('generic.search')" [value]="searchValue"
+        (input)="onSearchInput($event)" (focus)="openDropdown()" [style.width]="width" />
     <ul *ngIf="isDropdownOpen" class="dropdown-list">
         <li *ngFor="let item of filteredList" class="dropdown-item" (click)="selectItem(item)">
             {{ item[displayKey] }}
