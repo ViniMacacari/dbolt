@@ -118,6 +118,12 @@ class AiAssistantConversationsService {
     return state;
   }
 
+  async deleteAllConversations(): Promise<AiAssistantConversationsState> {
+    const state = this.defaultState();
+    await this.writeStateFile(state);
+    return state;
+  }
+
   private async readStateFile(): Promise<AiAssistantConversationsState> {
     await this.ensureDirectoryExists();
 
