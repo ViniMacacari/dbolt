@@ -153,7 +153,7 @@ export const enTranslations: TranslationCatalog = {
   'settings.query.expiration.description': 'Reconnects before running a query when a tab connection has been idle for this long.',
   'settings.query.expiration.field': 'Minutes',
   'settings.query.syntaxValidation.title': 'SQL syntax validation',
-  'settings.query.syntaxValidation.description': 'Underlines syntax errors in query tabs while editing.',
+  'settings.query.syntaxValidation.description': 'Underlines syntax errors and references to missing tables in query tabs while editing.',
   'settings.formatter.title': 'Script indentation',
   'settings.formatter.description': 'Applied by the indent button in query tabs.',
   'settings.formatter.indentSize.title': 'Indent size',
@@ -293,6 +293,7 @@ export const enTranslations: TranslationCatalog = {
   'editor.executeError': 'Could not execute query.',
   'editor.untitledQuery': 'Untitled query',
   'editor.copySuffix': ' copy',
+  'editor.tableDoesNotExist': 'Table or view "{table}" does not exist in the current database/schema.',
 
   'results.title': 'Results',
   'results.resize': 'Resize results',

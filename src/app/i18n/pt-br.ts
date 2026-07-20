@@ -153,7 +153,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'settings.query.expiration.description': 'Reconecta antes de executar uma query quando a conexão da aba ficou ociosa por esse tempo.',
   'settings.query.expiration.field': 'Minutos',
   'settings.query.syntaxValidation.title': 'Validação de sintaxe SQL',
-  'settings.query.syntaxValidation.description': 'Sublinha erros de sintaxe nas abas de query durante a edição.',
+  'settings.query.syntaxValidation.description': 'Sublinha erros de sintaxe e referências a tabelas inexistentes nas abas de query durante a edição.',
   'settings.formatter.title': 'Indentação do script',
   'settings.formatter.description': 'Aplicada pelo botão de indentar nas abas de query.',
   'settings.formatter.indentSize.title': 'Tamanho da indentação',
@@ -293,6 +293,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'editor.executeError': 'Não foi possível executar a query.',
   'editor.untitledQuery': 'Query sem título',
   'editor.copySuffix': ' cópia',
+  'editor.tableDoesNotExist': 'A tabela ou view "{table}" não existe no banco/schema atual.',
 
   'results.title': 'Resultados',
   'results.resize': 'Redimensionar resultados',
