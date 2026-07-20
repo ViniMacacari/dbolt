@@ -900,9 +900,28 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       rows: rowIds.map((rowId) => {
         const row = this.getDisplayRowById(rowId)
         return fields.map((field) =>
-          this.selectedCellKeys.has(this.cellKey(rowId, field)) ? row?.[field] : ''
+          this.selectedCellKeys.has(this.cellKey(rowId, field))
+            ? this.getFormattedCellValue(row, field)
+            : ''
         )
       })
+    }
+  }
+
+  private getFormattedCellValue(row: any, field: string): any {
+    const value = row?.[field]
+    const columnDef = this.columnDefs.find((definition) => definition.field === field)
+    const formatter = columnDef?.valueFormatter
+    if (typeof formatter !== 'function') return value
+
+    try {
+      return formatter({
+        value,
+        data: row,
+        colDef: columnDef
+      } as any)
+    } catch {
+      return value
     }
   }
 
