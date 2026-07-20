@@ -25,8 +25,8 @@
 }
 
 .sqlite-explorer-panel {
-    background-color: #1b1b1b;
-    border: 1px solid #353535;
+    background-color: var(--dbolt-1b1b1b);
+    border: 1px solid var(--dbolt-353535);
     border-radius: 15px;
     box-shadow: 0 18px 42px rgba(0, 0, 0, .55);
     max-width: 680px;
@@ -48,8 +48,8 @@
 
 .sqlite-explorer-icon-btn {
     align-items: center;
-    background-color: #292727;
-    border: 1px solid #353535;
+    background-color: var(--dbolt-292727);
+    border: 1px solid var(--dbolt-353535);
     border-radius: 12px;
     cursor: pointer;
     display: inline-flex;
@@ -59,7 +59,7 @@
     width: 34px;
 
     &:hover {
-        background-color: #303030;
+        background-color: var(--dbolt-303030);
     }
 }
 
@@ -95,10 +95,10 @@
 }
 
 .sqlite-explorer-root {
-    background-color: #292727;
-    border: 1px solid #353535;
+    background-color: var(--dbolt-292727);
+    border: 1px solid var(--dbolt-353535);
     border-radius: 12px;
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     cursor: pointer;
     flex: 0 0 auto;
     font-family: 'Nunito';
@@ -108,8 +108,8 @@
 
     &:hover,
     &.active {
-        background-color: #303030;
-        border-color: #4a4a4a;
+        background-color: var(--dbolt-303030);
+        border-color: var(--dbolt-4a4a4a);
     }
 }
 
@@ -121,7 +121,7 @@
 }
 
 .sqlite-explorer-list {
-    border: 1px solid #353535;
+    border: 1px solid var(--dbolt-353535);
     border-radius: 12px;
     height: min(430px, 48vh);
     overflow-y: auto;
@@ -131,8 +131,8 @@
     align-items: center;
     background-color: transparent;
     border: none;
-    border-bottom: 1px solid #2d2d2d;
-    color: #e8eaed;
+    border-bottom: 1px solid var(--dbolt-2d2d2d);
+    color: var(--dbolt-e8eaed);
     cursor: pointer;
     display: flex;
     font-family: 'Nunito';
@@ -144,7 +144,7 @@
     width: 100%;
 
     &:hover {
-        background-color: #141414;
+        background-color: var(--dbolt-141414);
     }
 
     &:last-child {
@@ -152,13 +152,13 @@
     }
 
     small {
-        color: #969696;
+        color: var(--dbolt-969696);
         margin-left: auto;
     }
 }
 
 .sqlite-explorer-item.file {
-    background-color: #202020;
+    background-color: var(--dbolt-202020);
 }
 
 .sqlite-explorer-name {
@@ -168,13 +168,13 @@
 }
 
 .sqlite-explorer-status {
-    color: #b8b8b9;
+    color: var(--dbolt-b8b8b9);
     padding: 16px;
     text-align: center;
 }
 
 .sqlite-explorer-error {
-    color: #ff8c8c;
+    color: var(--dbolt-ff8c8c);
 }
 
 .sqlite-explorer-actions {

@@ -1,5 +1,5 @@
 .chat-input {
-    border-top: 1px solid #302d2d;
+    border-top: 1px solid var(--dbolt-302d2d);
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -26,7 +26,7 @@ button {
     width: 100%;
 
     &:disabled {
-        color: #777;
+        color: var(--dbolt-777);
         cursor: default;
     }
 }

@@ -6,10 +6,10 @@
 }
 
 .compare-page {
-    background: #050505;
-    border: 1px solid #181818;
+    background: var(--dbolt-050505);
+    border: 1px solid var(--dbolt-181818);
     border-radius: 18px;
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     display: grid;
     grid-template-rows: auto auto auto minmax(0, 1fr);
     height: 100%;
@@ -19,7 +19,7 @@
 
 .compare-header {
     align-items: center;
-    border-bottom: 1px solid #202020;
+    border-bottom: 1px solid var(--dbolt-202020);
     display: flex;
     gap: 16px;
     justify-content: space-between;
@@ -34,13 +34,13 @@
 
     p,
     span {
-        color: #969696;
+        color: var(--dbolt-969696);
         font-size: .78em;
         font-weight: 750;
     }
 
     h2 {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-size: 1.2em;
         font-weight: 900;
         margin: 3px 0;
@@ -56,10 +56,10 @@
     justify-content: flex-end;
 
     button {
-        background: #1b1b1b;
+        background: var(--dbolt-1b1b1b);
         border: none;
         border-radius: 11px;
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         cursor: pointer;
         font-family: 'Nunito';
         font-size: .76em;
@@ -68,21 +68,21 @@
         padding: 0 12px;
 
         &:hover {
-            background: #303030;
+            background: var(--dbolt-303030);
         }
     }
 
     .restore-button {
-        background: #1c2041;
+        background: var(--dbolt-1c2041);
 
         &:hover {
-            background: #1f2775;
+            background: var(--dbolt-1f2775);
         }
     }
 }
 
 .compare-files {
-    border-bottom: 1px solid #202020;
+    border-bottom: 1px solid var(--dbolt-202020);
     display: grid;
     gap: 12px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -90,8 +90,8 @@
 }
 
 .file-card {
-    background: #111;
-    border: 1px solid #242424;
+    background: var(--dbolt-111);
+    border: 1px solid var(--dbolt-242424);
     border-radius: 12px;
     display: grid;
     gap: 3px;
@@ -110,13 +110,13 @@
 
     small,
     span {
-        color: #969696;
+        color: var(--dbolt-969696);
         font-size: .72em;
         font-weight: 800;
     }
 
     strong {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-size: .84em;
         font-weight: 900;
     }
@@ -124,15 +124,15 @@
 
 .diff-summary {
     align-items: center;
-    border-bottom: 1px solid #202020;
+    border-bottom: 1px solid var(--dbolt-202020);
     display: flex;
     gap: 8px;
     padding: 10px 22px;
 
     span {
-        background: #131313;
+        background: var(--dbolt-131313);
         border-radius: 999px;
-        color: #b8b8b9;
+        color: var(--dbolt-b8b8b9);
         font-family: 'Nunito';
         font-size: .72em;
         font-weight: 850;
@@ -140,11 +140,11 @@
     }
 
     .added {
-        color: #9fe6b8;
+        color: var(--dbolt-9fe6b8);
     }
 
     .removed {
-        color: #f0a0a0;
+        color: var(--dbolt-f0a0a0);
     }
 }
 
@@ -169,11 +169,11 @@
     }
 
     &:hover {
-        background-color: #151515;
+        background-color: var(--dbolt-151515);
     }
 
     code {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-family: inherit;
         font-size: .82em;
         overflow: visible;
@@ -184,7 +184,7 @@
 
 .line-number,
 .line-marker {
-    color: #777;
+    color: var(--dbolt-777);
     font-family: inherit;
     font-size: .78em;
     padding: 4px 8px;
@@ -192,7 +192,7 @@
 }
 
 .line-marker {
-    color: #b8b8b9;
+    color: var(--dbolt-b8b8b9);
     text-align: center;
 }
 

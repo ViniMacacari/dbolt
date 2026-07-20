@@ -1,6 +1,6 @@
 .settings-form {
-    background: #1b1b1b;
-    border: 1px solid #302d2d;
+    background: var(--dbolt-1b1b1b);
+    border: 1px solid var(--dbolt-302d2d);
     border-radius: 15px;
     display: flex;
     flex-direction: column;
@@ -15,7 +15,7 @@
 }
 
 label {
-    color: #cfcfcf;
+    color: var(--dbolt-cfcfcf);
     font-size: .72em;
     font-weight: 700;
     margin: 0;
@@ -27,11 +27,11 @@ label {
 }
 
 .input-list-style-input {
-    background-color: #1b1b1b;
-    border: 1px solid #353535;
+    background-color: var(--dbolt-1b1b1b);
+    border: 1px solid var(--dbolt-353535);
     border-radius: 15px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     font-family: 'Nunito';
     font-size: 14px;
     outline: none;
@@ -39,7 +39,7 @@ label {
     width: 100%;
 
     &:focus {
-        border-color: #739eca;
+        border-color: var(--dbolt-739eca);
     }
 
     &:disabled {
@@ -69,7 +69,7 @@ button {
     width: 100%;
 
     &:disabled {
-        color: #777;
+        color: var(--dbolt-777);
         cursor: default;
     }
 }

@@ -15,7 +15,7 @@
 }
 
 .assistant-toolbar {
-    background-color: #1b1b1b;
+    background-color: var(--dbolt-1b1b1b);
     border-radius: 15px;
     flex: 0 0 110px;
     padding: 10px;
@@ -25,7 +25,7 @@
         background: transparent;
         border: none;
         border-radius: 8px;
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         cursor: pointer;
         display: flex;
         font-family: 'Nunito';
@@ -37,16 +37,16 @@
 
         &:hover,
         &.active {
-            background-color: #3d3a3a;
+            background-color: var(--dbolt-3d3a3a);
         }
     }
 }
 
 .assistant-panel {
-    background-color: #1b1b1b;
-    border: 1px solid #363535;
+    background-color: var(--dbolt-1b1b1b);
+    border: 1px solid var(--dbolt-363535);
     border-radius: 16px;
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     flex: 1 1 auto;
     min-height: 0;
     min-width: 0;
@@ -64,7 +64,7 @@
     }
 
     p {
-        color: #969696;
+        color: var(--dbolt-969696);
         font-size: .72em;
         font-weight: 800;
         letter-spacing: .04em;
@@ -72,7 +72,7 @@
     }
 
     h2 {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-size: 1.35em;
         font-weight: 800;
         margin-top: 4px;
@@ -87,10 +87,10 @@
 
 .assistant-option {
     align-items: center;
-    background: #232020;
-    border: 1px solid #353535;
+    background: var(--dbolt-232020);
+    border: 1px solid var(--dbolt-353535);
     border-radius: 12px;
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     cursor: pointer;
     display: flex;
     gap: 14px;
@@ -100,7 +100,7 @@
     transition: background-color .2s ease, border-color .2s ease;
 
     &:hover {
-        background: #2d2c2c;
+        background: var(--dbolt-2d2c2c);
         border-color: rgba(115, 158, 202, 0.45);
     }
 
@@ -116,7 +116,7 @@
     }
 
     small {
-        color: #969696;
+        color: var(--dbolt-969696);
         font-size: .78em;
         margin-top: 4px;
     }
@@ -124,8 +124,8 @@
 
 .option-icon {
     align-items: center;
-    background: #1b1b1b;
-    border: 1px solid #353535;
+    background: var(--dbolt-1b1b1b);
+    border: 1px solid var(--dbolt-353535);
     border-radius: 10px;
     display: flex;
     flex: 0 0 44px;

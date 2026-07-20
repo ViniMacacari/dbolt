@@ -7,7 +7,7 @@
 
 .ai-assistant-sidebar {
     box-sizing: border-box;
-    color: #f2f2f2;
+    color: var(--dbolt-f2f2f2);
     display: flex;
     flex-direction: column;
     min-width: 320px;
@@ -57,7 +57,7 @@
     }
 
     span {
-        color: #f1f1f1;
+        color: var(--dbolt-f1f1f1);
         display: block;
         font-size: .76em;
         overflow: hidden;
@@ -67,31 +67,31 @@
 }
 
 .context-summary-divider {
-    background: #3a3535;
+    background: var(--dbolt-3a3535);
     display: block;
     height: 18px;
     width: 1px;
 }
 
 .ai-status {
-    background: #2d2020 !important;
-    border: 1px solid #5a2b2b;
-    color: #ffb4b4;
+    background: var(--dbolt-2d2020) !important;
+    border: 1px solid var(--dbolt-5a2b2b);
+    color: var(--dbolt-ffb4b4);
     font-size: .76em;
     line-height: 1.35;
 }
 
 .ai-config-needed {
     align-items: stretch;
-    background: #20252d !important;
-    border: 1px solid #34475d;
+    background: var(--dbolt-20252d) !important;
+    border: 1px solid var(--dbolt-34475d);
     cursor: default !important;
     display: flex;
     flex-direction: column;
     gap: 8px;
 
     p {
-        color: #d8e9fb;
+        color: var(--dbolt-d8e9fb);
         font-family: 'Nunito';
         font-size: .76em;
         line-height: 1.35;
@@ -100,10 +100,10 @@
 
     button {
         align-self: flex-start;
-        background: #2b3340;
+        background: var(--dbolt-2b3340);
         border: 1px solid rgba(115, 158, 202, 0.35);
         border-radius: 8px;
-        color: #d8e9fb;
+        color: var(--dbolt-d8e9fb);
         font-family: 'Nunito';
         font-size: .74em;
         font-weight: 800;
@@ -120,7 +120,7 @@
 
 .conversation-header {
     align-items: center;
-    color: #cfcfcf;
+    color: var(--dbolt-cfcfcf);
     display: flex;
     font-size: .76em;
     font-weight: 700;
@@ -132,10 +132,10 @@
 
 .conversation-current {
     align-items: center;
-    background: #1f1f1f;
-    border: 1px solid #303030;
+    background: var(--dbolt-1f1f1f);
+    border: 1px solid var(--dbolt-303030);
     border-radius: 8px;
-    color: #f1f1f1;
+    color: var(--dbolt-f1f1f1);
     display: grid;
     gap: 8px;
     grid-template-columns: 18px minmax(0, 1fr) auto;
@@ -145,8 +145,8 @@
     width: 100%;
 
     &:hover:not(:disabled) {
-        background: #283445;
-        border-color: #516986;
+        background: var(--dbolt-283445);
+        border-color: var(--dbolt-516986);
     }
 
     &:disabled {
@@ -170,14 +170,14 @@
     }
 
     small {
-        color: #8f8f8f;
+        color: var(--dbolt-8f8f8f);
         font-size: .62em;
         font-weight: 800;
         text-transform: uppercase;
     }
 
     strong {
-        color: #f1f1f1;
+        color: var(--dbolt-f1f1f1);
         font-size: .78em;
         font-weight: 800;
     }
@@ -185,10 +185,10 @@
 
 .conversation-count {
     align-items: center;
-    background: #232323;
-    border: 1px solid #343434;
+    background: var(--dbolt-232323);
+    border: 1px solid var(--dbolt-343434);
     border-radius: 999px;
-    color: #cfcfcf;
+    color: var(--dbolt-cfcfcf);
     display: inline-flex;
     font-size: .68em;
     font-weight: 800;
@@ -201,8 +201,8 @@
 .conversation-icon-button,
 .conversation-delete {
     align-items: center;
-    background: #232323;
-    border: 1px solid #343434;
+    background: var(--dbolt-232323);
+    border: 1px solid var(--dbolt-343434);
     border-radius: 6px;
     display: flex;
     height: 28px;
@@ -227,8 +227,8 @@
 
 .conversation-tab {
     align-items: center;
-    background: #1f1f1f;
-    border: 1px solid #303030;
+    background: var(--dbolt-1f1f1f);
+    border: 1px solid var(--dbolt-303030);
     border-radius: 8px;
     display: grid;
     gap: 6px;
@@ -237,15 +237,15 @@
     padding: 3px;
 
     &.active {
-        background: #283445;
-        border-color: #516986;
+        background: var(--dbolt-283445);
+        border-color: var(--dbolt-516986);
     }
 }
 
 .conversation-select {
     background: transparent;
     border: 0;
-    color: #f1f1f1;
+    color: var(--dbolt-f1f1f1);
     font-size: .8em;
     min-width: 0;
     overflow: hidden;
@@ -270,8 +270,8 @@
     opacity: .75;
 
     &:hover:not(:disabled) {
-        background: #332323;
-        border-color: #5a2b2b;
+        background: var(--dbolt-332323);
+        border-color: var(--dbolt-5a2b2b);
         opacity: 1;
     }
 }
@@ -297,8 +297,8 @@
 }
 
 .conversation-modal {
-    background: #1b1b1b;
-    border: 1px solid #353535;
+    background: var(--dbolt-1b1b1b);
+    border: 1px solid var(--dbolt-353535);
     border-radius: 18px;
     box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
     max-height: min(620px, calc(100vh - 48px));
@@ -309,7 +309,7 @@
 
 .conversation-modal-header {
     align-items: center;
-    border-bottom: 1px solid #353535;
+    border-bottom: 1px solid var(--dbolt-353535);
     display: flex;
     justify-content: space-between;
     padding: 16px 18px 14px;
@@ -321,13 +321,13 @@
     }
 
     h2 {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-size: 1.02em;
         font-weight: 800;
     }
 
     p {
-        color: #8f8f8f;
+        color: var(--dbolt-8f8f8f);
         font-size: .68em;
         font-weight: 800;
         text-transform: uppercase;
@@ -335,7 +335,7 @@
 
     button {
         align-items: center;
-        background-color: #232020;
+        background-color: var(--dbolt-232020);
         border: none;
         border-radius: 10px;
         cursor: pointer;
@@ -346,22 +346,22 @@
         width: 34px;
 
         &:hover {
-            background-color: #303030;
+            background-color: var(--dbolt-303030);
         }
     }
 }
 
 .conversation-modal-actions {
-    border-bottom: 1px solid #2b2b2b;
+    border-bottom: 1px solid var(--dbolt-2b2b2b);
     padding: 12px;
 }
 
 .conversation-new-button {
     align-items: center;
-    background: #232020;
-    border: 1px solid #353535;
+    background: var(--dbolt-232020);
+    border: 1px solid var(--dbolt-353535);
     border-radius: 10px;
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     display: flex;
     font-family: 'Nunito';
     font-size: .8em;
@@ -372,7 +372,7 @@
     width: 100%;
 
     &:hover:not(:disabled) {
-        background: #292727;
+        background: var(--dbolt-292727);
     }
 
     &:disabled {
@@ -388,7 +388,7 @@
 }
 
 .conversation-empty {
-    color: #969696;
+    color: var(--dbolt-969696);
     font-family: 'Nunito';
     font-size: .84em;
     margin: 12px 8px;
