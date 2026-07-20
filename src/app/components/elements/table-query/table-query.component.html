@@ -136,6 +136,6 @@
 </div>
 
 <app-export-query *ngIf="showExportModal" [sql]="executedSql" [dbContext]="dbContext"
-    [availableColumns]="getExportableColumns()" [initialRowLimit]="rowLimit" [totalRows]="totalRows"
+    [availableColumns]="getExportableColumns()" [totalRows]="totalRows"
     (close)="closeExportModal()">
 </app-export-query>
