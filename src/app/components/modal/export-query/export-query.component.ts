@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common'
 import { Component, EventEmitter, HostListener, Input, OnInit, Output } from '@angular/core'
 import { FormsModule } from '@angular/forms'
+import { InputComponent } from '../../elements/input/input.component'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
 import {
   QueryResultExportPayload,
@@ -19,7 +20,7 @@ interface QueryExportColumn {
 @Component({
   selector: 'app-export-query',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, InputComponent],
   templateUrl: './export-query.component.html',
   styleUrl: './export-query.component.scss'
 })

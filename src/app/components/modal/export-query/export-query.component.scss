@@ -112,30 +112,6 @@
         font-size: .67em;
     }
 
-    > input {
-        -moz-appearance: textfield;
-        appearance: textfield;
-        background: var(--dbolt-0b0b0b);
-        border: 1px solid var(--dbolt-3b3b3b);
-        border-radius: 10px;
-        color: var(--dbolt-e8eaed);
-        font-family: 'Nunito';
-        font-size: .82em;
-        height: 38px;
-        outline: none;
-        padding: 0 11px;
-
-        &:focus {
-            border-color: var(--dbolt-739eca);
-            box-shadow: 0 0 0 3px rgba(115, 158, 202, .12);
-        }
-
-        &::-webkit-inner-spin-button,
-        &::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-    }
 }
 
 .format-options {
@@ -279,25 +255,8 @@
 }
 
 .rename-input {
-    background: var(--dbolt-0b0b0b);
-    border: 1px solid var(--dbolt-353535);
-    border-radius: 9px;
-    color: var(--dbolt-e8eaed);
-    font-family: 'Nunito';
-    font-size: .75em;
-    height: 34px;
     min-width: 0;
-    outline: none;
-    padding: 0 10px;
-
-    &:focus {
-        border-color: var(--dbolt-739eca);
-    }
-
-    &:disabled {
-        cursor: not-allowed;
-        opacity: .38;
-    }
+    width: 100%;
 }
 
 .export-error {
