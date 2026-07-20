@@ -44,6 +44,23 @@ export class QueryResultExportService {
     this.downloadBlob(blob, filename)
   }
 
+  exportCsv(payload: QueryResultExportPayload, filename: string = 'query-result.csv'): void {
+    const rows = [payload.columns, ...payload.rows]
+    const content = rows
+      .map((row) => row.map((value) => this.toCsvValue(value)).join(','))
+      .join('\r\n')
+    const blob = new Blob(['\uFEFF', content], { type: 'text/csv;charset=utf-8' })
+
+    this.downloadBlob(blob, filename)
+  }
+
+  exportTxt(payload: QueryResultExportPayload, filename: string = 'query-result.txt'): void {
+    const content = this.toTsv([payload.columns, ...payload.rows])
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+
+    this.downloadBlob(blob, filename)
+  }
+
   private async writeTextToClipboard(text: string): Promise<void> {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text)
@@ -298,6 +315,13 @@ export class QueryResultExportService {
   private toDelimitedValue(value: any): string {
     const formatted = this.formatValue(value)
     if (!/[\t\n\r"]/.test(formatted)) return formatted
+
+    return `"${formatted.replace(/"/g, '""')}"`
+  }
+
+  private toCsvValue(value: any): string {
+    const formatted = this.formatValue(value)
+    if (!/[,\n\r"]/.test(formatted)) return formatted
 
     return `"${formatted.replace(/"/g, '""')}"`
   }
