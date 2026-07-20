@@ -475,6 +475,12 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     this.copyErrorMessage = ''
     this.cellSelectionMenu = null
+    if (mouseEvent.ctrlKey || mouseEvent.metaKey) {
+      mouseEvent.preventDefault()
+      this.toggleSingleCellSelection(point)
+      return
+    }
+
     this.isSelectingCells = true
     this.rowSelectionAnchorId = null
     this.selectionAnchor = point
@@ -893,7 +899,9 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       columns: fields,
       rows: rowIds.map((rowId) => {
         const row = this.getDisplayRowById(rowId)
-        return fields.map((field) => row?.[field])
+        return fields.map((field) =>
+          this.selectedCellKeys.has(this.cellKey(rowId, field)) ? row?.[field] : ''
+        )
       })
     }
   }
@@ -996,6 +1004,53 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   private cellKey(rowId: number, field: string): string {
     return `${rowId}\u001F${field}`
+  }
+
+  private toggleSingleCellSelection(point: CellSelectionPoint): void {
+    const key = this.cellKey(point.rowId, point.field)
+    const removingCell = this.selectedCellKeys.has(key)
+
+    if (removingCell) {
+      this.selectedCellKeys.delete(key)
+    } else {
+      this.selectedCellKeys.add(key)
+    }
+
+    if (!removingCell) {
+      this.selectionAnchor = point
+      this.selectionEnd = point
+    } else if (
+      (
+        this.selectionAnchor?.rowId === point.rowId &&
+        this.selectionAnchor?.field === point.field
+      ) || (
+        this.selectionEnd?.rowId === point.rowId &&
+        this.selectionEnd?.field === point.field
+      )
+    ) {
+      const replacement = this.getFirstSelectedCellPoint()
+      this.selectionAnchor = replacement
+      this.selectionEnd = replacement
+    }
+
+    this.rowSelectionAnchorId = null
+    this.isSelectingCells = false
+    this.refreshSelectionSummary()
+    this.refreshVisibleGrid()
+  }
+
+  private getFirstSelectedCellPoint(): CellSelectionPoint | null {
+    const fields = this.getVisibleFields()
+
+    for (const rowId of this.getGridOrderedRowIds()) {
+      for (const field of fields) {
+        if (this.selectedCellKeys.has(this.cellKey(rowId, field))) {
+          return { rowId, field }
+        }
+      }
+    }
+
+    return null
   }
 
   private selectEntireRow(row: any, additive = false, range = false): void {
