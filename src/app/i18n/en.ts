@@ -281,6 +281,7 @@ export const enTranslations: TranslationCatalog = {
   'tabs.queryVersionName': '{name} - version {version}',
   'tabs.unsavedChangesTitle': 'Unsaved changes',
   'tabs.unsavedChangesMessage': 'Do you want to close the tab even without saving the changes?',
+  'applicationClose.unsavedSqlQueriesMessage': 'There are SQL queries with unsaved changes. If you close the application, those changes will be lost. Do you want to continue?',
 
   'editor.runSelected': 'Run selected code',
   'editor.runAll': 'Run all code',

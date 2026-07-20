@@ -49,6 +49,8 @@ declare global {
     dboltWindow?: {
       getState(): Promise<DboltWindowState>;
       invoke(action: DboltWindowAction): Promise<DboltWindowState>;
+      respondToCloseRequest(shouldClose: boolean): Promise<void>;
+      onCloseRequested(callback: () => void): () => void;
       onStateChanged(callback: (state: DboltWindowState) => void): () => void;
     };
   }

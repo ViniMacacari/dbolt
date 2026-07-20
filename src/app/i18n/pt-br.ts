@@ -281,6 +281,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'tabs.queryVersionName': '{name} - versão {version}',
   'tabs.unsavedChangesTitle': 'Alterações não salvas',
   'tabs.unsavedChangesMessage': 'Deseja fechar a aba mesmo sem salvar as alterações?',
+  'applicationClose.unsavedSqlQueriesMessage': 'Existem consultas SQL com alterações não salvas. Se você fechar a aplicação, essas alterações serão perdidas. Deseja continuar?',
 
   'editor.runSelected': 'Executar código selecionado',
   'editor.runAll': 'Executar todo o código',
