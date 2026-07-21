@@ -340,14 +340,20 @@
             &.connection-info-visible {
                 grid-template-rows: 1fr;
                 opacity: 1;
+
+                .connection-info {
+                    border-top-width: 1px;
+                    padding-block: 6px;
+                }
             }
         }
 
         .connection-info {
-            border-top: 1px solid var(--dbolt-353535);
+            border-top: 0 solid var(--dbolt-353535);
             min-height: 0;
             overflow: hidden;
-            padding: 6px;
+            padding: 0 6px;
+            transition: border-top-width .28s cubic-bezier(.2, .8, .2, 1), padding .28s cubic-bezier(.2, .8, .2, 1);
 
             .database-name {
                 margin: 0;
@@ -372,6 +378,10 @@
                 &.schemas-visible {
                     grid-template-rows: 1fr;
                     opacity: 1;
+
+                    .schemas {
+                        margin-top: 2px;
+                    }
                 }
             }
 
@@ -381,10 +391,11 @@
                 flex-direction: column;
 
                 gap: 2px;
-                margin-top: 2px;
+                margin-top: 0;
                 min-height: 0;
                 overflow: hidden;
                 padding-left: 12px;
+                transition: margin-top .24s cubic-bezier(.2, .8, .2, 1);
             }
 
             .database-row,
