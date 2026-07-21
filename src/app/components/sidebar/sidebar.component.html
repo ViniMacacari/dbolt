@@ -1,6 +1,7 @@
 <div class="sidebar-shell" [class.sidebar-hidden]="!sidebarVisible" [class.sidebar-resizing]="resizingSidebar"
     [style.width.px]="sidebarVisible ? sidebarWidth : sidebarCollapsedWidth">
-    <aside *ngIf="sidebarVisible" class="sidebar">
+    <div class="sidebar-viewport">
+    <aside class="sidebar" [style.width.px]="sidebarWidth" [attr.aria-hidden]="!sidebarVisible">
     <div class="sidebar-actions my-2">
         <button type="button" (click)="hideSidebar()" class="sidebar-action-button menu-button"
             [title]="t('sidebar.hide')" [attr.aria-label]="t('sidebar.hide')">
@@ -112,7 +113,8 @@
     </div>
     </aside>
 
-    <nav *ngIf="!sidebarVisible" class="sidebar-collapsed-rail" [attr.aria-label]="t('sidebar.navigation')">
+    <nav class="sidebar-collapsed-rail" [attr.aria-hidden]="sidebarVisible"
+        [attr.aria-label]="t('sidebar.navigation')">
         <button type="button" class="collapsed-action-button" (click)="showSidebar()"
             [title]="t('sidebar.show')" [attr.aria-label]="t('sidebar.show')">
             <img src="icons/menu.png" height="17px" width="17px" alt="">
@@ -126,6 +128,7 @@
             <img src="icons/settings.png" height="17px" width="17px" alt="">
         </button>
     </nav>
+    </div>
 
     <button *ngIf="sidebarVisible" type="button" class="sidebar-resize-handle" role="separator" tabindex="0"
         aria-orientation="vertical" [attr.aria-label]="t('sidebar.resize')"
