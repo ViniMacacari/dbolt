@@ -25,6 +25,8 @@ interface PositionedEntity extends DiagramEntity {
   y: number
   width: number
   height: number
+  manuallyMoved: boolean
+  manuallyResized: boolean
 }
 
 type EntityInteractionMode = 'move' | 'resize'
@@ -267,6 +269,11 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
     event.stopPropagation()
     this.clearSelectedRelation()
     this.activeEntityId = entity.id
+    if (mode === 'move') {
+      entity.manuallyMoved = true
+    } else {
+      entity.manuallyResized = true
+    }
     this.entityInteraction = {
       mode,
       entity,
@@ -437,12 +444,20 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
       const column = index % columnsPerRow
       const height = this.getNaturalEntityHeight(entity)
       const savedLayout = this.tabInfo?.diagramState?.layout?.[entity.id]
+      const manuallyMoved = savedLayout?.moved === true
+      const manuallyResized = savedLayout?.resized === true
       return {
         ...entity,
-        x: this.layoutNumber(savedLayout?.x, 34 + column * (this.entityWidth + this.horizontalGap), 14),
-        y: this.layoutNumber(savedLayout?.y, rowOffsets[row], 14),
-        width: this.layoutNumber(savedLayout?.width, this.entityWidth, 190),
-        height: this.layoutNumber(savedLayout?.height, height, 94)
+        x: manuallyMoved
+          ? this.layoutNumber(savedLayout?.x, 34 + column * (this.entityWidth + this.horizontalGap), 14)
+          : 34 + column * (this.entityWidth + this.horizontalGap),
+        y: manuallyMoved
+          ? this.layoutNumber(savedLayout?.y, rowOffsets[row], 14)
+          : rowOffsets[row],
+        width: manuallyResized ? this.layoutNumber(savedLayout?.width, this.entityWidth, 190) : this.entityWidth,
+        height: manuallyResized ? this.layoutNumber(savedLayout?.height, height, 94) : height,
+        manuallyMoved,
+        manuallyResized
       }
     })
     this.updateCanvasBounds()
@@ -472,7 +487,9 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
       x: entity.x,
       y: entity.y,
       width: entity.width,
-      height: entity.height
+      height: entity.height,
+      moved: entity.manuallyMoved,
+      resized: entity.manuallyResized
     }]))
     this.tabInfo.diagramState = {
       ...(this.tabInfo.diagramState || {}),
