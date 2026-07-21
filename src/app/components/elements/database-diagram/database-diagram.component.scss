@@ -276,6 +276,10 @@
 .diagram-entity-columns {
     box-sizing: border-box;
     height: calc(100% - 38px);
+    overflow: hidden;
+}
+
+.diagram-entity.resized .diagram-entity-columns {
     overflow: auto;
 }
 
