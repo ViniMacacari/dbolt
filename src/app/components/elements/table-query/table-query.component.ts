@@ -27,6 +27,7 @@ import {
 } from '../../../services/query-result-export/query-result-export.service'
 import { KeyboardShortcutService } from '../../../services/keyboard-shortcuts/keyboard-shortcut.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
+import { ExportQueryComponent } from '../../modal/export-query/export-query.component'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
@@ -58,7 +59,7 @@ interface CellSelectionContextMenu {
 @Component({
   selector: 'app-table-query',
   standalone: true,
-  imports: [CommonModule, AgGridAngular],
+  imports: [CommonModule, AgGridAngular, ExportQueryComponent],
   templateUrl: './table-query.component.html',
   styleUrls: ['./table-query.component.scss'],
   encapsulation: ViewEncapsulation.None
@@ -144,6 +145,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   private selectedCellKeys = new Set<string>()
   private selectionAnchor: CellSelectionPoint | null = null
   private selectionEnd: CellSelectionPoint | null = null
+  private rowSelectionAnchorId: number | null = null
   private isSelectingCells = false
   private gridHostElement: HTMLElement | null = null
   private removeGridContextMenuListener: (() => void) | null = null
@@ -169,6 +171,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   editErrorMessage = ''
   copyErrorMessage = ''
   cellSelectionMenu: CellSelectionContextMenu | null = null
+  showExportModal = false
   isApplyingEdits = false
   private readonly clientDefaultColDef: ColDef = {
     sortable: true,
@@ -202,6 +205,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   set query(value: any[]) {
     this.saveScrollPosition()
     this._query = value || []
+    this.showExportModal = false
     this.resetCellSelection()
     this.resetEditPreview()
     this.rebuildDisplayRows(false)
@@ -261,6 +265,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     }
 
     if (changes['executedSql'] || changes['dbContext'] || changes['isSelectResult']) {
+      this.showExportModal = false
       this.resetEditPreview()
       this.syncGridRowModel()
       this.refreshEditCapability()
@@ -442,6 +447,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.editableColumnsByField.clear()
     this.resultColumnsByField.clear()
     this.selectedCellKeys.clear()
+    this.rowSelectionAnchorId = null
     this.selectedFullRowIds = []
     this.selectedFullRowCount = 0
     this.canSelectAllLoadedRows = false
@@ -457,7 +463,11 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       mouseEvent.preventDefault()
       this.copyErrorMessage = ''
       this.cellSelectionMenu = null
-      this.selectEntireRow(event.data, mouseEvent.ctrlKey || mouseEvent.metaKey)
+      this.selectEntireRow(
+        event.data,
+        mouseEvent.ctrlKey || mouseEvent.metaKey,
+        mouseEvent.shiftKey
+      )
       return
     }
 
@@ -469,7 +479,14 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     this.copyErrorMessage = ''
     this.cellSelectionMenu = null
+    if (mouseEvent.ctrlKey || mouseEvent.metaKey) {
+      mouseEvent.preventDefault()
+      this.toggleSingleCellSelection(point)
+      return
+    }
+
     this.isSelectingCells = true
+    this.rowSelectionAnchorId = null
     this.selectionAnchor = point
     this.selectionEnd = point
     this.updateSelectedCells()
@@ -524,6 +541,37 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     this.resultExport.exportXlsx(payload, 'query-result-selection.xlsx')
     this.cellSelectionMenu = null
+  }
+
+  exportSelectedCsv(): void {
+    const payload = this.getSelectionPayload()
+    if (!payload) return
+
+    this.resultExport.exportCsv(payload, 'query-result-selection.csv')
+    this.cellSelectionMenu = null
+  }
+
+  canExportQueryResult(): boolean {
+    return this.isSelectResult &&
+      !this.errorMessage &&
+      !this.isLoading &&
+      !this.isLoadingMore &&
+      !!this.executedSql?.trim() &&
+      this.getExportableColumns().length > 0
+  }
+
+  openExportModal(): void {
+    if (!this.canExportQueryResult()) return
+    this.cellSelectionMenu = null
+    this.showExportModal = true
+  }
+
+  closeExportModal(): void {
+    this.showExportModal = false
+  }
+
+  getExportableColumns(): string[] {
+    return this.getVisibleFields()
   }
 
   async copyQueryError(event: MouseEvent): Promise<void> {
@@ -646,6 +694,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
     this.selectionAnchor = { rowId: rowIds[0], field: fields[0] }
     this.selectionEnd = { rowId: rowIds[rowIds.length - 1], field: fields[fields.length - 1] }
+    this.rowSelectionAnchorId = rowIds[0]
     this.selectedFullRowIds = rowIds
     this.selectedFullRowCount = rowIds.length
     this.canSelectAllLoadedRows = false
@@ -885,8 +934,29 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       columns: fields,
       rows: rowIds.map((rowId) => {
         const row = this.getDisplayRowById(rowId)
-        return fields.map((field) => row?.[field])
+        return fields.map((field) =>
+          this.selectedCellKeys.has(this.cellKey(rowId, field))
+            ? this.getFormattedCellValue(row, field)
+            : ''
+        )
       })
+    }
+  }
+
+  private getFormattedCellValue(row: any, field: string): any {
+    const value = row?.[field]
+    const columnDef = this.columnDefs.find((definition) => definition.field === field)
+    const formatter = columnDef?.valueFormatter
+    if (typeof formatter !== 'function') return value
+
+    try {
+      return formatter({
+        value,
+        data: row,
+        colDef: columnDef
+      } as any)
+    } catch {
+      return value
     }
   }
 
@@ -977,6 +1047,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.selectedCellKeys.clear()
     this.selectionAnchor = null
     this.selectionEnd = null
+    this.rowSelectionAnchorId = null
     this.isSelectingCells = false
     this.cellSelectionMenu = null
     this.copyErrorMessage = ''
@@ -989,10 +1060,62 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     return `${rowId}\u001F${field}`
   }
 
-  private selectEntireRow(row: any, additive = false): void {
+  private toggleSingleCellSelection(point: CellSelectionPoint): void {
+    const key = this.cellKey(point.rowId, point.field)
+    const removingCell = this.selectedCellKeys.has(key)
+
+    if (removingCell) {
+      this.selectedCellKeys.delete(key)
+    } else {
+      this.selectedCellKeys.add(key)
+    }
+
+    if (!removingCell) {
+      this.selectionAnchor = point
+      this.selectionEnd = point
+    } else if (
+      (
+        this.selectionAnchor?.rowId === point.rowId &&
+        this.selectionAnchor?.field === point.field
+      ) || (
+        this.selectionEnd?.rowId === point.rowId &&
+        this.selectionEnd?.field === point.field
+      )
+    ) {
+      const replacement = this.getFirstSelectedCellPoint()
+      this.selectionAnchor = replacement
+      this.selectionEnd = replacement
+    }
+
+    this.rowSelectionAnchorId = null
+    this.isSelectingCells = false
+    this.refreshSelectionSummary()
+    this.refreshVisibleGrid()
+  }
+
+  private getFirstSelectedCellPoint(): CellSelectionPoint | null {
+    const fields = this.getVisibleFields()
+
+    for (const rowId of this.getGridOrderedRowIds()) {
+      for (const field of fields) {
+        if (this.selectedCellKeys.has(this.cellKey(rowId, field))) {
+          return { rowId, field }
+        }
+      }
+    }
+
+    return null
+  }
+
+  private selectEntireRow(row: any, additive = false, range = false): void {
     const rowId = this.getRowId(row)
     const fields = this.getVisibleFields()
     if (!Number.isFinite(rowId) || fields.length === 0) return
+
+    if (range && this.rowSelectionAnchorId !== null) {
+      this.selectEntireRowRange(this.rowSelectionAnchorId, rowId, additive)
+      return
+    }
 
     const rowWasSelected = this.isRowFullySelected(row)
     if (!additive) {
@@ -1011,9 +1134,49 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       this.selectionEnd = { rowId, field: fields[fields.length - 1] }
     }
 
+    this.rowSelectionAnchorId = rowId
     this.isSelectingCells = false
     this.refreshSelectionSummary()
     this.refreshVisibleGrid()
+  }
+
+  private selectEntireRowRange(anchorRowId: number, targetRowId: number, additive: boolean): void {
+    const fields = this.getVisibleFields()
+    const rowIds = this.getGridOrderedRowIds()
+    const anchorIndex = rowIds.indexOf(anchorRowId)
+    const targetIndex = rowIds.indexOf(targetRowId)
+
+    if (fields.length === 0 || anchorIndex < 0 || targetIndex < 0) {
+      const targetRow = this.getDisplayRowById(targetRowId)
+      if (targetRow) this.selectEntireRow(targetRow, additive, false)
+      return
+    }
+
+    if (!additive) {
+      this.selectedCellKeys.clear()
+    }
+
+    const startIndex = Math.min(anchorIndex, targetIndex)
+    const endIndex = Math.max(anchorIndex, targetIndex)
+    rowIds.slice(startIndex, endIndex + 1).forEach((rowId) => {
+      fields.forEach((field) => this.selectedCellKeys.add(this.cellKey(rowId, field)))
+    })
+
+    this.selectionAnchor = { rowId: anchorRowId, field: fields[0] }
+    this.selectionEnd = { rowId: targetRowId, field: fields[fields.length - 1] }
+    this.isSelectingCells = false
+    this.refreshSelectionSummary()
+    this.refreshVisibleGrid()
+  }
+
+  private getGridOrderedRowIds(): number[] {
+    const rowIds: number[] = []
+    this.agGrid?.api?.forEachNodeAfterFilterAndSort((node: any) => {
+      const rowId = this.getRowId(node.data)
+      if (Number.isFinite(rowId)) rowIds.push(rowId)
+    })
+
+    return rowIds.length > 0 ? rowIds : this.getDisplayRowIds()
   }
 
   private getSelectedFullRowIds(): number[] {
