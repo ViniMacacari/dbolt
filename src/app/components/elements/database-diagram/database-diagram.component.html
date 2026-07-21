@@ -24,6 +24,9 @@
             <button type="button" class="fit-button" (click)="fitToScreen()" [title]="t('diagram.fit')">
                 {{ t('diagram.fit') }}
             </button>
+            <button type="button" (click)="resetLayout()" [title]="t('diagram.resetLayout')">
+                <img src="icons/refresh.png" alt="" height="13px">
+            </button>
             <span class="diagram-control-separator"></span>
             <button type="button" (click)="toggleMaximized()"
                 [title]="maximized ? t('diagram.restore') : t('diagram.maximize')">
@@ -69,36 +72,74 @@
                 <div class="diagram-canvas" [style.width.px]="canvasWidth" [style.height.px]="canvasHeight"
                     [style.transform]="'scale(' + zoom + ')'">
                     <svg class="diagram-relations" [attr.width]="canvasWidth" [attr.height]="canvasHeight"
-                        [attr.viewBox]="'0 0 ' + canvasWidth + ' ' + canvasHeight" aria-hidden="true">
-                        <g *ngFor="let relation of relations; trackBy: trackRelation">
-                            <path [attr.d]="relationPath(relation)"></path>
+                        [attr.viewBox]="'0 0 ' + canvasWidth + ' ' + canvasHeight">
+                        <g class="diagram-relation" *ngFor="let relation of relations; trackBy: trackRelation"
+                            [class.selected]="isSelectedRelation(relation)"
+                            [class.dimmed]="selectedRelation && !isSelectedRelation(relation)">
+                            <title>{{ relation.name || t('diagram.relationship') }}: {{ relation.sourceEntity }}.{{ relation.sourceColumn }} → {{ relation.targetEntity }}.{{ relation.targetColumn }}</title>
+                            <path class="diagram-relation-line" [attr.d]="relationPath(relation)"></path>
+                            <path class="diagram-relation-hit" [attr.d]="relationPath(relation)"
+                                (pointerdown)="$event.stopPropagation()" (click)="selectRelation($event, relation)"></path>
                         </g>
                     </svg>
 
                     <article class="diagram-entity" *ngFor="let entity of entities; trackBy: trackEntity"
                         [class.view]="entity.kind === 'view'" [style.left.px]="entity.x" [style.top.px]="entity.y"
+                        [class.active]="activeEntityId === entity.id"
+                        [class.relation-source]="isRelatedEntity(entity, 'source')"
+                        [class.relation-target]="isRelatedEntity(entity, 'target')"
                         [style.width.px]="entity.width" [style.height.px]="entity.height">
-                        <header>
+                        <header (pointerdown)="startEntityInteraction($event, entity, 'move')"
+                            [title]="t('diagram.moveEntity')">
                             <img [src]="entity.kind === 'view' ? 'icons/view.png' : 'icons/diagram.png'" alt="" height="14px">
                             <strong [title]="entity.name">{{ entity.name }}</strong>
                             <small>{{ entity.kind === 'view' ? t('diagram.view') : t('diagram.table') }}</small>
                         </header>
-                        <div class="diagram-column" *ngFor="let column of entity.columns; trackBy: trackColumn"
-                            [class.primary-key]="column.primaryKey">
-                            <span class="column-icon">
-                                <img *ngIf="column.primaryKey" src="icons/key.png" alt="" height="12px">
-                                <span *ngIf="!column.primaryKey" class="column-dot"></span>
-                            </span>
-                            <strong [title]="column.name">{{ column.name }}</strong>
-                            <small [title]="column.dataType">{{ column.dataType }}</small>
-                            <span class="nullable" *ngIf="column.nullable" [title]="t('diagram.nullable')">○</span>
+                        <div class="diagram-entity-columns">
+                            <div class="diagram-column" *ngFor="let column of entity.columns; trackBy: trackColumn"
+                                [class.primary-key]="column.primaryKey">
+                                <span class="column-icon">
+                                    <img *ngIf="column.primaryKey" src="icons/key.png" alt="" height="12px">
+                                    <span *ngIf="!column.primaryKey" class="column-dot"></span>
+                                </span>
+                                <strong [title]="column.name">{{ column.name }}</strong>
+                                <small [title]="column.dataType">{{ column.dataType }}</small>
+                                <span class="nullable" *ngIf="column.nullable" [title]="t('diagram.nullable')">○</span>
+                            </div>
+                            <div class="diagram-column empty" *ngIf="entity.columns.length === 0">
+                                {{ t('diagram.noColumns') }}
+                            </div>
                         </div>
-                        <div class="diagram-column empty" *ngIf="entity.columns.length === 0">
-                            {{ t('diagram.noColumns') }}
-                        </div>
+                        <span class="diagram-entity-resize" [title]="t('diagram.resizeEntity')"
+                            (pointerdown)="startEntityInteraction($event, entity, 'resize')"></span>
                     </article>
                 </div>
             </div>
         </div>
+
+        <aside class="diagram-relation-info" *ngIf="selectedRelation as relation"
+            (pointerdown)="$event.stopPropagation()" (dblclick)="$event.stopPropagation()">
+            <header>
+                <span class="relation-info-icon"><img src="icons/diagram.png" alt="" height="14px"></span>
+                <span>
+                    <small>{{ t('diagram.relationship') }}</small>
+                    <strong>{{ relation.name || t('diagram.unnamedRelationship') }}</strong>
+                </span>
+                <button type="button" (click)="clearSelectedRelation()" [title]="t('generic.close')">
+                    <img src="icons/close.png" alt="" height="13px">
+                </button>
+            </header>
+            <div class="relation-endpoint source">
+                <small>{{ t('diagram.source') }}</small>
+                <strong>{{ relation.sourceEntity }}</strong>
+                <code>{{ relation.sourceColumn }}</code>
+            </div>
+            <span class="relation-direction" aria-hidden="true">↓</span>
+            <div class="relation-endpoint target">
+                <small>{{ t('diagram.target') }}</small>
+                <strong>{{ relation.targetEntity }}</strong>
+                <code>{{ relation.targetColumn }}</code>
+            </div>
+        </aside>
     </div>
 </section>
