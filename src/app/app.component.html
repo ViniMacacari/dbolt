@@ -13,6 +13,7 @@
     [progress]="updateDownloadProgress"
     [errorMessage]="updateErrorMessage"
     (closeAction)="closeUpdateModal()"
+    (ignoreAction)="ignoreAvailableUpdate()"
     (updateAction)="installUpdate()">
 </app-update-modal>
 

@@ -73,6 +73,15 @@ export class AppComponent implements OnInit, OnDestroy {
     this.updateErrorMessage = ''
   }
 
+  ignoreAvailableUpdate(): void {
+    if (!this.availableUpdate || this.isInstallingUpdate) {
+      return
+    }
+
+    this.appUpdate.ignoreRelease(this.availableUpdate)
+    this.closeUpdateModal()
+  }
+
   async installUpdate(): Promise<void> {
     if (!this.availableUpdate || this.isInstallingUpdate) {
       return
