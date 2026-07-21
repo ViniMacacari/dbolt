@@ -492,12 +492,12 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     addRule('delimiter', colors.delimiter)
 
     if (mode === 'vibrant') {
-      addRule('identifier.cte', '#c586c0')
-      addRule('identifier.table', '#c586c0')
-      addRule('identifier.tableAlias', '#c586c0', 'italic')
-      addRule('identifier.qualifier', '#c586c0', 'italic')
-      addRule('identifier.column', '#4ec9b0')
-      addRule('identifier.columnAlias', '#4ec9b0', 'italic')
+      addRule('identifier.cte', colors.variable)
+      addRule('identifier.table', colors.variable)
+      addRule('identifier.tableAlias', colors.variable, 'italic')
+      addRule('identifier.qualifier', colors.variable, 'italic')
+      addRule('identifier.column', colors.identifier)
+      addRule('identifier.columnAlias', colors.identifier, 'italic')
     }
 
     return rules
