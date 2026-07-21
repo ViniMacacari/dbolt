@@ -211,6 +211,7 @@
 
 .diagram-entity {
     position: absolute;
+    box-sizing: border-box;
     overflow: hidden;
     border: 1px solid var(--dbolt-516986);
     border-radius: 10px;
@@ -220,6 +221,7 @@
     transition: border-color .14s ease, box-shadow .14s ease;
 
     > header {
+        box-sizing: border-box;
         height: 38px;
         display: flex;
         align-items: center;
@@ -272,6 +274,7 @@
 }
 
 .diagram-entity-columns {
+    box-sizing: border-box;
     height: calc(100% - 38px);
     overflow: auto;
 }
@@ -332,6 +335,7 @@
 }
 
 .diagram-column {
+    box-sizing: border-box;
     height: 28px;
     display: grid;
     grid-template-columns: 17px minmax(70px, 1fr) minmax(45px, auto) 12px;
