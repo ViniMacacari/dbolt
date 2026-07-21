@@ -1,7 +1,8 @@
 <div class="sidebar-shell" [class.sidebar-hidden]="!sidebarVisible" [class.sidebar-resizing]="resizingSidebar"
     [style.width.px]="sidebarVisible ? sidebarWidth : sidebarCollapsedWidth">
     <div class="sidebar-viewport">
-    <aside class="sidebar" [style.width.px]="sidebarWidth" [attr.aria-hidden]="!sidebarVisible">
+    <aside class="sidebar" [style.width.px]="sidebarWidth" [attr.aria-hidden]="!sidebarVisible"
+        [attr.inert]="!sidebarVisible ? '' : null">
     <div class="sidebar-actions my-2">
         <button type="button" (click)="hideSidebar()" class="sidebar-action-button menu-button"
             [title]="t('sidebar.hide')" [attr.aria-label]="t('sidebar.hide')">
@@ -114,6 +115,7 @@
     </aside>
 
     <nav class="sidebar-collapsed-rail" [attr.aria-hidden]="sidebarVisible"
+        [attr.inert]="sidebarVisible ? '' : null"
         [attr.aria-label]="t('sidebar.navigation')">
         <button type="button" class="collapsed-action-button" (click)="showSidebar()"
             [title]="t('sidebar.show')" [attr.aria-label]="t('sidebar.show')">
