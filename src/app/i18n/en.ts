@@ -358,7 +358,7 @@ export const enTranslations: TranslationCatalog = {
   'results.copyQueryErrorFailed': 'Could not copy query error.',
   'results.copySelectedCellsFailed': 'Could not copy selected cells.',
   'results.applyChangesFailed': 'Could not apply result changes.',
-  'results.editingSimpleSelectOnly': 'Editing is available only for simple SELECTs from one table.',
+  'results.editingSimpleSelectOnly': 'Edition unavailable.',
   'results.loadingEditMetadata': 'Loading edit metadata...',
   'results.loadColumnsFailed': 'Could not load table columns.',
   'results.loadKeysFailed': 'Could not load table keys.',

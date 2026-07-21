@@ -358,7 +358,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'results.copyQueryErrorFailed': 'Não foi possível copiar o erro da query.',
   'results.copySelectedCellsFailed': 'Não foi possível copiar as células selecionadas.',
   'results.applyChangesFailed': 'Não foi possível aplicar as alterações do resultado.',
-  'results.editingSimpleSelectOnly': 'A edição está disponível somente para SELECTs simples de uma tabela.',
+  'results.editingSimpleSelectOnly': 'Edição indisponível.',
   'results.loadingEditMetadata': 'Carregando metadados de edição...',
   'results.loadColumnsFailed': 'Não foi possível carregar as colunas da tabela.',
   'results.loadKeysFailed': 'Não foi possível carregar as chaves da tabela.',
