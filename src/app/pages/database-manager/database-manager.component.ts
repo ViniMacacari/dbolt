@@ -20,11 +20,12 @@ import { QueryVersionCompareComponent } from '../../components/elements/query-ve
 import { QuerySaveService, SavedQuery } from '../../services/query-save/query-save.service'
 import { AppLanguageService } from '../../services/language/app-language.service'
 import { AiAssistantPanelComponent } from '../../components/ai-assistant/ai-assistant-panel/ai-assistant-panel.component'
+import { DatabaseDiagramComponent } from '../../components/elements/database-diagram/database-diagram.component'
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent],
+  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent, DatabaseDiagramComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
@@ -272,13 +273,7 @@ export class DatabaseManagerComponent {
     this.selectBuilderOpen = tab.type === 'select-builder'
     this.queryCompareOpen = tab.type === 'query-compare'
     this.procedureInfoOpen = tab.type === 'procedure'
-    this.tableInfoOpen = !this.editorOpen &&
-      !this.dbInfoOpen &&
-      !this.settingsOpen &&
-      !this.queryAssistantOpen &&
-      !this.selectBuilderOpen &&
-      !this.queryCompareOpen &&
-      !this.procedureInfoOpen
+    this.tableInfoOpen = tab.type === 'table'
 
     if (this.dbInfoOpen) {
       this.dbInfoInitialized = true
@@ -470,6 +465,10 @@ export class DatabaseManagerComponent {
 
   get openProcedureTabs(): any[] {
     return (this.tabsComponent?.tabs || []).filter((tab: any) => tab?.type === 'procedure')
+  }
+
+  get openDiagramTabs(): any[] {
+    return (this.tabsComponent?.tabs || []).filter((tab: any) => tab?.type === 'diagram')
   }
 
   isActiveSqlTab(tab: any): boolean {
@@ -739,7 +738,8 @@ export class DatabaseManagerComponent {
     this.tabsComponent.newTab('table', {
       name: (event.name || event.NAME),
       info: sourceContext,
-      context: sourceContext
+      context: sourceContext,
+      objectType: event.type || event.objectType || 'table'
     }, (event.name || event.NAME))
   }
 
@@ -755,8 +755,41 @@ export class DatabaseManagerComponent {
     this.tabsComponent.newTab('table', {
       name: objectName,
       info: event?.info || activeContext,
-      context: activeContext
+      context: activeContext,
+      objectType: event?.type || event?.objectType || 'table'
     }, objectName).tableInfoState = tableInfoState
+  }
+
+  onDiagramRequested(event: any): void {
+    const context = event?.context || this.tabsComponent.getActiveTab()?.dbInfo || this.selectedSchemaDB
+    const scope = event?.scope === 'object' ? 'object' : 'schema'
+    const objectName = event?.objectName || event?.name
+    if (!context || (scope === 'object' && !objectName)) return
+
+    const identity = [
+      'diagram',
+      scope,
+      context.connectionKey || context.connId || context.host,
+      context.database,
+      context.schema,
+      objectName || ''
+    ].join(':')
+    const existingIndex = this.tabsComponent.tabs.findIndex((tab: any) => tab?.diagramIdentity === identity)
+    if (existingIndex >= 0) {
+      this.tabsComponent.selectTab(existingIndex)
+      return
+    }
+
+    const target = scope === 'object'
+      ? objectName
+      : [context.database, context.schema && context.schema !== 'mysql' ? context.schema : ''].filter(Boolean).join('.')
+    const tab = this.tabsComponent.newTab('diagram', {
+      scope,
+      objectName,
+      objectType: event?.objectType,
+      context
+    }, `${this.t('diagram.title')} - ${target || this.t('diagram.schema')}`)
+    tab.diagramIdentity = identity
   }
 
   onProcedureEditRequested(event: any): void {

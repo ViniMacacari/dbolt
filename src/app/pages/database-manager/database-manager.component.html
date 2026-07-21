@@ -107,10 +107,13 @@
                 </section>
                 <app-db-info *ngFor="let tab of openSchemaTabs; trackBy: trackTabByIdentity"
                     [hidden]="!isActiveContentTab(tab)" [data]="tab.info?.dbInfo" [tabInfo]="tab"
-                    (moreInfo)="openMoreInfo($event)"></app-db-info>
+                    (moreInfo)="openMoreInfo($event)" (diagramRequested)="onDiagramRequested($event)"></app-db-info>
                 <app-table-info *ngFor="let tab of openTableTabs; trackBy: trackTabByIdentity"
                     [hidden]="!isActiveContentTab(tab)" [data]="tab.dbInfo || tab.info?.info"
-                    [elementName]="tab.info?.name || tab.name" [tabInfo]="tab"></app-table-info>
+                    [elementName]="tab.info?.name || tab.name" [tabInfo]="tab"
+                    (diagramRequested)="onDiagramRequested($event)"></app-table-info>
+                <app-database-diagram *ngFor="let tab of openDiagramTabs; trackBy: trackTabByIdentity"
+                    [hidden]="!isActiveContentTab(tab)" [tabInfo]="tab"></app-database-diagram>
                 <app-procedure-info *ngFor="let tab of openProcedureTabs; trackBy: trackTabByIdentity"
                     [hidden]="!isActiveContentTab(tab)" [data]="tab.dbInfo || tab.info?.info"
                     [elementName]="tab.info?.name || tab.name" [tabInfo]="tab"
