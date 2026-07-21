@@ -43,6 +43,12 @@ router.get('/global-version/table-indexes/:tableName', (req, res) => {
 router.get('/global-version/table-ddl/:tableName', (req, res) => {
   void CHanaV1.tableDDL(req, res);
 });
+router.get('/global-version/diagram/schema', (req, res) => {
+  void CHanaV1.schemaDiagram(req, res);
+});
+router.get('/global-version/diagram/object/:tableName', (req, res) => {
+  void CHanaV1.objectDiagram(req, res);
+});
 router.get('/global-version/procedure-ddl/:procedureName', (req, res) => {
   void CHanaV1.procedureDDL(req, res);
 });
