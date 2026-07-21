@@ -385,6 +385,11 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.refreshQuery.emit()
   }
 
+  reloadRows(): void {
+    if (this.editingEnabled || this.isLoading || this.isLoadingMore || this.isApplyingEdits) return
+    this.refreshQuery.emit()
+  }
+
   toggleResultSize(): void {
     this.toggleExpanded.emit()
   }

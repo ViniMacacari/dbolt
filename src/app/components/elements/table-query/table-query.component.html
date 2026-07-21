@@ -15,6 +15,12 @@
                 <button type="button" (click)="applyRowLimit()">{{ t('results.apply') }}</button>
             </div>
 
+            <button type="button" class="result-icon-button" *ngIf="isSelectResult && !editingEnabled"
+                [disabled]="isLoading || isLoadingMore" [attr.aria-label]="t('results.reload')"
+                [title]="t('results.reload')" (click)="reloadRows()">
+                <img src="icons/refresh.png" height="13px" width="13px">
+            </button>
+
             <button type="button" class="select-all-button" *ngIf="canSelectAllLoadedRows"
                 [title]="t('results.selectAllLoadedRows')" (click)="selectAllRows()">
                 <img src="icons/table.png" height="13px" width="13px">
