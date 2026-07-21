@@ -13,6 +13,8 @@ import { VersionComparisonService } from './version-comparison.service'
   providedIn: 'root'
 })
 export class AppUpdateService {
+  private readonly ignoredReleasesStorageKey = 'dbolt-ignored-update-releases'
+
   constructor(
     private installedVersion: AppInstalledVersionService,
     private manifestService: AppUpdateManifestService,
@@ -43,12 +45,34 @@ export class AppUpdateService {
       return null
     }
 
+    if (this.isReleaseIgnored(platform, latestRelease)) {
+      return null
+    }
+
     return {
       currentVersion,
       platform,
       release: latestRelease,
       nativeInstallAvailable: platformInfo.canOpenInstaller,
       isPrerelease: this.isPrerelease(latestRelease)
+    }
+  }
+
+  ignoreRelease(update: AppUpdateCheckResult): void {
+    const releaseKey = this.getReleaseKey(update.platform, update.release)
+    const ignoredReleases = this.readIgnoredReleases()
+
+    if (ignoredReleases.includes(releaseKey)) {
+      return
+    }
+
+    try {
+      localStorage.setItem(
+        this.ignoredReleasesStorageKey,
+        JSON.stringify([...ignoredReleases, releaseKey].slice(-20))
+      )
+    } catch {
+      // Ignoring an update is optional when browser storage is unavailable.
     }
   }
 
@@ -105,6 +129,25 @@ export class AppUpdateService {
 
     const channel = release.channel?.trim().toLowerCase()
     return Boolean(channel && channel !== 'stable') || release.version.includes('-')
+  }
+
+  private isReleaseIgnored(platform: AppDownloadPlatform, release: AppDownloadRelease): boolean {
+    return this.readIgnoredReleases().includes(this.getReleaseKey(platform, release))
+  }
+
+  private getReleaseKey(platform: AppDownloadPlatform, release: AppDownloadRelease): string {
+    return `${platform.id}:${release.version.trim().replace(/^v/i, '')}`
+  }
+
+  private readIgnoredReleases(): string[] {
+    try {
+      const value = JSON.parse(localStorage.getItem(this.ignoredReleasesStorageKey) || '[]') as unknown
+      return Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === 'string')
+        : []
+    } catch {
+      return []
+    }
   }
 }
 
