@@ -165,6 +165,43 @@ export interface TableColumn {
   [metadata: string]: QueryRowValue;
 }
 
+export type DiagramObjectKind = 'table' | 'view';
+export type DiagramScope = 'object' | 'schema';
+
+export interface DiagramColumn {
+  name: string;
+  dataType: string;
+  nullable: boolean;
+  primaryKey: boolean;
+  ordinal: number;
+}
+
+export interface DiagramEntity {
+  id: string;
+  name: string;
+  kind: DiagramObjectKind;
+  columns: DiagramColumn[];
+}
+
+export interface DiagramRelation {
+  id: string;
+  name?: string;
+  sourceEntity: string;
+  sourceColumn: string;
+  targetEntity: string;
+  targetColumn: string;
+}
+
+export interface DatabaseDiagram {
+  scope: DiagramScope;
+  title: string;
+  objectCount: number;
+  maxObjects: number;
+  limited: boolean;
+  entities: DiagramEntity[];
+  relations: DiagramRelation[];
+}
+
 export interface SelectedSchemaInfo {
   database: string;
   schema: string;
@@ -211,6 +248,7 @@ export type DatabaseObjectsResult = ServiceResult<{ data: DatabaseObject[] } & G
 export type TableColumnsResult = ServiceResult<{ data: TableColumn[] }>;
 export type TableMetadataRowsResult = ServiceResult<{ data: QueryRow[] }>;
 export type TableDDLResult = ServiceResult<{ ddl: string }>;
+export type DatabaseDiagramResult = ServiceResult<{ data: DatabaseDiagram }>;
 export type SelectedSchemaResult = ServiceResult<SelectedSchemaInfo>;
 export type SchemaChangeResult = ServiceResult<SchemaChangePayload>;
 export type StoredConnectionsResult = SavedConnection[];
