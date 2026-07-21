@@ -46,5 +46,15 @@ export interface AppUpdateCheckResult {
   platform: AppDownloadPlatform
   release: AppDownloadRelease
   nativeInstallAvailable: boolean
+  isPrerelease: boolean
+}
+
+export type AppUpdateDownloadPhase = 'preparing' | 'downloading' | 'opening'
+
+export interface AppUpdateDownloadProgress {
+  phase: AppUpdateDownloadPhase
+  receivedBytes: number
+  totalBytes: number | null
+  percentage: number | null
 }
 
