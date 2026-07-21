@@ -1,0 +1,146 @@
+<section class="database-diagram" [class.maximized]="maximized">
+    <header class="diagram-header">
+        <div class="diagram-heading">
+            <span class="diagram-heading-icon"><img src="icons/diagram.png" alt="" height="17px"></span>
+            <span>
+                <strong>{{ diagram?.title || tabInfo?.name || t('diagram.title') }}</strong>
+                <small *ngIf="diagram && !diagram.limited">
+                    {{ t('diagram.summary', { objects: diagram.objectCount, relations: relations.length }) }}
+                </small>
+                <small *ngIf="loading">{{ t('diagram.loading') }}</small>
+            </span>
+        </div>
+
+        <div class="diagram-controls" *ngIf="diagram && !diagram.limited && entities.length">
+            <button type="button" (click)="zoomOut()" [title]="t('diagram.zoomOut')">
+                <img src="icons/minus.png" alt="" height="13px">
+            </button>
+            <button type="button" class="zoom-value" (click)="resetZoom()" [title]="t('diagram.resetZoom')">
+                {{ (zoom * 100) | number:'1.0-0' }}%
+            </button>
+            <button type="button" (click)="zoomIn()" [title]="t('diagram.zoomIn')">
+                <img src="icons/add.png" alt="" height="13px">
+            </button>
+            <button type="button" class="fit-button" (click)="fitToScreen()" [title]="t('diagram.fit')">
+                {{ t('diagram.fit') }}
+            </button>
+            <button type="button" (click)="resetLayout()" [title]="t('diagram.resetLayout')">
+                <img src="icons/refresh.png" alt="" height="13px">
+            </button>
+            <span class="diagram-control-separator"></span>
+            <button type="button" (click)="toggleMaximized()"
+                [title]="maximized ? t('diagram.restore') : t('diagram.maximize')">
+                <img [src]="maximized ? 'icons/close-window.png' : 'icons/maximize.png'" alt="" height="14px">
+            </button>
+        </div>
+    </header>
+
+    <div class="diagram-body">
+        <div class="diagram-state" *ngIf="loading">
+            <span class="diagram-spinner"></span>
+            <strong>{{ t('diagram.loading') }}</strong>
+            <small>{{ t('diagram.loadingDescription') }}</small>
+        </div>
+
+        <div class="diagram-state error" *ngIf="!loading && errorMessage">
+            <span class="diagram-state-icon">!</span>
+            <strong>{{ t('diagram.loadError') }}</strong>
+            <small>{{ errorMessage }}</small>
+            <button type="button" (click)="loadDiagram(true)">{{ t('diagram.tryAgain') }}</button>
+        </div>
+
+        <div class="diagram-state limited" *ngIf="!loading && diagram?.limited">
+            <span class="diagram-state-icon"><img src="icons/diagram.png" alt="" height="24px"></span>
+            <strong>{{ t('diagram.limitTitle') }}</strong>
+            <small>{{ t('diagram.limitDescription', {
+                count: diagram?.objectCount || 0,
+                limit: diagram?.maxObjects || 800
+            }) }}</small>
+        </div>
+
+        <div class="diagram-state" *ngIf="!loading && diagram && !diagram.limited && entities.length === 0">
+            <span class="diagram-state-icon"><img src="icons/diagram.png" alt="" height="24px"></span>
+            <strong>{{ t('diagram.emptyTitle') }}</strong>
+            <small>{{ t('diagram.emptyDescription') }}</small>
+        </div>
+
+        <div #viewport class="diagram-viewport" *ngIf="!loading && diagram && !diagram.limited && entities.length"
+            [class.panning]="panning" (dblclick)="onViewportDoubleClick($event)"
+            (pointerdown)="startPan($event)" (pointermove)="pan($event)"
+            (pointerup)="endPan($event)" (pointercancel)="endPan($event)">
+            <div class="diagram-scaled-area" [style.width.px]="canvasWidth * zoom" [style.height.px]="canvasHeight * zoom">
+                <div class="diagram-canvas" [style.width.px]="canvasWidth" [style.height.px]="canvasHeight"
+                    [style.transform]="'scale(' + zoom + ')'">
+                    <svg class="diagram-relations" [attr.width]="canvasWidth" [attr.height]="canvasHeight"
+                        [attr.viewBox]="'0 0 ' + canvasWidth + ' ' + canvasHeight">
+                        <g class="diagram-relation" *ngFor="let relation of relations; trackBy: trackRelation"
+                            [class.selected]="isSelectedRelation(relation)"
+                            [class.dimmed]="selectedRelation && !isSelectedRelation(relation)">
+                            <title>{{ relation.name || t('diagram.relationship') }}: {{ relation.sourceEntity }}.{{ relation.sourceColumn }} → {{ relation.targetEntity }}.{{ relation.targetColumn }}</title>
+                            <path class="diagram-relation-line" [attr.d]="relationPath(relation)"></path>
+                            <path class="diagram-relation-hit" [attr.d]="relationPath(relation)"
+                                (pointerdown)="$event.stopPropagation()" (click)="selectRelation($event, relation)"></path>
+                        </g>
+                    </svg>
+
+                    <article class="diagram-entity" *ngFor="let entity of entities; trackBy: trackEntity"
+                        [class.view]="entity.kind === 'view'" [style.left.px]="entity.x" [style.top.px]="entity.y"
+                        [class.active]="activeEntityId === entity.id"
+                        [class.resized]="entity.manuallyResized"
+                        [class.relation-source]="isRelatedEntity(entity, 'source')"
+                        [class.relation-target]="isRelatedEntity(entity, 'target')"
+                        [style.width.px]="entity.width" [style.height.px]="entity.height">
+                        <header (pointerdown)="startEntityInteraction($event, entity, 'move')"
+                            [title]="t('diagram.moveEntity')">
+                            <img [src]="entity.kind === 'view' ? 'icons/view.png' : 'icons/diagram.png'" alt="" height="14px">
+                            <strong [title]="entity.name">{{ entity.name }}</strong>
+                            <small>{{ entity.kind === 'view' ? t('diagram.view') : t('diagram.table') }}</small>
+                        </header>
+                        <div class="diagram-entity-columns">
+                            <div class="diagram-column" *ngFor="let column of entity.columns; trackBy: trackColumn"
+                                [class.primary-key]="column.primaryKey">
+                                <span class="column-icon">
+                                    <img *ngIf="column.primaryKey" src="icons/key.png" alt="" height="12px">
+                                    <span *ngIf="!column.primaryKey" class="column-dot"></span>
+                                </span>
+                                <strong [title]="column.name">{{ column.name }}</strong>
+                                <small [title]="column.dataType">{{ column.dataType }}</small>
+                                <span class="nullable" *ngIf="column.nullable" [title]="t('diagram.nullable')">○</span>
+                            </div>
+                            <div class="diagram-column empty" *ngIf="entity.columns.length === 0">
+                                {{ t('diagram.noColumns') }}
+                            </div>
+                        </div>
+                        <span class="diagram-entity-resize" [title]="t('diagram.resizeEntity')"
+                            (pointerdown)="startEntityInteraction($event, entity, 'resize')"></span>
+                    </article>
+                </div>
+            </div>
+        </div>
+
+        <aside class="diagram-relation-info" *ngIf="selectedRelation as relation"
+            (pointerdown)="$event.stopPropagation()" (dblclick)="$event.stopPropagation()">
+            <header>
+                <span class="relation-info-icon"><img src="icons/diagram.png" alt="" height="14px"></span>
+                <span>
+                    <small>{{ t('diagram.relationship') }}</small>
+                    <strong>{{ relation.name || t('diagram.unnamedRelationship') }}</strong>
+                </span>
+                <button type="button" (click)="clearSelectedRelation()" [title]="t('generic.close')">
+                    <img src="icons/close.png" alt="" height="13px">
+                </button>
+            </header>
+            <div class="relation-endpoint source">
+                <small>{{ t('diagram.source') }}</small>
+                <strong>{{ relation.sourceEntity }}</strong>
+                <code>{{ relation.sourceColumn }}</code>
+            </div>
+            <span class="relation-direction" aria-hidden="true">↓</span>
+            <div class="relation-endpoint target">
+                <small>{{ t('diagram.target') }}</small>
+                <strong>{{ relation.targetEntity }}</strong>
+                <code>{{ relation.targetColumn }}</code>
+            </div>
+        </aside>
+    </div>
+</section>

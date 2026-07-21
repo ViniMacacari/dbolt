@@ -5,6 +5,7 @@ import LSHanaV1 from '../../services/lists/hana/hana-v1.js';
 import SSchemaHanaV1 from '../../services/schemas/hana/hana-v1.js';
 import SQuerysHana from '../../services/queries/hana/hana-v1.js';
 import ListObjectsHanaV1 from '../../services/database-info/hana/hana-v1.js';
+import DiagramHanaV1 from '../../services/diagrams/hana/hana-v1.js';
 import DatabaseVersionService from '../../services/database-version/database-version.js';
 import { sendBadRequest, sendInternalError, sendServiceResult } from '../../utils/http.js';
 import { getConnectionKey } from '../../utils/request-context.js';
@@ -188,6 +189,22 @@ class CHanaV1 {
     try {
       const result = await ListObjectsHanaV1.procedureDDL(req.params.procedureName, getConnectionKey(req));
       sendServiceResult(res, result);
+    } catch (error: unknown) {
+      sendInternalError(res, error);
+    }
+  }
+
+  async schemaDiagram(req: Request, res: Response): Promise<void> {
+    try {
+      sendServiceResult(res, await DiagramHanaV1.schemaDiagram(getConnectionKey(req)));
+    } catch (error: unknown) {
+      sendInternalError(res, error);
+    }
+  }
+
+  async objectDiagram(req: Request<TableNameParams>, res: Response): Promise<void> {
+    try {
+      sendServiceResult(res, await DiagramHanaV1.objectDiagram(req.params.tableName, getConnectionKey(req)));
     } catch (error: unknown) {
       sendInternalError(res, error);
     }

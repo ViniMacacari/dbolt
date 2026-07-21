@@ -5,6 +5,7 @@ import LSPg1 from '../../services/lists/postgres/v9.js';
 import SSPgV1 from '../../services/schemas/postgres/v9.js';
 import SQueryPgV1 from '../../services/queries/postgres/v9.js';
 import ListObjectsPgV1 from '../../services/database-info/postgres/v9.js';
+import DiagramPostgresV1 from '../../services/diagrams/postgres/v9.js';
 import DatabaseVersionService from '../../services/database-version/database-version.js';
 import { sendBadRequest, sendInternalError, sendServiceResult } from '../../utils/http.js';
 import { getConnectionKey } from '../../utils/request-context.js';
@@ -195,6 +196,22 @@ class CPostgresV1 {
     try {
       const result = await ListObjectsPgV1.procedureDDL(req.params.procedureName, getConnectionKey(req));
       sendServiceResult(res, result);
+    } catch (error: unknown) {
+      sendInternalError(res, error);
+    }
+  }
+
+  async schemaDiagram(req: Request, res: Response): Promise<void> {
+    try {
+      sendServiceResult(res, await DiagramPostgresV1.schemaDiagram(getConnectionKey(req)));
+    } catch (error: unknown) {
+      sendInternalError(res, error);
+    }
+  }
+
+  async objectDiagram(req: Request<TableNameParams>, res: Response): Promise<void> {
+    try {
+      sendServiceResult(res, await DiagramPostgresV1.objectDiagram(req.params.tableName, getConnectionKey(req)));
     } catch (error: unknown) {
       sendInternalError(res, error);
     }

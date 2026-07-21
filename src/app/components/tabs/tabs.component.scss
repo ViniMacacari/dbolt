@@ -22,22 +22,31 @@
         display: flex;
         align-items: center;
 
-        background-color: #1b1b1b;
+        background-color: var(--dbolt-sidebar-control-surface);
         border-radius: 15px;
 
-        min-height: 35px;
-        min-width: 35px;
-        padding: 5px 15px;
+        box-sizing: border-box;
+        height: 38px;
+        min-height: 38px;
+        min-width: 38px;
+        padding: 0;
+        width: 38px;
 
-        margin: 3px;
+        margin: 0;
 
         cursor: pointer;
+        justify-content: center;
+        transition: background-color .16s ease;
+
+        &:hover {
+            background-color: var(--dbolt-sidebar-action-hover);
+        }
 
         .dropdown {
             position: absolute;
             top: 40px;
             left: 0;
-            background-color: #1b1b1b;
+            background-color: var(--dbolt-1b1b1b);
             box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
             border-radius: 15px;
             z-index: 999999;
@@ -74,7 +83,7 @@
         }
 
         .dropdown li:hover {
-            background-color: #2d2c2c;
+            background-color: var(--dbolt-2d2c2c);
         }
     }
 
@@ -105,6 +114,7 @@
         }
 
         .tab {
+            box-sizing: border-box;
             display: grid;
             align-items: center;
             grid-template-columns: 15px minmax(0, 1fr) 15px;
@@ -112,10 +122,10 @@
 
             flex: 0 0 auto;
 
-            background-color: #1b1b1b;
+            background-color: var(--dbolt-1b1b1b);
             border-radius: 15px;
 
-            height: 35px;
+            height: 38px;
             width: auto;
             max-width: 250px;
             min-width: 50px;
@@ -125,6 +135,19 @@
             padding: 5px 15px;
 
             cursor: pointer;
+
+            &.tab-opening {
+                animation: tab-open .24s cubic-bezier(.2, .8, .2, 1) both;
+                transform-origin: left center;
+                will-change: max-width, opacity, padding, transform;
+            }
+
+            &.tab-closing {
+                animation: tab-close .19s cubic-bezier(.4, 0, .2, 1) both;
+                pointer-events: none;
+                transform-origin: center;
+                will-change: width, opacity, margin, padding, transform;
+            }
 
             .tab-icon,
             .tab-close {
@@ -137,6 +160,13 @@
 
             .tab-close {
                 justify-self: end;
+                opacity: .78;
+                transition: opacity .14s ease, transform .14s ease;
+
+                &:hover {
+                    opacity: 1;
+                    transform: scale(1.08);
+                }
             }
 
             .text {
@@ -154,10 +184,67 @@
             }
 
             &.active {
-                background-color: #2d2c2c;
-                border: 2px solid #1d162e;
+                background-color: var(--dbolt-2d2c2c);
+                border: 2px solid var(--dbolt-1d162e);
             }
         }
+    }
+}
+
+@keyframes tab-open {
+    from {
+        gap: 0;
+        max-width: 0;
+        min-width: 0;
+        opacity: 0;
+        padding-left: 0;
+        padding-right: 0;
+        transform: translateX(-8px) scale(.96);
+    }
+
+    to {
+        gap: 10px;
+        max-width: 250px;
+        min-width: 50px;
+        opacity: 1;
+        padding-left: 15px;
+        padding-right: 15px;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes tab-close {
+    from {
+        flex-basis: var(--tab-animation-width);
+        margin-inline-end: 0;
+        max-width: var(--tab-animation-width);
+        min-width: 0;
+        opacity: 1;
+        padding-left: 15px;
+        padding-right: 15px;
+        transform: translateY(0) scale(1);
+        width: var(--tab-animation-width);
+    }
+
+    to {
+        border-width: 0;
+        flex-basis: 0;
+        gap: 0;
+        margin-inline-end: -.5rem;
+        max-width: 0;
+        min-width: 0;
+        opacity: 0;
+        padding-left: 0;
+        padding-right: 0;
+        transform: translateY(-4px) scale(.96);
+        width: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .content .tabs .tab.tab-opening,
+    .content .tabs .tab.tab-closing {
+        animation-duration: 0.01ms !important;
     }
 }
 
@@ -176,10 +263,10 @@
 }
 
 ::-webkit-scrollbar-track {
-    background-color: #1b1b1b;
+    background-color: var(--dbolt-1b1b1b);
 }
 
 ::-webkit-scrollbar-thumb {
-    background-color: #353535;
+    background-color: var(--dbolt-353535);
     border-radius: 15px;
 }

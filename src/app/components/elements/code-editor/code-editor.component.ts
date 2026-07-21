@@ -8,7 +8,7 @@ import { ToastComponent } from '../../toast/toast.component'
 import { TableQueryComponent } from "../table-query/table-query.component"
 import { SaveQueryComponent } from "../../modal/save-query/save-query.component"
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
-import { AppSettingsService, SqlHighlightColors } from '../../../services/app-settings/app-settings.service'
+import { AppSettingsService, SqlHighlightColors, SqlHighlightMode } from '../../../services/app-settings/app-settings.service'
 import { SqlTableAutocompleteService } from '../../../services/code-autocomplete/sql-table-autocomplete.service'
 import { SqlCodeFormatterService } from '../../../services/code-formatting/sql-code-formatter.service'
 import { SqlSyntaxMonacoMarkersService } from '../../../services/sql-validation/sql-syntax-monaco-markers.service'
@@ -16,9 +16,23 @@ import { QuerySaveService, SavedQuery, SavedQueryInput } from '../../../services
 import { KeyboardShortcutService } from '../../../services/keyboard-shortcuts/keyboard-shortcut.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { AppPlatformService } from '../../../services/platform/app-platform.service'
+import { AppThemeService } from '../../../services/theme/app-theme.service'
 import { selectSqlStatementAtCursor } from '../../../utils/sql-statement-selection'
 
 let sqlTokenizerConfigured = false
+
+const LIGHT_SQL_HIGHLIGHT_COLORS: SqlHighlightColors = {
+  keyword: '#005a9c',
+  function: '#795e26',
+  identifier: '#1f2933',
+  string: '#267f3a',
+  number: '#7a3e9d',
+  comment: '#5f6b76',
+  operator: '#374151',
+  type: '#6b46c1',
+  variable: '#8b3a62',
+  delimiter: '#4b5563'
+}
 
 interface SqlNavigationToken {
   value: string
@@ -64,6 +78,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private autocompleteDisposable?: monaco.IDisposable
   private syntaxValidationDisposable?: monaco.IDisposable
   private settingsSubscription?: Subscription
+  private themeSubscription?: Subscription
   private languageSubscription?: Subscription
   private shortcutDisposers: Array<() => void> = []
   private editorActionDisposables: monaco.IDisposable[] = []
@@ -118,6 +133,12 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   isLoadingMore: boolean = false
   maxResultLines: number | null = 0
   queryExecutionTimeMs: number | null = null
+  queryResultPanelOpening: boolean = false
+  queryResultContentEntering: boolean = false
+
+  private resultPanelAnimationTimer: ReturnType<typeof setTimeout> | null = null
+  private resultContentAnimationTimer: ReturnType<typeof setTimeout> | null = null
+  private resultContentAnimationFrame: number | null = null
 
   dataSave: any = {}
 
@@ -132,13 +153,17 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     private querySave: QuerySaveService,
     private keyboardShortcuts: KeyboardShortcutService,
     private language: AppLanguageService,
-    private platform: AppPlatformService
+    private platform: AppPlatformService,
+    private appTheme: AppThemeService
   ) {
     this.settingsSubscription = this.appSettings.settingsChanges$.subscribe((settings) => {
       this.applySqlHighlightTheme(settings.sqlHighlightColors)
     })
     this.languageSubscription = this.language.languageChanges$.subscribe(() => {
       this.registerEditorContextMenuActions()
+    })
+    this.themeSubscription = this.appTheme.themeChanges$.subscribe(() => {
+      this.applySqlHighlightTheme(this.appSettings.getSqlHighlightColors())
     })
   }
 
@@ -170,6 +195,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   ngOnDestroy(): void {
+    this.clearResultAnimations()
+
     if (this.tabInfo?.closing) {
       this.releaseQueryMemory()
     } else {
@@ -179,6 +206,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.autocompleteDisposable?.dispose()
     this.syntaxValidationDisposable?.dispose()
     this.settingsSubscription?.unsubscribe()
+    this.themeSubscription?.unsubscribe()
     this.languageSubscription?.unsubscribe()
     this.unregisterKeyboardShortcuts()
     this.disposeEditorContextMenuActions()
@@ -279,10 +307,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     monaco.languages.setMonarchTokensProvider('sql', {
       ignoreCase: true,
-      defaultToken: 'identifier',
+      defaultToken: 'identifier.column',
       keywords: [
         'add', 'all', 'alter', 'and', 'any', 'as', 'asc', 'authorization', 'backup', 'begin',
-        'between', 'break', 'by', 'cascade', 'case', 'check', 'close', 'clustered', 'coalesce',
+        'between', 'break', 'by', 'cascade', 'case', 'check', 'close', 'clustered',
         'collate', 'column', 'commit', 'constraint', 'continue', 'create', 'cross', 'current',
         'current_date', 'current_time', 'current_timestamp', 'cursor', 'database', 'declare',
         'default', 'delete', 'desc', 'distinct', 'drop', 'else', 'end', 'escape', 'except',
@@ -292,7 +320,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         'order', 'outer', 'over', 'primary', 'procedure', 'references', 'right', 'rollback',
         'rownum', 'schema', 'select', 'set', 'table', 'then', 'to', 'top', 'transaction',
         'truncate', 'union', 'unique', 'update', 'use', 'values', 'view', 'when', 'where',
-        'while', 'with'
+        'while', 'with', 'true', 'false'
       ],
       types: [
         'bigint', 'binary', 'bit', 'blob', 'boolean', 'char', 'clob', 'date', 'datetime',
@@ -306,11 +334,42 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
           [/--.*$/, 'comment'],
           [/\/\*/, 'comment', '@comment'],
           [/'(?:''|[^'])*'/, 'string'],
-          [/"(?:""|[^"])*"/, 'identifier'],
-          [/`(?:``|[^`])*`/, 'identifier'],
-          [/\[(?:\]\]|[^\]])*\]/, 'identifier'],
+          [/"(?:""|[^"])*"/, 'identifier.column'],
+          [/`(?:``|[^`])*`/, 'identifier.column'],
+          [/\[(?:\]\]|[^\]])*\]/, 'identifier.column'],
           [/\b\d+(?:\.\d+)?\b/, 'number'],
           [/@[a-zA-Z_][\w$#]*/, 'variable'],
+          [/(with)(\s+)([a-zA-Z_][\w$#]*)/, ['keyword', 'white', 'identifier.cte']],
+          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)(\s+)(as)(\s+)([a-zA-Z_][\w$#]*)/, [
+            'keyword', 'white', 'identifier.qualifier', 'delimiter', 'identifier.table',
+            'white', 'keyword', 'white', 'identifier.tableAlias'
+          ]],
+          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)(\s+)([a-zA-Z_][\w$#]*)(?=\s+(?:on|where|join|left|right|inner|outer|cross|full|group|order|having|limit|set)\b|\s*,|$)/, [
+            'keyword', 'white', 'identifier.qualifier', 'delimiter', 'identifier.table',
+            'white', 'identifier.tableAlias'
+          ]],
+          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)(\s+)(as)(\s+)([a-zA-Z_][\w$#]*)/, [
+            'keyword', 'white', 'identifier.table', 'white', 'keyword', 'white', 'identifier.tableAlias'
+          ]],
+          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)(\s+)([a-zA-Z_][\w$#]*)(?=\s+(?:on|where|join|left|right|inner|outer|cross|full|group|order|having|limit|set)\b|\s*,|$)/, [
+            'keyword', 'white', 'identifier.table', 'white', 'identifier.tableAlias'
+          ]],
+          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)/, ['keyword', 'white', 'identifier.table']],
+          [/(as)(\s+)([a-zA-Z_][\w$#]*)/, ['keyword', 'white', {
+            cases: {
+              '@types': 'type',
+              '@default': 'identifier.columnAlias'
+            }
+          }]],
+          [/([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)/, [
+            'identifier.qualifier', 'delimiter', 'identifier.qualifier', 'delimiter', 'identifier.column'
+          ]],
+          [/([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)(?=\s*\()/, [
+            'identifier.qualifier', 'delimiter', 'function'
+          ]],
+          [/([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)/, [
+            'identifier.qualifier', 'delimiter', 'identifier.column'
+          ]],
           [/[a-zA-Z_][\w$#]*(?=\s*\()/, {
             cases: {
               '@keywords': 'keyword',
@@ -322,7 +381,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
             cases: {
               '@keywords': 'keyword',
               '@types': 'type',
-              '@default': 'identifier'
+              '@default': 'identifier.column'
             }
           }],
           [/[<>!~?:&|+\-*\/%^=]+/, 'operator'],
@@ -342,33 +401,85 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private defineSqlHighlightTheme(colors: SqlHighlightColors): void {
     const normalizedColors = this.appSettings.normalizeSqlHighlightColors(colors)
+    const themeColors = this.resolveThemeHighlightColors(normalizedColors)
+    const isLightTheme = this.appTheme.getTheme() === 'light'
 
-    const transparentEditorColors = {
-      'editor.background': '#00000000',
-      'editorGutter.background': '#00000000',
-      'editorLineHighlightBorder': '#00000000',
-      'editorLineHighlightBackground': '#00000000',
-      'editorWidget.border': '#00000000',
-      'focusBorder': '#00000000'
-    }
+    const editorSurfaceColors: monaco.editor.IColors = isLightTheme
+      ? {
+        'editor.background': '#ffffff',
+        'editorGutter.background': '#f6f8fa',
+        'editorLineHighlightBorder': '#00000000',
+        'editorLineHighlightBackground': '#f3f7fb',
+        'editorWidget.background': '#ffffff',
+        'editorWidget.border': '#b8c5d1',
+        'editorSuggestWidget.background': '#ffffff',
+        'editorSuggestWidget.border': '#b8c5d1',
+        'editorSuggestWidget.foreground': '#263442',
+        'editorSuggestWidget.selectedBackground': '#d8eafb',
+        'editorSuggestWidget.selectedForeground': '#17324d',
+        'editorSuggestWidget.highlightForeground': '#005a9c',
+        'editorHoverWidget.background': '#ffffff',
+        'editorHoverWidget.border': '#b8c5d1',
+        'focusBorder': '#00000000'
+      }
+      : {
+        'editor.background': '#00000000',
+        'editorGutter.background': '#00000000',
+        'editorLineHighlightBorder': '#00000000',
+        'editorLineHighlightBackground': '#00000000',
+        'editorWidget.border': '#00000000',
+        'focusBorder': '#00000000'
+      }
 
     monaco.editor.defineTheme('dbolt-sql-configurable', {
-      base: 'vs-dark',
+      base: isLightTheme ? 'vs' : 'vs-dark',
       inherit: false,
-      rules: this.buildSqlTokenRules(normalizedColors),
+      rules: this.buildSqlTokenRules(themeColors, this.appSettings.getSqlHighlightMode()),
       colors: {
-        ...transparentEditorColors,
-        'editor.foreground': normalizedColors.identifier,
-        'editorLineNumber.foreground': '#858585',
-        'editorLineNumber.activeForeground': '#c6c6c6',
-        'editorCursor.foreground': '#ffffff',
-        'editor.selectionBackground': '#264f78',
-        'editor.inactiveSelectionBackground': '#3a3d41'
+        ...editorSurfaceColors,
+        'editor.foreground': themeColors.identifier,
+        'editorLineNumber.foreground': isLightTheme ? '#7a8793' : '#858585',
+        'editorLineNumber.activeForeground': isLightTheme ? '#263442' : '#c6c6c6',
+        'editorCursor.foreground': isLightTheme ? '#111827' : '#ffffff',
+        'editor.selectionBackground': isLightTheme ? '#add6ff' : '#264f78',
+        'editor.inactiveSelectionBackground': isLightTheme ? '#dbeafe' : '#3a3d41',
+        'editorError.foreground': '#f14c4c',
+        'editorError.border': '#00000000'
       }
     })
   }
 
-  private buildSqlTokenRules(colors: SqlHighlightColors): monaco.editor.ITokenThemeRule[] {
+  private resolveThemeHighlightColors(colors: SqlHighlightColors): SqlHighlightColors {
+    if (this.appTheme.getTheme() !== 'light') {
+      return colors
+    }
+
+    return (Object.keys(colors) as Array<keyof SqlHighlightColors>).reduce((resolved, key) => ({
+      ...resolved,
+      [key]: this.hasLightBackgroundContrast(colors[key])
+        ? colors[key]
+        : LIGHT_SQL_HIGHLIGHT_COLORS[key]
+    }), {} as SqlHighlightColors)
+  }
+
+  private hasLightBackgroundContrast(color: string): boolean {
+    const normalized = color.replace('#', '')
+    if (!/^[0-9a-f]{6}$/i.test(normalized)) return false
+
+    const channels = [0, 2, 4].map(index => parseInt(normalized.slice(index, index + 2), 16) / 255)
+    const linearChannels = channels.map(channel => channel <= 0.04045
+      ? channel / 12.92
+      : Math.pow((channel + 0.055) / 1.055, 2.4)
+    )
+    const luminance = 0.2126 * linearChannels[0] + 0.7152 * linearChannels[1] + 0.0722 * linearChannels[2]
+
+    return luminance <= 0.3
+  }
+
+  private buildSqlTokenRules(
+    colors: SqlHighlightColors,
+    mode: SqlHighlightMode
+  ): monaco.editor.ITokenThemeRule[] {
     const rules: monaco.editor.ITokenThemeRule[] = []
     const addRule = (token: string, color: string, fontStyle?: string) => {
       rules.push(
@@ -387,6 +498,15 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     addRule('type', colors.type)
     addRule('variable', colors.variable)
     addRule('delimiter', colors.delimiter)
+
+    if (mode === 'vibrant') {
+      addRule('identifier.cte', colors.variable)
+      addRule('identifier.table', colors.variable)
+      addRule('identifier.tableAlias', colors.variable, 'italic')
+      addRule('identifier.qualifier', colors.variable, 'italic')
+      addRule('identifier.column', colors.identifier)
+      addRule('identifier.columnAlias', colors.identifier, 'italic')
+    }
 
     return rules
   }
@@ -1056,9 +1176,12 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   async runSql(sql: string): Promise<void> {
     if (this.isLoadingQuery) return
 
+    const shouldAnimateResultPanel = !this.queryResultOpen
     this.isLoadingMore = false
     this.isLoadingQuery = true
     this.queryResultOpen = true
+    this.queryResultContentEntering = false
+    if (shouldAnimateResultPanel) this.startResultPanelAnimation()
     this.queryError = ''
     this.queryReponse = []
     this.queryColumns = []
@@ -1094,6 +1217,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       this.layoutEditor()
     } finally {
       this.isLoadingQuery = false
+      this.startResultContentAnimation()
       this.persistQueryState()
     }
   }
@@ -1196,6 +1320,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   private releaseQueryMemory(): void {
+    this.clearResultAnimations()
     this.tableQuery?.releaseData()
     this.queryReponse = []
     this.queryColumns = []
@@ -1328,6 +1453,46 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private layoutEditor(): void {
     setTimeout(() => this.editor?.layout(), 0)
+  }
+
+  private startResultPanelAnimation(): void {
+    if (this.resultPanelAnimationTimer) clearTimeout(this.resultPanelAnimationTimer)
+
+    this.queryResultPanelOpening = true
+    this.resultPanelAnimationTimer = setTimeout(() => {
+      this.queryResultPanelOpening = false
+      this.resultPanelAnimationTimer = null
+    }, 260)
+  }
+
+  private startResultContentAnimation(): void {
+    this.queryResultContentEntering = false
+
+    if (this.resultContentAnimationFrame !== null) {
+      window.cancelAnimationFrame(this.resultContentAnimationFrame)
+    }
+    if (this.resultContentAnimationTimer) clearTimeout(this.resultContentAnimationTimer)
+
+    this.resultContentAnimationFrame = window.requestAnimationFrame(() => {
+      this.resultContentAnimationFrame = null
+      this.queryResultContentEntering = true
+      this.resultContentAnimationTimer = setTimeout(() => {
+        this.queryResultContentEntering = false
+        this.resultContentAnimationTimer = null
+      }, 380)
+    })
+  }
+
+  private clearResultAnimations(): void {
+    if (this.resultPanelAnimationTimer) clearTimeout(this.resultPanelAnimationTimer)
+    if (this.resultContentAnimationTimer) clearTimeout(this.resultContentAnimationTimer)
+    if (this.resultContentAnimationFrame !== null) window.cancelAnimationFrame(this.resultContentAnimationFrame)
+
+    this.resultPanelAnimationTimer = null
+    this.resultContentAnimationTimer = null
+    this.resultContentAnimationFrame = null
+    this.queryResultPanelOpening = false
+    this.queryResultContentEntering = false
   }
 
   private refreshVisibleLayout(focusEditor: boolean = false): void {

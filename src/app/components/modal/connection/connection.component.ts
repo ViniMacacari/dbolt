@@ -10,13 +10,14 @@ import { ConnectionsService } from '../../../services/resolve-connections/connec
 import type { SavedConnection } from '../../../services/resolve-connections/connections.service'
 import { DatabaseVersionService } from '../../../services/database-version/database-version.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
+import { ButtonComponent } from '../../elements/button/button.component'
 
 @Component({
   selector: 'app-connection',
   standalone: true,
   templateUrl: './connection.component.html',
   styleUrls: ['./connection.component.scss'],
-  imports: [InputListComponent, SQLiteFileExplorerComponent, CommonModule, FormsModule, ToastComponent]
+  imports: [InputListComponent, SQLiteFileExplorerComponent, CommonModule, FormsModule, ToastComponent, ButtonComponent]
 })
 export class ConnectionComponent {
   @Input() connection: SavedConnection | null = null

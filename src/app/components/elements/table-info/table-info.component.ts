@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, HostListener, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild, ViewEncapsulation } from '@angular/core'
+import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild, ViewEncapsulation } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { AgGridAngular } from 'ag-grid-angular'
 import { AllCommunityModule, ColDef, GridApi, GridReadyEvent, ModuleRegistry } from 'ag-grid-community'
@@ -27,6 +27,7 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
   @Input() widthTable: number = 300
   @Input() tabInfo: any
   @Input() elementName: string = ''
+  @Output() diagramRequested = new EventEmitter<any>()
 
   @ViewChild('metadataGridWrapper') metadataGridWrapper?: ElementRef<HTMLDivElement>
 
@@ -128,6 +129,16 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
 
   filterDDL(): void {
     this.setActiveView('ddl')
+  }
+
+  openDiagram(): void {
+    const context = this.tabInfo?.dbInfo || this.data
+    this.diagramRequested.emit({
+      scope: 'object',
+      objectName: this.elementName,
+      objectType: this.tabInfo?.info?.objectType || 'table',
+      context
+    })
   }
 
   onGridReady(event: GridReadyEvent): void {

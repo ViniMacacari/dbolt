@@ -34,15 +34,15 @@
 }
 
 .toggle-track {
-    background: #292727;
-    border: 1px solid #3b3b3b;
+    background: var(--dbolt-292727);
+    border: 1px solid var(--dbolt-3b3b3b);
     border-radius: 999px;
     inset: 0;
     position: absolute;
     transition: background-color .2s ease, border-color .2s ease;
 
     &::before {
-        background: #969696;
+        background: var(--dbolt-969696);
         border-radius: 50%;
         content: '';
         height: 20px;
@@ -55,11 +55,11 @@
 }
 
 input:checked + .toggle-track {
-    background: #2b3340;
+    background: var(--dbolt-2b3340);
     border-color: rgba(115, 158, 202, 0.55);
 
     &::before {
-        background: #d8e9fb;
+        background: var(--dbolt-d8e9fb);
         transform: translateX(23px);
     }
 }

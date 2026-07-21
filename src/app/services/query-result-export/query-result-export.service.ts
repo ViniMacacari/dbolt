@@ -44,6 +44,28 @@ export class QueryResultExportService {
     this.downloadBlob(blob, filename)
   }
 
+  exportCsv(payload: QueryResultExportPayload, filename: string = 'query-result.csv'): void {
+    const rows = [
+      payload.columns.map((value) => this.toCsvValue(value, false)),
+      ...payload.rows.map((row) => row.map((value) => this.toCsvValue(value, true)))
+    ]
+    const content = rows
+      .map((row) => row.join(','))
+      .join('\r\n')
+    const blob = new Blob(['\uFEFF', content], { type: 'text/csv;charset=utf-8' })
+
+    this.downloadBlob(blob, filename)
+  }
+
+  exportTxt(payload: QueryResultExportPayload, filename: string = 'query-result.txt'): void {
+    const header = this.toTsv([payload.columns])
+    const data = this.toTsv(payload.rows, true)
+    const content = data ? `${header}\n${data}` : header
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+
+    this.downloadBlob(blob, filename)
+  }
+
   private async writeTextToClipboard(text: string): Promise<void> {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text)
@@ -61,9 +83,9 @@ export class QueryResultExportService {
     document.body.removeChild(textarea)
   }
 
-  private toTsv(rows: any[][]): string {
+  private toTsv(rows: any[][], formatDecimals: boolean = false): string {
     return rows
-      .map((row) => row.map((value) => this.toDelimitedValue(value)).join('\t'))
+      .map((row) => row.map((value) => this.toDelimitedValue(value, formatDecimals)).join('\t'))
       .join('\n')
   }
 
@@ -141,7 +163,10 @@ export class QueryResultExportService {
   <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
   <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>
+  <cellXfs count="2">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <xf numFmtId="2" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+  </cellXfs>
 </styleSheet>`
   }
 
@@ -165,6 +190,13 @@ export class QueryResultExportService {
 
   private xlsxCell(value: any, rowNumber: number, columnIndex: number): string {
     const reference = `${this.columnName(columnIndex)}${rowNumber}`
+    const numericValue = rowNumber > 1 ? this.getSpreadsheetNumber(value) : null
+
+    if (numericValue) {
+      const style = numericValue.decimal ? ' s="1"' : ''
+      return `<c r="${reference}"${style}><v>${numericValue.value}</v></c>`
+    }
+
     return `<c r="${reference}" t="inlineStr"><is><t>${this.escapeXml(this.formatValue(value))}</t></is></c>`
   }
 
@@ -295,11 +327,42 @@ export class QueryResultExportService {
     return column
   }
 
-  private toDelimitedValue(value: any): string {
-    const formatted = this.formatValue(value)
+  private toDelimitedValue(value: any, formatDecimals: boolean = false): string {
+    const formatted = formatDecimals ? this.formatExportValue(value) : this.formatValue(value)
     if (!/[\t\n\r"]/.test(formatted)) return formatted
 
     return `"${formatted.replace(/"/g, '""')}"`
+  }
+
+  private toCsvValue(value: any, formatDecimals: boolean): string {
+    const formatted = formatDecimals ? this.formatExportValue(value) : this.formatValue(value)
+    if (!/[,\n\r"]/.test(formatted)) return formatted
+
+    return `"${formatted.replace(/"/g, '""')}"`
+  }
+
+  private formatExportValue(value: any): string {
+    const numericValue = this.getSpreadsheetNumber(value)
+    if (numericValue?.decimal) return Number(numericValue.value).toFixed(2)
+
+    return this.formatValue(value)
+  }
+
+  private getSpreadsheetNumber(value: any): { value: string, decimal: boolean } | null {
+    if (typeof value === 'number') {
+      if (!Number.isFinite(value)) return null
+      return { value: String(value), decimal: !Number.isInteger(value) }
+    }
+
+    if (typeof value !== 'string') return null
+
+    const normalized = value.trim()
+    if (!/^[+-]?(?:\d+\.\d{3,}|\.\d{3,})$/.test(normalized)) return null
+
+    const numericValue = Number(normalized)
+    if (!Number.isFinite(numericValue)) return null
+
+    return { value: String(numericValue), decimal: true }
   }
 
   private formatValue(value: any): string {

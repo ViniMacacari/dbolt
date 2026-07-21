@@ -54,10 +54,10 @@
 
         </div>
         <div class="modal-footer">
-            <button class="btn-cancel" (click)="onClose()">{{ t('connection.cancel') }}</button>
-            <button class="btn-page" (click)="newConnection()">
+            <app-button variant="danger" (pressed)="onClose()">{{ t('connection.cancel') }}</app-button>
+            <app-button (pressed)="newConnection()">
                 {{ isEditing ? t('connection.save') : t('connection.add') }}
-            </button>
+            </app-button>
         </div>
     </div>
 </div>

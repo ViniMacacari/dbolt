@@ -1,9 +1,9 @@
 .dropdown-container {
     position: relative;
     width: 100%;
-    border: 1px solid #353535;
+    border: 1px solid var(--dbolt-353535);
     border-radius: 15px;
-    background-color: #1b1b1b;
+    background-color: var(--dbolt-1b1b1b);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -13,8 +13,8 @@
     outline: none;
     font-size: 14px;
     padding: 12px;
-    background-color: #1b1b1b;
-    color: #e8eaed;
+    background-color: var(--dbolt-1b1b1b);
+    color: var(--dbolt-e8eaed);
     border-radius: 15px;
 
     font-family: 'Nunito';
@@ -27,8 +27,8 @@
     right: 0;
     max-height: 200px;
     overflow-y: auto;
-    border: 1px solid #353535;
-    background-color: #1b1b1b;
+    border: 1px solid var(--dbolt-353535);
+    background-color: var(--dbolt-1b1b1b);
     z-index: 9999;
     list-style: none;
     margin: 0;
@@ -42,11 +42,11 @@
     font-weight: 500;
 
     padding: 12px;
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     cursor: pointer;
     transition: background-color 0.2s;
 
     &:hover {
-        background-color: #141414;
+        background-color: var(--dbolt-141414);
     }
 }

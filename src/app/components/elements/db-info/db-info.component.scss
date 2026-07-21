@@ -33,8 +33,8 @@
     min-height: 0;
     overflow: hidden;
     position: relative;
-    background-color: #292727;
-    border: 1px solid #363535;
+    background-color: var(--dbolt-292727);
+    border: 1px solid var(--dbolt-363535);
     border-radius: 10px;
 
     .db-info-grid {
@@ -48,10 +48,10 @@
     .ag-root-wrapper {
         height: 100% !important;
         min-height: 0;
-        background-color: #292727;
+        background-color: var(--dbolt-292727);
         border: none;
         border-radius: 10px;
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         overflow: hidden;
     }
 
@@ -61,29 +61,29 @@
     .ag-body-viewport,
     .ag-center-cols-viewport,
     .ag-center-cols-container {
-        background-color: #292727;
+        background-color: var(--dbolt-292727);
     }
 
     .ag-header {
-        background-color: #1b1b1b;
-        border-bottom: 1px solid #363535;
-        color: #e8eaed;
+        background-color: var(--dbolt-1b1b1b);
+        border-bottom: 1px solid var(--dbolt-363535);
+        color: var(--dbolt-e8eaed);
     }
 
     .ag-row-even,
     .ag-row-odd {
-        background-color: #292727;
-        border-bottom: 1px solid #363535;
-        color: #e8eaed;
+        background-color: var(--dbolt-292727);
+        border-bottom: 1px solid var(--dbolt-363535);
+        color: var(--dbolt-e8eaed);
     }
 
     .ag-row-hover {
-        background-color: #3d3a3a !important;
+        background-color: var(--dbolt-3d3a3a) !important;
         cursor: pointer;
     }
 
     .ag-cell-focus {
-        border: 1px solid #747474 !important;
+        border: 1px solid var(--dbolt-747474) !important;
     }
 
     .ag-body-viewport {
@@ -93,8 +93,8 @@
 
 .db-info-status {
     align-items: center;
-    background: rgba(27, 27, 27, .88);
-    color: #e8eaed;
+    background: var(--dbolt-db-info-status-bg);
+    color: var(--dbolt-e8eaed);
     display: flex;
     font-family: 'Nunito';
     font-size: .86em;
@@ -108,8 +108,8 @@
 
     &.error {
         align-items: flex-start;
-        background: #1b1b1b;
-        color: #ffb4b4;
+        background: var(--dbolt-1b1b1b);
+        color: var(--dbolt-ffb4b4);
         flex-direction: column;
         justify-content: flex-start;
         text-align: left;
@@ -124,9 +124,9 @@
 
 .db-info-spinner {
     animation: db-info-spin .8s linear infinite;
-    border: 2px solid #5f5f5f;
+    border: 2px solid var(--dbolt-5f5f5f);
     border-radius: 50%;
-    border-top-color: #d8e9fb;
+    border-top-color: var(--dbolt-d8e9fb);
     height: 18px;
     width: 18px;
 }
@@ -139,7 +139,7 @@
 
 .db-info-container .editor-toolbar {
     flex: 0 0 160px;
-    background-color: #1b1b1b;
+    background-color: var(--dbolt-1b1b1b);
     border-radius: 15px;
     padding: 10px;
 
@@ -150,39 +150,39 @@
         padding: 5px;
         gap: 10px;
         border: none;
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-size: .9em;
         font-family: 'Nunito';
         cursor: pointer;
         transition: all 0.2s ease-in-out;
 
         small {
-            color: #969696;
+            color: var(--dbolt-969696);
             margin-left: auto;
         }
 
         &:hover {
-            background-color: #3d3a3a;
+            background-color: var(--dbolt-3d3a3a);
         }
     }
 
     .separator {
         height: 1px;
-        border-bottom: 1px solid #3d3a3a;
+        border-bottom: 1px solid var(--dbolt-3d3a3a);
     }
 }
 
 .db-info-container .editor-toolbar .btn.active {
-    background-color: #3d3a3a !important;
+    background-color: var(--dbolt-3d3a3a) !important;
 }
 
 .active {
-    background-color: #3d3a3a;
+    background-color: var(--dbolt-3d3a3a);
     border: none;
 }
 
 .empty-list {
-    color: #969696;
+    color: var(--dbolt-969696);
     font-family: 'Nunito';
     font-size: .8em;
     padding: 12px 5px;

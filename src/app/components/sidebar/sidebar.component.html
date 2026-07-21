@@ -1,7 +1,12 @@
-<div class="sidebar" [class.open]="isOpen">
+<div class="sidebar-shell" [class.sidebar-hidden]="!sidebarVisible" [class.sidebar-resizing]="resizingSidebar"
+    [style.width.px]="sidebarVisible ? sidebarWidth : sidebarCollapsedWidth">
+    <div class="sidebar-viewport">
+    <aside class="sidebar" [style.width.px]="sidebarWidth" [attr.aria-hidden]="!sidebarVisible"
+        [attr.inert]="!sidebarVisible ? '' : null">
     <div class="sidebar-actions my-2">
-        <button type="button" (click)="toggle()" class="sidebar-action-button menu-button">
-            <img src="icons/menu.png" height="24px" class="toogle-img">
+        <button type="button" (click)="hideSidebar()" class="sidebar-action-button menu-button"
+            [title]="t('sidebar.hide')" [attr.aria-label]="t('sidebar.hide')">
+            <img src="icons/menu.png" height="17px" width="17px" class="toogle-img" alt="">
         </button>
         <button type="button" (click)="goToHome()" class="sidebar-action-button home-button">
             <img src="icons/home.png" height="17px" width="17px" [title]="t('sidebar.home')">
@@ -10,7 +15,7 @@
             <img src="icons/settings.png" height="17px" width="17px" [title]="t('sidebar.settings')">
         </button>
     </div>
-    <div class="py-2"></div>
+    <div class="sidebar-selection-spacer"></div>
 
     <p class="selected-title">{{ t('sidebar.currentlySelected') }}</p>
     <button type="button" class="sgbd" (click)="toggleQuickSelector('connection', $event)">
@@ -31,32 +36,47 @@
     <div class="separator my-3"></div>
 
     <div class="connections">
-        <div *ngFor="let connection of connections" class="connection d-flex w-100 my-3 mt-0">
+        <div *ngFor="let connection of connections" class="connection"
+            [class.connection-expanded]="expandedConnections.has(connection.id)"
+            [class.connection-selected]="isSelectedConnection(connection)"
+            [class.connection-loading]="loadingConnections.has(connection.id)">
             <button type="button" class="connection-edit-button" [title]="t('sidebar.editConnection')"
                 (click)="editConnection(connection, $event)">
                 <img src="icons/edit.png" height="13px" width="13px">
             </button>
-            <div (click)="toggleConnection(connection.id); canConnect(connection)">
-                <div class="d-flex align-items-center gap-2 mb-1">
-                    <img src="db-logo/{{ connection.database }}.png" height="20px" width="20px">
-                    <h2 class="subtitle-min">{{ connection.name }}</h2>
-                </div>
-                <p class="text-min-gray m-0">{{ connection.host }}:{{ connection.port }}</p>
-            </div>
+            <button type="button" class="connection-summary" (click)="toggleConnection(connection)"
+                [attr.aria-expanded]="expandedConnections.has(connection.id)"
+                [attr.aria-busy]="loadingConnections.has(connection.id)">
+                <img class="connection-logo" src="db-logo/{{ connection.database }}.png" height="16px" width="16px">
+                <span class="connection-summary-copy">
+                    <strong>{{ connection.name }}</strong>
+                    <small>{{ connection.host }}:{{ connection.port }}</small>
+                </span>
+                <span class="connection-toggle-indicator" aria-hidden="true">›</span>
+            </button>
 
-            <div *ngIf="expandedConnections.has(connection.id)" class="connection-info">
-                <div *ngFor="let database of getSchemasByConnection(connection)" class="d-flex flex-column">
-                    <div class="separator"></div>
-                    <div (click)="toggleDatabase(connection.id + '-' + database.database)"
-                        (dblclick)="openDatabaseInfo(connection, database, $event)"
-                        (contextmenu)="openDatabaseContextMenu(connection, database, $event)"
-                        class="database-row d-flex align-items-center gap-2"
-                        [class.selected-database]="isSelectedDatabase(connection, database)">
-                        <img src="icons/database.png" height="15px" width="15px">
-                        <h2 class="database-name">{{ database.database }}</h2>
-                    </div>
-                    <div class="schemas" *ngIf="expandedDatabases.has(connection.id + '-' + database.database)">
-                        <div *ngFor="let schema of database.schemas" (dblclick)="openSchemaDBInfo({
+            <div class="connection-info-collapse"
+                [class.connection-info-visible]="expandedConnectionContents.has(connection.id)"
+                [attr.aria-hidden]="!expandedConnectionContents.has(connection.id)"
+                [attr.inert]="!expandedConnectionContents.has(connection.id) ? '' : null">
+                <div class="connection-info">
+                    <div *ngFor="let database of getSchemasByConnection(connection); let firstDatabase = first"
+                        class="d-flex flex-column">
+                        <div class="separator" *ngIf="!firstDatabase"></div>
+                        <div (click)="toggleDatabase(connection.id + '-' + database.database)"
+                            (dblclick)="openDatabaseInfo(connection, database, $event)"
+                            (contextmenu)="openDatabaseContextMenu(connection, database, $event)"
+                            class="database-row d-flex align-items-center gap-2"
+                            [class.selected-database]="isSelectedDatabase(connection, database)">
+                            <img src="icons/database.png" height="15px" width="15px">
+                            <h2 class="database-name">{{ database.database }}</h2>
+                        </div>
+                        <div class="schemas-collapse"
+                            [class.schemas-visible]="expandedDatabases.has(connection.id + '-' + database.database)"
+                            [attr.aria-hidden]="!expandedDatabases.has(connection.id + '-' + database.database)"
+                            [attr.inert]="!expandedDatabases.has(connection.id + '-' + database.database) ? '' : null">
+                            <div class="schemas">
+                                <div *ngFor="let schema of database.schemas" (dblclick)="openSchemaDBInfo({
                             schema: schema,
                             database: database.database,
                             sgbd: connection.database,
@@ -89,17 +109,47 @@
                             port: connection.port,
                             password: connection.password,
                             user: connection.user
-                        })" (contextmenu)="openSchemaContextMenu(connection, database, schema, $event)"
-                            class="schema-row d-flex align-items-center gap-2 mb-2"
-                            [class.selected-schema]="isSelectedSchema(connection, database.database, schema)">
-                            <img src="icons/schema.png" height="10px" width="10px">
-                            <p class="text-min-gray">{{ schema }}</p>
+                                })" (contextmenu)="openSchemaContextMenu(connection, database, schema, $event)"
+                                    class="schema-row d-flex align-items-center gap-2"
+                                    [class.selected-schema]="isSelectedSchema(connection, database.database, schema)">
+                                    <img src="icons/schema.png" height="10px" width="10px">
+                                    <p class="text-min-gray">{{ schema }}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    </aside>
+
+    <nav class="sidebar-collapsed-rail" [attr.aria-hidden]="sidebarVisible"
+        [attr.inert]="sidebarVisible ? '' : null"
+        [attr.aria-label]="t('sidebar.navigation')">
+        <button type="button" class="collapsed-action-button" (click)="showSidebar()"
+            [title]="t('sidebar.show')" [attr.aria-label]="t('sidebar.show')">
+            <img src="icons/menu.png" height="17px" width="17px" alt="">
+        </button>
+        <button type="button" class="collapsed-action-button" (click)="goToHome()"
+            [title]="t('sidebar.home')" [attr.aria-label]="t('sidebar.home')">
+            <img src="icons/home.png" height="17px" width="17px" alt="">
+        </button>
+        <button type="button" class="collapsed-action-button" (click)="openSettings()"
+            [title]="t('sidebar.settings')" [attr.aria-label]="t('sidebar.settings')">
+            <img src="icons/settings.png" height="17px" width="17px" alt="">
+        </button>
+    </nav>
+    </div>
+
+    <button *ngIf="sidebarVisible" type="button" class="sidebar-resize-handle" role="separator" tabindex="0"
+        aria-orientation="vertical" [attr.aria-label]="t('sidebar.resize')"
+        [attr.aria-valuemin]="sidebarMinWidth" [attr.aria-valuemax]="sidebarMaxWidth"
+        [attr.aria-valuenow]="sidebarWidth" [title]="t('sidebar.resizeHint')"
+        (pointerdown)="startSidebarResize($event)" (dblclick)="toggleSidebarPreset()"
+        (keydown)="onSidebarResizeKeydown($event)">
+        <span></span>
+    </button>
 </div>
 
 <app-connection *ngIf="isModalOpen" [connection]="editingConnection" (close)="closeModal()"></app-connection>

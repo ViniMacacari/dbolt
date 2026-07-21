@@ -5,6 +5,7 @@ import LSSQLServer1 from '../../services/lists/sqlserver/v2008.js';
 import SSSQLServerV1 from '../../services/schemas/sqlserver/v2008.js';
 import SQuerySQLServerV1 from '../../services/queries/sqlserver/v2008.js';
 import ListObjectsSQLServerV1 from '../../services/database-info/sqlserver/v2008.js';
+import DiagramSQLServerV1 from '../../services/diagrams/sqlserver/v2008.js';
 import DatabaseVersionService from '../../services/database-version/database-version.js';
 import { sendBadRequest, sendInternalError, sendServiceResult } from '../../utils/http.js';
 import { getConnectionKey } from '../../utils/request-context.js';
@@ -198,6 +199,22 @@ class CSQLServerV1 {
     try {
       const result = await ListObjectsSQLServerV1.procedureDDL(req.params.procedureName, getConnectionKey(req));
       sendServiceResult(res, result);
+    } catch (error: unknown) {
+      sendInternalError(res, error);
+    }
+  }
+
+  async schemaDiagram(req: Request, res: Response): Promise<void> {
+    try {
+      sendServiceResult(res, await DiagramSQLServerV1.schemaDiagram(getConnectionKey(req)));
+    } catch (error: unknown) {
+      sendInternalError(res, error);
+    }
+  }
+
+  async objectDiagram(req: Request<TableNameParams>, res: Response): Promise<void> {
+    try {
+      sendServiceResult(res, await DiagramSQLServerV1.objectDiagram(req.params.tableName, getConnectionKey(req)));
     } catch (error: unknown) {
       sendInternalError(res, error);
     }

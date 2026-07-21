@@ -2,7 +2,7 @@ import { Component, ViewChild, Output, EventEmitter } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { ActivatedRoute } from '@angular/router'
-import { SidebarComponent } from "../../components/sidebar/sidebar.component"
+import { SidebarComponent, SidebarLayoutChange } from "../../components/sidebar/sidebar.component"
 import { TabsComponent } from "../../components/tabs/tabs.component"
 import { LoadingComponent } from '../../components/modal/loading/loading.component'
 import { CodeEditorComponent } from "../../components/elements/code-editor/code-editor.component"
@@ -17,14 +17,15 @@ import { QueryAssistantComponent } from '../../components/elements/query-assista
 import { SelectBuilderComponent } from '../../components/elements/select-builder/select-builder.component'
 import { ProcedureInfoComponent } from '../../components/elements/procedure-info/procedure-info.component'
 import { QueryVersionCompareComponent } from '../../components/elements/query-version-compare/query-version-compare.component'
-import { QuerySaveService } from '../../services/query-save/query-save.service'
+import { QuerySaveService, SavedQuery } from '../../services/query-save/query-save.service'
 import { AppLanguageService } from '../../services/language/app-language.service'
 import { AiAssistantPanelComponent } from '../../components/ai-assistant/ai-assistant-panel/ai-assistant-panel.component'
+import { DatabaseDiagramComponent } from '../../components/elements/database-diagram/database-diagram.component'
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent],
+  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent, DatabaseDiagramComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
@@ -44,6 +45,8 @@ export class DatabaseManagerComponent {
   procedureInfoData: any
 
   firstMessage: boolean = true
+  recentQueries: SavedQuery[] = []
+  loadingRecentQueries: boolean = false
   dbInfoOpen: boolean = false
   tableInfoOpen: boolean = false
   procedureInfoOpen: boolean = false
@@ -67,7 +70,7 @@ export class DatabaseManagerComponent {
   elementName: string = ''
   procedureElementName: string = ''
 
-  widthTable: number = 0
+  widthTable: number = 300
 
   constructor(
     private IAPI: InternalApiService,
@@ -84,6 +87,7 @@ export class DatabaseManagerComponent {
     await this.firstConnectionConfig()
     await this.pageConnectionConfig()
     LoadingComponent.hide()
+    void this.loadRecentQueries()
   }
 
   getPageId() {
@@ -269,13 +273,7 @@ export class DatabaseManagerComponent {
     this.selectBuilderOpen = tab.type === 'select-builder'
     this.queryCompareOpen = tab.type === 'query-compare'
     this.procedureInfoOpen = tab.type === 'procedure'
-    this.tableInfoOpen = !this.editorOpen &&
-      !this.dbInfoOpen &&
-      !this.settingsOpen &&
-      !this.queryAssistantOpen &&
-      !this.selectBuilderOpen &&
-      !this.queryCompareOpen &&
-      !this.procedureInfoOpen
+    this.tableInfoOpen = tab.type === 'table'
 
     if (this.dbInfoOpen) {
       this.dbInfoInitialized = true
@@ -313,6 +311,8 @@ export class DatabaseManagerComponent {
       return
     }
 
+    this.firstMessage = true
+    this.tabInfo = null
     this.editorOpen = false
     this.dbInfoOpen = false
     this.tableInfoOpen = false
@@ -321,6 +321,64 @@ export class DatabaseManagerComponent {
     this.queryAssistantOpen = false
     this.selectBuilderOpen = false
     this.queryCompareOpen = false
+    void this.loadRecentQueries()
+  }
+
+  openNewQueryFromHome(): void {
+    this.tabsComponent.newTab('sql', {
+      sql: '',
+      context: this.selectedSchemaDB
+    }, this.t('tabs.newQuery'))
+  }
+
+  openLatestQuery(): void {
+    const latestQuery = this.recentQueries[0]
+    if (!latestQuery) {
+      this.openQueryLibrary()
+      return
+    }
+
+    this.openRecentQuery(latestQuery)
+  }
+
+  openRecentQuery(query: SavedQuery): void {
+    this.tabsComponent.openSavedQueryTab(query)
+  }
+
+  openQueryLibrary(): void {
+    this.tabsComponent.loadTab()
+  }
+
+  formatRecentQueryDate(value?: string): string {
+    return this.querySave.formatDate(value)
+  }
+
+  trackRecentQuery(index: number, query: SavedQuery): number {
+    return query.id
+  }
+
+  private async loadRecentQueries(): Promise<void> {
+    if (this.loadingRecentQueries) return
+
+    this.loadingRecentQueries = true
+
+    try {
+      const queries = await this.querySave.loadQueries()
+      this.recentQueries = [...(queries || [])]
+        .sort((left, right) => this.getQueryTimestamp(right) - this.getQueryTimestamp(left))
+        .slice(0, 4)
+    } catch (error) {
+      console.error('Erro ao carregar queries recentes:', error)
+      this.recentQueries = []
+    } finally {
+      this.loadingRecentQueries = false
+    }
+  }
+
+  private getQueryTimestamp(query: SavedQuery): number {
+    const value = query.updatedAt || query.createdAt
+    const timestamp = value ? new Date(value).getTime() : 0
+    return Number.isNaN(timestamp) ? 0 : timestamp
   }
 
   onSettingsRequested(): void {
@@ -409,6 +467,10 @@ export class DatabaseManagerComponent {
     return (this.tabsComponent?.tabs || []).filter((tab: any) => tab?.type === 'procedure')
   }
 
+  get openDiagramTabs(): any[] {
+    return (this.tabsComponent?.tabs || []).filter((tab: any) => tab?.type === 'diagram')
+  }
+
   isActiveSqlTab(tab: any): boolean {
     return tab?.type === 'sql' && this.tabsComponent?.getActiveTab() === tab
   }
@@ -438,12 +500,8 @@ export class DatabaseManagerComponent {
     }
   }
 
-  onSidebarStatusChange(event: boolean): void {
-    if (!event) {
-      this.widthTable = 440
-    } else {
-      this.widthTable = 300
-    }
+  onSidebarStatusChange(event: SidebarLayoutChange): void {
+    this.widthTable = event.width + 120
   }
 
   async onSelectedSchemaChanged(selectedSchemaDB: any): Promise<void> {
@@ -511,10 +569,12 @@ export class DatabaseManagerComponent {
 
   onSavedQuery(savedQuery: any, sourceTab: any = null): void {
     this.applySavedQueryToTab(savedQuery, sourceTab)
+    void this.loadRecentQueries()
   }
 
   onExistingSavedQuery(savedTab: any): void {
     this.applySavedQueryToTab(savedTab)
+    void this.loadRecentQueries()
   }
 
   onCompareEditRequested(event: any): void {
@@ -678,7 +738,8 @@ export class DatabaseManagerComponent {
     this.tabsComponent.newTab('table', {
       name: (event.name || event.NAME),
       info: sourceContext,
-      context: sourceContext
+      context: sourceContext,
+      objectType: event.type || event.objectType || 'table'
     }, (event.name || event.NAME))
   }
 
@@ -694,8 +755,41 @@ export class DatabaseManagerComponent {
     this.tabsComponent.newTab('table', {
       name: objectName,
       info: event?.info || activeContext,
-      context: activeContext
+      context: activeContext,
+      objectType: event?.type || event?.objectType || 'table'
     }, objectName).tableInfoState = tableInfoState
+  }
+
+  onDiagramRequested(event: any): void {
+    const context = event?.context || this.tabsComponent.getActiveTab()?.dbInfo || this.selectedSchemaDB
+    const scope = event?.scope === 'object' ? 'object' : 'schema'
+    const objectName = event?.objectName || event?.name
+    if (!context || (scope === 'object' && !objectName)) return
+
+    const identity = [
+      'diagram',
+      scope,
+      context.connectionKey || context.connId || context.host,
+      context.database,
+      context.schema,
+      objectName || ''
+    ].join(':')
+    const existingIndex = this.tabsComponent.tabs.findIndex((tab: any) => tab?.diagramIdentity === identity)
+    if (existingIndex >= 0) {
+      this.tabsComponent.selectTab(existingIndex)
+      return
+    }
+
+    const target = scope === 'object'
+      ? objectName
+      : [context.database, context.schema && context.schema !== 'mysql' ? context.schema : ''].filter(Boolean).join('.')
+    const tab = this.tabsComponent.newTab('diagram', {
+      scope,
+      objectName,
+      objectType: event?.objectType,
+      context
+    }, `${this.t('diagram.title')} - ${target || this.t('diagram.schema')}`)
+    tab.diagramIdentity = identity
   }
 
   onProcedureEditRequested(event: any): void {
