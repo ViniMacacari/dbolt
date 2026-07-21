@@ -54,8 +54,9 @@
             </button>
 
             <div *ngIf="expandedConnections.has(connection.id)" class="connection-info">
-                <div *ngFor="let database of getSchemasByConnection(connection)" class="d-flex flex-column">
-                    <div class="separator"></div>
+                <div *ngFor="let database of getSchemasByConnection(connection); let firstDatabase = first"
+                    class="d-flex flex-column">
+                    <div class="separator" *ngIf="!firstDatabase"></div>
                     <div (click)="toggleDatabase(connection.id + '-' + database.database)"
                         (dblclick)="openDatabaseInfo(connection, database, $event)"
                         (contextmenu)="openDatabaseContextMenu(connection, database, $event)"

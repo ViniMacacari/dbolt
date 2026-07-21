@@ -319,9 +319,19 @@
             .database-row,
             .schema-row {
                 border-radius: 10px;
+                cursor: pointer;
                 min-height: 25px;
                 padding: 4px 7px;
                 transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+
+                &:hover {
+                    background-color: var(--dbolt-sidebar-control-hover);
+                }
+            }
+
+            .database-row:hover .database-name,
+            .schema-row:hover p {
+                color: var(--dbolt-e8eaed);
             }
 
             .selected-database {
