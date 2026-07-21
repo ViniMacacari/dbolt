@@ -52,11 +52,7 @@
         display: block;
         height: 100%;
         min-height: 0;
-
-        &.result-content-entering {
-            animation: query-result-content-reveal .22s cubic-bezier(.2, .8, .2, 1) both;
-            will-change: clip-path, transform;
-        }
+        position: relative;
     }
 
     &.has-results {
@@ -89,25 +85,12 @@
     }
 }
 
-@keyframes query-result-content-reveal {
-    from {
-        clip-path: inset(0 0 100% 0);
-        transform: translateY(8px);
-    }
-
-    to {
-        clip-path: inset(0);
-        transform: translateY(0);
-    }
-}
-
 @media (prefers-reduced-motion: reduce) {
     .code-editor.result-panel-opening .editor-panel {
         transition-duration: 0.01ms !important;
     }
 
-    .code-editor .result-panel.result-panel-opening,
-    .code-editor app-table-query.result-content-entering {
+    .code-editor .result-panel.result-panel-opening {
         animation-duration: 0.01ms !important;
     }
 }
