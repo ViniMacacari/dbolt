@@ -83,7 +83,7 @@ export function toDiagramRelation(row: QueryRow, index: number): DiagramRelation
   const name = String(readRowValue(row, ['relation_name', 'constraint_name', 'name']) || '');
 
   return {
-    id: name || `${sourceEntity}:${sourceColumn}:${targetEntity}:${targetColumn}:${index}`,
+    id: `${name || 'relation'}:${sourceEntity}:${sourceColumn}:${targetEntity}:${targetColumn}:${index}`,
     ...(name ? { name } : {}),
     sourceEntity,
     sourceColumn,
