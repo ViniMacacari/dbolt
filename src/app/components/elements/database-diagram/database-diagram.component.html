@@ -86,6 +86,7 @@
                     <article class="diagram-entity" *ngFor="let entity of entities; trackBy: trackEntity"
                         [class.view]="entity.kind === 'view'" [style.left.px]="entity.x" [style.top.px]="entity.y"
                         [class.active]="activeEntityId === entity.id"
+                        [class.resized]="entity.manuallyResized"
                         [class.relation-source]="isRelatedEntity(entity, 'source')"
                         [class.relation-target]="isRelatedEntity(entity, 'target')"
                         [style.width.px]="entity.width" [style.height.px]="entity.height">
