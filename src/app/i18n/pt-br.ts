@@ -330,6 +330,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'results.resize': 'Redimensionar resultados',
   'results.maxRows': 'Máximo de linhas',
   'results.apply': 'Aplicar',
+  'results.reload': 'Recarregar dados',
   'results.selectAllLoadedRows': 'Selecionar todas as linhas carregadas',
   'results.selectAll': 'Selecionar tudo',
   'results.editRows': 'Editar linhas do resultado',
