@@ -117,14 +117,14 @@ export class AppSettingsService {
     },
     'vibrant': {
       keyword: '#75b9f0',
-      function: '#dcdcaa',
-      identifier: '#4ec9b0',
-      string: '#dea087',
+      function: '#cfc884',
+      identifier: '#50c7af',
+      string: '#fbc6b2',
       number: '#d4d4d4',
       comment: '#6a9955',
       operator: '#d4d4d4',
       type: '#4ec9b0',
-      variable: '#f0adea',
+      variable: '#c8a6ea',
       delimiter: '#d4d4d4'
     }
   }
