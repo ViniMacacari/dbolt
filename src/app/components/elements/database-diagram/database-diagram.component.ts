@@ -425,7 +425,7 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
     const rowHeights: number[] = []
     entities.forEach((entity, index) => {
       const row = Math.floor(index / columnsPerRow)
-      const height = this.headerHeight + Math.max(1, entity.columns.length) * this.rowHeight
+      const height = this.getNaturalEntityHeight(entity)
       rowHeights[row] = Math.max(rowHeights[row] || 0, height)
     })
     const rowOffsets = rowHeights.map((_height, index) =>
@@ -435,7 +435,7 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
     this.entities = entities.map((entity, index) => {
       const row = Math.floor(index / columnsPerRow)
       const column = index % columnsPerRow
-      const height = this.headerHeight + Math.max(1, entity.columns.length) * this.rowHeight
+      const height = this.getNaturalEntityHeight(entity)
       const savedLayout = this.tabInfo?.diagramState?.layout?.[entity.id]
       return {
         ...entity,
@@ -493,6 +493,10 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
     const minimum = entity.y + this.headerHeight + 14
     const maximum = entity.y + entity.height - 14
     return Math.min(Math.max(ideal, minimum), Math.max(minimum, maximum))
+  }
+
+  private getNaturalEntityHeight(entity: DiagramEntity): number {
+    return this.headerHeight + Math.max(1, entity.columns.length) * this.rowHeight + 2
   }
 
   private layoutNumber(value: any, fallback: number, minimum: number): number {
