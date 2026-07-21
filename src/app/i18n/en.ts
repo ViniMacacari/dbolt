@@ -330,6 +330,7 @@ export const enTranslations: TranslationCatalog = {
   'results.resize': 'Resize results',
   'results.maxRows': 'Max rows',
   'results.apply': 'Apply',
+  'results.reload': 'Reload data',
   'results.selectAllLoadedRows': 'Select all loaded rows',
   'results.selectAll': 'Select all',
   'results.editRows': 'Edit result rows',
