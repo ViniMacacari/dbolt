@@ -109,12 +109,14 @@
                     [class.workspace-tab-opening]="tab.opening && isActiveContentTab(tab)"
                     [class.workspace-tab-closing]="tab.closing && isActiveContentTab(tab)"
                     [class.workspace-tab-switching]="tab.switching && isActiveContentTab(tab)"
+                    [style.--workspace-tab-switch-offset]="tab.switchOffset || null"
                     [hidden]="!isActiveContentTab(tab)" [data]="tab.info?.dbInfo" [tabInfo]="tab"
                     (moreInfo)="openMoreInfo($event)" (diagramRequested)="onDiagramRequested($event)"></app-db-info>
                 <app-table-info class="workspace-tab-content" *ngFor="let tab of openTableTabs; trackBy: trackTabByIdentity"
                     [class.workspace-tab-opening]="tab.opening && isActiveContentTab(tab)"
                     [class.workspace-tab-closing]="tab.closing && isActiveContentTab(tab)"
                     [class.workspace-tab-switching]="tab.switching && isActiveContentTab(tab)"
+                    [style.--workspace-tab-switch-offset]="tab.switchOffset || null"
                     [hidden]="!isActiveContentTab(tab)" [data]="tab.dbInfo || tab.info?.info"
                     [elementName]="tab.info?.name || tab.name" [tabInfo]="tab"
                     (diagramRequested)="onDiagramRequested($event)"></app-table-info>
@@ -123,12 +125,14 @@
                     [class.workspace-tab-opening]="tab.opening && isActiveContentTab(tab)"
                     [class.workspace-tab-closing]="tab.closing && isActiveContentTab(tab)"
                     [class.workspace-tab-switching]="tab.switching && isActiveContentTab(tab)"
+                    [style.--workspace-tab-switch-offset]="tab.switchOffset || null"
                     [hidden]="!isActiveContentTab(tab)" [tabInfo]="tab"></app-database-diagram>
                 <app-procedure-info class="workspace-tab-content"
                     *ngFor="let tab of openProcedureTabs; trackBy: trackTabByIdentity"
                     [class.workspace-tab-opening]="tab.opening && isActiveContentTab(tab)"
                     [class.workspace-tab-closing]="tab.closing && isActiveContentTab(tab)"
                     [class.workspace-tab-switching]="tab.switching && isActiveContentTab(tab)"
+                    [style.--workspace-tab-switch-offset]="tab.switchOffset || null"
                     [hidden]="!isActiveContentTab(tab)" [data]="tab.dbInfo || tab.info?.info"
                     [elementName]="tab.info?.name || tab.name" [tabInfo]="tab"
                     (editRequested)="onProcedureEditRequested($event)"></app-procedure-info>
@@ -136,22 +140,26 @@
                     [class.workspace-tab-opening]="settingsOpen && tabInfo?.opening"
                     [class.workspace-tab-closing]="settingsOpen && tabInfo?.closing"
                     [class.workspace-tab-switching]="settingsOpen && tabInfo?.switching"
+                    [style.--workspace-tab-switch-offset]="tabInfo?.switchOffset || null"
                     [initialTab]="tabInfo?.info?.activeTab || null"
                     (aiSettingsSaved)="onAiSettingsSaved()"></app-settings>
                 <app-query-assistant class="workspace-tab-content" *ngIf="queryAssistantOpen" [tabInfo]="tabInfo"
                     [class.workspace-tab-opening]="tabInfo?.opening"
                     [class.workspace-tab-closing]="tabInfo?.closing"
                     [class.workspace-tab-switching]="tabInfo?.switching"
+                    [style.--workspace-tab-switch-offset]="tabInfo?.switchOffset || null"
                     (selectBuilderRequested)="onSelectBuilderRequested($event)"></app-query-assistant>
                 <app-select-builder class="workspace-tab-content" *ngIf="selectBuilderOpen" [tabInfo]="tabInfo"
                     [class.workspace-tab-opening]="tabInfo?.opening"
                     [class.workspace-tab-closing]="tabInfo?.closing"
                     [class.workspace-tab-switching]="tabInfo?.switching"
+                    [style.--workspace-tab-switch-offset]="tabInfo?.switchOffset || null"
                     (queryRequested)="onBuilderQueryRequested($event)"></app-select-builder>
                 <app-query-version-compare class="workspace-tab-content" *ngIf="queryCompareOpen" [tabInfo]="tabInfo"
                     [class.workspace-tab-opening]="tabInfo?.opening"
                     [class.workspace-tab-closing]="tabInfo?.closing"
                     [class.workspace-tab-switching]="tabInfo?.switching"
+                    [style.--workspace-tab-switch-offset]="tabInfo?.switchOffset || null"
                     (editRequested)="onCompareEditRequested($event)"
                     (restoreRequested)="onCompareRestoreRequested($event)"></app-query-version-compare>
 
@@ -159,6 +167,7 @@
                     [class.workspace-tab-opening]="tab.opening && isActiveSqlTab(tab)"
                     [class.workspace-tab-closing]="tab.closing && isActiveSqlTab(tab)"
                     [class.workspace-tab-switching]="tab.switching && isActiveSqlTab(tab)"
+                    [style.--workspace-tab-switch-offset]="tab.switchOffset || null"
                     [hidden]="!isActiveSqlTab(tab)" [active]="isActiveSqlTab(tab)" [sqlContent]="tab.info?.sql || ''"
                     [widthTable]="widthTable" [tabInfo]="tab" (sqlContentChange)="onSqlContentChange($event, tab)"
                     (savedName)="onSavedQuery($event, tab)" (savedQuery)="onExistingSavedQuery($event)"

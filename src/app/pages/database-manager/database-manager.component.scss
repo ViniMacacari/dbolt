@@ -32,8 +32,8 @@
     }
 
     &.workspace-tab-switching {
-        animation: workspace-tab-switch .18s ease-out both;
-        will-change: opacity;
+        animation: workspace-tab-switch .22s cubic-bezier(.16, 1, .3, 1) both;
+        will-change: opacity, transform;
     }
 }
 
@@ -63,11 +63,13 @@
 
 @keyframes workspace-tab-switch {
     from {
-        opacity: 0;
+        opacity: .18;
+        transform: translateX(var(--workspace-tab-switch-offset, 18px));
     }
 
     to {
         opacity: 1;
+        transform: translateX(0);
     }
 }
 
