@@ -274,7 +274,31 @@
 .diagram-entity-columns {
     height: calc(100% - 38px);
     overflow: auto;
-    scrollbar-width: thin;
+}
+
+.diagram-viewport,
+.diagram-entity-columns {
+    &::-webkit-scrollbar {
+        width: 5px !important;
+        height: 5px !important;
+    }
+
+    &::-webkit-scrollbar-track {
+        background-color: var(--dbolt-1b1b1b);
+    }
+
+    &::-webkit-scrollbar-thumb {
+        border-radius: 0 !important;
+        background-color: var(--dbolt-4a4a4a);
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background-color: var(--dbolt-565656);
+    }
+
+    &::-webkit-scrollbar-corner {
+        background-color: var(--dbolt-1b1b1b);
+    }
 }
 
 .diagram-entity-resize {
