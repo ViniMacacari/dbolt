@@ -375,6 +375,7 @@ export class TabsComponent implements OnInit, OnDestroy {
 
     const previousTab = this.activeTab === null ? null : this.tabs[this.activeTab]
     if (previousTab && previousTab !== nextTab && !nextTab.opening) {
+      nextTab.switchOffset = index < this.activeTab! ? '-18px' : '18px'
       nextTab.switching = true
       this.scheduleTabAnimation(() => {
         if (this.tabs.includes(nextTab)) nextTab.switching = false
