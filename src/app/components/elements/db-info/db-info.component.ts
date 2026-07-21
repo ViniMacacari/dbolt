@@ -23,6 +23,7 @@ export class DbInfoComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Output() sqlContentChange = new EventEmitter<string>()
   @Output() savedName = new EventEmitter<string>()
   @Output() moreInfo = new EventEmitter<any>()
+  @Output() diagramRequested = new EventEmitter<any>()
   @Input() widthTable: number = 300
   @Input() tabInfo: any
 
@@ -147,6 +148,13 @@ export class DbInfoComponent implements AfterViewInit, OnChanges, OnDestroy {
       ...tabInfo,
       info: context,
       context
+    })
+  }
+
+  openDiagram(): void {
+    this.diagramRequested.emit({
+      scope: 'schema',
+      context: this.data?.connection || this.tabInfo?.dbInfo
     })
   }
 

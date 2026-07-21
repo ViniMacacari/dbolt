@@ -13,8 +13,8 @@
 
 .modal-content {
     animation: fadeIn 0.2s ease;
-    background-color: #0b0b0b;
-    border: 1px solid #1f1f1f;
+    background-color: var(--dbolt-0b0b0b);
+    border: 1px solid var(--dbolt-1f1f1f);
     border-radius: 22px;
     box-shadow: 0 18px 42px rgba(0, 0, 0, 0.38);
     max-width: 620px;
@@ -24,7 +24,7 @@
 
 .modal-header {
     align-items: center;
-    border-bottom: 1px solid #202020;
+    border-bottom: 1px solid var(--dbolt-202020);
     display: flex;
     padding: 22px 28px 18px;
 
@@ -48,14 +48,14 @@
 
 label,
 .folder-header label {
-    color: #b8b8b9;
+    color: var(--dbolt-b8b8b9);
     font-family: 'Nunito';
     font-size: .78em;
     font-weight: 850;
 }
 
 .field-hint {
-    color: #8d8d8d;
+    color: var(--dbolt-8d8d8d);
     display: block;
     font-family: 'Nunito';
     font-size: .72em;
@@ -63,8 +63,8 @@ label,
 }
 
 .folder-picker {
-    background: #080808;
-    border: 1px solid #202020;
+    background: var(--dbolt-080808);
+    border: 1px solid var(--dbolt-202020);
     border-radius: 16px;
     padding: 14px;
 }
@@ -90,7 +90,7 @@ label,
 
     button,
     span {
-        color: #969696;
+        color: var(--dbolt-969696);
         font-family: 'Nunito';
         font-size: .76em;
         font-weight: 800;
@@ -103,7 +103,7 @@ label,
         padding: 0;
 
         &:hover {
-            color: #e8eaed;
+            color: var(--dbolt-e8eaed);
         }
     }
 }
@@ -111,13 +111,13 @@ label,
 .nav-button,
 .folder-item {
     border: none;
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     cursor: pointer;
     font-family: 'Nunito';
 }
 
 .nav-button {
-    background: #1b1b1b;
+    background: var(--dbolt-1b1b1b);
     border-radius: 11px;
     font-size: .74em;
     font-weight: 850;
@@ -125,18 +125,18 @@ label,
     padding: 0 12px;
 
     &:disabled {
-        color: #5f5f5f;
+        color: var(--dbolt-5f5f5f);
         cursor: default;
     }
 
     &:not(:disabled):hover {
-        background: #303030;
+        background: var(--dbolt-303030);
     }
 }
 
 .folder-current {
-    border-bottom: 1px solid #202020;
-    color: #e8eaed;
+    border-bottom: 1px solid var(--dbolt-202020);
+    color: var(--dbolt-e8eaed);
     font-family: 'Nunito';
     gap: 9px;
     padding: 10px 0;
@@ -151,7 +151,7 @@ label,
 
 .folder-item {
     align-items: center;
-    background: #131313;
+    background: var(--dbolt-131313);
     border-radius: 12px;
     display: grid;
     gap: 10px;
@@ -169,12 +169,12 @@ label,
     }
 
     &:hover {
-        background: #242424;
+        background: var(--dbolt-242424);
     }
 }
 
 .create-folder {
-    border: 1px dashed #3b3b3b;
+    border: 1px dashed var(--dbolt-3b3b3b);
 }
 
 .new-folder-row {
@@ -187,8 +187,8 @@ label,
 }
 
 .version-toggle {
-    background: #131313;
-    border: 1px solid #242424;
+    background: var(--dbolt-131313);
+    border: 1px solid var(--dbolt-242424);
     border-radius: 16px;
     cursor: pointer;
     justify-content: space-between;
@@ -201,13 +201,13 @@ label,
     }
 
     strong {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-size: .88em;
         font-weight: 850;
     }
 
     small {
-        color: #969696;
+        color: var(--dbolt-969696);
         font-size: .72em;
         margin-top: 2px;
     }
@@ -227,15 +227,15 @@ label,
     }
 
     i {
-        background: #292727;
-        border: 1px solid #3b3b3b;
+        background: var(--dbolt-292727);
+        border: 1px solid var(--dbolt-3b3b3b);
         border-radius: 999px;
         inset: 0;
         position: absolute;
         transition: background-color .2s ease, border-color .2s ease;
 
         &::before {
-            background: #969696;
+            background: var(--dbolt-969696);
             border-radius: 50%;
             content: '';
             height: 20px;
@@ -248,11 +248,11 @@ label,
     }
 
     input:checked + i {
-        background: #2b3340;
+        background: var(--dbolt-2b3340);
         border-color: rgba(115, 158, 202, 0.55);
 
         &::before {
-            background: #d8e9fb;
+            background: var(--dbolt-d8e9fb);
             transform: translateX(23px);
         }
     }
@@ -260,7 +260,7 @@ label,
 
 .modal-footer {
     align-items: center;
-    border-top: 1px solid #202020;
+    border-top: 1px solid var(--dbolt-202020);
     display: flex;
     gap: 10px;
     justify-content: flex-end;

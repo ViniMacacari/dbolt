@@ -24,6 +24,14 @@ interface DboltWindowState {
   platform: string;
 }
 
+interface DboltAppUpdateProgress {
+  requestId: string;
+  phase: 'preparing' | 'downloading' | 'opening';
+  receivedBytes: number;
+  totalBytes: number | null;
+  percentage: number | null;
+}
+
 declare global {
   interface Window {
     dboltInternalApi?: {
@@ -42,13 +50,17 @@ declare global {
       downloadAndOpenInstaller(payload: {
         url: string;
         fileName?: string;
+        requestId: string;
       }): Promise<{
         filePath: string;
       }>;
+      onDownloadProgress(callback: (progress: DboltAppUpdateProgress) => void): () => void;
     };
     dboltWindow?: {
       getState(): Promise<DboltWindowState>;
       invoke(action: DboltWindowAction): Promise<DboltWindowState>;
+      respondToCloseRequest(shouldClose: boolean): Promise<void>;
+      onCloseRequested(callback: () => void): () => void;
       onStateChanged(callback: (state: DboltWindowState) => void): () => void;
     };
   }

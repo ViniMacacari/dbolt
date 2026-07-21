@@ -8,25 +8,25 @@
         flex-direction: row-reverse;
 
         .bubble {
-            background: #292727;
+            background: var(--dbolt-292727);
         }
     }
 
     &.assistant .bubble {
-        background: #232020;
+        background: var(--dbolt-232020);
     }
 
     &.error .bubble {
         border: 1px solid #7a2e2e;
-        color: #ffb4b4;
+        color: var(--dbolt-ffb4b4);
     }
 }
 
 .avatar {
     align-items: center;
-    background: #1b1b1b;
+    background: var(--dbolt-1b1b1b);
     border-radius: 15px;
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     display: flex;
     flex: 0 0 28px;
     font-size: .75em;
@@ -43,9 +43,9 @@
 }
 
 .bubble {
-    border: 1px solid #353535;
+    border: 1px solid var(--dbolt-353535);
     border-radius: 15px;
-    color: #f2f2f2;
+    color: var(--dbolt-f2f2f2);
     max-width: calc(100% - 36px);
     padding: 9px 10px;
     word-break: break-word;
@@ -65,10 +65,10 @@
     }
 
     .copy-message {
-        background: #292727;
-        border: 1px solid #3b3b3b;
+        background: var(--dbolt-292727);
+        border: 1px solid var(--dbolt-3b3b3b);
         border-radius: 8px;
-        color: #c9c9c9;
+        color: var(--dbolt-c9c9c9);
         cursor: pointer;
         flex: 0 0 auto;
         font-family: 'Nunito';
@@ -81,17 +81,17 @@
         white-space: nowrap;
 
         &:hover {
-            background: #303030;
+            background: var(--dbolt-303030);
         }
 
         &.copied {
-            border-color: #345c3e;
-            color: #9be0aa;
+            border-color: var(--dbolt-345c3e);
+            color: var(--dbolt-9be0aa);
         }
 
         &.error {
-            border-color: #6b3030;
-            color: #ffb4b4;
+            border-color: var(--dbolt-6b3030);
+            color: var(--dbolt-ffb4b4);
         }
     }
 
@@ -120,7 +120,7 @@
         h4,
         h5,
         h6 {
-            color: #e8eaed;
+            color: var(--dbolt-e8eaed);
             font-family: 'Nunito';
             font-size: .96em;
             font-weight: 850;
@@ -144,20 +144,20 @@
         }
 
         strong {
-            color: #f1f1f1;
+            color: var(--dbolt-f1f1f1);
             font-weight: 850;
         }
 
         em {
-            color: #d7d7d7;
+            color: var(--dbolt-d7d7d7);
             font-style: italic;
         }
 
         code {
-            background: #1b1b1b;
-            border: 1px solid #353535;
+            background: var(--dbolt-1b1b1b);
+            border: 1px solid var(--dbolt-353535);
             border-radius: 6px;
-            color: #d8e9fb;
+            color: var(--dbolt-d8e9fb);
             font-family: Consolas, 'Courier New', monospace;
             font-size: .92em;
             padding: 1px 5px;
@@ -166,13 +166,13 @@
 
         hr {
             border: none;
-            border-top: 1px solid #353535;
+            border-top: 1px solid var(--dbolt-353535);
             margin: 10px 0;
             opacity: 1;
         }
 
         .md-table-wrapper {
-            border: 1px solid #353535;
+            border: 1px solid var(--dbolt-353535);
             border-radius: 10px;
             margin: 8px 0 10px;
             max-width: 100%;
@@ -187,8 +187,8 @@
 
             th,
             td {
-                border-bottom: 1px solid #303030;
-                border-right: 1px solid #303030;
+                border-bottom: 1px solid var(--dbolt-303030);
+                border-right: 1px solid var(--dbolt-303030);
                 max-width: 260px;
                 padding: 7px 9px;
                 text-align: left;
@@ -201,8 +201,8 @@
             }
 
             th {
-                background: #1b1b1b;
-                color: #e8eaed;
+                background: var(--dbolt-1b1b1b);
+                color: var(--dbolt-e8eaed);
                 font-size: .78em;
                 font-weight: 850;
                 position: sticky;
@@ -211,7 +211,7 @@
             }
 
             td {
-                color: #d7d7d7;
+                color: var(--dbolt-d7d7d7);
                 font-size: .76em;
             }
 
@@ -229,16 +229,16 @@
         }
 
         .md-code-block {
-            background: #1b1b1b;
-            border: 1px solid #353535;
+            background: var(--dbolt-1b1b1b);
+            border: 1px solid var(--dbolt-353535);
             border-radius: 10px;
             margin: 8px 0 10px;
             overflow: hidden;
         }
 
         .md-code-language {
-            border-bottom: 1px solid #353535;
-            color: #969696;
+            border-bottom: 1px solid var(--dbolt-353535);
+            color: var(--dbolt-969696);
             display: block;
             font-family: 'Nunito';
             font-size: .72em;
@@ -258,7 +258,7 @@
         pre code {
             background: transparent;
             border: none;
-            color: #e8eaed;
+            color: var(--dbolt-e8eaed);
             display: block;
             padding: 0;
         }

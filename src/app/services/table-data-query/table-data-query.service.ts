@@ -65,6 +65,7 @@ export class TableDataQueryService {
     const value = String(model.filter ?? '')
     const textColumn = this.textComparableExpression(column, dbContext)
     const comparableValue = value.toLowerCase()
+    const escapedLikeValue = this.escapeLikeValue(comparableValue)
 
     if (type === 'blank') return `(${column} is null or ${textColumn} = '')`
     if (type === 'notBlank') return `(${column} is not null and ${textColumn} <> '')`
@@ -85,11 +86,11 @@ export class TableDataQueryService {
 
     if (type === 'equals') return `${textColumn} = ${this.quoteString(comparableValue)}`
     if (type === 'notEqual') return `${textColumn} <> ${this.quoteString(comparableValue)}`
-    if (type === 'startsWith') return `${textColumn} like ${this.quoteLike(`${comparableValue}%`)} escape ${this.quoteString('\\')}`
-    if (type === 'endsWith') return `${textColumn} like ${this.quoteLike(`%${comparableValue}`)} escape ${this.quoteString('\\')}`
-    if (type === 'notContains') return `${textColumn} not like ${this.quoteLike(`%${comparableValue}%`)} escape ${this.quoteString('\\')}`
+    if (type === 'startsWith') return `${textColumn} like ${this.quoteString(`${escapedLikeValue}%`)} escape '!'`
+    if (type === 'endsWith') return `${textColumn} like ${this.quoteString(`%${escapedLikeValue}`)} escape '!'`
+    if (type === 'notContains') return `${textColumn} not like ${this.quoteString(`%${escapedLikeValue}%`)} escape '!'`
 
-    return `${textColumn} like ${this.quoteLike(`%${comparableValue}%`)} escape ${this.quoteString('\\')}`
+    return `${textColumn} like ${this.quoteString(`%${escapedLikeValue}%`)} escape '!'`
   }
 
   private buildNumberExpression(column: string, model: any): string {
@@ -227,8 +228,8 @@ export class TableDataQueryService {
     return `'${String(value).replace(/'/g, "''")}'`
   }
 
-  private quoteLike(value: string): string {
-    return this.quoteString(String(value).replace(/[\\%_]/g, (match) => `\\${match}`))
+  private escapeLikeValue(value: string): string {
+    return String(value).replace(/[!%_]/g, (match) => `!${match}`)
   }
 
   private numberLiteral(value: any): string {

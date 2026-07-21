@@ -19,12 +19,14 @@
     </div>
     <div #codeEditorPanel class="code-editor py-2" [class.has-results]="queryResultOpen"
         [class.results-expanded]="queryResultExpanded"
+        [class.result-panel-opening]="queryResultPanelOpening"
         [style.--query-result-height]="queryResultHeight + 'px'">
         <div class="editor-panel">
             <div #editorContainer class="editor"></div>
         </div>
-        <div class="result-panel" *ngIf="queryResultOpen">
-            <app-table-query (newValuesQuery)="newValues()" [query]="queryReponse" [resultHeight]="queryResultHeight"
+        <div class="result-panel" [class.result-panel-opening]="queryResultPanelOpening" *ngIf="queryResultOpen">
+            <app-table-query [class.result-content-entering]="queryResultContentEntering"
+                (newValuesQuery)="newValues()" [query]="queryReponse" [resultHeight]="queryResultHeight"
                 [columns]="queryColumns" [calcWidth]="widthTable" [rowLimit]="queryFetchSize" [totalRows]="maxResultLines"
                 [isSelectResult]="queryResultIsSelect" [executedSql]="cacheSql" [dbContext]="tabInfo?.dbInfo"
                 [isExpanded]="queryResultExpanded" [isLoading]="isLoadingQuery" [isLoadingMore]="isLoadingMore"

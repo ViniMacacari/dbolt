@@ -23,12 +23,14 @@ export interface SqlHighlightColors {
 }
 
 export type SqlHighlightColorKey = keyof SqlHighlightColors
-export type SqlHighlightMode = 'dbolt-dark' | 'dbolt-high-contrast' | 'classic-sql' | 'custom'
+export type SqlHighlightMode = 'dbolt-dark' | 'dbolt-high-contrast' | 'classic-sql' | 'vibrant' | 'custom'
 export type SqlFormatterCommaStyle = 'trailing' | 'leading'
 export type TableAutocompleteMatchMode = 'contains' | 'fuzzy'
+export type AppTheme = 'dark' | 'light'
 
 export interface AppSettings {
   appLanguage: AppLanguage
+  appTheme: AppTheme
   defaultQueryRows: number
   connectionExpirationMinutes: number
   sqlSyntaxValidationEnabled: boolean
@@ -52,6 +54,7 @@ export class AppSettingsService {
   private readonly cacheKey = 'app-settings'
   private readonly fallbackSettings: AppSettings = {
     appLanguage: DEFAULT_APP_LANGUAGE,
+    appTheme: 'dark',
     defaultQueryRows: 50,
     connectionExpirationMinutes: 30,
     sqlSyntaxValidationEnabled: true,
@@ -71,6 +74,7 @@ export class AppSettingsService {
     { value: 'dbolt-dark', label: 'DBOLT Dark' },
     { value: 'dbolt-high-contrast', label: 'DBOLT High Contrast' },
     { value: 'classic-sql', label: 'Classic SQL' },
+    { value: 'vibrant', label: 'Vibrant Theme' },
     { value: 'custom', label: 'Custom' }
   ]
   readonly appLanguageOptions: AppLanguageOption[] = APP_LANGUAGE_OPTIONS
@@ -110,6 +114,18 @@ export class AppSettingsService {
       type: '#4ec9b0',
       variable: '#c586c0',
       delimiter: '#d4d4d4'
+    },
+    'vibrant': {
+      keyword: '#75b9f0',
+      function: '#cfc884',
+      identifier: '#50c7af',
+      string: '#fbc6b2',
+      number: '#d4d4d4',
+      comment: '#6a9955',
+      operator: '#d4d4d4',
+      type: '#4ec9b0',
+      variable: '#c8a6ea',
+      delimiter: '#d4d4d4'
     }
   }
   private readonly legacySqlHighlightPresets: Record<Exclude<SqlHighlightMode, 'custom'>, SqlHighlightColors[]> = {
@@ -148,7 +164,8 @@ export class AppSettingsService {
       type: '#4ec9b0',
       variable: '#c586c0',
       delimiter: '#d4d4d4'
-    }]
+    }],
+    'vibrant': []
   }
   private readonly settingsChangedSubject = new Subject<AppSettings>()
   readonly settingsChanges$ = this.settingsChangedSubject.asObservable()
@@ -172,6 +189,10 @@ export class AppSettingsService {
 
   getAppLanguage(): AppLanguage {
     return this.getSettings().appLanguage
+  }
+
+  getAppTheme(): AppTheme {
+    return this.getSettings().appTheme
   }
 
   getDefaultQueryRows(): number {
@@ -246,6 +267,17 @@ export class AppSettingsService {
     const settings = {
       ...this.getSettings(),
       appLanguage: normalizeAppLanguage(value)
+    }
+
+    this.saveSettings(settings)
+
+    return settings
+  }
+
+  setAppTheme(value: unknown): AppSettings {
+    const settings = {
+      ...this.getSettings(),
+      appTheme: this.normalizeAppTheme(value)
     }
 
     this.saveSettings(settings)
@@ -418,6 +450,7 @@ export class AppSettingsService {
       value === 'dbolt-dark' ||
       value === 'dbolt-high-contrast' ||
       value === 'classic-sql' ||
+      value === 'vibrant' ||
       value === 'custom'
     ) {
       return value
@@ -432,6 +465,10 @@ export class AppSettingsService {
 
   normalizeSqlFormatterCommaStyle(value: unknown): SqlFormatterCommaStyle {
     return value === 'leading' ? 'leading' : 'trailing'
+  }
+
+  normalizeAppTheme(value: unknown): AppTheme {
+    return value === 'light' ? 'light' : 'dark'
   }
 
   getSqlHighlightPresetColors(mode: Exclude<SqlHighlightMode, 'custom'>): SqlHighlightColors {
@@ -460,6 +497,7 @@ export class AppSettingsService {
 
     return {
       appLanguage: normalizeAppLanguage(settings?.appLanguage),
+      appTheme: this.normalizeAppTheme(settings?.appTheme),
       defaultQueryRows: this.normalizeRows(settings?.defaultQueryRows),
       connectionExpirationMinutes: this.normalizeExpirationMinutes(settings?.connectionExpirationMinutes),
       sqlSyntaxValidationEnabled: settings?.sqlSyntaxValidationEnabled ?? this.fallbackSettings.sqlSyntaxValidationEnabled,
@@ -502,7 +540,8 @@ export class AppSettingsService {
     const modes: Array<Exclude<SqlHighlightMode, 'custom'>> = [
       'dbolt-dark',
       'dbolt-high-contrast',
-      'classic-sql'
+      'classic-sql',
+      'vibrant'
     ]
 
     for (const mode of modes) {

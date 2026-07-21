@@ -14,10 +14,10 @@
 }
 
 .builder-panel {
-    background-color: #1b1b1b;
-    border: 1px solid #363535;
+    background-color: var(--dbolt-1b1b1b);
+    border: 1px solid var(--dbolt-363535);
     border-radius: 16px;
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     display: flex;
     flex: 1 1 auto;
     flex-direction: column;
@@ -48,7 +48,7 @@
     }
 
     p {
-        color: #969696;
+        color: var(--dbolt-969696);
         font-size: .72em;
         font-weight: 800;
         letter-spacing: .04em;
@@ -56,7 +56,7 @@
     }
 
     h2 {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-size: 1.35em;
         font-weight: 800;
         margin-top: 4px;
@@ -69,10 +69,10 @@
     justify-content: flex-end;
 
     button {
-        background: #2b3340;
+        background: var(--dbolt-2b3340);
         border: 1px solid rgba(115, 158, 202, 0.35);
         border-radius: 10px;
-        color: #d8e9fb;
+        color: var(--dbolt-d8e9fb);
         cursor: pointer;
         font-family: 'Nunito';
         font-size: .78em;
@@ -81,7 +81,7 @@
         padding: 0 13px;
 
         &:hover {
-            background: #334052;
+            background: var(--dbolt-334052);
         }
 
         &:disabled {
@@ -90,19 +90,19 @@
         }
 
         &.secondary {
-            background: #292727;
-            border-color: #3b3b3b;
-            color: #c9c9c9;
+            background: var(--dbolt-292727);
+            border-color: var(--dbolt-3b3b3b);
+            color: var(--dbolt-c9c9c9);
         }
     }
 }
 
 .check-control {
     align-items: center;
-    background: #292727;
-    border: 1px solid #3b3b3b;
+    background: var(--dbolt-292727);
+    border: 1px solid var(--dbolt-3b3b3b);
     border-radius: 10px;
-    color: #c9c9c9;
+    color: var(--dbolt-c9c9c9);
     cursor: pointer;
     display: flex;
     font-family: 'Nunito';
@@ -114,8 +114,8 @@
 
     input {
         appearance: none;
-        background: #1b1b1b;
-        border: 1px solid #4a4a4a;
+        background: var(--dbolt-1b1b1b);
+        border: 1px solid var(--dbolt-4a4a4a);
         border-radius: 6px;
         cursor: pointer;
         height: 16px;
@@ -124,12 +124,12 @@
         width: 16px;
 
         &:checked {
-            background: #2b3340;
+            background: var(--dbolt-2b3340);
             border-color: rgba(115, 158, 202, 0.7);
         }
 
         &:checked::after {
-            color: #d8e9fb;
+            color: var(--dbolt-d8e9fb);
             content: '✓';
             font-size: 12px;
             font-weight: 900;
@@ -142,13 +142,13 @@
 }
 
 .metadata-status {
-    color: #969696;
+    color: var(--dbolt-969696);
     font-family: 'Nunito';
     font-size: .8em;
     margin: 0 0 10px;
 
     &.error {
-        color: #ff8f8f;
+        color: var(--dbolt-ff8f8f);
     }
 }
 
@@ -171,8 +171,8 @@
 
 .builder-section,
 .preview-panel {
-    background: #232020;
-    border: 1px solid #353535;
+    background: var(--dbolt-232020);
+    border: 1px solid var(--dbolt-353535);
     border-radius: 12px;
     padding: 14px;
 }
@@ -184,7 +184,7 @@
     margin-bottom: 12px;
 
     h3 {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-family: 'Nunito';
         font-size: .96em;
         font-weight: 800;
@@ -198,10 +198,10 @@
 
 .section-button,
 .icon-button {
-    background: #292727;
-    border: 1px solid #3b3b3b;
+    background: var(--dbolt-292727);
+    border: 1px solid var(--dbolt-3b3b3b);
     border-radius: 9px;
-    color: #c9c9c9;
+    color: var(--dbolt-c9c9c9);
     cursor: pointer;
     font-family: 'Nunito';
     font-size: .76em;
@@ -210,7 +210,7 @@
     padding: 0 10px;
 
     &:hover {
-        background: #303030;
+        background: var(--dbolt-303030);
     }
 }
 
@@ -239,7 +239,7 @@ label,
     gap: 6px;
 
     span {
-        color: #969696;
+        color: var(--dbolt-969696);
         font-family: 'Nunito';
         font-size: .78em;
         font-weight: 700;
@@ -249,10 +249,10 @@ label,
 input:not([type='checkbox']),
 select,
 textarea {
-    background: #1b1b1b;
-    border: 1px solid #3b3b3b;
+    background: var(--dbolt-1b1b1b);
+    border: 1px solid var(--dbolt-3b3b3b);
     border-radius: 10px;
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     font-family: 'Nunito';
     font-size: .82em;
     min-height: 34px;
@@ -261,11 +261,11 @@ textarea {
     width: 100%;
 
     &:focus {
-        border-color: #739eca;
+        border-color: var(--dbolt-739eca);
     }
 
     &:disabled {
-        color: #686868;
+        color: var(--dbolt-686868);
         opacity: .7;
     }
 }
@@ -301,10 +301,10 @@ textarea {
 }
 
 .empty-state {
-    background: #1b1b1b;
-    border: 1px dashed #3b3b3b;
+    background: var(--dbolt-1b1b1b);
+    border: 1px dashed var(--dbolt-3b3b3b);
     border-radius: 10px;
-    color: #777;
+    color: var(--dbolt-777);
     font-family: 'Nunito';
     font-size: .8em;
     padding: 12px;
@@ -316,7 +316,7 @@ textarea {
     min-height: 0;
 
     small {
-        color: #969696;
+        color: var(--dbolt-969696);
         font-family: 'Nunito';
         font-size: .78em;
         font-weight: 700;
@@ -325,10 +325,10 @@ textarea {
 }
 
 .sql-preview {
-    background: #121212;
-    border: 1px solid #303030;
+    background: var(--dbolt-121212);
+    border: 1px solid var(--dbolt-303030);
     border-radius: 10px;
-    color: #d8e9fb;
+    color: var(--dbolt-d8e9fb);
     flex: 1 1 auto;
     font-family: Consolas, 'Courier New', monospace;
     font-size: .82em;

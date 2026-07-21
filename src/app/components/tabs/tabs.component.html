@@ -1,10 +1,10 @@
 <div class="content d-flex gap-2">
     <button type="button" class="add assistant" (click)="openAssistant($event)" [title]="t('aiAssistant.title')">
-        <img src="icons/ai.png" height="20px" alt="IA">
+        <img src="icons/ai.png" height="17px" alt="IA">
     </button>
 
     <div class="add" (click)="toggleDropdown()">
-        <img src="icons/add.png" height="20px">
+        <img src="icons/add.png" height="17px">
 
         <div class="dropdown" *ngIf="dropdownVisible">
             <ul>
@@ -25,7 +25,10 @@
     </div>
     <div class="wrap-tables">
         <div class="tabs" #tabsContainer>
-            <div class="tab gap-3" *ngFor="let tab of tabs; let i = index" [class.active]="i === activeTab"
+            <div class="tab gap-3" *ngFor="let tab of tabs; let i = index; trackBy: trackTabByIdentity"
+                [class.active]="i === activeTab" [class.tab-opening]="tab.opening"
+                [class.tab-closing]="tab.closing"
+                [style.--tab-animation-width]="tab.animationWidth ? tab.animationWidth + 'px' : null"
                 (click)="selectTab(i)">
                 <img class="tab-icon" [src]="getTabIcon(tab)" height="15px" />
                 <div class="text" title="{{ tab.name }}">

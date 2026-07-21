@@ -3,6 +3,7 @@ import * as monaco from 'monaco-editor'
 import { Subscription } from 'rxjs'
 import { AppSettingsService } from '../app-settings/app-settings.service'
 import { SqlSyntaxValidationService } from './sql-syntax-validation.service'
+import { SqlTableReferenceValidationService } from './sql-table-reference-validation.service'
 
 interface RegisteredSyntaxEditor {
   editor: monaco.editor.IStandaloneCodeEditor
@@ -22,7 +23,8 @@ export class SqlSyntaxMonacoMarkersService {
 
   constructor(
     private settings: AppSettingsService,
-    private syntaxValidation: SqlSyntaxValidationService
+    private syntaxValidation: SqlSyntaxValidationService,
+    private tableReferenceValidation: SqlTableReferenceValidationService
   ) { }
 
   registerEditor(
@@ -58,6 +60,7 @@ export class SqlSyntaxMonacoMarkersService {
           clearTimeout(registeredEditor.timeoutId)
         }
 
+        registeredEditor.validationVersion++
         this.clearMarkers(editor)
         registeredEditor.changeDisposable.dispose()
         registeredEditor.settingsSubscription.unsubscribe()
@@ -70,13 +73,15 @@ export class SqlSyntaxMonacoMarkersService {
       clearTimeout(editorInfo.timeoutId)
     }
 
+    const validationVersion = ++editorInfo.validationVersion
+
     editorInfo.timeoutId = setTimeout(() => {
       editorInfo.timeoutId = null
-      void this.validateEditor(editorInfo)
+      void this.validateEditor(editorInfo, validationVersion)
     }, delayMs)
   }
 
-  private async validateEditor(editorInfo: RegisteredSyntaxEditor): Promise<void> {
+  private async validateEditor(editorInfo: RegisteredSyntaxEditor, validationVersion: number): Promise<void> {
     const model = editorInfo.editor.getModel()
     if (!model) return
 
@@ -85,11 +90,17 @@ export class SqlSyntaxMonacoMarkersService {
       return
     }
 
-    const validationVersion = ++editorInfo.validationVersion
-    const diagnostics = await this.syntaxValidation.validate(model.getValue(), editorInfo.getContext())
+    const sql = model.getValue()
+    const context = editorInfo.getContext()
+    const syntaxDiagnostics = await this.syntaxValidation.validate(sql, context)
     if (validationVersion !== editorInfo.validationVersion) return
 
-    const markers: monaco.editor.IMarkerData[] = diagnostics.map((diagnostic) => ({
+    const tableDiagnostics = syntaxDiagnostics.length === 0
+      ? await this.tableReferenceValidation.validate(sql, context)
+      : []
+    if (validationVersion !== editorInfo.validationVersion) return
+
+    const syntaxMarkers: monaco.editor.IMarkerData[] = syntaxDiagnostics.map((diagnostic) => ({
       severity: monaco.MarkerSeverity.Error,
       message: diagnostic.message,
       source: 'SQL syntax',
@@ -98,8 +109,17 @@ export class SqlSyntaxMonacoMarkersService {
       endLineNumber: diagnostic.endLineNumber,
       endColumn: diagnostic.endColumn
     }))
+    const tableMarkers: monaco.editor.IMarkerData[] = tableDiagnostics.map((diagnostic) => ({
+      severity: monaco.MarkerSeverity.Error,
+      message: diagnostic.message,
+      source: 'SQL metadata',
+      startLineNumber: diagnostic.startLineNumber,
+      startColumn: diagnostic.startColumn,
+      endLineNumber: diagnostic.endLineNumber,
+      endColumn: diagnostic.endColumn
+    }))
 
-    monaco.editor.setModelMarkers(model, this.markerOwner, markers)
+    monaco.editor.setModelMarkers(model, this.markerOwner, [...syntaxMarkers, ...tableMarkers])
   }
 
   private clearMarkers(editor: monaco.editor.IStandaloneCodeEditor): void {

@@ -7,9 +7,7 @@ import {
   Input,
   OnInit,
   Output,
-  QueryList,
-  ViewChild,
-  ViewChildren
+  ViewChild
 } from '@angular/core'
 
 import { AiChatInputComponent } from '../ai-chat-input/ai-chat-input.component'
@@ -53,14 +51,12 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
   errorMessage: string = ''
   sidebarExpanded: boolean = false
   showDeleteConversationConfirm: boolean = false
+  showDeleteAllConversationsConfirm: boolean = false
   showConversationsModal: boolean = false
   pendingDeleteConversation: AiAssistantConversation | null = null
 
   @ViewChild('messagesContainer')
   private messagesContainer?: ElementRef<HTMLDivElement>
-
-  @ViewChildren('messageItem')
-  private messageItems?: QueryList<ElementRef<HTMLElement>>
 
   private lastScrolledMessageId: string = ''
 
@@ -86,23 +82,9 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
     if (lastMessage.id === this.lastScrolledMessageId) return
 
     const container = this.messagesContainer?.nativeElement
-    const lastElement = this.messageItems?.last?.nativeElement
+    if (!container) return
 
-    if (!container || !lastElement) return
-
-    if (lastMessage.role === 'user') {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'smooth'
-      })
-    }
-
-    if (lastMessage.role === 'assistant') {
-      lastElement.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-      })
-    }
+    container.scrollTop = container.scrollHeight
 
     this.lastScrolledMessageId = lastMessage.id
   }
@@ -289,6 +271,32 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
       this.applyConversationState(await this.conversationsService.deleteConversation(conversation.id))
     } catch (error: unknown) {
       this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.deleteConversationError'))
+    } finally {
+      this.loadingConversations = false
+    }
+  }
+
+  requestDeleteAllConversations(): void {
+    if (this.sending || this.loadingConversations) return
+
+    this.showDeleteAllConversationsConfirm = true
+  }
+
+  cancelDeleteAllConversations(): void {
+    this.showDeleteAllConversationsConfirm = false
+  }
+
+  async confirmDeleteAllConversations(): Promise<void> {
+    if (this.sending || this.loadingConversations) return
+
+    this.showDeleteAllConversationsConfirm = false
+    this.loadingConversations = true
+    this.errorMessage = ''
+
+    try {
+      this.applyConversationState(await this.conversationsService.deleteAllConversations())
+    } catch (error: unknown) {
+      this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.deleteAllConversationsError'))
     } finally {
       this.loadingConversations = false
     }

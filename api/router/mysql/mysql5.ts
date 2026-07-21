@@ -43,6 +43,12 @@ router.get('/table-indexes/:tableName', (req, res) => {
 router.get('/table-ddl/:tableName', (req, res) => {
   void CMySQLV1.tableDDL(req, res);
 });
+router.get('/diagram/schema', (req, res) => {
+  void CMySQLV1.schemaDiagram(req, res);
+});
+router.get('/diagram/object/:tableName', (req, res) => {
+  void CMySQLV1.objectDiagram(req, res);
+});
 router.get('/procedure-ddl/:procedureName', (req, res) => {
   void CMySQLV1.procedureDDL(req, res);
 });

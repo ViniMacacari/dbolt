@@ -2,11 +2,13 @@ import { ColDef, ValueFormatterParams } from 'ag-grid-community'
 
 type GridColumnType = 'boolean' | 'integer' | 'decimal' | 'date' | 'string'
 
-const integerFormatter = new Intl.NumberFormat(undefined, {
+const integerFormatter = new Intl.NumberFormat('en-US', {
+  useGrouping: false,
   maximumFractionDigits: 0
 })
 
-const decimalFormatter = new Intl.NumberFormat(undefined, {
+const decimalFormatter = new Intl.NumberFormat('en-US', {
+  useGrouping: false,
   minimumFractionDigits: 2,
   maximumFractionDigits: 6
 })

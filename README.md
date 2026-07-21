@@ -23,7 +23,6 @@ Additional database support will be added in future updates.
 ## 🛑 Terms of Use
 - Free for personal and educational use.
 - Modifications are allowed.
-- Commercial use is strictly prohibited.
 
 For more details, refer to the license included in the repository.
 
@@ -42,7 +41,6 @@ For more details, refer to the license included in the repository.
 
 ## License
 This project is licensed under a custom license:
-- Commercial use is not allowed.
 - Refer to the LICENSE file for more details.
 
 ## About the Author

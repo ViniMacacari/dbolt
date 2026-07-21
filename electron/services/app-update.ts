@@ -8,7 +8,8 @@ import type { App, IpcMain, IpcMainInvokeEvent, Shell } from 'electron';
 import {
   APP_UPDATE_INSTALLER_CHANNEL,
   APP_UPDATE_MANIFEST_CHANNEL,
-  APP_UPDATE_PLATFORM_CHANNEL
+  APP_UPDATE_PLATFORM_CHANNEL,
+  APP_UPDATE_PROGRESS_CHANNEL
 } from '../ipc/app-update-channels.js';
 
 const DOWNLOADS_MANIFEST_URL = 'https://dbolt.vercel.app/downloads.json';
@@ -26,11 +27,21 @@ export interface AppUpdateIpcOptions {
 interface InstallerPayload {
   url: string;
   fileName?: string;
+  requestId: string;
 }
 
 interface InstallerLaunchResult {
   filePath: string;
 }
+
+interface InstallerProgress {
+  phase: 'preparing' | 'downloading' | 'opening';
+  receivedBytes: number;
+  totalBytes: number | null;
+  percentage: number | null;
+}
+
+type InstallerProgressReporter = (progress: InstallerProgress) => void;
 
 type AppUpdatePlatform = 'windows' | 'linux' | 'macos' | 'unknown';
 
@@ -54,8 +65,19 @@ export function registerAppUpdateIpc(options: AppUpdateIpcOptions): void {
 
   options.ipcMain.handle(APP_UPDATE_INSTALLER_CHANNEL, async (event, payload: unknown) => {
     assertTrustedRenderer(event, options.isTrustedRendererUrl);
-    return service.downloadAndOpenInstaller(payload);
+    return service.downloadAndOpenInstaller(payload, (progress) => {
+      if (!event.sender.isDestroyed()) {
+        const requestId = isRecord(payload) && typeof payload['requestId'] === 'string'
+          ? payload['requestId']
+          : '';
+        event.sender.send(APP_UPDATE_PROGRESS_CHANNEL, { requestId, ...progress });
+      }
+    });
   });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object';
 }
 
 function assertTrustedRenderer(
@@ -88,7 +110,10 @@ class ElectronAppUpdateService {
     return this.requestJson(DOWNLOADS_MANIFEST_URL);
   }
 
-  async downloadAndOpenInstaller(payload: unknown): Promise<InstallerLaunchResult> {
+  async downloadAndOpenInstaller(
+    payload: unknown,
+    reportProgress: InstallerProgressReporter
+  ): Promise<InstallerLaunchResult> {
     const installer = this.parseInstallerPayload(payload);
     const updatesDir = path.resolve(this.app.getPath('temp'), 'dbolt-updates');
     await fs.promises.mkdir(updatesDir, { recursive: true });
@@ -97,9 +122,30 @@ class ElectronAppUpdateService {
     const filePath = this.resolveChildPath(updatesDir, fileName);
     const partialPath = this.resolveChildPath(updatesDir, `${fileName}.download`);
 
-    await this.downloadFile(installer.url, partialPath, 0);
-    await fs.promises.rm(filePath, { force: true });
-    await fs.promises.rename(partialPath, filePath);
+    reportProgress({
+      phase: 'preparing',
+      receivedBytes: 0,
+      totalBytes: null,
+      percentage: null
+    });
+
+    try {
+      await fs.promises.rm(partialPath, { force: true });
+      await this.downloadFile(installer.url, partialPath, 0, reportProgress);
+      await fs.promises.rm(filePath, { force: true });
+      await fs.promises.rename(partialPath, filePath);
+    } catch (error) {
+      await fs.promises.rm(partialPath, { force: true }).catch(() => undefined);
+      throw error;
+    }
+
+    const installerSize = (await fs.promises.stat(filePath)).size;
+    reportProgress({
+      phase: 'opening',
+      receivedBytes: installerSize,
+      totalBytes: installerSize,
+      percentage: 100
+    });
 
     const openError = await this.shell.openPath(filePath);
     if (openError) {
@@ -133,6 +179,7 @@ class ElectronAppUpdateService {
     const record = payload as Record<string, unknown>;
     const url = record['url'];
     const fileName = record['fileName'];
+    const requestId = record['requestId'];
 
     if (typeof url !== 'string') {
       throw new Error('Installer URL is required.');
@@ -142,11 +189,16 @@ class ElectronAppUpdateService {
       throw new Error('Installer file name must be a string.');
     }
 
+    if (typeof requestId !== 'string' || requestId.length < 8 || requestId.length > 128) {
+      throw new Error('Installer request ID is invalid.');
+    }
+
     this.assertTrustedInstallerUrl(url);
 
     return {
       url,
-      fileName: typeof fileName === 'string' ? fileName : undefined
+      fileName: typeof fileName === 'string' ? fileName : undefined,
+      requestId
     };
   }
 
@@ -254,7 +306,12 @@ class ElectronAppUpdateService {
     });
   }
 
-  private async downloadFile(url: string, destinationPath: string, redirects: number): Promise<void> {
+  private async downloadFile(
+    url: string,
+    destinationPath: string,
+    redirects: number,
+    reportProgress: InstallerProgressReporter
+  ): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const request = https.get(url, {
         headers: {
@@ -278,7 +335,7 @@ class ElectronAppUpdateService {
             return;
           }
 
-          this.downloadFile(redirectUrl, destinationPath, redirects + 1).then(resolve, reject);
+          this.downloadFile(redirectUrl, destinationPath, redirects + 1, reportProgress).then(resolve, reject);
           return;
         }
 
@@ -288,8 +345,43 @@ class ElectronAppUpdateService {
           return;
         }
 
+        const contentLength = Number.parseInt(response.headers['content-length'] || '', 10);
+        const totalBytes = Number.isFinite(contentLength) && contentLength >= 0
+          ? contentLength
+          : null;
+        let receivedBytes = 0;
+        let lastReportedAt = 0;
+
+        const emitDownloadProgress = (force = false): void => {
+          const now = Date.now();
+          if (!force && now - lastReportedAt < 80) {
+            return;
+          }
+
+          lastReportedAt = now;
+          const percentage = totalBytes && totalBytes > 0
+            ? Math.min(100, Math.round((receivedBytes / totalBytes) * 1000) / 10)
+            : null;
+
+          reportProgress({
+            phase: 'downloading',
+            receivedBytes,
+            totalBytes,
+            percentage
+          });
+        };
+
+        emitDownloadProgress(true);
+        response.on('data', (chunk: Buffer) => {
+          receivedBytes += chunk.length;
+          emitDownloadProgress();
+        });
+
         const fileStream = fs.createWriteStream(destinationPath);
-        pipeline(response, fileStream).then(resolve, reject);
+        pipeline(response, fileStream).then(() => {
+          emitDownloadProgress(true);
+          resolve();
+        }, reject);
       });
 
       request.setTimeout(INSTALLER_TIMEOUT_MS, () => {

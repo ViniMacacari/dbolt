@@ -19,6 +19,10 @@
         position: relative;
     }
 
+    &.result-panel-opening .editor-panel {
+        transition: height .26s cubic-bezier(.2, .8, .2, 1);
+    }
+
     .editor {
         height: 100%;
         max-height: none;
@@ -36,12 +40,19 @@
         overflow: hidden;
         position: absolute;
         right: 0;
+
+        &.result-panel-opening {
+            animation: query-result-panel-open .26s cubic-bezier(.2, .8, .2, 1) both;
+            transform-origin: center bottom;
+            will-change: opacity, transform;
+        }
     }
 
     app-table-query {
         display: block;
         height: 100%;
         min-height: 0;
+        position: relative;
     }
 
     &.has-results {
@@ -62,8 +73,30 @@
     }
 }
 
+@keyframes query-result-panel-open {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .code-editor.result-panel-opening .editor-panel {
+        transition-duration: 0.01ms !important;
+    }
+
+    .code-editor .result-panel.result-panel-opening {
+        animation-duration: 0.01ms !important;
+    }
+}
+
 .editor-toolbar {
-    background-color: #1b1b1b;
+    background-color: var(--dbolt-editor-toolbar-surface);
     border-radius: 15px;
 }
 
@@ -85,8 +118,8 @@
 }
 
 .editable-div {
-    background-color: #292727;
-    color: #f8f8f2;
+    background-color: var(--dbolt-292727);
+    color: var(--dbolt-f8f8f2);
 
     border: none;
     resize: none;
@@ -103,7 +136,7 @@
     overflow-x: auto;
     overflow-y: auto;
 
-    caret-color: white;
+    caret-color: var(--dbolt-editor-caret);
 }
 
 // Monaco editor
@@ -129,10 +162,10 @@
 }
 
 :host ::ng-deep .monaco-editor .dbolt-sql-navigation-link {
-    color: #b58cff !important;
+    color: var(--dbolt-b58cff) !important;
     cursor: pointer !important;
     text-decoration: underline !important;
-    text-decoration-color: #b58cff !important;
+    text-decoration-color: var(--dbolt-b58cff) !important;
     text-underline-offset: 3px !important;
 }
 

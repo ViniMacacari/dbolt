@@ -15,29 +15,159 @@
         </div>
         <div class="organize">
             <div class="d-flex flex-column w-100 h-100 user-content">
-                <h3 *ngIf="firstMessage" class="subtitle-min text-center py-4">{{ t('workspace.firstMessage') }}</h3>
-                <app-db-info *ngFor="let tab of openSchemaTabs; trackBy: trackTabByIdentity"
+                <section *ngIf="firstMessage" class="workspace-home">
+                    <div class="workspace-home-content">
+                        <header class="workspace-home-hero">
+                            <div class="workspace-home-kicker">
+                                <span class="workspace-home-kicker-icon">
+                                    <img src="icons/code.png" alt="" height="16px">
+                                </span>
+                                <span>{{ t('workspace.home.kicker') }}</span>
+                            </div>
+                            <h1>{{ t('workspace.home.title') }}</h1>
+                            <p>{{ t('workspace.firstMessage') }}</p>
+
+                            <div class="workspace-home-actions">
+                                <button type="button" class="workspace-action workspace-action-primary"
+                                    (click)="openNewQueryFromHome()">
+                                    <span class="workspace-action-icon">
+                                        <img src="icons/add.png" alt="" height="18px">
+                                    </span>
+                                    <span class="workspace-action-copy">
+                                        <strong>{{ t('workspace.home.newQuery') }}</strong>
+                                        <small>{{ t('workspace.home.newQueryDescription') }}</small>
+                                    </span>
+                                </button>
+
+                                <button type="button" class="workspace-action" (click)="openLatestQuery()">
+                                    <span class="workspace-action-icon">
+                                        <img src="icons/history.png" alt="" height="18px">
+                                    </span>
+                                    <span class="workspace-action-copy">
+                                        <strong>{{ t('workspace.home.openLatest') }}</strong>
+                                        <small>{{ t('workspace.home.openLatestDescription') }}</small>
+                                    </span>
+                                </button>
+
+                                <button type="button" class="workspace-action" (click)="openQueryLibrary()">
+                                    <span class="workspace-action-icon">
+                                        <img src="icons/folder-code.png" alt="" height="19px">
+                                    </span>
+                                    <span class="workspace-action-copy">
+                                        <strong>{{ t('workspace.home.browseQueries') }}</strong>
+                                        <small>{{ t('workspace.home.browseQueriesDescription') }}</small>
+                                    </span>
+                                </button>
+                            </div>
+                        </header>
+
+                        <section class="workspace-recents" aria-labelledby="workspace-recents-title">
+                            <div class="workspace-recents-heading">
+                                <span>
+                                    <h2 id="workspace-recents-title">{{ t('workspace.home.recentTitle') }}</h2>
+                                    <p>{{ t('workspace.home.recentDescription') }}</p>
+                                </span>
+                                <button type="button" (click)="openQueryLibrary()">
+                                    {{ t('workspace.home.viewAll') }}
+                                </button>
+                            </div>
+
+                            <div *ngIf="loadingRecentQueries" class="workspace-recents-loading" role="status">
+                                <span class="workspace-loading-dot"></span>
+                                <span>{{ t('workspace.home.loadingRecent') }}</span>
+                            </div>
+
+                            <div *ngIf="!loadingRecentQueries && recentQueries.length" class="workspace-recent-grid">
+                                <button type="button" class="workspace-recent-item"
+                                    *ngFor="let query of recentQueries; trackBy: trackRecentQuery"
+                                    (click)="openRecentQuery(query)">
+                                    <span class="workspace-recent-icon">
+                                        <img src="icons/code.png" alt="" height="17px">
+                                    </span>
+                                    <span class="workspace-recent-copy">
+                                        <strong>{{ query.name }}</strong>
+                                        <small>
+                                            <span *ngIf="query.folderPath">{{ query.folderPath }}</span>
+                                            <span *ngIf="query.folderPath && (query.updatedAt || query.createdAt)" aria-hidden="true">•</span>
+                                            <span *ngIf="query.updatedAt || query.createdAt">
+                                                {{ formatRecentQueryDate(query.updatedAt || query.createdAt) }}
+                                            </span>
+                                        </small>
+                                    </span>
+                                    <span class="workspace-recent-arrow" aria-hidden="true">›</span>
+                                </button>
+                            </div>
+
+                            <div *ngIf="!loadingRecentQueries && !recentQueries.length" class="workspace-recents-empty">
+                                <img src="icons/folder.png" alt="" height="20px">
+                                <span>{{ t('workspace.home.noRecent') }}</span>
+                            </div>
+                        </section>
+                    </div>
+                </section>
+                <app-db-info class="workspace-tab-content" *ngFor="let tab of openSchemaTabs; trackBy: trackTabByIdentity"
+                    [class.workspace-tab-opening]="tab.opening && isActiveContentTab(tab)"
+                    [class.workspace-tab-closing]="tab.closing && isActiveContentTab(tab)"
+                    [class.workspace-tab-switching]="tab.switching && isActiveContentTab(tab)"
+                    [style.--workspace-tab-switch-offset]="tab.switchOffset || null"
                     [hidden]="!isActiveContentTab(tab)" [data]="tab.info?.dbInfo" [tabInfo]="tab"
-                    (moreInfo)="openMoreInfo($event)"></app-db-info>
-                <app-table-info *ngFor="let tab of openTableTabs; trackBy: trackTabByIdentity"
+                    (moreInfo)="openMoreInfo($event)" (diagramRequested)="onDiagramRequested($event)"></app-db-info>
+                <app-table-info class="workspace-tab-content" *ngFor="let tab of openTableTabs; trackBy: trackTabByIdentity"
+                    [class.workspace-tab-opening]="tab.opening && isActiveContentTab(tab)"
+                    [class.workspace-tab-closing]="tab.closing && isActiveContentTab(tab)"
+                    [class.workspace-tab-switching]="tab.switching && isActiveContentTab(tab)"
+                    [style.--workspace-tab-switch-offset]="tab.switchOffset || null"
                     [hidden]="!isActiveContentTab(tab)" [data]="tab.dbInfo || tab.info?.info"
-                    [elementName]="tab.info?.name || tab.name" [tabInfo]="tab"></app-table-info>
-                <app-procedure-info *ngFor="let tab of openProcedureTabs; trackBy: trackTabByIdentity"
+                    [elementName]="tab.info?.name || tab.name" [tabInfo]="tab"
+                    (diagramRequested)="onDiagramRequested($event)"></app-table-info>
+                <app-database-diagram class="workspace-tab-content"
+                    *ngFor="let tab of openDiagramTabs; trackBy: trackTabByIdentity"
+                    [class.workspace-tab-opening]="tab.opening && isActiveContentTab(tab)"
+                    [class.workspace-tab-closing]="tab.closing && isActiveContentTab(tab)"
+                    [class.workspace-tab-switching]="tab.switching && isActiveContentTab(tab)"
+                    [style.--workspace-tab-switch-offset]="tab.switchOffset || null"
+                    [hidden]="!isActiveContentTab(tab)" [tabInfo]="tab"></app-database-diagram>
+                <app-procedure-info class="workspace-tab-content"
+                    *ngFor="let tab of openProcedureTabs; trackBy: trackTabByIdentity"
+                    [class.workspace-tab-opening]="tab.opening && isActiveContentTab(tab)"
+                    [class.workspace-tab-closing]="tab.closing && isActiveContentTab(tab)"
+                    [class.workspace-tab-switching]="tab.switching && isActiveContentTab(tab)"
+                    [style.--workspace-tab-switch-offset]="tab.switchOffset || null"
                     [hidden]="!isActiveContentTab(tab)" [data]="tab.dbInfo || tab.info?.info"
                     [elementName]="tab.info?.name || tab.name" [tabInfo]="tab"
                     (editRequested)="onProcedureEditRequested($event)"></app-procedure-info>
-                <app-settings *ngIf="settingsInitialized" [hidden]="!settingsOpen"
+                <app-settings class="workspace-tab-content" *ngIf="settingsInitialized" [hidden]="!settingsOpen"
+                    [class.workspace-tab-opening]="settingsOpen && tabInfo?.opening"
+                    [class.workspace-tab-closing]="settingsOpen && tabInfo?.closing"
+                    [class.workspace-tab-switching]="settingsOpen && tabInfo?.switching"
+                    [style.--workspace-tab-switch-offset]="tabInfo?.switchOffset || null"
                     [initialTab]="tabInfo?.info?.activeTab || null"
                     (aiSettingsSaved)="onAiSettingsSaved()"></app-settings>
-                <app-query-assistant *ngIf="queryAssistantOpen" [tabInfo]="tabInfo"
+                <app-query-assistant class="workspace-tab-content" *ngIf="queryAssistantOpen" [tabInfo]="tabInfo"
+                    [class.workspace-tab-opening]="tabInfo?.opening"
+                    [class.workspace-tab-closing]="tabInfo?.closing"
+                    [class.workspace-tab-switching]="tabInfo?.switching"
+                    [style.--workspace-tab-switch-offset]="tabInfo?.switchOffset || null"
                     (selectBuilderRequested)="onSelectBuilderRequested($event)"></app-query-assistant>
-                <app-select-builder *ngIf="selectBuilderOpen" [tabInfo]="tabInfo"
+                <app-select-builder class="workspace-tab-content" *ngIf="selectBuilderOpen" [tabInfo]="tabInfo"
+                    [class.workspace-tab-opening]="tabInfo?.opening"
+                    [class.workspace-tab-closing]="tabInfo?.closing"
+                    [class.workspace-tab-switching]="tabInfo?.switching"
+                    [style.--workspace-tab-switch-offset]="tabInfo?.switchOffset || null"
                     (queryRequested)="onBuilderQueryRequested($event)"></app-select-builder>
-                <app-query-version-compare *ngIf="queryCompareOpen" [tabInfo]="tabInfo"
+                <app-query-version-compare class="workspace-tab-content" *ngIf="queryCompareOpen" [tabInfo]="tabInfo"
+                    [class.workspace-tab-opening]="tabInfo?.opening"
+                    [class.workspace-tab-closing]="tabInfo?.closing"
+                    [class.workspace-tab-switching]="tabInfo?.switching"
+                    [style.--workspace-tab-switch-offset]="tabInfo?.switchOffset || null"
                     (editRequested)="onCompareEditRequested($event)"
                     (restoreRequested)="onCompareRestoreRequested($event)"></app-query-version-compare>
 
-                <app-code-editor *ngFor="let tab of openTabs; trackBy: trackTabByIdentity"
+                <app-code-editor class="workspace-tab-content" *ngFor="let tab of openTabs; trackBy: trackTabByIdentity"
+                    [class.workspace-tab-opening]="tab.opening && isActiveSqlTab(tab)"
+                    [class.workspace-tab-closing]="tab.closing && isActiveSqlTab(tab)"
+                    [class.workspace-tab-switching]="tab.switching && isActiveSqlTab(tab)"
+                    [style.--workspace-tab-switch-offset]="tab.switchOffset || null"
                     [hidden]="!isActiveSqlTab(tab)" [active]="isActiveSqlTab(tab)" [sqlContent]="tab.info?.sql || ''"
                     [widthTable]="widthTable" [tabInfo]="tab" (sqlContentChange)="onSqlContentChange($event, tab)"
                     (savedName)="onSavedQuery($event, tab)" (savedQuery)="onExistingSavedQuery($event)"

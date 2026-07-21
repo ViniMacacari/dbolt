@@ -6,8 +6,8 @@
 }
 
 .home-page {
-    background: #131313;
-    color: #e8eaed;
+    background: var(--dbolt-131313);
+    color: var(--dbolt-e8eaed);
     height: 100%;
     min-height: 0;
     overflow: hidden;
@@ -44,7 +44,7 @@
 
     h1 {
         align-items: baseline;
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         display: flex;
         gap: 8px;
         font-size: 1.15em;
@@ -53,13 +53,13 @@
     }
 
     p {
-        color: #b8b8b9;
+        color: var(--dbolt-b8b8b9);
         font-size: .86em;
         margin-top: 3px;
     }
 
     span {
-        color: #969696;
+        color: var(--dbolt-969696);
         font-size: .72em;
         font-weight: 700;
     }
@@ -72,8 +72,8 @@
 }
 
 .view-toggle {
-    background: #000;
-    border: 1px solid #232020;
+    background: var(--dbolt-000);
+    border: 1px solid var(--dbolt-232020);
     border-radius: 10px;
     display: flex;
     padding: 4px;
@@ -82,7 +82,7 @@
         background: transparent;
         border: none;
         border-radius: 7px;
-        color: #969696;
+        color: var(--dbolt-969696);
         cursor: pointer;
         font-family: 'Nunito';
         font-size: .74em;
@@ -92,16 +92,16 @@
 
         &.active,
         &:hover {
-            background: #232020;
-            color: #e8eaed;
+            background: var(--dbolt-232020);
+            color: var(--dbolt-e8eaed);
         }
     }
 }
 
 .language-button {
     align-items: center;
-    background: #000;
-    border: 1px solid #232020;
+    background: var(--dbolt-000);
+    border: 1px solid var(--dbolt-232020);
     border-radius: 10px;
     cursor: pointer;
     display: inline-flex;
@@ -115,7 +115,7 @@
     }
 
     &:hover {
-        background: #232020;
+        background: var(--dbolt-232020);
     }
 }
 
@@ -123,10 +123,10 @@
 .help-button,
 .open-button {
     align-items: center;
-    background: #000;
-    border: 1px solid #232020;
+    background: var(--dbolt-000);
+    border: 1px solid var(--dbolt-232020);
     border-radius: 10px;
-    color: #e8eaed;
+    color: var(--dbolt-e8eaed);
     cursor: pointer;
     display: inline-flex;
     font-family: 'Nunito';
@@ -138,7 +138,7 @@
     padding: 0 14px;
 
     &:hover {
-        background: #232020;
+        background: var(--dbolt-232020);
     }
 }
 
@@ -152,8 +152,8 @@
 }
 
 .connection-rail {
-    background: #000;
-    border: 1px solid #181818;
+    background: var(--dbolt-000);
+    border: 1px solid var(--dbolt-181818);
     border-radius: 20px;
     display: flex;
     flex-direction: column;
@@ -168,7 +168,7 @@
     background: transparent;
     border: 1px solid transparent;
     border-radius: 14px;
-    color: #b8b8b9;
+    color: var(--dbolt-b8b8b9);
     cursor: pointer;
     display: grid;
     gap: 10px;
@@ -179,8 +179,8 @@
 
     &:hover,
     &.active {
-        background: #131313;
-        border-color: #232020;
+        background: var(--dbolt-131313);
+        border-color: var(--dbolt-232020);
     }
 
     img {
@@ -197,13 +197,13 @@
     }
 
     strong {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-size: .86em;
         font-weight: 800;
     }
 
     small {
-        color: #969696;
+        color: var(--dbolt-969696);
         font-size: .68em;
         margin-top: 2px;
     }
@@ -211,8 +211,8 @@
 
 .connection-stage {
     align-items: center;
-    background: #000;
-    border: 1px solid #181818;
+    background: var(--dbolt-000);
+    border: 1px solid var(--dbolt-181818);
     border-radius: 28px;
     display: flex;
     flex-direction: column;
@@ -245,15 +245,15 @@
         width: 30px;
 
         &:hover {
-            background: #232020;
+            background: var(--dbolt-232020);
         }
     }
 }
 
 .stage-logo {
     align-items: center;
-    background: #050505;
-    border: 1px solid #181818;
+    background: var(--dbolt-050505);
+    border: 1px solid var(--dbolt-181818);
     border-radius: 28px;
     display: flex;
     height: 150px;
@@ -281,19 +281,19 @@
     }
 
     p {
-        color: #969696;
+        color: var(--dbolt-969696);
         font-size: .82em;
     }
 
     h2 {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-size: 2em;
         font-weight: 850;
         margin: 8px 0;
     }
 
     span {
-        color: #b8b8b9;
+        color: var(--dbolt-b8b8b9);
         display: block;
         font-size: .88em;
     }
@@ -308,8 +308,8 @@
     width: 100%;
 
     div {
-        background: #050505;
-        border: 1px solid #181818;
+        background: var(--dbolt-050505);
+        border: 1px solid var(--dbolt-181818);
         border-radius: 14px;
         min-width: 0;
         padding: 12px;
@@ -324,14 +324,14 @@
     }
 
     dt {
-        color: #969696;
+        color: var(--dbolt-969696);
         font-size: .68em;
         font-weight: 800;
         margin-bottom: 5px;
     }
 
     dd {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-size: .82em;
         margin: 0;
     }
@@ -350,10 +350,10 @@
 
 .matrix-item {
     align-items: center;
-    background: #000;
-    border: 1px solid #181818;
+    background: var(--dbolt-000);
+    border: 1px solid var(--dbolt-181818);
     border-radius: 22px;
-    color: #b8b8b9;
+    color: var(--dbolt-b8b8b9);
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -364,8 +364,8 @@
     text-align: center;
 
     &:hover {
-        background: #050505;
-        border-color: #232020;
+        background: var(--dbolt-050505);
+        border-color: var(--dbolt-232020);
     }
 
     img {
@@ -383,14 +383,14 @@
     }
 
     strong {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-size: .9em;
         font-weight: 800;
         margin-top: 16px;
     }
 
     small {
-        color: #969696;
+        color: var(--dbolt-969696);
         font-size: .62em;
         margin-top: 6px;
     }
@@ -412,7 +412,7 @@
 
     &::before,
     &::after {
-        background: #e8eaed;
+        background: var(--dbolt-e8eaed);
         border-radius: 2px;
         content: '';
         left: 50%;
@@ -434,8 +434,8 @@
 
 .empty-state {
     align-items: center;
-    background: #000;
-    border: 1px solid #181818;
+    background: var(--dbolt-000);
+    border: 1px solid var(--dbolt-181818);
     border-radius: 28px;
     display: flex;
     flex-direction: column;
@@ -444,7 +444,7 @@
     min-height: 0;
 
     h2 {
-        color: #e8eaed;
+        color: var(--dbolt-e8eaed);
         font-family: 'Nunito';
         font-size: 1em;
         margin: 0;
@@ -466,7 +466,7 @@
 
 .modal-content {
     animation: fadeIn 0.3s ease;
-    background-color: #0b0b0b;
+    background-color: var(--dbolt-0b0b0b);
     border-radius: 25px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
     max-width: 500px;
@@ -476,7 +476,7 @@
 
 .modal-header {
     align-items: center;
-    border-bottom: 1px solid #0b0b0b;
+    border-bottom: 1px solid var(--dbolt-0b0b0b);
     display: flex;
     justify-content: space-between;
     padding: 15px;
@@ -487,7 +487,7 @@
 }
 
 .modal-footer {
-    border-top: 1px solid #2d2d2d;
+    border-top: 1px solid var(--dbolt-2d2d2d);
     display: flex;
     gap: 10px;
     justify-content: flex-end;
@@ -499,7 +499,7 @@
 }
 
 .language-description {
-    color: #b8b8b9;
+    color: var(--dbolt-b8b8b9);
     font-family: 'Nunito';
     font-size: .82em;
     margin: 0 0 12px;
@@ -513,10 +513,10 @@
 
     button {
         align-items: center;
-        background: #050505;
-        border: 1px solid #181818;
+        background: var(--dbolt-050505);
+        border: 1px solid var(--dbolt-181818);
         border-radius: 10px;
-        color: #b8b8b9;
+        color: var(--dbolt-b8b8b9);
         cursor: pointer;
         display: flex;
         font-family: 'Nunito';
@@ -529,9 +529,9 @@
 
         &:hover,
         &.active {
-            background: #232020;
-            border-color: #2d2d2d;
-            color: #e8eaed;
+            background: var(--dbolt-232020);
+            border-color: var(--dbolt-2d2d2d);
+            color: var(--dbolt-e8eaed);
         }
     }
 }

@@ -24,9 +24,14 @@ const INTERNAL_API_SESSION_CHANNEL = 'dbolt:internal-api-session';
 const WINDOW_ACTION_CHANNEL = 'dbolt:window-action';
 const WINDOW_STATE_CHANNEL = 'dbolt:window-state';
 const WINDOW_STATE_CHANGED_CHANNEL = 'dbolt:window-state-changed';
+const WINDOW_CLOSE_REQUESTED_CHANNEL = 'dbolt:window-close-requested';
+const WINDOW_CLOSE_RESPONSE_CHANNEL = 'dbolt:window-close-response';
 const ORIGINAL_REPOSITORY_URL = 'https://github.com/ViniMacacari/dbolt';
 
 let win: InstanceType<typeof BrowserWindow> | null = null;
+let allowWindowClose = false;
+let closeRequestPending = false;
+let quitAfterClose = false;
 
 if (process.platform === 'linux') {
   app.commandLine.appendSwitch('no-sandbox');
@@ -125,6 +130,30 @@ ipcMain.handle(WINDOW_STATE_CHANNEL, (event) => {
   return getWindowState(getEventWindow(event));
 });
 
+ipcMain.handle(WINDOW_CLOSE_RESPONSE_CHANNEL, (event, shouldClose: boolean) => {
+  assertTrustedIpcSender(event);
+
+  if (typeof shouldClose !== 'boolean') {
+    throw new Error('The window close response must be a boolean.');
+  }
+
+  const targetWindow = getEventWindow(event);
+  closeRequestPending = false;
+
+  if (!shouldClose) {
+    quitAfterClose = false;
+    return;
+  }
+
+  allowWindowClose = true;
+
+  if (quitAfterClose) {
+    app.quit();
+  } else {
+    targetWindow.close();
+  }
+});
+
 ipcMain.handle(WINDOW_ACTION_CHANNEL, async (event, action: string) => {
   assertTrustedIpcSender(event);
 
@@ -146,7 +175,8 @@ ipcMain.handle(WINDOW_ACTION_CHANNEL, async (event, action: string) => {
       targetWindow.close();
       break;
     case 'quit':
-      app.quit();
+      quitAfterClose = true;
+      targetWindow.close();
       break;
     case 'reset-zoom':
       webContents.setZoomLevel(0);
@@ -199,6 +229,10 @@ registerAppUpdateIpc({
 });
 
 function createWindow(): void {
+  allowWindowClose = false;
+  closeRequestPending = false;
+  quitAfterClose = false;
+
   Menu.setApplicationMenu(null);
 
   win = new BrowserWindow({
@@ -259,6 +293,21 @@ function createWindow(): void {
     win = null;
   });
 
+  win.on('close', (event) => {
+    if (allowWindowClose) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (closeRequestPending || !win || win.isDestroyed()) {
+      return;
+    }
+
+    closeRequestPending = true;
+    win.webContents.send(WINDOW_CLOSE_REQUESTED_CHANNEL);
+  });
+
   win.on('maximize', () => win && sendWindowState(win));
   win.on('unmaximize', () => win && sendWindowState(win));
   win.on('enter-full-screen', () => win && sendWindowState(win));
@@ -266,6 +315,12 @@ function createWindow(): void {
 }
 
 app.on('ready', createWindow);
+
+app.on('before-quit', () => {
+  if (!allowWindowClose) {
+    quitAfterClose = true;
+  }
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
