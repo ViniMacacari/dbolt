@@ -73,6 +73,8 @@ export const enTranslations: TranslationCatalog = {
   'appUpdate.prereleaseWarningDescription': 'This version may include features under testing or behavior that is not final yet.',
   'appUpdate.platform': 'Platform',
   'appUpdate.file': 'File',
+  'appUpdate.ignoreVersion': 'Skip version',
+  'appUpdate.ignoreVersionTitle': 'Do not show version {version} again',
   'appUpdate.later': 'Not now',
   'appUpdate.updateNow': 'Download update',
   'appUpdate.updating': 'Updating...',

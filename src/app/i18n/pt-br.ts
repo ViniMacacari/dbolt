@@ -73,6 +73,8 @@ export const ptBrTranslations: TranslationCatalog = {
   'appUpdate.prereleaseWarningDescription': 'Esta versão pode conter recursos em teste ou comportamentos ainda não finalizados.',
   'appUpdate.platform': 'Plataforma',
   'appUpdate.file': 'Arquivo',
+  'appUpdate.ignoreVersion': 'Ignorar versão',
+  'appUpdate.ignoreVersionTitle': 'Não mostrar novamente a versão {version}',
   'appUpdate.later': 'Agora não',
   'appUpdate.updateNow': 'Baixar atualização',
   'appUpdate.updating': 'Atualizando...',
