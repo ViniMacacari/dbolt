@@ -1,37 +1,98 @@
-<div class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h5 class="title text-center w-100">{{ t('appUpdate.title') }}</h5>
-        </div>
+<div class="update-overlay">
+    <section class="update-modal" role="dialog" aria-modal="true" [attr.aria-label]="t('appUpdate.title')">
+        <header class="update-header">
+            <div class="update-heading">
+                <img class="dbolt-mark" src="icons/dbolt-square.png" alt="">
+                <div>
+                    <small>{{ t('appUpdate.eyebrow') }}</small>
+                    <h2>{{ t('appUpdate.title') }}</h2>
+                </div>
+            </div>
 
-        <div class="modal-body">
-            <p>
-                {{ t('appUpdate.message', { currentVersion: currentVersion, targetVersion: targetVersion }) }}
+            <div class="header-actions">
+                <span class="channel-badge" [class.prerelease]="update?.isPrerelease">
+                    <span class="channel-dot"></span>
+                    {{ releaseChannel }}
+                </span>
+                <button type="button" class="close-button" [disabled]="isInstalling"
+                    [title]="t('appUpdate.close')" [attr.aria-label]="t('appUpdate.close')" (click)="close()">×</button>
+            </div>
+        </header>
+
+        <div class="update-body">
+            <div class="version-path" *ngIf="update">
+                <div class="version-block current">
+                    <span>{{ t('appUpdate.currentVersion') }}</span>
+                    <strong>v{{ currentVersion }}</strong>
+                </div>
+                <div class="version-arrow" aria-hidden="true">
+                    <span></span>
+                    <b>›</b>
+                </div>
+                <div class="version-block available">
+                    <span>{{ t('appUpdate.availableVersion') }}</span>
+                    <strong>{{ targetVersion }}</strong>
+                </div>
+            </div>
+
+            <p class="update-message">
+                {{ t(update?.isPrerelease ? 'appUpdate.prereleaseMessage' : 'appUpdate.message', {
+                    currentVersion: currentVersion,
+                    targetVersion: targetVersion,
+                    channel: releaseChannel
+                }) }}
             </p>
 
-            <dl *ngIf="update">
+            <aside class="prerelease-warning" *ngIf="update?.isPrerelease">
+                <span class="warning-icon" aria-hidden="true">!</span>
                 <div>
-                    <dt>{{ t('appUpdate.platform') }}</dt>
-                    <dd>{{ platformLabel }}</dd>
+                    <strong>{{ t('appUpdate.prereleaseWarningTitle', { channel: releaseChannel }) }}</strong>
+                    <p>{{ t('appUpdate.prereleaseWarningDescription') }}</p>
                 </div>
-                <div>
-                    <dt>{{ t('appUpdate.file') }}</dt>
-                    <dd>{{ update.release.fileName || update.release.format }}</dd>
-                </div>
-            </dl>
+            </aside>
 
-            <p class="status" *ngIf="isInstalling">{{ t('appUpdate.downloading') }}</p>
-            <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+            <div class="release-meta" *ngIf="update">
+                <div>
+                    <span>{{ t('appUpdate.platform') }}</span>
+                    <strong>{{ platformLabel }}</strong>
+                </div>
+                <div>
+                    <span>{{ t('appUpdate.file') }}</span>
+                    <strong [title]="update.release.fileName || update.release.format">
+                        {{ update.release.fileName || update.release.format }}
+                    </strong>
+                </div>
+            </div>
+
+            <section class="download-progress" *ngIf="isInstalling" aria-live="polite">
+                <div class="progress-copy">
+                    <div class="progress-spinner" [class.complete]="progress?.phase === 'opening'"></div>
+                    <div>
+                        <strong>{{ progressStatus }}</strong>
+                        <span>{{ progressDetail }}</span>
+                    </div>
+                    <b *ngIf="downloadPercentage !== null">{{ roundedDownloadPercentage }}%</b>
+                </div>
+                <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                    [attr.aria-valuenow]="downloadPercentage" [class.indeterminate]="downloadPercentage === null">
+                    <span [style.width]="progressBarWidth"></span>
+                </div>
+            </section>
+
+            <div class="update-error" *ngIf="errorMessage" role="alert">
+                <span aria-hidden="true">!</span>
+                {{ errorMessage }}
+            </div>
         </div>
 
-        <div class="modal-footer">
-            <button class="btn-cancel" type="button" [disabled]="isInstalling" (click)="close()">
+        <footer class="update-footer">
+            <button class="later-button" type="button" [disabled]="isInstalling" (click)="close()">
                 {{ t('appUpdate.later') }}
             </button>
-            <button class="btn-page" type="button" [disabled]="isInstalling" (click)="updateNow()">
+            <button class="update-button" type="button" [disabled]="isInstalling" (click)="updateNow()">
+                <span aria-hidden="true">↓</span>
                 {{ isInstalling ? t('appUpdate.updating') : t('appUpdate.updateNow') }}
             </button>
-        </div>
-    </div>
+        </footer>
+    </section>
 </div>
-
