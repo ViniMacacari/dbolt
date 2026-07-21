@@ -213,6 +213,7 @@ export class SettingsComponent implements OnInit, OnChanges {
       { value: 'dbolt-dark', label: this.t('settings.highlight.option.dboltDark') },
       { value: 'dbolt-high-contrast', label: this.t('settings.highlight.option.dboltHighContrast') },
       { value: 'classic-sql', label: this.t('settings.highlight.option.classicSql') },
+      { value: 'vibrant', label: this.t('settings.highlight.option.vibrant') },
       { value: 'custom', label: this.t('settings.highlight.option.custom') }
     ]
   }

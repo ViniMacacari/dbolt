@@ -201,6 +201,7 @@ export const enTranslations: TranslationCatalog = {
   'settings.highlight.option.dboltDark': 'DBOLT Dark',
   'settings.highlight.option.dboltHighContrast': 'DBOLT High Contrast',
   'settings.highlight.option.classicSql': 'Classic SQL',
+  'settings.highlight.option.vibrant': 'Vibrant Theme',
   'settings.highlight.option.custom': 'Custom',
   'settings.highlight.custom.title': 'Custom colors',
   'settings.highlight.custom.description': 'Applies to SQL tokens such as SELECT, max(), id, strings and comments.',

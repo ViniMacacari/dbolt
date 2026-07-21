@@ -201,6 +201,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'settings.highlight.option.dboltDark': 'DBOLT escuro',
   'settings.highlight.option.dboltHighContrast': 'DBOLT alto contraste',
   'settings.highlight.option.classicSql': 'SQL clássico',
+  'settings.highlight.option.vibrant': 'Vibrant Theme',
   'settings.highlight.option.custom': 'Personalizado',
   'settings.highlight.custom.title': 'Cores personalizadas',
   'settings.highlight.custom.description': 'Aplica-se a tokens SQL como SELECT, max(), id, strings e comentários.',
