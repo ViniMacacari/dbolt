@@ -27,6 +27,19 @@ interface PositionedEntity extends DiagramEntity {
   height: number
 }
 
+type EntityInteractionMode = 'move' | 'resize'
+
+interface EntityInteraction {
+  mode: EntityInteractionMode
+  entity: PositionedEntity
+  startClientX: number
+  startClientY: number
+  startX: number
+  startY: number
+  startWidth: number
+  startHeight: number
+}
+
 @Component({
   selector: 'app-database-diagram',
   standalone: true,
@@ -48,6 +61,8 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
   canvasWidth = 900
   canvasHeight = 560
   panning = false
+  selectedRelation: DiagramRelation | null = null
+  activeEntityId: string | null = null
 
   private readonly entityWidth = 264
   private readonly headerHeight = 38
@@ -57,6 +72,7 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
   private requestId = 0
   private panStart = { x: 0, y: 0, scrollLeft: 0, scrollTop: 0 }
   private fitTimeout?: ReturnType<typeof setTimeout>
+  private entityInteraction: EntityInteraction | null = null
 
   constructor(
     private diagramService: DatabaseDiagramService,
@@ -92,6 +108,36 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
   @HostListener('window:resize')
   onWindowResize(): void {
     if (this.diagram?.scope === 'object') this.queueFit(false)
+  }
+
+  @HostListener('document:pointermove', ['$event'])
+  onDocumentPointerMove(event: PointerEvent): void {
+    const interaction = this.entityInteraction
+    if (!interaction) return
+
+    const deltaX = (event.clientX - interaction.startClientX) / this.zoom
+    const deltaY = (event.clientY - interaction.startClientY) / this.zoom
+    if (interaction.mode === 'move') {
+      interaction.entity.x = Math.max(14, Math.round(interaction.startX + deltaX))
+      interaction.entity.y = Math.max(14, Math.round(interaction.startY + deltaY))
+    } else {
+      interaction.entity.width = Math.max(190, Math.min(820, Math.round(interaction.startWidth + deltaX)))
+      interaction.entity.height = Math.max(94, Math.min(1200, Math.round(interaction.startHeight + deltaY)))
+    }
+
+    this.updateCanvasBounds()
+    event.preventDefault()
+  }
+
+  @HostListener('document:pointerup', ['$event'])
+  @HostListener('document:pointercancel', ['$event'])
+  onDocumentPointerEnd(event: PointerEvent): void {
+    if (!this.entityInteraction) return
+
+    this.entityInteraction = null
+    this.activeEntityId = null
+    this.persistState()
+    event.preventDefault()
   }
 
   async loadDiagram(force = false): Promise<void> {
@@ -141,6 +187,16 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
     this.setZoom(1)
   }
 
+  resetLayout(): void {
+    if (!this.diagram) return
+
+    const state = this.tabInfo?.diagramState || {}
+    this.tabInfo.diagramState = { ...state, layout: {} }
+    this.layoutEntities(this.orderEntities(this.diagram.entities || [], this.relations))
+    this.persistState()
+    this.queueFit(true)
+  }
+
   fitToScreen(): void {
     const viewport = this.viewport?.nativeElement
     if (!viewport || this.entities.length === 0) return
@@ -161,15 +217,20 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
   }
 
   onViewportDoubleClick(event: MouseEvent): void {
-    if ((event.target as HTMLElement).closest('.diagram-entity')) return
+    if ((event.target as HTMLElement).closest('.diagram-entity, .diagram-relation-info')) return
     this.toggleMaximized()
   }
 
   startPan(event: PointerEvent): void {
-    if (event.button !== 0 || (event.target as HTMLElement).closest('.diagram-controls')) return
+    const target = event.target as HTMLElement
+    if (
+      event.button !== 0 ||
+      target.closest('.diagram-controls, .diagram-entity, .diagram-relation-hit, .diagram-relation-info')
+    ) return
     const viewport = this.viewport?.nativeElement
     if (!viewport) return
 
+    this.clearSelectedRelation()
     this.panning = true
     this.panStart = {
       x: event.clientX,
@@ -191,7 +252,56 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
   endPan(event: PointerEvent): void {
     if (!this.panning) return
     this.panning = false
-    this.viewport?.nativeElement.releasePointerCapture(event.pointerId)
+    const viewport = this.viewport?.nativeElement
+    if (viewport?.hasPointerCapture(event.pointerId)) viewport.releasePointerCapture(event.pointerId)
+  }
+
+  startEntityInteraction(
+    event: PointerEvent,
+    entity: PositionedEntity,
+    mode: EntityInteractionMode
+  ): void {
+    if (event.button !== 0) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    this.clearSelectedRelation()
+    this.activeEntityId = entity.id
+    this.entityInteraction = {
+      mode,
+      entity,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startX: entity.x,
+      startY: entity.y,
+      startWidth: entity.width,
+      startHeight: entity.height
+    }
+  }
+
+  selectRelation(event: MouseEvent, relation: DiagramRelation): void {
+    event.preventDefault()
+    event.stopPropagation()
+    this.selectedRelation = relation
+    this.persistState()
+  }
+
+  clearSelectedRelation(): void {
+    if (!this.selectedRelation) return
+    this.selectedRelation = null
+    this.persistState()
+  }
+
+  isSelectedRelation(relation: DiagramRelation): boolean {
+    return this.selectedRelation?.id === relation.id
+  }
+
+  isRelatedEntity(entity: PositionedEntity, endpoint: 'source' | 'target'): boolean {
+    if (!this.selectedRelation) return false
+    const relationEntity = endpoint === 'source'
+      ? this.selectedRelation.sourceEntity
+      : this.selectedRelation.targetEntity
+    return entity.id === relationEntity || entity.name === relationEntity
   }
 
   relationPath(relation: DiagramRelation): string {
@@ -204,8 +314,8 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
     const targetIsRight = target.x >= source.x
     const sourceX = targetIsRight ? source.x + source.width : source.x
     const targetX = targetIsRight ? target.x : target.x + target.width
-    const sourceY = source.y + this.headerHeight + sourceRow * this.rowHeight + this.rowHeight / 2
-    const targetY = target.y + this.headerHeight + targetRow * this.rowHeight + this.rowHeight / 2
+    const sourceY = this.clampRelationY(source, sourceRow)
+    const targetY = this.clampRelationY(target, targetRow)
     const bend = Math.max(46, Math.abs(targetX - sourceX) * 0.42)
     const controlSourceX = sourceX + (targetIsRight ? bend : -bend)
     const controlTargetX = targetX + (targetIsRight ? -bend : bend)
@@ -249,6 +359,8 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
       entityNames.has(relation.sourceEntity) && entityNames.has(relation.targetEntity)
     )
     this.layoutEntities(this.orderEntities(diagram.entities || [], this.relations))
+    const selectedRelationId = this.tabInfo?.diagramState?.selectedRelationId
+    this.selectedRelation = this.relations.find((relation) => relation.id === selectedRelationId) || null
     this.queueFit(diagram.scope === 'object')
   }
 
@@ -324,17 +436,16 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
       const row = Math.floor(index / columnsPerRow)
       const column = index % columnsPerRow
       const height = this.headerHeight + Math.max(1, entity.columns.length) * this.rowHeight
+      const savedLayout = this.tabInfo?.diagramState?.layout?.[entity.id]
       return {
         ...entity,
-        x: 34 + column * (this.entityWidth + this.horizontalGap),
-        y: rowOffsets[row],
-        width: this.entityWidth,
-        height
+        x: this.layoutNumber(savedLayout?.x, 34 + column * (this.entityWidth + this.horizontalGap), 14),
+        y: this.layoutNumber(savedLayout?.y, rowOffsets[row], 14),
+        width: this.layoutNumber(savedLayout?.width, this.entityWidth, 190),
+        height: this.layoutNumber(savedLayout?.height, height, 94)
       }
     })
-    const usedColumns = Math.min(columnsPerRow, entities.length)
-    this.canvasWidth = Math.max(760, 68 + usedColumns * this.entityWidth + (usedColumns - 1) * this.horizontalGap)
-    this.canvasHeight = Math.max(500, 68 + rowHeights.reduce((sum, height) => sum + height, 0) + (rowHeights.length - 1) * this.verticalGap)
+    this.updateCanvasBounds()
   }
 
   private setZoom(value: number): void {
@@ -357,6 +468,35 @@ export class DatabaseDiagramComponent implements OnInit, OnChanges, OnDestroy, A
 
   private persistState(): void {
     if (!this.tabInfo) return
-    this.tabInfo.diagramState = { zoom: this.zoom, maximized: this.maximized }
+    const layout = Object.fromEntries(this.entities.map((entity) => [entity.id, {
+      x: entity.x,
+      y: entity.y,
+      width: entity.width,
+      height: entity.height
+    }]))
+    this.tabInfo.diagramState = {
+      ...(this.tabInfo.diagramState || {}),
+      zoom: this.zoom,
+      maximized: this.maximized,
+      selectedRelationId: this.selectedRelation?.id || null,
+      layout
+    }
+  }
+
+  private updateCanvasBounds(): void {
+    this.canvasWidth = Math.max(760, ...this.entities.map((entity) => entity.x + entity.width + 64))
+    this.canvasHeight = Math.max(500, ...this.entities.map((entity) => entity.y + entity.height + 64))
+  }
+
+  private clampRelationY(entity: PositionedEntity, rowIndex: number): number {
+    const ideal = entity.y + this.headerHeight + rowIndex * this.rowHeight + this.rowHeight / 2
+    const minimum = entity.y + this.headerHeight + 14
+    const maximum = entity.y + entity.height - 14
+    return Math.min(Math.max(ideal, minimum), Math.max(minimum, maximum))
+  }
+
+  private layoutNumber(value: any, fallback: number, minimum: number): number {
+    const normalized = Number(value)
+    return Number.isFinite(normalized) ? Math.max(minimum, normalized) : fallback
   }
 }
