@@ -327,8 +327,26 @@
             text-overflow: ellipsis;
         }
 
+        .connection-info-collapse {
+            display: grid;
+            grid-template-rows: 0fr;
+            min-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition:
+                grid-template-rows .28s cubic-bezier(.2, .8, .2, 1),
+                opacity .18s ease;
+
+            &.connection-info-visible {
+                grid-template-rows: 1fr;
+                opacity: 1;
+            }
+        }
+
         .connection-info {
             border-top: 1px solid var(--dbolt-353535);
+            min-height: 0;
+            overflow: hidden;
             padding: 6px;
 
             .database-name {
@@ -341,6 +359,22 @@
                 font-size: .8em;
             }
 
+            .schemas-collapse {
+                display: grid;
+                grid-template-rows: 0fr;
+                min-height: 0;
+                opacity: 0;
+                overflow: hidden;
+                transition:
+                    grid-template-rows .24s cubic-bezier(.2, .8, .2, 1),
+                    opacity .16s ease;
+
+                &.schemas-visible {
+                    grid-template-rows: 1fr;
+                    opacity: 1;
+                }
+            }
+
             .schemas {
                 display: flex;
                 justify-content: center;
@@ -348,6 +382,8 @@
 
                 gap: 2px;
                 margin-top: 2px;
+                min-height: 0;
+                overflow: hidden;
                 padding-left: 12px;
             }
 
@@ -489,7 +525,9 @@
 @media (prefers-reduced-motion: reduce) {
     .sidebar-shell,
     .sidebar,
-    .sidebar-collapsed-rail {
+    .sidebar-collapsed-rail,
+    .connection-info-collapse,
+    .schemas-collapse {
         transition-duration: 0.01ms !important;
         transition-delay: 0s !important;
     }
