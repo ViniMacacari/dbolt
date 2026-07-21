@@ -10,9 +10,8 @@
             </div>
 
             <div class="header-actions">
-                <span class="channel-badge" [class.prerelease]="update?.isPrerelease">
-                    <span class="channel-dot"></span>
-                    {{ releaseChannel }}
+                <span class="prerelease-label" *ngIf="update?.isPrerelease">
+                    {{ releaseChannel }} · {{ t('appUpdate.preview') }}
                 </span>
                 <button type="button" class="close-button" [disabled]="isInstalling"
                     [title]="t('appUpdate.close')" [attr.aria-label]="t('appUpdate.close')" (click)="close()">×</button>
@@ -86,13 +85,18 @@
         </div>
 
         <footer class="update-footer">
-            <button class="later-button" type="button" [disabled]="isInstalling" (click)="close()">
+            <app-button class="ignore-version-button" [disabled]="isInstalling"
+                [title]="t('appUpdate.ignoreVersionTitle', { version: targetVersion })"
+                [ariaLabel]="t('appUpdate.ignoreVersionTitle', { version: targetVersion })"
+                (pressed)="ignoreVersion()">
+                {{ t('appUpdate.ignoreVersion') }}
+            </app-button>
+            <app-button variant="danger" [disabled]="isInstalling" (pressed)="close()">
                 {{ t('appUpdate.later') }}
-            </button>
-            <button class="update-button" type="button" [disabled]="isInstalling" (click)="updateNow()">
-                <span aria-hidden="true">↓</span>
+            </app-button>
+            <app-button [disabled]="isInstalling" (pressed)="updateNow()">
                 {{ isInstalling ? t('appUpdate.updating') : t('appUpdate.updateNow') }}
-            </button>
+            </app-button>
         </footer>
     </section>
 </div>

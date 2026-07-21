@@ -6,11 +6,12 @@ import {
   AppUpdateDownloadProgress
 } from '../../../services/app-update/app-update.model'
 import { AppLanguageService } from '../../../services/language/app-language.service'
+import { ButtonComponent } from '../../elements/button/button.component'
 
 @Component({
   selector: 'app-update-modal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ButtonComponent],
   templateUrl: './app-update.component.html',
   styleUrl: './app-update.component.scss'
 })
@@ -20,6 +21,7 @@ export class AppUpdateComponent {
   @Input() progress: AppUpdateDownloadProgress | null = null
   @Input() errorMessage = ''
   @Output() closeAction = new EventEmitter<void>()
+  @Output() ignoreAction = new EventEmitter<void>()
   @Output() updateAction = new EventEmitter<void>()
 
   constructor(private language: AppLanguageService) { }
@@ -104,6 +106,12 @@ export class AppUpdateComponent {
   updateNow(): void {
     if (!this.isInstalling) {
       this.updateAction.emit()
+    }
+  }
+
+  ignoreVersion(): void {
+    if (!this.isInstalling) {
+      this.ignoreAction.emit()
     }
   }
 

@@ -75,28 +75,12 @@
     gap: 9px;
 }
 
-.channel-badge {
-    align-items: center;
-    background: var(--dbolt-345c3e);
-    border-radius: 999px;
-    color: var(--dbolt-9fe6b8);
-    display: inline-flex;
-    font-size: .68em;
+.prerelease-label {
+    color: var(--dbolt-b58cff);
+    font-size: .66em;
     font-weight: 900;
-    gap: 6px;
-    padding: 6px 10px;
-
-    &.prerelease {
-        background: var(--dbolt-1d162e);
-        color: var(--dbolt-b58cff);
-    }
-}
-
-.channel-dot {
-    background: currentColor;
-    border-radius: 50%;
-    height: 6px;
-    width: 6px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
 }
 
 .close-button {
@@ -344,47 +328,10 @@
     justify-content: flex-end;
     padding: 14px 22px;
 
-    button {
-        border: 0;
-        border-radius: 10px;
-        cursor: pointer;
-        font-family: 'Nunito';
-        font-size: .76em;
-        font-weight: 900;
-        height: 39px;
-        padding: 0 17px;
-
-        &:disabled {
-            cursor: not-allowed;
-            opacity: .5;
-        }
-    }
 }
 
-.later-button {
-    background: var(--dbolt-1b1b1b);
-    color: var(--dbolt-c9c9c9);
-
-    &:hover:not(:disabled) {
-        background: var(--dbolt-292727);
-    }
-}
-
-.update-button {
-    align-items: center;
-    background: var(--dbolt-2b3340);
-    border: 1px solid rgba(115, 158, 202, .42) !important;
-    color: var(--dbolt-d8e9fb);
-    display: inline-flex;
-    gap: 8px;
-
-    span {
-        font-size: 1.1em;
-    }
-
-    &:hover:not(:disabled) {
-        background: var(--dbolt-334052);
-    }
+.ignore-version-button {
+    margin-right: auto;
 }
 
 @keyframes update-modal-in {
@@ -413,7 +360,7 @@
         padding-right: 16px;
     }
 
-    .channel-badge {
+    .prerelease-label {
         display: none;
     }
 
@@ -424,5 +371,15 @@
 
     .release-meta {
         grid-template-columns: 1fr;
+    }
+
+    .update-footer {
+        flex-wrap: wrap;
+    }
+
+    .ignore-version-button {
+        flex-basis: 100%;
+        justify-content: center;
+        margin-right: 0;
     }
 }
