@@ -206,6 +206,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.saveScrollPosition()
     this._query = value || []
     this.showExportModal = false
+    this.editingEnabled = false
     this.resetCellSelection()
     this.resetEditPreview()
     this.rebuildDisplayRows(false)
@@ -360,6 +361,8 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   }
 
   onRowLimitInput(event: Event): void {
+    if (this.editingEnabled) return
+
     const value = Number((event.target as HTMLInputElement).value)
     if (!Number.isFinite(value)) return
 
@@ -378,6 +381,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   }
 
   applyRowLimit(): void {
+    if (this.editingEnabled) return
     this.refreshQuery.emit()
   }
 
@@ -553,6 +557,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   canExportQueryResult(): boolean {
     return this.isSelectResult &&
+      !this.editingEnabled &&
       !this.errorMessage &&
       !this.isLoading &&
       !this.isLoadingMore &&
