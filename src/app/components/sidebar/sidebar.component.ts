@@ -42,6 +42,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   resizingSidebar: boolean = false
   expandedConnections: Set<number> = new Set()
   expandedDatabases: Set<string> = new Set()
+  loadingConnections: Set<number> = new Set()
   clickTimeout: any = null
   quickSelectorType: 'connection' | 'database' | 'schema' | null = null
   quickSelectorFilter: string = ''
@@ -462,11 +463,23 @@ export class SidebarComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleConnection(connectionId: number) {
+  async toggleConnection(connection: any): Promise<void> {
+    const connectionId = Number(connection?.id)
+    if (!Number.isFinite(connectionId)) return
+
     if (this.expandedConnections.has(connectionId)) {
       this.expandedConnections.delete(connectionId)
-    } else {
-      this.expandedConnections.add(connectionId)
+      return
+    }
+
+    this.expandedConnections.add(connectionId)
+    if (this.loadingConnections.has(connectionId)) return
+
+    this.loadingConnections.add(connectionId)
+    try {
+      await this.canConnect(connection)
+    } finally {
+      this.loadingConnections.delete(connectionId)
     }
   }
 
@@ -564,6 +577,10 @@ export class SidebarComponent implements OnInit, OnDestroy {
       this.selectedSchemaDB.schema === schema
   }
 
+  isSelectedConnection(connection: any): boolean {
+    return this.isSameConnection(connection)
+  }
+
   private isSameConnection(connection: any): boolean {
     return this.selectedSchemaDB?.host === connection.host &&
       String(this.selectedSchemaDB?.port) === String(connection.port) &&
@@ -598,8 +615,6 @@ export class SidebarComponent implements OnInit, OnDestroy {
         user: connection.user,
         password: connection.password
       })
-
-      this.expandedConnections.add(connection.id)
 
       await this.disconnectDatabases(connection)
       await this.addDatabase(connection)
