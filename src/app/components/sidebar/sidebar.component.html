@@ -13,7 +13,7 @@
             <img src="icons/settings.png" height="17px" width="17px" [title]="t('sidebar.settings')">
         </button>
     </div>
-    <div class="py-2"></div>
+    <div class="sidebar-selection-spacer"></div>
 
     <p class="selected-title">{{ t('sidebar.currentlySelected') }}</p>
     <button type="button" class="sgbd" (click)="toggleQuickSelector('connection', $event)">
@@ -34,18 +34,24 @@
     <div class="separator my-3"></div>
 
     <div class="connections">
-        <div *ngFor="let connection of connections" class="connection d-flex w-100 my-3 mt-0">
+        <div *ngFor="let connection of connections" class="connection"
+            [class.connection-expanded]="expandedConnections.has(connection.id)"
+            [class.connection-selected]="isSelectedConnection(connection)"
+            [class.connection-loading]="loadingConnections.has(connection.id)">
             <button type="button" class="connection-edit-button" [title]="t('sidebar.editConnection')"
                 (click)="editConnection(connection, $event)">
                 <img src="icons/edit.png" height="13px" width="13px">
             </button>
-            <div (click)="toggleConnection(connection.id); canConnect(connection)">
-                <div class="d-flex align-items-center gap-2 mb-1">
-                    <img src="db-logo/{{ connection.database }}.png" height="20px" width="20px">
-                    <h2 class="subtitle-min">{{ connection.name }}</h2>
-                </div>
-                <p class="text-min-gray m-0">{{ connection.host }}:{{ connection.port }}</p>
-            </div>
+            <button type="button" class="connection-summary" (click)="toggleConnection(connection)"
+                [attr.aria-expanded]="expandedConnections.has(connection.id)"
+                [attr.aria-busy]="loadingConnections.has(connection.id)">
+                <img class="connection-logo" src="db-logo/{{ connection.database }}.png" height="16px" width="16px">
+                <span class="connection-summary-copy">
+                    <strong>{{ connection.name }}</strong>
+                    <small>{{ connection.host }}:{{ connection.port }}</small>
+                </span>
+                <span class="connection-toggle-indicator" aria-hidden="true">›</span>
+            </button>
 
             <div *ngIf="expandedConnections.has(connection.id)" class="connection-info">
                 <div *ngFor="let database of getSchemasByConnection(connection)" class="d-flex flex-column">
@@ -93,7 +99,7 @@
                             password: connection.password,
                             user: connection.user
                         })" (contextmenu)="openSchemaContextMenu(connection, database, schema, $event)"
-                            class="schema-row d-flex align-items-center gap-2 mb-2"
+                            class="schema-row d-flex align-items-center gap-2"
                             [class.selected-schema]="isSelectedSchema(connection, database.database, schema)">
                             <img src="icons/schema.png" height="10px" width="10px">
                             <p class="text-min-gray">{{ schema }}</p>

@@ -24,6 +24,8 @@
 
 .sidebar {
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
     width: 100%;
     height: 100%;
@@ -85,16 +87,22 @@
         white-space: nowrap;
     }
 
+    .sidebar-selection-spacer {
+        flex: 0 0 10px;
+    }
+
     .schema,
     .database,
     .sgbd {
         display: flex;
         align-items: center;
 
-        gap: 10px;
-        padding: 10px;
-        margin-bottom: 16px;
-        border-radius: 15px;
+        flex: 0 0 auto;
+        gap: 9px;
+        min-height: 36px;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+        border-radius: 12px;
 
         background-color: var(--dbolt-sidebar-control-surface);
         border: none;
@@ -123,23 +131,113 @@
         }
     }
 
-    .connections {
-        overflow-y: auto;
-        max-height: calc(100% - 275px);
+    > .separator {
+        flex: 0 0 auto;
+        margin: 4px 0 8px !important;
+    }
 
-        border-radius: 15px;
+    .connections {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: 6px;
+        min-height: 0;
+        overflow-y: auto;
+        padding-right: 2px;
+        scrollbar-gutter: stable;
     }
 
     .connection {
         background-color: var(--dbolt-sidebar-control-surface);
-        border-radius: 15px;
-        padding: 10px;
-
+        border-radius: 11px;
         display: flex;
+        flex: 0 0 auto;
         flex-direction: column;
+        overflow: hidden;
         position: relative;
+        transition: background-color .16s ease, box-shadow .16s ease;
 
-        cursor: pointer;
+        &:hover {
+            background-color: var(--dbolt-sidebar-control-hover);
+        }
+
+        &.connection-selected {
+            box-shadow: inset 2px 0 0 var(--dbolt-739eca);
+        }
+
+        &.connection-expanded {
+            background-color: var(--dbolt-sidebar-control-surface);
+
+            .connection-toggle-indicator {
+                transform: rotate(90deg);
+            }
+        }
+
+        &.connection-loading .connection-toggle-indicator {
+            animation: connection-indicator-pulse .8s ease-in-out infinite alternate;
+        }
+
+        .connection-summary {
+            align-items: center;
+            background: transparent;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            display: grid;
+            font-family: 'Nunito';
+            gap: 8px;
+            grid-template-columns: 16px minmax(0, 1fr) 12px;
+            min-height: 42px;
+            padding: 6px 8px;
+            text-align: left;
+            width: 100%;
+
+            &:focus-visible {
+                box-shadow: inset 0 0 0 2px rgba(115, 158, 202, 0.72);
+                outline: none;
+            }
+        }
+
+        .connection-logo {
+            object-fit: contain;
+            opacity: .86;
+        }
+
+        .connection-summary-copy {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .connection-summary-copy strong,
+        .connection-summary-copy small {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .connection-summary-copy strong {
+            color: var(--dbolt-b8b8b9);
+            font-size: .78em;
+            font-weight: 650;
+            line-height: 1.2;
+        }
+
+        .connection-summary-copy small {
+            color: var(--dbolt-969696);
+            font-size: .65em;
+            line-height: 1.25;
+            margin-top: 2px;
+        }
+
+        .connection-toggle-indicator {
+            color: var(--dbolt-777);
+            font-family: Arial, sans-serif;
+            font-size: 1.05em;
+            line-height: 1;
+            text-align: center;
+            transition: color .16s ease, opacity .16s ease, transform .16s ease;
+        }
 
         .connection-edit-button {
             align-items: center;
@@ -148,15 +246,16 @@
             border-radius: 8px;
             cursor: pointer;
             display: flex;
-            height: 24px;
+            height: 22px;
             justify-content: center;
             opacity: 0;
             padding: 0;
+            pointer-events: none;
             position: absolute;
-            right: 8px;
-            top: 8px;
+            right: 4px;
+            top: 10px;
             transition: opacity 0.2s ease, background-color 0.2s ease;
-            width: 24px;
+            width: 22px;
             z-index: 2;
 
             &:hover {
@@ -166,6 +265,17 @@
 
         &:hover .connection-edit-button {
             opacity: 1;
+            pointer-events: auto;
+        }
+
+        .connection-edit-button:focus-visible {
+            opacity: 1;
+            outline: 1px solid var(--dbolt-739eca);
+            pointer-events: auto;
+        }
+
+        &:hover .connection-toggle-indicator {
+            opacity: 0;
         }
 
         h2 {
@@ -183,6 +293,9 @@
         }
 
         .connection-info {
+            border-top: 1px solid var(--dbolt-353535);
+            padding: 2px 6px 6px;
+
             .database-name {
                 margin: 0;
                 text-wrap: nowrap;
@@ -198,14 +311,16 @@
                 justify-content: center;
                 flex-direction: column;
 
-                margin-top: 5px;
-                padding-left: 20px;
+                gap: 2px;
+                margin-top: 2px;
+                padding-left: 12px;
             }
 
             .database-row,
             .schema-row {
                 border-radius: 10px;
-                padding: 5px 8px;
+                min-height: 25px;
+                padding: 4px 7px;
                 transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
             }
 
@@ -229,6 +344,16 @@
                 }
             }
         }
+    }
+}
+
+@keyframes connection-indicator-pulse {
+    from {
+        opacity: .35;
+    }
+
+    to {
+        opacity: 1;
     }
 }
 
