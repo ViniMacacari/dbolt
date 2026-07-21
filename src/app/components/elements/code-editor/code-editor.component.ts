@@ -1479,7 +1479,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       this.resultContentAnimationTimer = setTimeout(() => {
         this.queryResultContentEntering = false
         this.resultContentAnimationTimer = null
-      }, 190)
+      }, 220)
     })
   }
 

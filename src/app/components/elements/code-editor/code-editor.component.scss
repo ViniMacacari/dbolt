@@ -54,8 +54,8 @@
         min-height: 0;
 
         &.result-content-entering {
-            animation: query-result-content-in .19s ease-out both;
-            will-change: opacity, transform;
+            animation: query-result-content-reveal .22s cubic-bezier(.2, .8, .2, 1) both;
+            will-change: clip-path, transform;
         }
     }
 
@@ -89,14 +89,14 @@
     }
 }
 
-@keyframes query-result-content-in {
+@keyframes query-result-content-reveal {
     from {
-        opacity: .2;
-        transform: translateY(7px);
+        clip-path: inset(0 0 100% 0);
+        transform: translateY(8px);
     }
 
     to {
-        opacity: 1;
+        clip-path: inset(0);
         transform: translateY(0);
     }
 }
