@@ -327,6 +327,7 @@ export class TabsComponent implements OnInit, OnDestroy {
     if (tab.icon === 'QUERY_ASSISTANT') return 'icons/code-block.png'
     if (tab.icon === 'SELECT_BUILDER') return 'icons/table.png'
     if (tab.icon === 'COMPARE' || tab.type === 'query-compare') return 'icons/ddl.png'
+    if (tab.type === 'diagram') return 'icons/diagram.png'
     if (tab.type === 'procedure') return 'icons/procedure.png'
 
     return 'icons/code.png'
