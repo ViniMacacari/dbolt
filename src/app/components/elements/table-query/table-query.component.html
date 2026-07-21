@@ -8,7 +8,7 @@
                 <small *ngIf="getExecutionTimeSummary()">{{ getExecutionTimeSummary() }}</small>
             </div>
 
-            <div class="row-limit" *ngIf="isSelectResult">
+            <div class="row-limit" *ngIf="isSelectResult && !editingEnabled">
                 <label for="query-row-limit">{{ t('results.maxRows') }}</label>
                 <input id="query-row-limit" type="number" min="1" step="1" [value]="rowLimit"
                     (input)="onRowLimitInput($event)" (keydown.enter)="applyRowLimit()">
