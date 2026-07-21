@@ -8,7 +8,7 @@ import { ToastComponent } from '../../toast/toast.component'
 import { TableQueryComponent } from "../table-query/table-query.component"
 import { SaveQueryComponent } from "../../modal/save-query/save-query.component"
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
-import { AppSettingsService, SqlHighlightColors } from '../../../services/app-settings/app-settings.service'
+import { AppSettingsService, SqlHighlightColors, SqlHighlightMode } from '../../../services/app-settings/app-settings.service'
 import { SqlTableAutocompleteService } from '../../../services/code-autocomplete/sql-table-autocomplete.service'
 import { SqlCodeFormatterService } from '../../../services/code-formatting/sql-code-formatter.service'
 import { SqlSyntaxMonacoMarkersService } from '../../../services/sql-validation/sql-syntax-monaco-markers.service'
@@ -299,10 +299,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     monaco.languages.setMonarchTokensProvider('sql', {
       ignoreCase: true,
-      defaultToken: 'identifier',
+      defaultToken: 'identifier.column',
       keywords: [
         'add', 'all', 'alter', 'and', 'any', 'as', 'asc', 'authorization', 'backup', 'begin',
-        'between', 'break', 'by', 'cascade', 'case', 'check', 'close', 'clustered', 'coalesce',
+        'between', 'break', 'by', 'cascade', 'case', 'check', 'close', 'clustered',
         'collate', 'column', 'commit', 'constraint', 'continue', 'create', 'cross', 'current',
         'current_date', 'current_time', 'current_timestamp', 'cursor', 'database', 'declare',
         'default', 'delete', 'desc', 'distinct', 'drop', 'else', 'end', 'escape', 'except',
@@ -312,7 +312,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         'order', 'outer', 'over', 'primary', 'procedure', 'references', 'right', 'rollback',
         'rownum', 'schema', 'select', 'set', 'table', 'then', 'to', 'top', 'transaction',
         'truncate', 'union', 'unique', 'update', 'use', 'values', 'view', 'when', 'where',
-        'while', 'with'
+        'while', 'with', 'true', 'false'
       ],
       types: [
         'bigint', 'binary', 'bit', 'blob', 'boolean', 'char', 'clob', 'date', 'datetime',
@@ -326,11 +326,42 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
           [/--.*$/, 'comment'],
           [/\/\*/, 'comment', '@comment'],
           [/'(?:''|[^'])*'/, 'string'],
-          [/"(?:""|[^"])*"/, 'identifier'],
-          [/`(?:``|[^`])*`/, 'identifier'],
-          [/\[(?:\]\]|[^\]])*\]/, 'identifier'],
+          [/"(?:""|[^"])*"/, 'identifier.column'],
+          [/`(?:``|[^`])*`/, 'identifier.column'],
+          [/\[(?:\]\]|[^\]])*\]/, 'identifier.column'],
           [/\b\d+(?:\.\d+)?\b/, 'number'],
           [/@[a-zA-Z_][\w$#]*/, 'variable'],
+          [/(with)(\s+)([a-zA-Z_][\w$#]*)/, ['keyword', 'white', 'identifier.cte']],
+          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)(\s+)(as)(\s+)([a-zA-Z_][\w$#]*)/, [
+            'keyword', 'white', 'identifier.qualifier', 'delimiter', 'identifier.table',
+            'white', 'keyword', 'white', 'identifier.tableAlias'
+          ]],
+          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)(\s+)([a-zA-Z_][\w$#]*)(?=\s+(?:on|where|join|left|right|inner|outer|cross|full|group|order|having|limit|set)\b|\s*,|$)/, [
+            'keyword', 'white', 'identifier.qualifier', 'delimiter', 'identifier.table',
+            'white', 'identifier.tableAlias'
+          ]],
+          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)(\s+)(as)(\s+)([a-zA-Z_][\w$#]*)/, [
+            'keyword', 'white', 'identifier.table', 'white', 'keyword', 'white', 'identifier.tableAlias'
+          ]],
+          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)(\s+)([a-zA-Z_][\w$#]*)(?=\s+(?:on|where|join|left|right|inner|outer|cross|full|group|order|having|limit|set)\b|\s*,|$)/, [
+            'keyword', 'white', 'identifier.table', 'white', 'identifier.tableAlias'
+          ]],
+          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)/, ['keyword', 'white', 'identifier.table']],
+          [/(as)(\s+)([a-zA-Z_][\w$#]*)/, ['keyword', 'white', {
+            cases: {
+              '@types': 'type',
+              '@default': 'identifier.columnAlias'
+            }
+          }]],
+          [/([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)/, [
+            'identifier.qualifier', 'delimiter', 'identifier.qualifier', 'delimiter', 'identifier.column'
+          ]],
+          [/([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)(?=\s*\()/, [
+            'identifier.qualifier', 'delimiter', 'function'
+          ]],
+          [/([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)/, [
+            'identifier.qualifier', 'delimiter', 'identifier.column'
+          ]],
           [/[a-zA-Z_][\w$#]*(?=\s*\()/, {
             cases: {
               '@keywords': 'keyword',
@@ -342,7 +373,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
             cases: {
               '@keywords': 'keyword',
               '@types': 'type',
-              '@default': 'identifier'
+              '@default': 'identifier.column'
             }
           }],
           [/[<>!~?:&|+\-*\/%^=]+/, 'operator'],
@@ -395,7 +426,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     monaco.editor.defineTheme('dbolt-sql-configurable', {
       base: isLightTheme ? 'vs' : 'vs-dark',
       inherit: false,
-      rules: this.buildSqlTokenRules(themeColors),
+      rules: this.buildSqlTokenRules(themeColors, this.appSettings.getSqlHighlightMode()),
       colors: {
         ...editorSurfaceColors,
         'editor.foreground': themeColors.identifier,
@@ -403,7 +434,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         'editorLineNumber.activeForeground': isLightTheme ? '#263442' : '#c6c6c6',
         'editorCursor.foreground': isLightTheme ? '#111827' : '#ffffff',
         'editor.selectionBackground': isLightTheme ? '#add6ff' : '#264f78',
-        'editor.inactiveSelectionBackground': isLightTheme ? '#dbeafe' : '#3a3d41'
+        'editor.inactiveSelectionBackground': isLightTheme ? '#dbeafe' : '#3a3d41',
+        'editorError.foreground': '#f14c4c',
+        'editorError.border': '#00000000'
       }
     })
   }
@@ -435,7 +468,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     return luminance <= 0.3
   }
 
-  private buildSqlTokenRules(colors: SqlHighlightColors): monaco.editor.ITokenThemeRule[] {
+  private buildSqlTokenRules(
+    colors: SqlHighlightColors,
+    mode: SqlHighlightMode
+  ): monaco.editor.ITokenThemeRule[] {
     const rules: monaco.editor.ITokenThemeRule[] = []
     const addRule = (token: string, color: string, fontStyle?: string) => {
       rules.push(
@@ -454,6 +490,15 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     addRule('type', colors.type)
     addRule('variable', colors.variable)
     addRule('delimiter', colors.delimiter)
+
+    if (mode === 'vibrant') {
+      addRule('identifier.cte', '#c586c0')
+      addRule('identifier.table', '#c586c0')
+      addRule('identifier.tableAlias', '#c586c0', 'italic')
+      addRule('identifier.qualifier', '#c586c0', 'italic')
+      addRule('identifier.column', '#4ec9b0')
+      addRule('identifier.columnAlias', '#4ec9b0', 'italic')
+    }
 
     return rules
   }
