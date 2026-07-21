@@ -10,8 +10,10 @@
     *ngIf="isUpdateModalOpen"
     [update]="availableUpdate"
     [isInstalling]="isInstallingUpdate"
+    [progress]="updateDownloadProgress"
     [errorMessage]="updateErrorMessage"
     (closeAction)="closeUpdateModal()"
+    (ignoreAction)="ignoreAvailableUpdate()"
     (updateAction)="installUpdate()">
 </app-update-modal>
 
