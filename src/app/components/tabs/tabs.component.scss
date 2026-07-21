@@ -114,6 +114,7 @@
         }
 
         .tab {
+            box-sizing: border-box;
             display: grid;
             align-items: center;
             grid-template-columns: 15px minmax(0, 1fr) 15px;
@@ -135,6 +136,19 @@
 
             cursor: pointer;
 
+            &.tab-opening {
+                animation: tab-open .24s cubic-bezier(.2, .8, .2, 1) both;
+                transform-origin: left center;
+                will-change: max-width, opacity, padding, transform;
+            }
+
+            &.tab-closing {
+                animation: tab-close .19s cubic-bezier(.4, 0, .2, 1) both;
+                pointer-events: none;
+                transform-origin: center;
+                will-change: width, opacity, margin, padding, transform;
+            }
+
             .tab-icon,
             .tab-close {
                 display: block;
@@ -146,6 +160,13 @@
 
             .tab-close {
                 justify-self: end;
+                opacity: .78;
+                transition: opacity .14s ease, transform .14s ease;
+
+                &:hover {
+                    opacity: 1;
+                    transform: scale(1.08);
+                }
             }
 
             .text {
@@ -167,6 +188,63 @@
                 border: 2px solid var(--dbolt-1d162e);
             }
         }
+    }
+}
+
+@keyframes tab-open {
+    from {
+        gap: 0;
+        max-width: 0;
+        min-width: 0;
+        opacity: 0;
+        padding-left: 0;
+        padding-right: 0;
+        transform: translateX(-8px) scale(.96);
+    }
+
+    to {
+        gap: 10px;
+        max-width: 250px;
+        min-width: 50px;
+        opacity: 1;
+        padding-left: 15px;
+        padding-right: 15px;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes tab-close {
+    from {
+        flex-basis: var(--tab-animation-width);
+        margin-inline-end: 0;
+        max-width: var(--tab-animation-width);
+        min-width: 0;
+        opacity: 1;
+        padding-left: 15px;
+        padding-right: 15px;
+        transform: translateY(0) scale(1);
+        width: var(--tab-animation-width);
+    }
+
+    to {
+        border-width: 0;
+        flex-basis: 0;
+        gap: 0;
+        margin-inline-end: -.5rem;
+        max-width: 0;
+        min-width: 0;
+        opacity: 0;
+        padding-left: 0;
+        padding-right: 0;
+        transform: translateY(-4px) scale(.96);
+        width: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .content .tabs .tab.tab-opening,
+    .content .tabs .tab.tab-closing {
+        animation-duration: 0.01ms !important;
     }
 }
 

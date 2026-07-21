@@ -133,6 +133,12 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   isLoadingMore: boolean = false
   maxResultLines: number | null = 0
   queryExecutionTimeMs: number | null = null
+  queryResultPanelOpening: boolean = false
+  queryResultContentEntering: boolean = false
+
+  private resultPanelAnimationTimer: ReturnType<typeof setTimeout> | null = null
+  private resultContentAnimationTimer: ReturnType<typeof setTimeout> | null = null
+  private resultContentAnimationFrame: number | null = null
 
   dataSave: any = {}
 
@@ -189,6 +195,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   ngOnDestroy(): void {
+    this.clearResultAnimations()
+
     if (this.tabInfo?.closing) {
       this.releaseQueryMemory()
     } else {
@@ -1168,9 +1176,12 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   async runSql(sql: string): Promise<void> {
     if (this.isLoadingQuery) return
 
+    const shouldAnimateResultPanel = !this.queryResultOpen
     this.isLoadingMore = false
     this.isLoadingQuery = true
     this.queryResultOpen = true
+    this.queryResultContentEntering = false
+    if (shouldAnimateResultPanel) this.startResultPanelAnimation()
     this.queryError = ''
     this.queryReponse = []
     this.queryColumns = []
@@ -1206,6 +1217,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       this.layoutEditor()
     } finally {
       this.isLoadingQuery = false
+      this.startResultContentAnimation()
       this.persistQueryState()
     }
   }
@@ -1308,6 +1320,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   private releaseQueryMemory(): void {
+    this.clearResultAnimations()
     this.tableQuery?.releaseData()
     this.queryReponse = []
     this.queryColumns = []
@@ -1440,6 +1453,46 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private layoutEditor(): void {
     setTimeout(() => this.editor?.layout(), 0)
+  }
+
+  private startResultPanelAnimation(): void {
+    if (this.resultPanelAnimationTimer) clearTimeout(this.resultPanelAnimationTimer)
+
+    this.queryResultPanelOpening = true
+    this.resultPanelAnimationTimer = setTimeout(() => {
+      this.queryResultPanelOpening = false
+      this.resultPanelAnimationTimer = null
+    }, 260)
+  }
+
+  private startResultContentAnimation(): void {
+    this.queryResultContentEntering = false
+
+    if (this.resultContentAnimationFrame !== null) {
+      window.cancelAnimationFrame(this.resultContentAnimationFrame)
+    }
+    if (this.resultContentAnimationTimer) clearTimeout(this.resultContentAnimationTimer)
+
+    this.resultContentAnimationFrame = window.requestAnimationFrame(() => {
+      this.resultContentAnimationFrame = null
+      this.queryResultContentEntering = true
+      this.resultContentAnimationTimer = setTimeout(() => {
+        this.queryResultContentEntering = false
+        this.resultContentAnimationTimer = null
+      }, 380)
+    })
+  }
+
+  private clearResultAnimations(): void {
+    if (this.resultPanelAnimationTimer) clearTimeout(this.resultPanelAnimationTimer)
+    if (this.resultContentAnimationTimer) clearTimeout(this.resultContentAnimationTimer)
+    if (this.resultContentAnimationFrame !== null) window.cancelAnimationFrame(this.resultContentAnimationFrame)
+
+    this.resultPanelAnimationTimer = null
+    this.resultContentAnimationTimer = null
+    this.resultContentAnimationFrame = null
+    this.queryResultPanelOpening = false
+    this.queryResultContentEntering = false
   }
 
   private refreshVisibleLayout(focusEditor: boolean = false): void {

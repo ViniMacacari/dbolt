@@ -1,6 +1,8 @@
 <div class="sidebar-shell" [class.sidebar-hidden]="!sidebarVisible" [class.sidebar-resizing]="resizingSidebar"
     [style.width.px]="sidebarVisible ? sidebarWidth : sidebarCollapsedWidth">
-    <aside *ngIf="sidebarVisible" class="sidebar">
+    <div class="sidebar-viewport">
+    <aside class="sidebar" [style.width.px]="sidebarWidth" [attr.aria-hidden]="!sidebarVisible"
+        [attr.inert]="!sidebarVisible ? '' : null">
     <div class="sidebar-actions my-2">
         <button type="button" (click)="hideSidebar()" class="sidebar-action-button menu-button"
             [title]="t('sidebar.hide')" [attr.aria-label]="t('sidebar.hide')">
@@ -53,20 +55,28 @@
                 <span class="connection-toggle-indicator" aria-hidden="true">›</span>
             </button>
 
-            <div *ngIf="expandedConnections.has(connection.id)" class="connection-info">
-                <div *ngFor="let database of getSchemasByConnection(connection); let firstDatabase = first"
-                    class="d-flex flex-column">
-                    <div class="separator" *ngIf="!firstDatabase"></div>
-                    <div (click)="toggleDatabase(connection.id + '-' + database.database)"
-                        (dblclick)="openDatabaseInfo(connection, database, $event)"
-                        (contextmenu)="openDatabaseContextMenu(connection, database, $event)"
-                        class="database-row d-flex align-items-center gap-2"
-                        [class.selected-database]="isSelectedDatabase(connection, database)">
-                        <img src="icons/database.png" height="15px" width="15px">
-                        <h2 class="database-name">{{ database.database }}</h2>
-                    </div>
-                    <div class="schemas" *ngIf="expandedDatabases.has(connection.id + '-' + database.database)">
-                        <div *ngFor="let schema of database.schemas" (dblclick)="openSchemaDBInfo({
+            <div class="connection-info-collapse"
+                [class.connection-info-visible]="expandedConnectionContents.has(connection.id)"
+                [attr.aria-hidden]="!expandedConnectionContents.has(connection.id)"
+                [attr.inert]="!expandedConnectionContents.has(connection.id) ? '' : null">
+                <div class="connection-info">
+                    <div *ngFor="let database of getSchemasByConnection(connection); let firstDatabase = first"
+                        class="d-flex flex-column">
+                        <div class="separator" *ngIf="!firstDatabase"></div>
+                        <div (click)="toggleDatabase(connection.id + '-' + database.database)"
+                            (dblclick)="openDatabaseInfo(connection, database, $event)"
+                            (contextmenu)="openDatabaseContextMenu(connection, database, $event)"
+                            class="database-row d-flex align-items-center gap-2"
+                            [class.selected-database]="isSelectedDatabase(connection, database)">
+                            <img src="icons/database.png" height="15px" width="15px">
+                            <h2 class="database-name">{{ database.database }}</h2>
+                        </div>
+                        <div class="schemas-collapse"
+                            [class.schemas-visible]="expandedDatabases.has(connection.id + '-' + database.database)"
+                            [attr.aria-hidden]="!expandedDatabases.has(connection.id + '-' + database.database)"
+                            [attr.inert]="!expandedDatabases.has(connection.id + '-' + database.database) ? '' : null">
+                            <div class="schemas">
+                                <div *ngFor="let schema of database.schemas" (dblclick)="openSchemaDBInfo({
                             schema: schema,
                             database: database.database,
                             sgbd: connection.database,
@@ -99,11 +109,13 @@
                             port: connection.port,
                             password: connection.password,
                             user: connection.user
-                        })" (contextmenu)="openSchemaContextMenu(connection, database, schema, $event)"
-                            class="schema-row d-flex align-items-center gap-2"
-                            [class.selected-schema]="isSelectedSchema(connection, database.database, schema)">
-                            <img src="icons/schema.png" height="10px" width="10px">
-                            <p class="text-min-gray">{{ schema }}</p>
+                                })" (contextmenu)="openSchemaContextMenu(connection, database, schema, $event)"
+                                    class="schema-row d-flex align-items-center gap-2"
+                                    [class.selected-schema]="isSelectedSchema(connection, database.database, schema)">
+                                    <img src="icons/schema.png" height="10px" width="10px">
+                                    <p class="text-min-gray">{{ schema }}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -112,7 +124,9 @@
     </div>
     </aside>
 
-    <nav *ngIf="!sidebarVisible" class="sidebar-collapsed-rail" [attr.aria-label]="t('sidebar.navigation')">
+    <nav class="sidebar-collapsed-rail" [attr.aria-hidden]="sidebarVisible"
+        [attr.inert]="sidebarVisible ? '' : null"
+        [attr.aria-label]="t('sidebar.navigation')">
         <button type="button" class="collapsed-action-button" (click)="showSidebar()"
             [title]="t('sidebar.show')" [attr.aria-label]="t('sidebar.show')">
             <img src="icons/menu.png" height="17px" width="17px" alt="">
@@ -126,6 +140,7 @@
             <img src="icons/settings.png" height="17px" width="17px" alt="">
         </button>
     </nav>
+    </div>
 
     <button *ngIf="sidebarVisible" type="button" class="sidebar-resize-handle" role="separator" tabindex="0"
         aria-orientation="vertical" [attr.aria-label]="t('sidebar.resize')"

@@ -33,6 +33,10 @@ export class TabsComponent implements OnInit, OnDestroy {
 
   icon: string = 'CODE'
 
+  private readonly tabOpenAnimationMs = 240
+  private readonly tabCloseAnimationMs = 190
+  private readonly tabSwitchAnimationMs = 180
+  private readonly tabAnimationTimers = new Set<ReturnType<typeof setTimeout>>()
   private unregisterUnsavedSqlQueryCheck: (() => void) | null = null
 
   @ViewChild('tabsContainer') tabsContainer!: ElementRef
@@ -52,6 +56,8 @@ export class TabsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.tabAnimationTimers.forEach(timer => clearTimeout(timer))
+    this.tabAnimationTimers.clear()
     this.unregisterUnsavedSqlQueryCheck?.()
   }
 
@@ -90,8 +96,8 @@ export class TabsComponent implements OnInit, OnDestroy {
 
     this.idTabs += 1
 
-    this.tabs.push(newTab)
-    this.selectTab(this.tabs.length - 1)
+    const newTabIndex = this.appendTab(newTab)
+    this.selectTab(newTabIndex)
 
     setTimeout(() => {
       this.dropdownVisible = false
@@ -122,10 +128,11 @@ export class TabsComponent implements OnInit, OnDestroy {
 
     this.idTabs += 1
 
-    this.tabs.push(newTab)
+    this.appendTab(newTab)
 
     setTimeout(() => {
-      this.selectTab(this.tabs.length - 1)
+      const newTabIndex = this.tabs.indexOf(newTab)
+      if (newTabIndex >= 0) this.selectTab(newTabIndex)
       this.dropdownVisible = false
     }, 0)
   }
@@ -160,8 +167,8 @@ export class TabsComponent implements OnInit, OnDestroy {
       icon: 'SETTINGS'
     }
 
-    this.tabs.push(newTab)
-    this.selectTab(this.tabs.length - 1)
+    const newTabIndex = this.appendTab(newTab)
+    this.selectTab(newTabIndex)
   }
 
   openQueryAssistantTab(): void {
@@ -175,8 +182,8 @@ export class TabsComponent implements OnInit, OnDestroy {
       icon: 'QUERY_ASSISTANT'
     }
 
-    this.tabs.push(newTab)
-    this.selectTab(this.tabs.length - 1)
+    const newTabIndex = this.appendTab(newTab)
+    this.selectTab(newTabIndex)
 
     setTimeout(() => {
       this.dropdownVisible = false
@@ -194,8 +201,8 @@ export class TabsComponent implements OnInit, OnDestroy {
       icon: 'SELECT_BUILDER'
     }
 
-    this.tabs.push(newTab)
-    this.selectTab(this.tabs.length - 1)
+    const newTabIndex = this.appendTab(newTab)
+    this.selectTab(newTabIndex)
   }
 
   openSavedQueryTab(query: any): void {
@@ -221,8 +228,8 @@ export class TabsComponent implements OnInit, OnDestroy {
     }
 
     this.applySavedQueryToTab(newTab, query)
-    this.tabs.push(newTab)
-    this.selectTab(this.tabs.length - 1)
+    const newTabIndex = this.appendTab(newTab)
+    this.selectTab(newTabIndex)
     this.dropdownVisible = false
   }
 
@@ -243,7 +250,7 @@ export class TabsComponent implements OnInit, OnDestroy {
       return
     }
 
-    this.tabs.push({
+    const newTab = {
       id: compareTabId,
       name: this.compareTarget.buildTabName(left, right),
       type: 'query-compare',
@@ -252,31 +259,51 @@ export class TabsComponent implements OnInit, OnDestroy {
         right
       },
       icon: 'COMPARE'
-    })
-    this.selectTab(this.tabs.length - 1)
+    }
+    const newTabIndex = this.appendTab(newTab)
+    this.selectTab(newTabIndex)
     this.showLoadQuery = false
     this.dropdownVisible = false
   }
 
   closeTab(index: number, event: MouseEvent, tab: any): void {
     event.stopPropagation()
+    if (tab?.closing) return
 
-    this.confirmToClose = index
+    const tabElement = (event.currentTarget as HTMLElement | null)?.closest('.tab') as HTMLElement | null
+    this.confirmToClose = {
+      tab,
+      width: Math.ceil(tabElement?.getBoundingClientRect().width || 0)
+    }
 
     if (tab.icon === 'CHANGE') {
       this.showYNModal = true
     } else {
-      this.closeTabAt(index)
+      this.closeTabAt(index, this.confirmToClose.width)
     }
   }
 
   confirmTabClose(): void {
     this.showYNModal = false
-    this.closeTabAt(this.confirmToClose)
+    const index = this.tabs.indexOf(this.confirmToClose?.tab)
+    if (index >= 0) this.closeTabAt(index, this.confirmToClose?.width)
   }
 
-  private closeTabAt(index: number): void {
+  private closeTabAt(index: number, measuredWidth: number = 0): void {
     const tab = this.tabs[index]
+    if (!tab || tab.closing) return
+
+    tab.opening = false
+    tab.animationWidth = Math.max(50, measuredWidth || 0)
+    tab.closing = true
+
+    this.scheduleTabAnimation(() => this.finalizeTabClose(tab), this.getTabAnimationDuration(this.tabCloseAnimationMs))
+  }
+
+  private finalizeTabClose(tab: any): void {
+    const index = this.tabs.indexOf(tab)
+    if (index < 0) return
+
     const wasActive = this.activeTab === index
     this.releaseTabResources(tab)
     this.tabs.splice(index, 1)
@@ -316,9 +343,51 @@ export class TabsComponent implements OnInit, OnDestroy {
     }
   }
 
+  private appendTab(tab: any): number {
+    tab.opening = true
+    tab.closing = false
+    this.tabs.push(tab)
+
+    this.scheduleTabAnimation(() => {
+      if (this.tabs.includes(tab)) tab.opening = false
+    }, this.getTabAnimationDuration(this.tabOpenAnimationMs))
+
+    return this.tabs.length - 1
+  }
+
+  private scheduleTabAnimation(callback: () => void, delay: number): void {
+    const timer = setTimeout(() => {
+      this.tabAnimationTimers.delete(timer)
+      callback()
+    }, delay)
+
+    this.tabAnimationTimers.add(timer)
+  }
+
+  private getTabAnimationDuration(duration: number): number {
+    if (typeof window === 'undefined') return duration
+    return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : duration
+  }
+
   selectTab(index: number): void {
+    const nextTab = this.tabs[index]
+    if (!nextTab || nextTab.closing) return
+
+    const previousTab = this.activeTab === null ? null : this.tabs[this.activeTab]
+    if (previousTab && previousTab !== nextTab && !nextTab.opening) {
+      nextTab.switchOffset = index < this.activeTab! ? '-18px' : '18px'
+      nextTab.switching = true
+      this.scheduleTabAnimation(() => {
+        if (this.tabs.includes(nextTab)) nextTab.switching = false
+      }, this.getTabAnimationDuration(this.tabSwitchAnimationMs))
+    }
+
     this.activeTab = index
-    this.tabSelected.emit(this.tabs[index])
+    this.tabSelected.emit(nextTab)
+  }
+
+  trackTabByIdentity(index: number, tab: any): any {
+    return tab
   }
 
   getTabIcon(tab: any): string {

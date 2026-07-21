@@ -41,6 +41,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   sidebarVisible: boolean = true
   resizingSidebar: boolean = false
   expandedConnections: Set<number> = new Set()
+  expandedConnectionContents: Set<number> = new Set()
   expandedDatabases: Set<string> = new Set()
   loadingConnections: Set<number> = new Set()
   clickTimeout: any = null
@@ -469,6 +470,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
     if (this.expandedConnections.has(connectionId)) {
       this.expandedConnections.delete(connectionId)
+      this.expandedConnectionContents.delete(connectionId)
       return
     }
 
@@ -480,6 +482,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
       await this.canConnect(connection)
     } finally {
       this.loadingConnections.delete(connectionId)
+      if (this.expandedConnections.has(connectionId)) {
+        this.expandedConnectionContents.add(connectionId)
+      }
     }
   }
 
