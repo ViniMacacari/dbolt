@@ -557,6 +557,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
 
   canExportQueryResult(): boolean {
     return this.isSelectResult &&
+      !this.editingEnabled &&
       !this.errorMessage &&
       !this.isLoading &&
       !this.isLoadingMore &&
