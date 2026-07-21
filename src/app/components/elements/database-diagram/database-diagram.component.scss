@@ -1,0 +1,374 @@
+:host {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+.database-diagram {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid var(--dbolt-363535);
+    border-radius: 15px;
+    background: var(--dbolt-1b1b1b);
+    color: var(--dbolt-e8eaed);
+
+    &.maximized {
+        position: fixed;
+        inset: 10px;
+        z-index: 4000;
+        width: auto;
+        height: auto;
+        border-radius: 13px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, .5);
+    }
+}
+
+.diagram-header {
+    flex: 0 0 auto;
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 8px 11px 8px 15px;
+    border-bottom: 1px solid var(--dbolt-343434);
+    background: var(--dbolt-181818);
+}
+
+.diagram-heading {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Nunito';
+
+    > span:last-child {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    strong {
+        max-width: 440px;
+        overflow: hidden;
+        color: var(--dbolt-f1f1f1);
+        font-size: .9rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    small {
+        margin-top: 1px;
+        color: var(--dbolt-969696);
+        font-size: .68rem;
+    }
+}
+
+.diagram-heading-icon {
+    width: 31px;
+    height: 31px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 31px;
+    border-radius: 9px;
+    background: var(--dbolt-283445);
+}
+
+.diagram-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+
+    button {
+        min-width: 31px;
+        height: 31px;
+        display: grid;
+        place-items: center;
+        padding: 0 8px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: var(--dbolt-232323);
+        color: var(--dbolt-cfcfcf);
+        cursor: pointer;
+        font: 700 .7rem 'Nunito';
+
+        &:hover {
+            border-color: var(--dbolt-516986);
+            background: var(--dbolt-2b3340);
+            color: var(--dbolt-f1f1f1);
+        }
+    }
+
+    .zoom-value {
+        min-width: 51px;
+    }
+
+    .fit-button {
+        min-width: 54px;
+    }
+}
+
+.diagram-control-separator {
+    width: 1px;
+    height: 22px;
+    margin: 0 2px;
+    background: var(--dbolt-343434);
+}
+
+.diagram-body {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    background-color: var(--dbolt-202020);
+    background-image:
+        linear-gradient(var(--dbolt-292727) 1px, transparent 1px),
+        linear-gradient(90deg, var(--dbolt-292727) 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+.diagram-viewport {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    cursor: grab;
+    overscroll-behavior: contain;
+    touch-action: none;
+
+    &.panning {
+        cursor: grabbing;
+
+        .diagram-entity {
+            pointer-events: none;
+        }
+    }
+}
+
+.diagram-scaled-area {
+    position: relative;
+    min-width: 100%;
+    min-height: 100%;
+}
+
+.diagram-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform-origin: top left;
+}
+
+.diagram-relations {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+    pointer-events: none;
+
+    path {
+        fill: none;
+        stroke: var(--dbolt-739eca);
+        stroke-width: 1.7;
+        vector-effect: non-scaling-stroke;
+    }
+
+    circle {
+        fill: var(--dbolt-202020);
+        stroke: var(--dbolt-9fc5f0);
+        stroke-width: 1.6;
+        vector-effect: non-scaling-stroke;
+    }
+}
+
+.diagram-entity {
+    position: absolute;
+    overflow: hidden;
+    border: 1px solid var(--dbolt-516986);
+    border-radius: 10px;
+    background: var(--dbolt-1b1b1b);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .22);
+    font-family: 'Nunito';
+
+    > header {
+        height: 38px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 10px;
+        border-bottom: 1px solid var(--dbolt-516986);
+        background: var(--dbolt-283445);
+
+        strong {
+            min-width: 0;
+            flex: 1;
+            overflow: hidden;
+            color: var(--dbolt-f1f4ff);
+            font-size: .78rem;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        small {
+            color: var(--dbolt-9fbede);
+            font-size: .58rem;
+            font-weight: 800;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+        }
+    }
+
+    &.view {
+        border-color: var(--dbolt-b58cff);
+
+        > header {
+            border-bottom-color: var(--dbolt-b58cff);
+            background: var(--dbolt-1d162e);
+        }
+    }
+}
+
+.diagram-column {
+    height: 28px;
+    display: grid;
+    grid-template-columns: 17px minmax(70px, 1fr) minmax(45px, auto) 12px;
+    align-items: center;
+    gap: 6px;
+    padding: 0 9px;
+    border-bottom: 1px solid var(--dbolt-2d2d2d);
+    color: var(--dbolt-c9c9c9);
+
+    &:last-child {
+        border-bottom: none;
+    }
+
+    strong,
+    small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    strong {
+        font-size: .7rem;
+        font-weight: 650;
+    }
+
+    small {
+        color: var(--dbolt-8d929b);
+        font: .61rem Consolas, monospace;
+        text-align: right;
+    }
+
+    &.primary-key strong {
+        color: var(--dbolt-e8e4a4);
+    }
+
+    &.empty {
+        display: flex;
+        color: var(--dbolt-777);
+        font-size: .67rem;
+        font-style: italic;
+    }
+}
+
+.column-icon {
+    display: grid;
+    place-items: center;
+}
+
+.column-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--dbolt-686868);
+}
+
+.nullable {
+    color: var(--dbolt-8aaed2);
+    font-size: .7rem;
+}
+
+.diagram-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 28px;
+    color: var(--dbolt-cfcfcf);
+    font-family: 'Nunito';
+    text-align: center;
+
+    strong {
+        font-size: .95rem;
+    }
+
+    small {
+        max-width: 540px;
+        color: var(--dbolt-969696);
+        font-size: .75rem;
+        line-height: 1.5;
+    }
+
+    button {
+        margin-top: 7px;
+        padding: 7px 12px;
+        border: 1px solid var(--dbolt-516986);
+        border-radius: 8px;
+        background: var(--dbolt-283445);
+        color: var(--dbolt-f1f4ff);
+        cursor: pointer;
+        font: 700 .72rem 'Nunito';
+    }
+
+    &.error .diagram-state-icon {
+        color: var(--dbolt-ff8f8f);
+        background: var(--dbolt-3c2727);
+    }
+
+    &.limited .diagram-state-icon {
+        background: var(--dbolt-283445);
+    }
+}
+
+.diagram-state-icon,
+.diagram-spinner {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 5px;
+    border-radius: 13px;
+}
+
+.diagram-spinner {
+    width: 30px;
+    height: 30px;
+    border: 2px solid var(--dbolt-444);
+    border-top-color: var(--dbolt-739eca);
+    border-radius: 50%;
+    animation: diagram-spin .75s linear infinite;
+}
+
+@keyframes diagram-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 720px) {
+    .diagram-heading small,
+    .fit-button,
+    .diagram-control-separator {
+        display: none !important;
+    }
+
+    .diagram-header {
+        padding-left: 9px;
+    }
+}
