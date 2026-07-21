@@ -5,6 +5,7 @@ import LSQLiteV3 from '../../services/lists/sqlite/v3.js';
 import SSSQLiteV3 from '../../services/schemas/sqlite/v3.js';
 import SQuerySQLiteV3 from '../../services/queries/sqlite/v3.js';
 import ListObjectsSQLiteV3 from '../../services/database-info/sqlite/v3.js';
+import DiagramSQLiteV3 from '../../services/diagrams/sqlite/v3.js';
 import DatabaseVersionService from '../../services/database-version/database-version.js';
 import { sendBadRequest, sendInternalError, sendServiceResult } from '../../utils/http.js';
 import { getConnectionKey } from '../../utils/request-context.js';
@@ -173,6 +174,22 @@ class CSQLiteV3 {
     try {
       const result = await ListObjectsSQLiteV3.procedureDDL(req.params.procedureName, getConnectionKey(req));
       sendServiceResult(res, result);
+    } catch (error: unknown) {
+      sendInternalError(res, error);
+    }
+  }
+
+  async schemaDiagram(req: Request, res: Response): Promise<void> {
+    try {
+      sendServiceResult(res, await DiagramSQLiteV3.schemaDiagram(getConnectionKey(req)));
+    } catch (error: unknown) {
+      sendInternalError(res, error);
+    }
+  }
+
+  async objectDiagram(req: Request<TableNameParams>, res: Response): Promise<void> {
+    try {
+      sendServiceResult(res, await DiagramSQLiteV3.objectDiagram(req.params.tableName, getConnectionKey(req)));
     } catch (error: unknown) {
       sendInternalError(res, error);
     }

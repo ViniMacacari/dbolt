@@ -25,6 +25,14 @@
             <img src="icons/index.png" [title]="t('dbInfo.indexes')" height="15px">
             {{ t('dbInfo.indexes') }} <small>{{ data?.indexes?.length || 0 }}</small>
         </button>
+
+        <div class="separator"></div>
+
+        <button class="btn" (click)="openDiagram()">
+            <img src="icons/diagram.png" [title]="t('diagram.title')" height="15px">
+            {{ t('diagram.title') }}
+            <small>{{ (data?.tables?.length || 0) + (data?.views?.length || 0) }}</small>
+        </button>
     </div>
 
     <div class="info db-info-panel">
