@@ -4,7 +4,9 @@ import {
   Component,
   ElementRef,
   EventEmitter,
+  HostListener,
   Input,
+  OnDestroy,
   OnInit,
   Output,
   ViewChild
@@ -37,7 +39,7 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
     '[class.expanded]': 'sidebarExpanded'
   }
 })
-export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
+export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDestroy {
   @Input() selectedSchemaDB: unknown
   @Input() dbSchemasData: unknown
   @Input() tabInfo: unknown
@@ -56,12 +58,15 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
   showDeleteConversationConfirm: boolean = false
   showDeleteAllConversationsConfirm: boolean = false
   showConversationsModal: boolean = false
+  conversationsModalClosing: boolean = false
   pendingDeleteConversation: AiAssistantConversation | null = null
 
   @ViewChild('messagesContainer')
   private messagesContainer?: ElementRef<HTMLDivElement>
 
   private lastScrolledMessageId: string = ''
+  private readonly conversationsModalAnimationDuration: number = 180
+  private conversationsModalCloseTimer: number | null = null
 
   constructor(
     private settingsService: AiAssistantSettingsService,
@@ -76,6 +81,10 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
       this.loadSettings(),
       this.loadConversations()
     ])
+  }
+
+  ngOnDestroy(): void {
+    this.cancelConversationsModalClose()
   }
 
   ngAfterViewChecked(): void {
@@ -239,11 +248,35 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
   openConversationsModal(): void {
     if (this.loadingConversations) return
 
+    this.cancelConversationsModalClose()
+    this.conversationsModalClosing = false
     this.showConversationsModal = true
   }
 
   closeConversationsModal(): void {
-    this.showConversationsModal = false
+    if (!this.showConversationsModal || this.conversationsModalClosing) return
+
+    this.conversationsModalClosing = true
+    this.conversationsModalCloseTimer = window.setTimeout(() => {
+      this.showConversationsModal = false
+      this.conversationsModalClosing = false
+      this.conversationsModalCloseTimer = null
+    }, this.conversationsModalAnimationDuration)
+  }
+
+  @HostListener('document:keydown.escape')
+  closeConversationOverlaysOnEscape(): void {
+    if (this.showDeleteConversationConfirm) {
+      this.cancelDeleteConversation()
+      return
+    }
+
+    if (this.showDeleteAllConversationsConfirm) {
+      this.cancelDeleteAllConversations()
+      return
+    }
+
+    this.closeConversationsModal()
   }
 
   requestDeleteConversation(conversation: AiAssistantConversation, event: MouseEvent): void {
@@ -368,6 +401,13 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
     this.activeConversationId = state.activeConversationId
     this.messages = this.activeConversation?.messages || []
     this.lastScrolledMessageId = ''
+  }
+
+  private cancelConversationsModalClose(): void {
+    if (this.conversationsModalCloseTimer === null) return
+
+    window.clearTimeout(this.conversationsModalCloseTimer)
+    this.conversationsModalCloseTimer = null
   }
 
   private createMessage(role: 'user' | 'assistant', content: string, error: boolean = false): AiChatMessage {
