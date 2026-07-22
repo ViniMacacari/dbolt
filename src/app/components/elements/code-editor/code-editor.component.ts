@@ -331,6 +331,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         'smallint', 'smallmoney', 'text', 'time', 'timestamp', 'tinyint', 'uniqueidentifier',
         'uuid', 'varbinary', 'varchar', 'xml'
       ],
+      sqlIdentifier: /(?:[A-Za-z_$#][A-Za-z0-9_$#]*|`(?:``|[^`])*`|"(?:""|[^"])*"|\[(?:\]\]|[^\]])*\])/,
       tokenizer: {
         root: [
           [/--.*$/, 'comment'],
@@ -342,21 +343,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
           [/\b\d+(?:\.\d+)?\b/, 'number'],
           [/@[a-zA-Z_][\w$#]*/, 'variable'],
           [/(with)(\s+)([a-zA-Z_][\w$#]*)/, ['keyword', 'white', 'identifier.cte']],
-          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)(\s+)(as)(\s+)([a-zA-Z_][\w$#]*)/, [
-            'keyword', 'white', 'identifier.qualifier', 'delimiter', 'identifier.table',
-            'white', 'keyword', 'white', 'identifier.tableAlias'
-          ]],
-          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)(\s+)([a-zA-Z_][\w$#]*)(?=\s+(?:on|where|join|left|right|inner|outer|cross|full|group|order|having|limit|set)\b|\s*,|$)/, [
-            'keyword', 'white', 'identifier.qualifier', 'delimiter', 'identifier.table',
-            'white', 'identifier.tableAlias'
-          ]],
-          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)(\s+)(as)(\s+)([a-zA-Z_][\w$#]*)/, [
-            'keyword', 'white', 'identifier.table', 'white', 'keyword', 'white', 'identifier.tableAlias'
-          ]],
-          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)(\s+)([a-zA-Z_][\w$#]*)(?=\s+(?:on|where|join|left|right|inner|outer|cross|full|group|order|having|limit|set)\b|\s*,|$)/, [
-            'keyword', 'white', 'identifier.table', 'white', 'identifier.tableAlias'
-          ]],
-          [/(from|join|update|into)(\s+)([a-zA-Z_][\w$#]*)/, ['keyword', 'white', 'identifier.table']],
+          [/(from|join|update|into)\b/, { token: 'keyword', next: '@tableReference' }],
           [/(as)(\s+)([a-zA-Z_][\w$#]*)/, ['keyword', 'white', {
             cases: {
               '@types': 'type',
@@ -389,6 +376,43 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
           [/[<>!~?:&|+\-*\/%^=]+/, 'operator'],
           [/[;,.]/, 'delimiter'],
           [/[()]/, 'delimiter']
+        ],
+        tableReference: [
+          [/[ \t]+/, 'white'],
+          [/--.*$/, 'comment'],
+          [/\/\*/, 'comment', '@comment'],
+          [/@sqlIdentifier/, { token: 'identifier.table', switchTo: '@tableReferenceSuffix' }],
+          [/./, { token: '@rematch', next: '@pop' }]
+        ],
+        tableReferenceSuffix: [
+          [/[ \t]+/, 'white'],
+          [/--.*$/, 'comment'],
+          [/\/\*/, 'comment', '@comment'],
+          [/\./, { token: 'delimiter', switchTo: '@tableReference' }],
+          [/,/, { token: 'delimiter', switchTo: '@tableReference' }],
+          [/@sqlIdentifier/, {
+            cases: {
+              'as': { token: 'keyword', switchTo: '@tableAlias' },
+              '@keywords': { token: '@rematch', next: '@pop' },
+              '@types': { token: '@rematch', next: '@pop' },
+              '@default': { token: 'identifier.tableAlias', switchTo: '@tableReferenceEnd' }
+            }
+          }],
+          [/./, { token: '@rematch', next: '@pop' }]
+        ],
+        tableAlias: [
+          [/[ \t]+/, 'white'],
+          [/--.*$/, 'comment'],
+          [/\/\*/, 'comment', '@comment'],
+          [/@sqlIdentifier/, { token: 'identifier.tableAlias', switchTo: '@tableReferenceEnd' }],
+          [/./, { token: '@rematch', next: '@pop' }]
+        ],
+        tableReferenceEnd: [
+          [/[ \t]+/, 'white'],
+          [/--.*$/, 'comment'],
+          [/\/\*/, 'comment', '@comment'],
+          [/,/, { token: 'delimiter', switchTo: '@tableReference' }],
+          [/./, { token: '@rematch', next: '@pop' }]
         ],
         comment: [
           [/[^/*]+/, 'comment'],
