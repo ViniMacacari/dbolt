@@ -1,8 +1,39 @@
 @use "../../sidebar/sidebar.component.scss";
 
 :host {
-    display: flex;
+    display: block;
+    flex: 0 0 0;
     height: 100%;
+    min-height: 0;
+    min-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    position: relative;
+    transform: translateX(-12px);
+    transition:
+        flex-basis .28s cubic-bezier(.4, 0, .2, 1),
+        min-width .28s cubic-bezier(.4, 0, .2, 1),
+        width .28s cubic-bezier(.4, 0, .2, 1),
+        opacity .2s ease .06s,
+        transform .28s cubic-bezier(.2, .8, .2, 1);
+    will-change: flex-basis, min-width, width;
+    width: 0;
+}
+
+:host(.active) {
+    flex-basis: 320px;
+    min-width: 320px;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+    width: 320px;
+}
+
+:host(.active.expanded) {
+    flex-basis: 460px;
+    min-width: 460px;
+    width: 460px;
 }
 
 .ai-assistant-sidebar {
@@ -11,13 +42,7 @@
     display: flex;
     flex-direction: column;
     min-width: 320px;
-    transition: width 0.2s ease, min-width 0.2s ease;
-    width: 320px;
-
-    &.expanded {
-        min-width: 460px;
-        width: 460px;
-    }
+    width: 100%;
 
     .sidebar-actions {
         grid-template-columns: 1fr auto auto auto;
@@ -441,4 +466,10 @@
 
 .typing {
     cursor: default !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :host {
+        transition-duration: 0.01ms !important;
+    }
 }

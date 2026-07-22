@@ -19,13 +19,21 @@ export interface SidebarLayoutChange {
   standalone: true,
   imports: [CommonModule, ToastComponent, ConnectionComponent],
   templateUrl: './sidebar.component.html',
-  styleUrl: './sidebar.component.scss'
+  styleUrl: './sidebar.component.scss',
+  host: {
+    '[class.layout-suppressed]': 'layoutSuppressed',
+    '[style.flex-basis.px]': 'layoutSuppressed ? 0 : layoutWidth',
+    '[style.max-width.px]': 'layoutSuppressed ? 0 : layoutWidth',
+    '[attr.aria-hidden]': 'layoutSuppressed ? "true" : null',
+    '[attr.inert]': 'layoutSuppressed ? "" : null'
+  }
 })
 export class SidebarComponent implements OnInit, OnDestroy {
   @Input() connections: any[] = []
   @Input() activeConnection: any = { info: {}, data: [] }
   @Input() dbSchemas: any = []
   @Input() selectedSchemaDB: any
+  @Input() layoutSuppressed: boolean = false
   @Output() sidebarStatusChange = new EventEmitter<SidebarLayoutChange>()
   @Output() dbInfoRequested = new EventEmitter<any>()
   @Output() selectedSchemaChanged = new EventEmitter<any>()
@@ -65,6 +73,10 @@ export class SidebarComponent implements OnInit, OnDestroy {
     private connectionsService: ConnectionsService,
     private language: AppLanguageService
   ) { }
+
+  get layoutWidth(): number {
+    return this.sidebarVisible ? this.sidebarWidth : this.sidebarCollapsedWidth
+  }
 
   ngOnInit(): void {
     this.restoreSidebarLayout()
