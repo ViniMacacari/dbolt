@@ -543,6 +543,65 @@
     }
 }
 
+.collapsed-selection {
+    align-items: center;
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+    padding-top: 15px;
+    position: relative;
+    width: 100%;
+
+    &::before {
+        background: var(--dbolt-353535);
+        content: '';
+        height: 1px;
+        left: 50%;
+        position: absolute;
+        top: 0;
+        transform: translateX(-50%);
+        width: 26px;
+    }
+}
+
+.collapsed-selection-button {
+    align-items: center;
+    background: var(--dbolt-sidebar-control-surface);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    color: var(--dbolt-e8eaed);
+    cursor: pointer;
+    display: flex;
+    flex: 0 0 auto;
+    height: 36px;
+    justify-content: center;
+    padding: 0;
+    position: relative;
+    transition: background-color .16s ease, border-color .16s ease, transform .16s ease;
+    width: 36px;
+
+    &::after {
+        background: var(--dbolt-739eca);
+        border-radius: 50%;
+        bottom: 4px;
+        content: '';
+        height: 4px;
+        position: absolute;
+        right: 4px;
+        width: 4px;
+    }
+
+    &:hover,
+    &:focus-visible {
+        background: var(--dbolt-sidebar-control-hover);
+        border-color: var(--dbolt-353535);
+        outline: none;
+        transform: translateX(1px);
+    }
+}
+
 :host-context(body.dbolt-sidebar-resizing) {
     cursor: col-resize;
 }
