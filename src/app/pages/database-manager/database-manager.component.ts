@@ -56,6 +56,7 @@ export class DatabaseManagerComponent {
   selectBuilderOpen: boolean = false
   queryCompareOpen: boolean = false
   aiAssistantOpen: boolean = false
+  aiAssistantMounted: boolean = false
   dbInfoInitialized: boolean = false
   tableInfoInitialized: boolean = false
   procedureInfoInitialized: boolean = false
@@ -396,7 +397,13 @@ export class DatabaseManagerComponent {
   }
 
   openAiAssistant(): void {
-    this.aiAssistantOpen = true
+    if (this.aiAssistantOpen) return
+
+    this.aiAssistantMounted = true
+
+    requestAnimationFrame(() => {
+      this.aiAssistantOpen = true
+    })
   }
 
   closeAiAssistant(): void {
