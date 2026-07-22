@@ -275,7 +275,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         vertical: 'auto',
         horizontal: 'auto'
       },
-      renderLineHighlight: 'none',
+      renderLineHighlight: 'line',
+      renderLineHighlightOnlyWhenFocus: true,
       overviewRulerLanes: 0,
       renderWhitespace: 'none',
       stickyScroll: { enabled: false },
@@ -409,8 +410,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       ? {
         'editor.background': '#ffffff',
         'editorGutter.background': '#f6f8fa',
-        'editorLineHighlightBorder': '#00000000',
-        'editorLineHighlightBackground': '#f3f7fb',
+        'editor.lineHighlightBorder': '#00000000',
+        'editor.lineHighlightBackground': '#00000008',
         'editorWidget.background': '#ffffff',
         'editorWidget.border': '#b8c5d1',
         'editorSuggestWidget.background': '#ffffff',
@@ -426,8 +427,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       : {
         'editor.background': '#00000000',
         'editorGutter.background': '#00000000',
-        'editorLineHighlightBorder': '#00000000',
-        'editorLineHighlightBackground': '#00000000',
+        'editor.lineHighlightBorder': '#00000000',
+        'editor.lineHighlightBackground': '#ffffff08',
         'editorWidget.border': '#00000000',
         'focusBorder': '#00000000'
       }
