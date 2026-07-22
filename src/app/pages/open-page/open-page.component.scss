@@ -134,6 +134,7 @@
 }
 
 .connection-layout {
+    align-items: stretch;
     display: grid;
     gap: 16px;
     grid-template-columns: minmax(280px, 330px) minmax(0, 1fr);
@@ -143,7 +144,10 @@
 
 .connection-sidebar,
 .connection-stage {
+    align-self: stretch;
     border-radius: 22px;
+    box-sizing: border-box;
+    height: 100%;
     min-height: 0;
     overflow: hidden;
 }
