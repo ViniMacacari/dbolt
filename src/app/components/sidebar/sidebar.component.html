@@ -203,7 +203,8 @@
     </button>
 </div>
 
-<div class="quick-selector-backdrop" *ngIf="quickSelectorType" (click)="closeQuickSelector()">
+<div class="quick-selector-backdrop" *ngIf="quickSelectorType"
+    [class.quick-selector-closing]="quickSelectorClosing" (click)="closeQuickSelector()">
     <div class="quick-selector-modal" (click)="$event.stopPropagation()">
         <div class="quick-selector-header">
             <div>
