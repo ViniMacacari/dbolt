@@ -6,7 +6,7 @@
 }
 
 .home-page {
-    background: var(--dbolt-workspace-surface);
+    background: var(--dbolt-131313);
     color: var(--dbolt-e8eaed);
     height: 100%;
     min-height: 0;
@@ -145,11 +145,11 @@
 }
 
 .new-button {
-    background: var(--dbolt-1c2041);
-    border-color: color-mix(in srgb, var(--dbolt-739eca) 24%, transparent);
+    background: var(--dbolt-000);
+    border-color: var(--dbolt-232020);
 
     &:hover {
-        background: var(--dbolt-1f2775);
+        background: var(--dbolt-232020);
     }
 }
 
@@ -185,7 +185,7 @@
 .focus-layout {
     display: grid;
     gap: 18px;
-    grid-template-rows: minmax(290px, 1.15fr) minmax(190px, .85fr);
+    grid-template-rows: minmax(240px, .9fr) minmax(220px, 1.1fr);
     min-height: 0;
     overflow: hidden;
 }
@@ -321,14 +321,14 @@
     align-items: stretch;
     display: grid;
     gap: 12px;
-    grid-template-columns: minmax(0, 1fr) minmax(220px, .46fr);
-    margin-top: clamp(22px, 3vh, 32px);
+    grid-template-columns: minmax(0, 1fr) minmax(250px, .46fr);
+    margin-top: clamp(18px, 2.5vh, 26px);
 }
 
 .stage-meta {
     display: grid;
     gap: 12px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     margin: 0;
     min-width: 0;
 
@@ -442,7 +442,7 @@
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
-    padding: 20px;
+    padding: 16px;
 }
 
 .connections-heading {
@@ -451,7 +451,7 @@
     flex: 0 0 auto;
     gap: 20px;
     justify-content: space-between;
-    padding: 0 2px 16px;
+    padding: 0 2px 12px;
 
     h2,
     p {
@@ -491,7 +491,7 @@
 .connection-rail {
     display: grid;
     gap: 10px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
     min-height: 0;
     overflow-y: auto;
     padding: 1px 3px 1px 1px;
@@ -505,10 +505,10 @@
     color: var(--dbolt-b8b8b9);
     cursor: pointer;
     display: grid;
-    gap: 11px;
-    grid-template-columns: 38px minmax(0, 1fr) auto;
-    min-height: 64px;
-    padding: 10px 12px;
+    gap: 9px;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    min-height: 54px;
+    padding: 7px 10px;
     text-align: left;
     transition: background-color .16s ease, border-color .16s ease, transform .16s ease;
 
@@ -539,11 +539,13 @@
 .rail-logo {
     background: var(--dbolt-292727);
     border-radius: 10px;
-    height: 38px;
-    width: 38px;
+    height: 34px;
+    width: 34px;
 
     img {
+        height: 26px;
         object-fit: contain;
+        width: 26px;
     }
 }
 
@@ -889,7 +891,7 @@
     }
 
     .focus-layout {
-        grid-template-rows: minmax(330px, 1.2fr) minmax(180px, .8fr);
+        grid-template-rows: minmax(280px, .9fr) minmax(210px, 1.1fr);
     }
 
     .stage-footer {
@@ -990,7 +992,7 @@
 
     .focus-layout {
         gap: 12px;
-        grid-template-rows: minmax(250px, 1.25fr) minmax(150px, .75fr);
+        grid-template-rows: minmax(210px, .8fr) minmax(190px, 1.2fr);
     }
 
     .connection-stage {
