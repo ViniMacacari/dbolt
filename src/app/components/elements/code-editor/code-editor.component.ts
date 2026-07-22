@@ -337,6 +337,15 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
           [/--.*$/, 'comment'],
           [/\/\*/, 'comment', '@comment'],
           [/'(?:''|[^'])*'/, 'string'],
+          [/(@sqlIdentifier)(\.)(@sqlIdentifier)(\.)(@sqlIdentifier)/, [
+            'identifier.qualifier', 'delimiter', 'identifier.qualifier', 'delimiter', 'identifier.column'
+          ]],
+          [/(@sqlIdentifier)(\.)(@sqlIdentifier)(?=\s*\()/, [
+            'identifier.qualifier', 'delimiter', 'function'
+          ]],
+          [/(@sqlIdentifier)(\.)(@sqlIdentifier)/, [
+            'identifier.qualifier', 'delimiter', 'identifier.column'
+          ]],
           [/"(?:""|[^"])*"/, 'identifier.column'],
           [/`(?:``|[^`])*`/, 'identifier.column'],
           [/\[(?:\]\]|[^\]])*\]/, 'identifier.column'],
@@ -350,15 +359,6 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
               '@default': 'identifier.columnAlias'
             }
           }]],
-          [/([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)/, [
-            'identifier.qualifier', 'delimiter', 'identifier.qualifier', 'delimiter', 'identifier.column'
-          ]],
-          [/([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)(?=\s*\()/, [
-            'identifier.qualifier', 'delimiter', 'function'
-          ]],
-          [/([a-zA-Z_][\w$#]*)(\.)([a-zA-Z_][\w$#]*)/, [
-            'identifier.qualifier', 'delimiter', 'identifier.column'
-          ]],
           [/[a-zA-Z_][\w$#]*(?=\s*\()/, {
             cases: {
               '@keywords': 'keyword',
@@ -381,6 +381,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
           [/[ \t]+/, 'white'],
           [/--.*$/, 'comment'],
           [/\/\*/, 'comment', '@comment'],
+          [/\(/, { token: 'delimiter', switchTo: '@derivedTable' }],
           [/@sqlIdentifier/, { token: 'identifier.table', switchTo: '@tableReferenceSuffix' }],
           [/./, { token: '@rematch', next: '@pop' }]
         ],
@@ -400,10 +401,21 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
           }],
           [/./, { token: '@rematch', next: '@pop' }]
         ],
+        derivedTable: [
+          [/\(/, { token: 'delimiter', next: '@derivedTableNested' }],
+          [/\)/, { token: 'delimiter', switchTo: '@tableAlias' }],
+          { include: '@root' }
+        ],
+        derivedTableNested: [
+          [/\(/, { token: 'delimiter', next: '@push' }],
+          [/\)/, { token: 'delimiter', next: '@pop' }],
+          { include: '@root' }
+        ],
         tableAlias: [
           [/[ \t]+/, 'white'],
           [/--.*$/, 'comment'],
           [/\/\*/, 'comment', '@comment'],
+          [/(as)\b/, 'keyword'],
           [/@sqlIdentifier/, { token: 'identifier.tableAlias', switchTo: '@tableReferenceEnd' }],
           [/./, { token: '@rematch', next: '@pop' }]
         ],
