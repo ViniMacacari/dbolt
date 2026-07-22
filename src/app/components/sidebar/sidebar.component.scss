@@ -25,11 +25,7 @@
     height: 100%;
     min-width: 0;
     position: relative;
-    transition: width .28s cubic-bezier(.4, 0, .2, 1);
-
-    &.sidebar-resizing {
-        transition: none;
-    }
+    width: 100%;
 
     &.sidebar-hidden {
         .sidebar {
@@ -180,9 +176,13 @@
         }
     }
 
+    > .schema {
+        margin-bottom: 0;
+    }
+
     > .separator {
         flex: 0 0 auto;
-        margin: 4px 0 8px !important;
+        margin: 6px 0 !important;
     }
 
     .connections {
@@ -192,8 +192,8 @@
         gap: 6px;
         min-height: 0;
         overflow-y: auto;
-        padding-right: 2px;
-        scrollbar-gutter: stable;
+        padding-right: 0;
+        scrollbar-gutter: auto;
     }
 
     .connection {
@@ -604,6 +604,7 @@
 
 :host-context(body.dbolt-sidebar-resizing) {
     cursor: col-resize;
+    transition: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

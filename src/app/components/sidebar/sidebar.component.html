@@ -1,5 +1,4 @@
-<div class="sidebar-shell" [class.sidebar-hidden]="!sidebarVisible" [class.sidebar-resizing]="resizingSidebar"
-    [style.width.px]="sidebarVisible ? sidebarWidth : sidebarCollapsedWidth">
+<div class="sidebar-shell" [class.sidebar-hidden]="!sidebarVisible">
     <div class="sidebar-viewport">
     <aside class="sidebar" [style.width.px]="sidebarWidth" [attr.aria-hidden]="!sidebarVisible"
         [attr.inert]="!sidebarVisible ? '' : null">

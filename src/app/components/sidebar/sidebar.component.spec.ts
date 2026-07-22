@@ -24,6 +24,13 @@ describe('SidebarComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('uses the host as the single source of width during sidebar changes', () => {
+    const shell = fixture.nativeElement.querySelector('.sidebar-shell') as HTMLElement;
+
+    expect(shell.style.width).toBe('');
+    expect(getComputedStyle(shell).width).toBe(`${fixture.nativeElement.getBoundingClientRect().width}px`);
+  });
+
   it('keeps the quick selector mounted during its closing animation', fakeAsync(() => {
     component.toggleQuickSelector('connection', new MouseEvent('click'));
     fixture.detectChanges();
