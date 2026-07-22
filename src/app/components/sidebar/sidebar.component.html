@@ -139,6 +139,30 @@
             [title]="t('sidebar.settings')" [attr.aria-label]="t('sidebar.settings')">
             <img src="icons/settings.png" height="17px" width="17px" alt="">
         </button>
+
+        <div class="collapsed-selection" *ngIf="selectedSchemaDB"
+            [attr.aria-label]="t('sidebar.currentlySelected')">
+            <button type="button" class="collapsed-selection-button"
+                (click)="toggleQuickSelector('connection', $event)"
+                [title]="t('sidebar.selectConnection') + ': ' + selectedSchemaDB.sgbd + ' (' + selectedSchemaDB.name + ')'"
+                [attr.aria-label]="t('sidebar.selectConnection') + ': ' + selectedSchemaDB.sgbd + ' (' + selectedSchemaDB.name + ')'">
+                <img src="db-logo/{{ selectedSchemaDB.sgbd }}.png" height="16px" width="16px" alt="">
+            </button>
+            <button type="button" class="collapsed-selection-button"
+                (click)="toggleQuickSelector('database', $event)"
+                (contextmenu)="openSelectedDatabaseContextMenu($event)"
+                [title]="t('sidebar.selectDatabase') + ': ' + selectedSchemaDB.database"
+                [attr.aria-label]="t('sidebar.selectDatabase') + ': ' + selectedSchemaDB.database">
+                <img src="icons/database.png" height="16px" width="16px" alt="">
+            </button>
+            <button type="button" class="collapsed-selection-button"
+                (click)="toggleQuickSelector('schema', $event)"
+                (contextmenu)="openSelectedSchemaContextMenu($event)"
+                [title]="t('sidebar.selectSchema') + ': ' + selectedSchemaDB.schema"
+                [attr.aria-label]="t('sidebar.selectSchema') + ': ' + selectedSchemaDB.schema">
+                <img src="icons/schema.png" height="14px" width="14px" alt="">
+            </button>
+        </div>
     </nav>
     </div>
 
