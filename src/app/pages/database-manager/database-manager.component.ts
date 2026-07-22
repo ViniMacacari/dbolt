@@ -1,4 +1,4 @@
-import { Component, ViewChild, Output, EventEmitter } from '@angular/core'
+import { Component, ViewChild, Output, EventEmitter, OnDestroy } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { InternalApiService } from '../../services/requests/internal-api.service'
 import { ActivatedRoute } from '@angular/router'
@@ -29,7 +29,7 @@ import { DatabaseDiagramComponent } from '../../components/elements/database-dia
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
-export class DatabaseManagerComponent {
+export class DatabaseManagerComponent implements OnDestroy {
   @ViewChild(TabsComponent) tabsComponent!: TabsComponent
   @ViewChild(ToastComponent) toast!: ToastComponent
   @ViewChild(AiAssistantPanelComponent) aiAssistantPanel?: AiAssistantPanelComponent
@@ -72,6 +72,7 @@ export class DatabaseManagerComponent {
   procedureElementName: string = ''
 
   widthTable: number = 300
+  private aiAssistantAnimationFrame: number | null = null
 
   constructor(
     private IAPI: InternalApiService,
@@ -82,6 +83,10 @@ export class DatabaseManagerComponent {
     private querySave: QuerySaveService,
     private language: AppLanguageService
   ) { }
+
+  ngOnDestroy(): void {
+    this.cancelAiAssistantAnimationFrame()
+  }
 
   async ngAfterViewInit(): Promise<void> {
     LoadingComponent.show()
@@ -397,17 +402,28 @@ export class DatabaseManagerComponent {
   }
 
   openAiAssistant(): void {
-    if (this.aiAssistantOpen) return
+    if (this.aiAssistantOpen || this.aiAssistantAnimationFrame !== null) return
 
     this.aiAssistantMounted = true
 
-    requestAnimationFrame(() => {
-      this.aiAssistantOpen = true
+    this.aiAssistantAnimationFrame = requestAnimationFrame(() => {
+      this.aiAssistantAnimationFrame = requestAnimationFrame(() => {
+        this.aiAssistantAnimationFrame = null
+        this.aiAssistantOpen = true
+      })
     })
   }
 
   closeAiAssistant(): void {
+    this.cancelAiAssistantAnimationFrame()
     this.aiAssistantOpen = false
+  }
+
+  private cancelAiAssistantAnimationFrame(): void {
+    if (this.aiAssistantAnimationFrame === null) return
+
+    cancelAnimationFrame(this.aiAssistantAnimationFrame)
+    this.aiAssistantAnimationFrame = null
   }
 
   async onSqlScriptRequested(event: any): Promise<void> {
