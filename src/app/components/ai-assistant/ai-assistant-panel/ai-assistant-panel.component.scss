@@ -1,8 +1,40 @@
 @use "../../sidebar/sidebar.component.scss";
 
 :host {
-    display: flex;
+    display: block;
+    flex: 0 0 0;
     height: 100%;
+    min-height: 0;
+    min-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    position: relative;
+    transform: translateX(-12px);
+    transition:
+        flex-basis .28s cubic-bezier(.4, 0, .2, 1),
+        min-width .28s cubic-bezier(.4, 0, .2, 1),
+        width .28s cubic-bezier(.4, 0, .2, 1),
+        opacity .2s ease .06s,
+        transform .28s cubic-bezier(.2, .8, .2, 1);
+    will-change: flex-basis, min-width, width;
+    width: 0;
+}
+
+:host(.active) {
+    flex-basis: 320px;
+    min-width: 320px;
+    opacity: 1;
+    overflow: visible;
+    pointer-events: auto;
+    transform: none;
+    width: 320px;
+}
+
+:host(.active.expanded) {
+    flex-basis: 460px;
+    min-width: 460px;
+    width: 460px;
 }
 
 .ai-assistant-sidebar {
@@ -11,13 +43,7 @@
     display: flex;
     flex-direction: column;
     min-width: 320px;
-    transition: width 0.2s ease, min-width 0.2s ease;
-    width: 320px;
-
-    &.expanded {
-        min-width: 460px;
-        width: 460px;
-    }
+    width: 100%;
 
     .sidebar-actions {
         grid-template-columns: 1fr auto auto auto;
@@ -283,20 +309,28 @@
 
 .conversation-modal-backdrop {
     align-items: center;
+    animation: conversation-backdrop-in .18s ease-out both;
     background-color: rgba(7, 7, 7, 0.76);
     backdrop-filter: blur(2px);
-    bottom: 0;
     display: flex;
+    inset: 0;
     justify-content: center;
-    left: 0;
     padding: 24px;
     position: fixed;
-    right: 0;
-    top: 0;
-    z-index: 1040;
+    z-index: 10050;
+
+    &.conversation-modal-closing {
+        animation: conversation-backdrop-out .18s ease-in both;
+        pointer-events: none;
+
+        .conversation-modal {
+            animation: conversation-modal-out .15s ease-in both;
+        }
+    }
 }
 
 .conversation-modal {
+    animation: conversation-modal-in .2s cubic-bezier(.2, .8, .2, 1) both;
     background: var(--dbolt-1b1b1b);
     border: 1px solid var(--dbolt-353535);
     border-radius: 18px;
@@ -304,7 +338,57 @@
     max-height: min(620px, calc(100vh - 48px));
     max-width: 460px;
     overflow: hidden;
+    transform-origin: center;
     width: min(460px, 100%);
+}
+
+.ai-assistant-confirmation {
+    position: relative;
+    z-index: 10060;
+}
+
+@keyframes conversation-backdrop-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes conversation-backdrop-out {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes conversation-modal-in {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(.975);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes conversation-modal-out {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(6px) scale(.985);
+    }
 }
 
 .conversation-modal-header {
@@ -441,4 +525,16 @@
 
 .typing {
     cursor: default !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :host {
+        transition-duration: 0.01ms !important;
+    }
+
+    .conversation-modal-backdrop,
+    .conversation-modal {
+        animation-delay: 0s !important;
+        animation-duration: 0.01ms !important;
+    }
 }

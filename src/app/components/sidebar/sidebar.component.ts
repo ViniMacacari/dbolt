@@ -19,13 +19,21 @@ export interface SidebarLayoutChange {
   standalone: true,
   imports: [CommonModule, ToastComponent, ConnectionComponent],
   templateUrl: './sidebar.component.html',
-  styleUrl: './sidebar.component.scss'
+  styleUrl: './sidebar.component.scss',
+  host: {
+    '[class.layout-suppressed]': 'layoutSuppressed',
+    '[style.flex-basis.px]': 'layoutSuppressed ? 0 : layoutWidth',
+    '[style.max-width.px]': 'layoutSuppressed ? 0 : layoutWidth',
+    '[attr.aria-hidden]': 'layoutSuppressed ? "true" : null',
+    '[attr.inert]': 'layoutSuppressed ? "" : null'
+  }
 })
 export class SidebarComponent implements OnInit, OnDestroy {
   @Input() connections: any[] = []
   @Input() activeConnection: any = { info: {}, data: [] }
   @Input() dbSchemas: any = []
   @Input() selectedSchemaDB: any
+  @Input() layoutSuppressed: boolean = false
   @Output() sidebarStatusChange = new EventEmitter<SidebarLayoutChange>()
   @Output() dbInfoRequested = new EventEmitter<any>()
   @Output() selectedSchemaChanged = new EventEmitter<any>()
@@ -46,6 +54,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   loadingConnections: Set<number> = new Set()
   clickTimeout: any = null
   quickSelectorType: 'connection' | 'database' | 'schema' | null = null
+  quickSelectorClosing: boolean = false
   quickSelectorFilter: string = ''
   contextMenu: any = null
 
@@ -55,6 +64,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
   private readonly sidebarCompactWidth: number = 180
   private readonly sidebarDefaultWidth: number = 320
   private readonly sidebarLayoutStorageKey: string = 'dbolt-sidebar-layout'
+  private readonly quickSelectorAnimationDuration: number = 180
+  private quickSelectorCloseTimer: number | null = null
   private resizeStartX: number = 0
   private resizeStartWidth: number = 0
 
@@ -66,12 +77,17 @@ export class SidebarComponent implements OnInit, OnDestroy {
     private language: AppLanguageService
   ) { }
 
+  get layoutWidth(): number {
+    return this.sidebarVisible ? this.sidebarWidth : this.sidebarCollapsedWidth
+  }
+
   ngOnInit(): void {
     this.restoreSidebarLayout()
     this.emitSidebarLayout()
   }
 
   ngOnDestroy(): void {
+    this.cancelQuickSelectorClose()
     document.body.classList.remove('dbolt-sidebar-resizing')
   }
 
@@ -87,7 +103,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
   hideSidebar(): void {
     this.finishSidebarResize()
     this.sidebarVisible = false
+    this.cancelQuickSelectorClose()
     this.quickSelectorType = null
+    this.quickSelectorClosing = false
     this.contextMenu = null
     this.persistSidebarLayout()
     this.emitSidebarLayout()
@@ -215,19 +233,28 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.focusEventTarget(event)
     this.contextMenu = null
 
-    if (this.quickSelectorType === type) {
+    if (this.quickSelectorType === type && !this.quickSelectorClosing) {
       this.closeQuickSelector()
       return
     }
 
+    this.cancelQuickSelectorClose()
+    this.quickSelectorClosing = false
     this.quickSelectorFilter = ''
     this.quickSelectorType = type
   }
 
   closeQuickSelector(event?: MouseEvent): void {
     event?.stopPropagation()
-    this.quickSelectorType = null
-    this.quickSelectorFilter = ''
+    if (!this.quickSelectorType || this.quickSelectorClosing) return
+
+    this.quickSelectorClosing = true
+    this.quickSelectorCloseTimer = window.setTimeout(() => {
+      this.quickSelectorType = null
+      this.quickSelectorClosing = false
+      this.quickSelectorFilter = ''
+      this.quickSelectorCloseTimer = null
+    }, this.quickSelectorAnimationDuration)
   }
 
   getQuickSelectorTitle(): string {
@@ -359,7 +386,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
         await this.setSchema(this.buildSchemaSelection(option.connection, option.database.database, option.value))
       }
 
-      this.quickSelectorType = null
+      this.closeQuickSelector()
     } finally {
       LoadingComponent.hide()
     }
@@ -380,6 +407,11 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   closeContextMenuOnEscape(): void {
+    if (this.quickSelectorType) {
+      this.closeQuickSelector()
+      return
+    }
+
     this.contextMenu = null
   }
 
@@ -455,7 +487,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
     event.preventDefault()
     event.stopPropagation()
     this.focusEventTarget(event)
+    this.cancelQuickSelectorClose()
     this.quickSelectorType = null
+    this.quickSelectorClosing = false
 
     this.contextMenu = {
       ...menu,
@@ -680,6 +714,13 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
     const activeElement = document.activeElement as HTMLElement | null
     activeElement?.blur()
+  }
+
+  private cancelQuickSelectorClose(): void {
+    if (this.quickSelectorCloseTimer === null) return
+
+    window.clearTimeout(this.quickSelectorCloseTimer)
+    this.quickSelectorCloseTimer = null
   }
 
   private canReceiveFocus(element: HTMLElement): boolean {

@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 
@@ -24,28 +24,32 @@ describe('SidebarComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('shows the connection content only after its schemas are ready', async () => {
-    const connection = { id: 12 };
-    spyOn(component, 'canConnect').and.resolveTo();
+  it('uses the host as the single source of width during sidebar changes', () => {
+    const shell = fixture.nativeElement.querySelector('.sidebar-shell') as HTMLElement;
 
-    const opening = component.toggleConnection(connection);
-
-    expect(component.expandedConnections.has(12)).toBeTrue();
-    expect(component.expandedConnectionContents.has(12)).toBeFalse();
-
-    await opening;
-
-    expect(component.expandedConnectionContents.has(12)).toBeTrue();
+    expect(shell.style.width).toBe('');
+    expect(getComputedStyle(shell).width).toBe(`${fixture.nativeElement.getBoundingClientRect().width}px`);
   });
 
-  it('keeps the connection content mounted while switching it to the collapsed state', async () => {
-    const connection = { id: 12 };
-    spyOn(component, 'canConnect').and.resolveTo();
-    await component.toggleConnection(connection);
+  it('keeps the quick selector mounted during its closing animation', fakeAsync(() => {
+    component.toggleQuickSelector('connection', new MouseEvent('click'));
+    fixture.detectChanges();
 
-    await component.toggleConnection(connection);
+    expect(fixture.nativeElement.querySelector('.quick-selector-backdrop')).not.toBeNull();
 
-    expect(component.expandedConnections.has(12)).toBeFalse();
-    expect(component.expandedConnectionContents.has(12)).toBeFalse();
-  });
+    component.closeQuickSelector();
+    fixture.detectChanges();
+
+    const closingBackdrop = fixture.nativeElement.querySelector('.quick-selector-backdrop');
+    expect(component.quickSelectorType).toBe('connection');
+    expect(component.quickSelectorClosing).toBeTrue();
+    expect(closingBackdrop.classList).toContain('quick-selector-closing');
+
+    tick(180);
+    fixture.detectChanges();
+
+    expect(component.quickSelectorType).toBeNull();
+    expect(component.quickSelectorClosing).toBeFalse();
+    expect(fixture.nativeElement.querySelector('.quick-selector-backdrop')).toBeNull();
+  }));
 });
