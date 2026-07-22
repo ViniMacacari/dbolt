@@ -17,6 +17,7 @@
         width .28s cubic-bezier(.4, 0, .2, 1),
         opacity .2s ease .06s,
         transform .28s cubic-bezier(.2, .8, .2, 1);
+    will-change: flex-basis, min-width, width;
     width: 0;
 }
 
@@ -42,11 +43,6 @@
     flex-direction: column;
     min-width: 320px;
     width: 100%;
-
-    &.expanded {
-        min-width: 460px;
-        width: 100%;
-    }
 
     .sidebar-actions {
         grid-template-columns: 1fr auto auto auto;
