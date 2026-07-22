@@ -32,7 +32,10 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
   standalone: true,
   imports: [CommonModule, AiChatInputComponent, AiChatMessageComponent, YesNoModalComponent],
   templateUrl: './ai-assistant-panel.component.html',
-  styleUrl: './ai-assistant-panel.component.scss'
+  styleUrl: './ai-assistant-panel.component.scss',
+  host: {
+    '[class.expanded]': 'sidebarExpanded'
+  }
 })
 export class AiAssistantPanelComponent implements OnInit, AfterViewChecked {
   @Input() selectedSchemaDB: unknown
