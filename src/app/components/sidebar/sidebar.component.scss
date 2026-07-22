@@ -4,9 +4,9 @@
     height: 100%;
     min-width: 0;
     opacity: 1;
-    overflow: hidden;
+    overflow: visible;
     position: relative;
-    transform: translateX(0);
+    transform: none;
     transition:
         flex-basis .28s cubic-bezier(.4, 0, .2, 1),
         max-width .28s cubic-bezier(.4, 0, .2, 1),
@@ -563,11 +563,14 @@
     background: var(--dbolt-1b1b1b);
     border: 1px solid var(--dbolt-353535);
     border-radius: 12px;
+    box-sizing: border-box;
     box-shadow: 0 16px 45px rgba(0, 0, 0, 0.45);
+    max-width: calc(100vw - 16px);
     min-width: 220px;
     overflow: hidden;
     padding: 6px;
     position: fixed;
+    width: 240px;
     z-index: 10049;
 
     .context-menu-header {
@@ -610,6 +613,7 @@
         gap: 9px;
         padding: 9px 10px;
         text-align: left;
+        white-space: nowrap;
         width: 100%;
 
         &:hover {
