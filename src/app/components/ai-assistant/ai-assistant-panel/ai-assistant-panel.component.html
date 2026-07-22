@@ -84,22 +84,25 @@
     <app-ai-chat-input [disabled]="sending || !canChat || loadingConversations"
         [databaseContextAvailable]="databaseContextAvailable" (send)="onSend($event)">
     </app-ai-chat-input>
+</aside>
 
-    <app-yes-no-modal *ngIf="showDeleteConversationConfirm" [title]="t('aiAssistant.deleteConversation')"
-        [message]="deleteConversationConfirmMessage" [cancelLabel]="t('aiAssistant.no')"
-        [continueLabel]="t('aiAssistant.yesDelete')" (closeAction)="cancelDeleteConversation()"
-        (continueAction)="confirmDeleteConversation()">
-    </app-yes-no-modal>
+<app-yes-no-modal class="ai-assistant-confirmation" *ngIf="showDeleteConversationConfirm"
+    [title]="t('aiAssistant.deleteConversation')" [message]="deleteConversationConfirmMessage"
+    [cancelLabel]="t('aiAssistant.no')" [continueLabel]="t('aiAssistant.yesDelete')"
+    (closeAction)="cancelDeleteConversation()" (continueAction)="confirmDeleteConversation()">
+</app-yes-no-modal>
 
-    <app-yes-no-modal *ngIf="showDeleteAllConversationsConfirm"
-        [title]="t('aiAssistant.deleteAllConversations')"
-        [message]="t('aiAssistant.deleteAllConversationsConfirm')" [cancelLabel]="t('aiAssistant.no')"
-        [continueLabel]="t('aiAssistant.yesDeleteAll')" (closeAction)="cancelDeleteAllConversations()"
-        (continueAction)="confirmDeleteAllConversations()">
-    </app-yes-no-modal>
+<app-yes-no-modal class="ai-assistant-confirmation" *ngIf="showDeleteAllConversationsConfirm"
+    [title]="t('aiAssistant.deleteAllConversations')"
+    [message]="t('aiAssistant.deleteAllConversationsConfirm')" [cancelLabel]="t('aiAssistant.no')"
+    [continueLabel]="t('aiAssistant.yesDeleteAll')" (closeAction)="cancelDeleteAllConversations()"
+    (continueAction)="confirmDeleteAllConversations()">
+</app-yes-no-modal>
 
-    <div class="conversation-modal-backdrop" *ngIf="showConversationsModal" (click)="closeConversationsModal()">
-        <div class="conversation-modal" (click)="$event.stopPropagation()">
+<div class="conversation-modal-backdrop" *ngIf="showConversationsModal"
+    [class.conversation-modal-closing]="conversationsModalClosing" (click)="closeConversationsModal()">
+    <div class="conversation-modal" role="dialog" aria-modal="true"
+        [attr.aria-label]="t('aiAssistant.conversations')" (click)="$event.stopPropagation()">
             <div class="conversation-modal-header">
                 <div>
                     <p>{{ t('aiAssistant.currentConversation') }}</p>
@@ -147,6 +150,5 @@
             <p class="conversation-loading text-min-gray" *ngIf="loadingConversations">
                 {{ t('aiAssistant.loadingConversations') }}
             </p>
-        </div>
     </div>
-</aside>
+</div>
