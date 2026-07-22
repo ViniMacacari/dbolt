@@ -1,11 +1,14 @@
 <div class="content d-flex w-100 h-100">
-    <app-sidebar *ngIf="!aiAssistantOpen" [connections]="connections" [activeConnection]="activeConnection"
+    <app-sidebar [layoutSuppressed]="aiAssistantOpen" [connections]="connections"
+        [activeConnection]="activeConnection"
         [dbSchemas]="databasesSchemasActiveConnections" [selectedSchemaDB]="selectedSchemaDB"
         (sidebarStatusChange)="onSidebarStatusChange($event)" (dbInfoRequested)="onDbInfoRequested($event)"
         (selectedSchemaChanged)="onSelectedSchemaChanged($event)"
         (settingsRequested)="onSettingsRequested()" (sqlScriptRequested)="onSqlScriptRequested($event)"
         (contextConnectionRequested)="onContextConnectionRequested($event)"></app-sidebar>
-    <app-ai-assistant-panel *ngIf="aiAssistantOpen" [selectedSchemaDB]="selectedSchemaDB"
+    <app-ai-assistant-panel *ngIf="aiAssistantMounted" class="workspace-ai-assistant"
+        [class.active]="aiAssistantOpen" [attr.aria-hidden]="!aiAssistantOpen"
+        [attr.inert]="!aiAssistantOpen ? '' : null" [selectedSchemaDB]="selectedSchemaDB"
         [dbSchemasData]="dbSchemasData" [tabInfo]="tabInfo" (close)="closeAiAssistant()"
         (settingsRequested)="onAiSettingsRequested()"></app-ai-assistant-panel>
     <div class="main-area">
