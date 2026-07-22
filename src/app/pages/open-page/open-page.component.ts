@@ -9,8 +9,6 @@ import { ConnectionsService } from '../../services/resolve-connections/connectio
 import { AppLanguageService } from '../../services/language/app-language.service'
 import { AppLanguage } from '../../services/language/language.model'
 
-type ConnectionViewMode = 'focus' | 'matrix'
-
 @Component({
   selector: 'app-open-page',
   standalone: true,
@@ -26,14 +24,12 @@ export class OpenPageComponent {
   isModalOpen = false
   editingConnection: any = null
   connections: any[] = []
-  viewMode: ConnectionViewMode = 'focus'
+  connectionSearch = ''
   selectedConnectionId: number | null = null
   appVersion: string = ''
   appLanguage: AppLanguage
   readonly appLanguageOptions: { value: AppLanguage, label: string }[]
   isLanguageModalOpen = false
-
-  private readonly viewModeStorageKey = 'dbolt-home-view-mode'
 
   @ViewChild('toast') toast!: ToastComponent
 
@@ -48,7 +44,6 @@ export class OpenPageComponent {
   }
 
   async ngAfterViewInit(): Promise<void> {
-    this.viewMode = this.getStoredViewMode()
     LoadingComponent.show(this.t('home.loadingConnections'))
 
     try {
@@ -97,8 +92,8 @@ export class OpenPageComponent {
 
   async loadConnections(): Promise<void> {
     this.connections = await this.connectionsService.loadConnections()
-    if (!this.selectedConnectionId && this.connections[0]) {
-      this.selectedConnectionId = this.connections[0].id
+    if (!this.connections.some((connection) => connection.id === this.selectedConnectionId)) {
+      this.selectedConnectionId = this.connections[0]?.id ?? null
     }
   }
 
@@ -112,9 +107,22 @@ export class OpenPageComponent {
     }
   }
 
-  setViewMode(viewMode: ConnectionViewMode): void {
-    this.viewMode = viewMode
-    localStorage.setItem(this.viewModeStorageKey, viewMode)
+  get filteredConnections(): any[] {
+    const search = this.connectionSearch.trim().toLocaleLowerCase()
+    if (!search) return this.connections
+
+    return this.connections.filter((connection) => [
+      connection.name,
+      connection.database,
+      connection.databaseVersion,
+      connection.host,
+      connection.defaultDatabase,
+      connection.defaultSchema
+    ].some((value) => String(value || '').toLocaleLowerCase().includes(search)))
+  }
+
+  onConnectionSearch(event: Event): void {
+    this.connectionSearch = (event.target as HTMLInputElement).value
   }
 
   selectConnection(connection: any): void {
@@ -125,17 +133,19 @@ export class OpenPageComponent {
     return this.connections.find((connection) => connection.id === this.selectedConnectionId) || this.connections[0]
   }
 
-  get selectedTarget(): string {
-    const connection = this.selectedConnection
+  getConnectionTarget(connection: any): string {
     return [connection?.defaultDatabase, connection?.defaultSchema].filter(Boolean).join(' / ') ||
       this.t('home.noDefaultTarget')
   }
 
-  openSelectedConnection(): void {
-    const connection = this.selectedConnection
-    if (!connection) return
+  get selectedTarget(): string {
+    return this.getConnectionTarget(this.selectedConnection)
+  }
 
-    void this.onCardClick(connection.id)
+  openSelectedConnection(): void {
+    if (this.selectedConnection) {
+      void this.onCardClick(this.selectedConnection.id)
+    }
   }
 
   trackConnectionById(index: number, connection: any): number {
@@ -181,19 +191,15 @@ export class OpenPageComponent {
     event.stopPropagation()
     await this.connectionsService.deleteConnection(id)
     this.connections = this.connectionsService.getCachedConnections()
+    if (!this.connections.some((connection) => connection.id === this.selectedConnectionId)) {
+      this.selectedConnectionId = this.connections[0]?.id ?? null
+    }
   }
 
   editConnection(connection: any, event: MouseEvent): void {
     event.stopPropagation()
     this.editingConnection = connection
     this.isModalOpen = true
-  }
-
-  private getStoredViewMode(): ConnectionViewMode {
-    const storedViewMode = localStorage.getItem(this.viewModeStorageKey)
-    return storedViewMode === 'focus' || storedViewMode === 'matrix'
-      ? storedViewMode
-      : 'focus'
   }
 
   t(key: string): string {
