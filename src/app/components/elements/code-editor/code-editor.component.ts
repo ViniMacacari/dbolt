@@ -280,6 +280,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       renderWhitespace: 'none',
       stickyScroll: { enabled: false },
       folding: false,
+      fontFamily: 'Nunito',
+      roundedSelection: false,
       selectionHighlight: false,
       quickSuggestions: { other: 'on', comments: 'off', strings: 'on' },
       quickSuggestionsDelay: 250,
