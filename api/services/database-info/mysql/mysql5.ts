@@ -16,7 +16,11 @@ import type {
 type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'procedure' };
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type: string };
 type ColumnRow = QueryRow & TableColumn;
-type TableLikeObjectRow = QueryRow & { name: string; object_type: 'table' | 'view' };
+type TableLikeObjectRow = QueryRow & {
+  schema_name: string;
+  name: string;
+  object_type: 'table' | 'view';
+};
 
 class ListObjectsMySQLV1 {
   private readonly db = new MySQLV1();
@@ -82,7 +86,7 @@ class ListObjectsMySQLV1 {
     }
   }
 
-  async listTableObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
+  async listTableObjects(connectionKey?: string, schemaName?: string): Promise<DatabaseObjectsResult> {
     if (this.db.getStatus(connectionKey) !== 'connected') {
       return {
         success: false,
@@ -96,15 +100,15 @@ class ListObjectsMySQLV1 {
         FROM (
           SELECT TABLE_NAME AS name, 'table' AS type
           FROM INFORMATION_SCHEMA.TABLES
-          WHERE TABLE_SCHEMA = DATABASE()
+          WHERE TABLE_SCHEMA = COALESCE(?, DATABASE())
             AND TABLE_TYPE = 'BASE TABLE'
           UNION ALL
           SELECT TABLE_NAME AS name, 'view' AS type
           FROM INFORMATION_SCHEMA.VIEWS
-          WHERE TABLE_SCHEMA = DATABASE()
+          WHERE TABLE_SCHEMA = COALESCE(?, DATABASE())
         ) objects
         ORDER BY name
-      `, [], connectionKey)) as NamedObjectRow[];
+      `, [schemaName || null, schemaName || null], connectionKey)) as NamedObjectRow[];
 
       const data: DatabaseObject[] = objects.map((object, index) =>
         toNamedDatabaseObject(object, object.type === 'view' ? 'view' : 'table', index)
@@ -121,7 +125,11 @@ class ListObjectsMySQLV1 {
     }
   }
 
-  async tableColumns(tableName: string, connectionKey?: string): Promise<TableColumnsResult> {
+  async tableColumns(
+    tableName: string,
+    connectionKey?: string,
+    schemaName?: string
+  ): Promise<TableColumnsResult> {
     if (this.db.getStatus(connectionKey) !== 'connected') {
       return {
         success: false,
@@ -130,7 +138,7 @@ class ListObjectsMySQLV1 {
     }
 
     try {
-      const object = await this.resolveTableLikeObject(tableName, connectionKey);
+      const object = await this.resolveTableLikeObject(tableName, connectionKey, schemaName);
       if (!object) {
         return { success: true, data: [] };
       }
@@ -259,19 +267,24 @@ class ListObjectsMySQLV1 {
     }
   }
 
-  private async resolveTableLikeObject(tableName: string, connectionKey?: string): Promise<TableLikeObjectRow | null> {
+  private async resolveTableLikeObject(
+    tableName: string,
+    connectionKey?: string,
+    schemaName?: string
+  ): Promise<TableLikeObjectRow | null> {
     const rows = (await this.db.executeQuery(
       `
         SELECT
+          TABLE_SCHEMA AS schema_name,
           TABLE_NAME AS name,
           CASE WHEN TABLE_TYPE = 'VIEW' THEN 'view' ELSE 'table' END AS object_type
         FROM INFORMATION_SCHEMA.TABLES
-        WHERE TABLE_SCHEMA = DATABASE()
+        WHERE TABLE_SCHEMA = COALESCE(?, DATABASE())
           AND TABLE_NAME = ?
           AND TABLE_TYPE IN ('BASE TABLE', 'VIEW')
         LIMIT 1
       `,
-      [tableName],
+      [schemaName || null, tableName],
       connectionKey
     )) as TableLikeObjectRow[];
 
@@ -298,11 +311,11 @@ class ListObjectsMySQLV1 {
           COLLATION_NAME AS collation_name,
           ORDINAL_POSITION AS ordinal_position
         FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE()
+        WHERE TABLE_SCHEMA = ?
           AND TABLE_NAME = ?
         ORDER BY ORDINAL_POSITION
       `,
-      [object.name],
+      [object.schema_name, object.name],
       connectionKey
     )) as ColumnRow[];
   }
