@@ -8,7 +8,7 @@ import ListObjectsSQLiteV3 from '../../services/database-info/sqlite/v3.js';
 import DiagramSQLiteV3 from '../../services/diagrams/sqlite/v3.js';
 import DatabaseVersionService from '../../services/database-version/database-version.js';
 import { sendBadRequest, sendInternalError, sendServiceResult } from '../../utils/http.js';
-import { getConnectionKey } from '../../utils/request-context.js';
+import { getConnectionKey, getQueryString } from '../../utils/request-context.js';
 
 import type {
   ConnectionContextPayload,
@@ -127,7 +127,7 @@ class CSQLiteV3 {
 
   async listTableObjects(req: Request, res: Response): Promise<void> {
     try {
-      const result = await ListObjectsSQLiteV3.listTableObjects(getConnectionKey(req));
+      const result = await ListObjectsSQLiteV3.listTableObjects(getConnectionKey(req), getQueryString(req, 'schema'));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
@@ -136,7 +136,11 @@ class CSQLiteV3 {
 
   async tableColumns(req: Request<TableNameParams>, res: Response): Promise<void> {
     try {
-      const result = await ListObjectsSQLiteV3.tableColumns(req.params.tableName, getConnectionKey(req));
+      const result = await ListObjectsSQLiteV3.tableColumns(
+        req.params.tableName,
+        getConnectionKey(req),
+        getQueryString(req, 'schema')
+      );
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
