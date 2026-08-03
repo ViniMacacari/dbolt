@@ -67,6 +67,20 @@ export interface AiAssistantChatResponse {
   model: string
 }
 
+export type AiAssistantProgressStage =
+  | 'analyzing-request'
+  | 'searching-database-objects'
+  | 'reading-schema'
+  | 'reading-table-structure'
+  | 'running-readonly-query'
+  | 'analyzing-database-results'
+  | 'preparing-answer'
+
+export type AiAssistantStreamEvent =
+  | { type: 'progress', stage: AiAssistantProgressStage }
+  | { type: 'result', data: AiAssistantChatResponse }
+  | { type: 'error', message: string }
+
 export interface AiDatabaseObjectSummary {
   name: string
   type?: string
