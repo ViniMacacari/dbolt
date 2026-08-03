@@ -1039,14 +1039,16 @@ class AiAssistantAgentService {
         [/`?searchObjects`?/gi, 'busca de tabelas e views'],
         [/`?getTableColumns`?/gi, 'leitura da estrutura da tabela'],
         [/`?runReadonlyQuery`?/gi, 'consulta somente leitura'],
-        [/`?(?:databaseActions|toolCalls?|connectionKey)`?/gi, 'mecanismo interno']
+        [/`?connectionKey`?/gi, 'acesso ao banco de dados'],
+        [/`?(?:databaseActions|toolCalls?)`?/gi, 'operação interna']
       ]
       : [
         [/`?getSchemaSummary`?/gi, 'schema lookup'],
         [/`?searchObjects`?/gi, 'table and view search'],
         [/`?getTableColumns`?/gi, 'table structure lookup'],
         [/`?runReadonlyQuery`?/gi, 'read-only query'],
-        [/`?(?:databaseActions|toolCalls?|connectionKey)`?/gi, 'internal mechanism']
+        [/`?connectionKey`?/gi, 'database connection'],
+        [/`?(?:databaseActions|toolCalls?)`?/gi, 'internal operation']
       ];
 
     for (const [pattern, replacement] of replacements) {

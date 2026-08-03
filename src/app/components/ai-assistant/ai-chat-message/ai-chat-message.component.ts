@@ -3,6 +3,7 @@ import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser'
 
 import { AiChatMessage } from '../../../services/ai-assistant/ai-assistant.model'
+import { sanitizeAiAssistantContent } from '../../../services/ai-assistant/ai-assistant-content-sanitizer'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { QueryResultExportService } from '../../../services/query-result-export/query-result-export.service'
 
@@ -17,6 +18,7 @@ export class AiChatMessageComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) message!: AiChatMessage
 
   formattedContent!: SafeHtml
+  private displayContent: string = ''
 
   copyState: 'idle' | 'copied' | 'error' = 'idle'
   private copyResetTimer?: ReturnType<typeof setTimeout>
@@ -28,8 +30,11 @@ export class AiChatMessageComponent implements OnChanges, OnDestroy {
   ) { }
 
   ngOnChanges(_changes: SimpleChanges): void {
+    this.displayContent = this.message.role === 'assistant'
+      ? sanitizeAiAssistantContent(this.message.content || '', this.language.getCurrentLanguage())
+      : this.message.content || ''
     this.formattedContent = this.sanitizer.bypassSecurityTrustHtml(
-      this.formatMarkdown(this.message.content || '')
+      this.formatMarkdown(this.displayContent)
     )
   }
 
@@ -51,7 +56,7 @@ export class AiChatMessageComponent implements OnChanges, OnDestroy {
     this.clearCopyResetTimer()
 
     try {
-      await this.clipboard.copyText(this.message.content || '')
+      await this.clipboard.copyText(this.displayContent)
       this.copyState = 'copied'
     } catch (_error: unknown) {
       this.copyState = 'error'
