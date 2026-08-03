@@ -1,5 +1,6 @@
 import AiAssistantAgent, {
-  type AiAssistantAgentChatMessage
+  type AiAssistantAgentChatMessage,
+  type AiAssistantProgressReporter
 } from './ai-assistant-agent.js';
 import AiAssistantSettings from './ai-assistant-settings.js';
 import type { AiReadonlyDatabaseContext } from './ai-assistant-readonly-database.js';
@@ -18,9 +19,12 @@ export interface AiAssistantChatResult {
 }
 
 class AiAssistantService {
-  async chat(request: AiAssistantChatRequest): Promise<AiAssistantChatResult> {
+  async chat(
+    request: AiAssistantChatRequest,
+    reportProgress?: AiAssistantProgressReporter
+  ): Promise<AiAssistantChatResult> {
     const settings = await AiAssistantSettings.getResolvedSettings();
-    return await AiAssistantAgent.chat(request, settings);
+    return await AiAssistantAgent.chat(request, settings, reportProgress);
   }
 }
 

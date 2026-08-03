@@ -27,10 +27,22 @@ export interface AiAssistantAgentChatResult {
   model: string;
 }
 
+export type AiAssistantProgressStage =
+  | 'analyzing-request'
+  | 'searching-database-objects'
+  | 'reading-schema'
+  | 'reading-table-structure'
+  | 'running-readonly-query'
+  | 'analyzing-database-results'
+  | 'preparing-answer';
+
+export type AiAssistantProgressReporter = (stage: AiAssistantProgressStage) => void;
+
 class AiAssistantAgentService {
   async chat(
     request: AiAssistantAgentChatRequest,
-    settings: AiAssistantResolvedSettings
+    settings: AiAssistantResolvedSettings,
+    reportProgress?: AiAssistantProgressReporter
   ): Promise<AiAssistantAgentChatResult> {
     const messages = this.normalizeMessages(request.messages, settings.limits.maxContextMessages);
     const readonlyContext = this.normalizeReadonlyContext(request.readonlyContext);
@@ -51,6 +63,8 @@ class AiAssistantAgentService {
 
     let lastModel = settings.model;
 
+    reportProgress?.('analyzing-request');
+
     while (AiAssistantToolBudget.canCallModel(budget) && AiAssistantToolBudget.beginIteration(budget)) {
       const allowTools = Boolean(
         readonlyContext &&
@@ -58,6 +72,13 @@ class AiAssistantAgentService {
         AiAssistantToolBudget.getRemainingApiCalls(budget) > 1
       );
       const forceFinalAnswer = !allowTools && toolSections.length > 0;
+
+      if (forceFinalAnswer) {
+        reportProgress?.('preparing-answer');
+      } else if (toolSections.length > 0) {
+        reportProgress?.('analyzing-database-results');
+      }
+
       AiAssistantToolBudget.registerApiCall(budget);
 
       const completion = await AiAssistantModelClient.complete(
@@ -70,6 +91,7 @@ class AiAssistantAgentService {
       const toolCalls = this.parseToolCalls(completion.content);
 
       if (toolCalls.length === 0) {
+        reportProgress?.('preparing-answer');
         return {
           message: this.cleanFinalAnswer(completion.content),
           model: lastModel
@@ -83,7 +105,7 @@ class AiAssistantAgentService {
         };
       }
 
-      if (!await this.executeToolCalls(readonlyContext, budget, toolSections, toolCalls)) {
+      if (!await this.executeToolCalls(readonlyContext, budget, toolSections, toolCalls, reportProgress)) {
         break;
       }
     }
@@ -187,7 +209,8 @@ class AiAssistantAgentService {
     readonlyContext: AiReadonlyDatabaseContext,
     budget: AiAssistantToolBudgetState,
     toolSections: string[],
-    toolCalls: AiAssistantToolCall[]
+    toolCalls: AiAssistantToolCall[],
+    reportProgress?: AiAssistantProgressReporter
   ): Promise<boolean> {
     const executableCalls = toolCalls.slice(
       0,
@@ -199,6 +222,7 @@ class AiAssistantAgentService {
     }
 
     for (const toolCall of executableCalls) {
+      reportProgress?.(this.getToolProgressStage(toolCall.name));
       AiAssistantToolBudget.registerToolCall(budget);
       const result = await AiAssistantTools.execute(readonlyContext, toolCall, budget);
       toolSections.push([
@@ -208,6 +232,22 @@ class AiAssistantAgentService {
     }
 
     return true;
+  }
+
+  private getToolProgressStage(toolName: AiAssistantToolCall['name']): AiAssistantProgressStage {
+    if (toolName === 'searchObjects') {
+      return 'searching-database-objects';
+    }
+
+    if (toolName === 'getSchemaSummary') {
+      return 'reading-schema';
+    }
+
+    if (toolName === 'getTableColumns') {
+      return 'reading-table-structure';
+    }
+
+    return 'running-readonly-query';
   }
 
   private normalizeSupportedDatabaseName(value: unknown): string {
