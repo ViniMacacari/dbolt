@@ -132,7 +132,10 @@ router.post('/chat/stream', async (req, res) => {
   res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
+
+  let currentStage = 'analyzing-request';
 
   const writeEvent = (event: Record<string, unknown>): void => {
     if (!res.writableEnded && !res.destroyed) {
@@ -140,9 +143,17 @@ router.post('/chat/stream', async (req, res) => {
     }
   };
 
+  const heartbeat = setInterval(() => {
+    // Repeat only the safe stage so long provider/database work remains visibly active.
+    writeEvent({ type: 'progress', stage: currentStage });
+  }, 2500);
+  const stopHeartbeat = (): void => clearInterval(heartbeat);
+  res.once('close', stopHeartbeat);
+
   try {
     const result = await AiAssistant.chat(req.body, (stage) => {
       // Progress events intentionally contain no model output, SQL, arguments, or database results.
+      currentStage = stage;
       writeEvent({ type: 'progress', stage });
     });
     writeEvent({ type: 'result', data: result });
@@ -152,6 +163,7 @@ router.post('/chat/stream', async (req, res) => {
       message: error instanceof Error ? error.message : 'Failed to request AI assistant response'
     });
   } finally {
+    stopHeartbeat();
     res.end();
   }
 });
