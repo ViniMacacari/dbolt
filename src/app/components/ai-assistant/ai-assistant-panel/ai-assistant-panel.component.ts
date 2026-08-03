@@ -29,6 +29,7 @@ import { AiDatabaseContextService } from '../../../services/ai-assistant/ai-data
 import { AiAssistantSettingsService } from '../../../services/ai-assistant/ai-assistant-settings.service'
 import { AiAssistantConversationsService } from '../../../services/ai-assistant/ai-assistant-conversations.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
+import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
 
 @Component({
   selector: 'app-ai-assistant-panel',
@@ -71,13 +72,16 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   private lastScrolledProgressStepCount: number = 0
   private readonly conversationsModalAnimationDuration: number = 180
   private conversationsModalCloseTimer: number | null = null
+  private readonlyRuntimeContext: Record<string, unknown> | null = null
+  private readonlyRuntimeContextIdentity: string = ''
 
   constructor(
     private settingsService: AiAssistantSettingsService,
     private chatService: AiAssistantChatService,
     private conversationsService: AiAssistantConversationsService,
     private databaseContext: AiDatabaseContextService,
-    private language: AppLanguageService
+    private language: AppLanguageService,
+    private connectionContext: ConnectionContextService
   ) { }
 
   async ngOnInit(): Promise<void> {
@@ -190,8 +194,8 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     await this.saveConversationMessages(conversationId, this.messages)
 
     try {
-      const readonlyToolContext = this.databaseContextAvailable
-        ? this.databaseContext.buildReadonlyToolContext(this.selectedSchemaDB, this.dbSchemasData, this.tabInfo)
+      const readonlyToolContext = event.allowDatabaseContext && this.databaseContextAvailable
+        ? await this.prepareReadonlyToolContext()
         : undefined
       const response = await this.chatService.sendMessage(
         this.toApiMessages(),
@@ -436,6 +440,40 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     if (this.thinkingSteps[this.thinkingSteps.length - 1] === stage) return
 
     this.thinkingSteps = [...this.thinkingSteps, stage]
+  }
+
+  private async prepareReadonlyToolContext() {
+    const sourceContext = this.databaseContext.buildRuntimeConnectionContext(
+      this.selectedSchemaDB,
+      this.dbSchemasData,
+      this.tabInfo
+    )
+    const identity = [
+      sourceContext['connId'],
+      sourceContext['name'],
+      sourceContext['host'],
+      sourceContext['port'],
+      sourceContext['sgbd'],
+      sourceContext['database'],
+      sourceContext['schema']
+    ].map((value) => String(value || '')).join(':')
+    const reusableConnectionKey = identity === this.readonlyRuntimeContextIdentity
+      ? this.readonlyRuntimeContext?.['connectionKey']
+      : undefined
+    const context = this.connectionContext.createContext({
+      ...sourceContext,
+      connectionKey: sourceContext['connectionKey'] || reusableConnectionKey
+    })
+    const connectedContext = await this.connectionContext.ensureContext(context)
+
+    this.readonlyRuntimeContextIdentity = identity
+    this.readonlyRuntimeContext = connectedContext
+
+    return this.databaseContext.buildReadonlyToolContext(
+      connectedContext,
+      this.dbSchemasData,
+      this.tabInfo
+    )
   }
 
   private cancelConversationsModalClose(): void {

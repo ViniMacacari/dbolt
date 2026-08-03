@@ -8,6 +8,7 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
     {} as any,
     {} as any,
     {} as any,
+    {} as any,
     {} as any
   )
 
