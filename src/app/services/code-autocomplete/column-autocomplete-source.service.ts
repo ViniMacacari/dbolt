@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core'
 import { InternalApiService } from '../requests/internal-api.service'
 import { ConnectionContextService } from '../connection-context/connection-context.service'
+import { parseMetadataTableReference } from './sql-identifier-reference'
 
 export interface ColumnAutocompleteItem {
   name: string
@@ -23,16 +24,21 @@ export class ColumnAutocompleteSourceService {
       return []
     }
 
-    const normalizedTable = this.normalizeTableName(tableName)
+    const tableReference = parseMetadataTableReference(tableName)
+    const normalizedTable = tableReference.tableName
     if (!normalizedTable) {
       return []
     }
 
     const ensuredContext = await this.connectionContext.ensureContext(context)
-    const cacheKey = this.buildCacheKey(ensuredContext, normalizedTable)
+    const cacheKey = this.buildCacheKey(ensuredContext, normalizedTable, tableReference.schema)
 
     if (!this.cache.has(cacheKey)) {
-      this.cache.set(cacheKey, this.fetchColumnsWithReconnect(ensuredContext, normalizedTable).catch((error) => {
+      this.cache.set(cacheKey, this.fetchColumnsWithReconnect(
+        ensuredContext,
+        normalizedTable,
+        tableReference.schema
+      ).catch((error) => {
         this.cache.delete(cacheKey)
         throw error
       }))
@@ -41,9 +47,13 @@ export class ColumnAutocompleteSourceService {
     return this.cache.get(cacheKey) || []
   }
 
-  private async fetchColumnsWithReconnect(context: any, tableName: string): Promise<ColumnAutocompleteItem[]> {
+  private async fetchColumnsWithReconnect(
+    context: any,
+    tableName: string,
+    schema?: string
+  ): Promise<ColumnAutocompleteItem[]> {
     try {
-      return await this.fetchColumns(context, tableName)
+      return await this.fetchColumns(context, tableName, schema)
     } catch (error: any) {
       if (!this.connectionContext.isConnectionError(error)) {
         throw error
@@ -51,12 +61,12 @@ export class ColumnAutocompleteSourceService {
 
       this.connectionContext.forgetContext(context.connectionKey)
       const reconnectedContext = await this.connectionContext.ensureContext(context, true)
-      return await this.fetchColumns(reconnectedContext, tableName)
+      return await this.fetchColumns(reconnectedContext, tableName, schema)
     }
   }
 
-  private async fetchColumns(context: any, tableName: string): Promise<ColumnAutocompleteItem[]> {
-    const queryString = this.connectionContext.toQueryString(context)
+  private async fetchColumns(context: any, tableName: string, schema?: string): Promise<ColumnAutocompleteItem[]> {
+    const queryString = this.connectionContext.toQueryString(context, { schema })
     const response: any = await this.IAPI.get(`/api/${context.sgbd}/${context.version}/table-columns/${encodeURIComponent(tableName)}${queryString}`)
 
     if (response?.success === false) {
@@ -71,59 +81,7 @@ export class ColumnAutocompleteSourceService {
       .filter((column: ColumnAutocompleteItem) => column.name)
   }
 
-  private normalizeTableName(value: string): string {
-    const trimmed = value.trim()
-    if (!trimmed) return ''
-
-    const lastPart = this.splitIdentifierParts(trimmed).pop() || trimmed
-
-    return this.normalizeIdentifier(lastPart)
-  }
-
-  private splitIdentifierParts(value: string): string[] {
-    const parts: string[] = []
-    let current = ''
-    let quote: string | null = null
-
-    for (let index = 0; index < value.length; index++) {
-      const char = value[index]
-
-      if (quote) {
-        current += char
-
-        if ((quote === ']' && char === ']') || char === quote) {
-          quote = null
-        }
-        continue
-      }
-
-      if (char === '"' || char === '`' || char === '[') {
-        quote = char === '[' ? ']' : char
-        current += char
-        continue
-      }
-
-      if (char === '.') {
-        parts.push(current)
-        current = ''
-        continue
-      }
-
-      current += char
-    }
-
-    parts.push(current)
-    return parts
-  }
-
-  private normalizeIdentifier(value: string): string {
-    return value
-      .trim()
-      .replace(/^[`"\[]+/, '')
-      .replace(/[`"\]]+$/, '')
-  }
-
-  private buildCacheKey(context: any, tableName: string): string {
+  private buildCacheKey(context: any, tableName: string, schema?: string): string {
     return [
       context.sgbd,
       context.version,
@@ -133,7 +91,8 @@ export class ColumnAutocompleteSourceService {
       context.port,
       context.database,
       context.schema,
-      tableName
+      tableName,
+      schema
     ].filter((part) => part !== undefined && part !== null).join(':')
   }
 }
