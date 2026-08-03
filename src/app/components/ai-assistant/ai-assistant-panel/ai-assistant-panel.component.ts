@@ -20,6 +20,7 @@ import {
   AiAssistantApiMessage,
   AiAssistantConversation,
   AiAssistantConversationsState,
+  AiAssistantProgressStage,
   AiAssistantSettings,
   AiChatInputSubmit,
   AiChatMessage
@@ -60,11 +61,14 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   showConversationsModal: boolean = false
   conversationsModalClosing: boolean = false
   pendingDeleteConversation: AiAssistantConversation | null = null
+  thinkingSteps: AiAssistantProgressStage[] = []
+  thinkingExpanded: boolean = true
 
   @ViewChild('messagesContainer')
   private messagesContainer?: ElementRef<HTMLDivElement>
 
   private lastScrolledMessageId: string = ''
+  private lastScrolledProgressStepCount: number = 0
   private readonly conversationsModalAnimationDuration: number = 180
   private conversationsModalCloseTimer: number | null = null
 
@@ -89,16 +93,20 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
 
   ngAfterViewChecked(): void {
     const lastMessage = this.messages[this.messages.length - 1]
+    const messageChanged = Boolean(lastMessage && lastMessage.id !== this.lastScrolledMessageId)
+    const progressChanged = this.sending && this.thinkingSteps.length !== this.lastScrolledProgressStepCount
 
-    if (!lastMessage) return
-    if (lastMessage.id === this.lastScrolledMessageId) return
+    if (!messageChanged && !progressChanged) return
 
     const container = this.messagesContainer?.nativeElement
     if (!container) return
 
     container.scrollTop = container.scrollHeight
 
-    this.lastScrolledMessageId = lastMessage.id
+    if (lastMessage) {
+      this.lastScrolledMessageId = lastMessage.id
+    }
+    this.lastScrolledProgressStepCount = this.thinkingSteps.length
   }
 
   get canChat(): boolean {
@@ -176,6 +184,8 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     const userMessage = this.createMessage('user', event.message)
     this.messages = [...this.messages, userMessage]
     this.sending = true
+    this.thinkingSteps = ['analyzing-request']
+    this.thinkingExpanded = true
     this.errorMessage = ''
     await this.saveConversationMessages(conversationId, this.messages)
 
@@ -183,7 +193,11 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       const readonlyToolContext = this.databaseContextAvailable
         ? this.databaseContext.buildReadonlyToolContext(this.selectedSchemaDB, this.dbSchemasData, this.tabInfo)
         : undefined
-      const response = await this.chatService.sendMessage(this.toApiMessages(), readonlyToolContext)
+      const response = await this.chatService.sendMessage(
+        this.toApiMessages(),
+        readonlyToolContext,
+        (stage) => this.addThinkingStep(stage)
+      )
       this.messages = [...this.messages, this.createMessage('assistant', response.message)]
       await this.saveConversationMessages(conversationId, this.messages)
     } catch (error: unknown) {
@@ -194,7 +208,21 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       await this.saveConversationMessages(conversationId, this.messages)
     } finally {
       this.sending = false
+      this.thinkingSteps = []
+      this.lastScrolledProgressStepCount = 0
     }
+  }
+
+  toggleThinkingProgress(): void {
+    this.thinkingExpanded = !this.thinkingExpanded
+  }
+
+  getThinkingStepLabel(stage: AiAssistantProgressStage): string {
+    return this.t(`aiAssistant.progress.${stage}`)
+  }
+
+  isCurrentThinkingStep(index: number): boolean {
+    return index === this.thinkingSteps.length - 1
   }
 
   trackMessage(_index: number, message: AiChatMessage): string {
@@ -401,6 +429,13 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     this.activeConversationId = state.activeConversationId
     this.messages = this.activeConversation?.messages || []
     this.lastScrolledMessageId = ''
+  }
+
+  private addThinkingStep(stage: AiAssistantProgressStage): void {
+    if (!this.sending) return
+    if (this.thinkingSteps[this.thinkingSteps.length - 1] === stage) return
+
+    this.thinkingSteps = [...this.thinkingSteps, stage]
   }
 
   private cancelConversationsModalClose(): void {

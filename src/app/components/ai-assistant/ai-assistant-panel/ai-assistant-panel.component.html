@@ -76,8 +76,21 @@
             </app-ai-chat-message>
         </div>
 
-        <div class="connection typing text-min-gray m-1" *ngIf="sending">
-            {{ t('aiAssistant.answering') }}
+        <div class="connection typing m-1" *ngIf="sending" aria-live="polite">
+            <button type="button" class="thinking-summary" (click)="toggleThinkingProgress()"
+                [attr.aria-expanded]="thinkingExpanded" aria-controls="ai-thinking-progress">
+                <span class="thinking-spinner" aria-hidden="true"></span>
+                <span>{{ t('aiAssistant.answering') }}</span>
+                <span class="thinking-toggle" aria-hidden="true">{{ thinkingExpanded ? '−' : '+' }}</span>
+            </button>
+
+            <ol class="thinking-progress" id="ai-thinking-progress" *ngIf="thinkingExpanded">
+                <li *ngFor="let step of thinkingSteps; let stepIndex = index"
+                    [class.current]="isCurrentThinkingStep(stepIndex)">
+                    <span class="thinking-step-marker" aria-hidden="true"></span>
+                    <span>{{ getThinkingStepLabel(step) }}</span>
+                </li>
+            </ol>
         </div>
     </div>
 

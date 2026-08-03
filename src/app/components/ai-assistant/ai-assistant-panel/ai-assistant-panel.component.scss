@@ -524,7 +524,90 @@
 }
 
 .typing {
+    background: var(--dbolt-20252d) !important;
+    border: 1px solid var(--dbolt-34475d);
     cursor: default !important;
+    display: block !important;
+    padding: 0 !important;
+}
+
+.thinking-summary {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: var(--dbolt-d8e9fb);
+    display: grid;
+    font-family: 'Nunito';
+    font-size: .78em;
+    font-weight: 800;
+    gap: 8px;
+    grid-template-columns: 14px minmax(0, 1fr) 18px;
+    min-height: 38px;
+    padding: 7px 9px;
+    text-align: left;
+    width: 100%;
+}
+
+.thinking-spinner {
+    animation: ai-thinking-spin .8s linear infinite;
+    border: 2px solid rgba(216, 233, 251, .24);
+    border-radius: 50%;
+    border-top-color: var(--dbolt-d8e9fb);
+    box-sizing: border-box;
+    display: block;
+    height: 13px;
+    width: 13px;
+}
+
+.thinking-toggle {
+    color: var(--dbolt-969696);
+    font-size: 1.1em;
+    text-align: center;
+}
+
+.thinking-progress {
+    border-top: 1px solid rgba(115, 158, 202, .18);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    list-style: none;
+    margin: 0;
+    padding: 9px 10px 10px 13px;
+
+    li {
+        align-items: flex-start;
+        color: var(--dbolt-969696);
+        display: grid;
+        font-family: 'Nunito';
+        font-size: .72em;
+        gap: 8px;
+        grid-template-columns: 8px minmax(0, 1fr);
+        line-height: 1.35;
+
+        &.current {
+            color: var(--dbolt-d8e9fb);
+
+            .thinking-step-marker {
+                background: var(--dbolt-d8e9fb);
+                box-shadow: 0 0 0 3px rgba(216, 233, 251, .12);
+            }
+        }
+    }
+}
+
+.thinking-step-marker {
+    background: var(--dbolt-516986);
+    border-radius: 50%;
+    display: block;
+    height: 6px;
+    margin-top: 2px;
+    width: 6px;
+}
+
+@keyframes ai-thinking-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -533,7 +616,8 @@
     }
 
     .conversation-modal-backdrop,
-    .conversation-modal {
+    .conversation-modal,
+    .thinking-spinner {
         animation-delay: 0s !important;
         animation-duration: 0.01ms !important;
     }
