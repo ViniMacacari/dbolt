@@ -80,11 +80,11 @@ export class AiDatabaseContextService {
     const tabInfoDbInfo = this.asRecord(tabInfoRecord['dbInfo'])
     const tabInfoDbInfoConnection = this.asRecord(tabInfoDbInfo['connection'])
     const contexts = [
-      connection,
       selectedContext,
       tabDbInfo,
       tabInfoContext,
-      tabInfoDbInfoConnection
+      tabInfoDbInfoConnection,
+      connection
     ]
 
     return {
@@ -94,6 +94,38 @@ export class AiDatabaseContextService {
       database: this.readFirstString(contexts, ['database']),
       schema: this.readFirstString(contexts, ['schema']),
       connectionKey: this.readFirstString(contexts, ['connectionKey'])
+    }
+  }
+
+  buildRuntimeConnectionContext(selectedSchemaDB: unknown, dbSchemasData: unknown, tabInfo: unknown = undefined): Record<string, unknown> {
+    const schemaData = this.asRecord(dbSchemasData)
+    const selectedContext = this.asRecord(selectedSchemaDB)
+    const connection = this.asRecord(schemaData['connection'])
+    const tab = this.asRecord(tabInfo)
+    const tabDbInfo = this.asRecord(tab['dbInfo'])
+    const tabInfoRecord = this.asRecord(tab['info'])
+    const tabInfoContext = this.asRecord(tabInfoRecord['context'])
+    const tabInfoDbInfo = this.asRecord(tabInfoRecord['dbInfo'])
+    const tabInfoDbInfoConnection = this.asRecord(tabInfoDbInfo['connection'])
+    const contexts = [
+      tabDbInfo,
+      tabInfoContext,
+      selectedContext,
+      tabInfoDbInfoConnection,
+      connection
+    ]
+
+    return {
+      connectionKey: this.readFirstString(contexts, ['connectionKey']),
+      connId: this.readFirstStringOrNumber(contexts, ['connId', 'connectionId', 'id']),
+      name: this.readFirstString(contexts, ['name', 'connectionName', 'connection_name', 'title']),
+      host: this.readFirstString(contexts, ['host']),
+      port: this.readFirstStringOrNumber(contexts, ['port']),
+      user: this.readFirstString(contexts, ['user']),
+      sgbd: this.readFirstString(contexts, ['sgbd', 'databaseType']),
+      version: this.readFirstString(contexts, ['version']),
+      database: this.readFirstString(contexts, ['database']),
+      schema: this.readFirstString(contexts, ['schema'])
     }
   }
 
@@ -131,6 +163,22 @@ export class AiDatabaseContextService {
       for (const key of keys) {
         const value = record[key]
         if (typeof value === 'string' && value.trim()) {
+          return value
+        }
+      }
+    }
+
+    return undefined
+  }
+
+  private readFirstStringOrNumber(
+    records: Record<string, unknown>[],
+    keys: string[]
+  ): string | number | undefined {
+    for (const record of records) {
+      for (const key of keys) {
+        const value = record[key]
+        if ((typeof value === 'string' && value.trim()) || typeof value === 'number') {
           return value
         }
       }

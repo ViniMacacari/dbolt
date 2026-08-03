@@ -7,7 +7,7 @@ import {
   AiAssistantChatResponse,
   AiAssistantProgressStage,
   AiAssistantStreamEvent,
-  AiReadonlyDatabaseToolContext,
+  AiReadonlyDatabaseToolContext
 } from './ai-assistant.model'
 
 @Injectable({

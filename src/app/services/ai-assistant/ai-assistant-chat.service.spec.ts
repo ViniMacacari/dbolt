@@ -16,7 +16,7 @@ describe('AiAssistantChatService', () => {
       providers: [
         AiAssistantChatService,
         { provide: InternalApiService, useValue: internalApi },
-        { provide: AppLanguageService, useValue: { getCurrentLanguage: () => 'pt-br' } }
+        { provide: AppLanguageService, useValue: { getCurrentLanguage: () => 'pt-BR' } }
       ]
     })
 
