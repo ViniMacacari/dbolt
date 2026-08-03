@@ -23,7 +23,12 @@ type CountRow = QueryRow & { total_rows: number };
 class SQuerySQLServerV1 {
   private readonly db = new SQLServerV1();
 
-  async query(sql: string, maxLines: number | null = null, connectionKey?: string): Promise<QueryExecutionResult> {
+  async query(
+    sql: string,
+    maxLines: number | null = null,
+    connectionKey?: string,
+    includeTotalRows: boolean = true
+  ): Promise<QueryExecutionResult> {
     const isSelectQuery = isReadOnlySelectQuery(sql);
     const rowLimit = normalizeRowLimit(maxLines);
 
@@ -46,12 +51,14 @@ class SQuerySQLServerV1 {
 
     const { rows: result, columns } = await this.db.executeQueryWithColumns(executableSql, [], connectionKey);
 
-    try {
-      const countSql = this.addTotalRowCountQuery(countableSql, columns.length);
-      const resultWithCount = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
-      totalRows = resultWithCount[0]?.total_rows ?? 0;
-    } catch (error: unknown) {
-      console.warn('Unable to count SQL Server query rows. Returning the main query result without a total row count.', error);
+    if (includeTotalRows) {
+      try {
+        const countSql = this.addTotalRowCountQuery(countableSql, columns.length);
+        const resultWithCount = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
+        totalRows = resultWithCount[0]?.total_rows ?? 0;
+      } catch (error: unknown) {
+        console.warn('Unable to count SQL Server query rows. Returning the main query result without a total row count.', error);
+      }
     }
 
     return {

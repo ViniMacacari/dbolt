@@ -76,21 +76,30 @@
             </app-ai-chat-message>
         </div>
 
-        <div class="connection typing m-1" *ngIf="sending" aria-live="polite">
-            <button type="button" class="thinking-summary" (click)="toggleThinkingProgress()"
-                [attr.aria-expanded]="thinkingExpanded" aria-controls="ai-thinking-progress">
-                <span class="thinking-spinner" aria-hidden="true"></span>
-                <span>{{ t('aiAssistant.answering') }}</span>
-                <span class="thinking-toggle" aria-hidden="true">{{ thinkingExpanded ? '−' : '+' }}</span>
-            </button>
+        <div class="thinking-message" *ngIf="sending" aria-live="polite">
+            <div class="thinking-avatar" aria-hidden="true">
+                <img src="icons/ai.png" [alt]="t('aiAssistant.assistant')">
+            </div>
+            <div class="thinking-bubble">
+                <button type="button" class="thinking-summary" (click)="toggleThinkingProgress()"
+                    [attr.aria-expanded]="thinkingExpanded" aria-controls="ai-thinking-progress">
+                    <span class="thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                    <span class="thinking-summary-copy">
+                        <strong>{{ t('aiAssistant.answering') }}</strong>
+                        <small>{{ currentThinkingStepLabel }}</small>
+                    </span>
+                    <span class="thinking-elapsed">{{ thinkingElapsedSeconds }}s</span>
+                    <span class="thinking-toggle" [class.expanded]="thinkingExpanded" aria-hidden="true">›</span>
+                </button>
 
-            <ol class="thinking-progress" id="ai-thinking-progress" *ngIf="thinkingExpanded">
-                <li *ngFor="let step of thinkingSteps; let stepIndex = index"
-                    [class.current]="isCurrentThinkingStep(stepIndex)">
-                    <span class="thinking-step-marker" aria-hidden="true"></span>
-                    <span>{{ getThinkingStepLabel(step) }}</span>
-                </li>
-            </ol>
+                <ol class="thinking-progress" id="ai-thinking-progress" *ngIf="thinkingExpanded">
+                    <li *ngFor="let step of visibleThinkingSteps; let stepIndex = index"
+                        [class.current]="stepIndex === visibleThinkingSteps.length - 1">
+                        <span class="thinking-step-marker" aria-hidden="true"></span>
+                        <span>{{ getThinkingStepLabel(step) }}</span>
+                    </li>
+                </ol>
+            </div>
         </div>
     </div>
 

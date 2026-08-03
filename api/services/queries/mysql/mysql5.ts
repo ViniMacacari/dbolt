@@ -21,12 +21,17 @@ type CountRow = QueryRow & { TOTAL_ROWS: number | null };
 class SQueryMySQLV1 {
   private readonly db = new MySQLV1();
 
-  async query(sql: string, maxLines: number | null = null, connectionKey?: string): Promise<QueryExecutionResult> {
+  async query(
+    sql: string,
+    maxLines: number | null = null,
+    connectionKey?: string,
+    includeTotalRows: boolean = true
+  ): Promise<QueryExecutionResult> {
     let totalRows: number | null = null;
     const isSelectQuery = isReadOnlySelectQuery(sql);
     const rowLimit = normalizeRowLimit(maxLines);
 
-    if (isSelectQuery) {
+    if (isSelectQuery && includeTotalRows) {
       try {
         const countSql = this.getCountQuery(sql);
         const countResult = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];

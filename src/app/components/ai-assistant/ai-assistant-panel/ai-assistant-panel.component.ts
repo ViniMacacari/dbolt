@@ -64,7 +64,8 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   conversationsModalClosing: boolean = false
   pendingDeleteConversation: AiAssistantConversation | null = null
   thinkingSteps: AiAssistantProgressStage[] = []
-  thinkingExpanded: boolean = true
+  thinkingExpanded: boolean = false
+  thinkingElapsedSeconds: number = 0
 
   @ViewChild('messagesContainer')
   private messagesContainer?: ElementRef<HTMLDivElement>
@@ -75,6 +76,8 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   private conversationsModalCloseTimer: number | null = null
   private readonlyRuntimeContext: Record<string, unknown> | null = null
   private readonlyRuntimeContextIdentity: string = ''
+  private thinkingStartedAt: number = 0
+  private thinkingElapsedTimer: number | null = null
 
   constructor(
     private settingsService: AiAssistantSettingsService,
@@ -94,6 +97,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
 
   ngOnDestroy(): void {
     this.cancelConversationsModalClose()
+    this.stopThinkingElapsedTimer()
   }
 
   ngAfterViewChecked(): void {
@@ -146,6 +150,15 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       : this.t('aiAssistant.newConversation')
   }
 
+  get currentThinkingStepLabel(): string {
+    const currentStep = this.thinkingSteps[this.thinkingSteps.length - 1]
+    return currentStep ? this.getThinkingStepLabel(currentStep) : this.t('aiAssistant.answering')
+  }
+
+  get visibleThinkingSteps(): AiAssistantProgressStage[] {
+    return this.thinkingSteps.slice(-5)
+  }
+
   async loadSettings(): Promise<void> {
     this.loadingSettings = true
     this.errorMessage = ''
@@ -190,7 +203,8 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     this.messages = [...this.messages, userMessage]
     this.sending = true
     this.thinkingSteps = ['analyzing-request']
-    this.thinkingExpanded = true
+    this.thinkingExpanded = false
+    this.startThinkingElapsedTimer()
     this.errorMessage = ''
     await this.saveConversationMessages(conversationId, this.messages)
 
@@ -213,6 +227,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       await this.saveConversationMessages(conversationId, this.messages)
     } finally {
       this.sending = false
+      this.stopThinkingElapsedTimer()
       this.thinkingSteps = []
       this.lastScrolledProgressStepCount = 0
     }
@@ -224,10 +239,6 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
 
   getThinkingStepLabel(stage: AiAssistantProgressStage): string {
     return this.t(`aiAssistant.progress.${stage}`)
-  }
-
-  isCurrentThinkingStep(index: number): boolean {
-    return index === this.thinkingSteps.length - 1
   }
 
   trackMessage(_index: number, message: AiChatMessage): string {
@@ -440,7 +451,29 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     if (!this.sending) return
     if (this.thinkingSteps[this.thinkingSteps.length - 1] === stage) return
 
-    this.thinkingSteps = [...this.thinkingSteps, stage]
+    this.thinkingSteps = [
+      ...this.thinkingSteps.filter((existingStage) => existingStage !== stage),
+      stage
+    ].slice(-5)
+  }
+
+  private startThinkingElapsedTimer(): void {
+    this.stopThinkingElapsedTimer()
+    this.thinkingStartedAt = Date.now()
+    this.thinkingElapsedSeconds = 0
+    this.thinkingElapsedTimer = window.setInterval(() => {
+      this.thinkingElapsedSeconds = Math.floor((Date.now() - this.thinkingStartedAt) / 1000)
+    }, 1000)
+  }
+
+  private stopThinkingElapsedTimer(): void {
+    if (this.thinkingElapsedTimer !== null) {
+      window.clearInterval(this.thinkingElapsedTimer)
+      this.thinkingElapsedTimer = null
+    }
+
+    this.thinkingStartedAt = 0
+    this.thinkingElapsedSeconds = 0
   }
 
   private async prepareReadonlyToolContext(): Promise<AiReadonlyDatabaseToolContext> {
