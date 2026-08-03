@@ -36,7 +36,7 @@ export class AiChatInputComponent {
 
     this.send.emit({
       message,
-      allowDatabaseContext: this.databaseContextAvailable
+      allowDatabaseContext: this.databaseContextAvailable && this.allowDatabaseContext
     })
 
     this.message = ''

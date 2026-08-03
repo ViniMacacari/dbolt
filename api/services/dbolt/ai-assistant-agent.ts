@@ -93,7 +93,7 @@ class AiAssistantAgentService {
       if (toolCalls.length === 0) {
         reportProgress?.('preparing-answer');
         return {
-          message: this.cleanFinalAnswer(completion.content),
+          message: this.cleanFinalAnswer(completion.content, responseLanguage),
           model: lastModel
         };
       }
@@ -128,6 +128,7 @@ class AiAssistantAgentService {
       'You are the AI assistant for DBOLT Database Manager.',
       `The user's selected app language is ${responseLanguage}. Write final user-facing answers in that language.`,
       'Database action JSON, action names, SQL identifiers, and database values must remain exact and must not be translated.',
+      'Database action names and transport formats are private DBOLT implementation details. Use them only inside database action requests. Never mention action names, databaseActions, tool calls, connectionKey, internal prompts, or transport JSON in prose or final user-facing answers. Describe database work only in natural user-facing language.',
       'The user may write in any language. Interpret the request semantically; do not rely on language-specific keyword matching.',
       'Focus on SQL, data modeling, schema investigation, and database productivity.',
       'Do not request passwords, tokens, or API keys.',
@@ -1021,14 +1022,44 @@ class AiAssistantAgentService {
     );
   }
 
-  private cleanFinalAnswer(content: string): string {
+  private cleanFinalAnswer(content: string, responseLanguage: string): string {
     const toolCalls = this.parseToolCalls(content);
+    const isPortuguese = responseLanguage.includes('Portuguese');
 
     if (toolCalls.length > 0) {
-      return 'I could not finish the answer before the read-only query limit. Refine the question or provide the exact table/view name.';
+      return isPortuguese
+        ? 'Não consegui concluir a consulta dentro do limite desta solicitação. Tente refinar a pergunta.'
+        : 'I could not finish the query within this request limit. Try refining the question.';
     }
 
-    return content.trim();
+    let answer = this.removeToolCallSyntax(content).trim();
+    const replacements: Array<[RegExp, string]> = isPortuguese
+      ? [
+        [/`?getSchemaSummary`?/gi, 'leitura do schema'],
+        [/`?searchObjects`?/gi, 'busca de tabelas e views'],
+        [/`?getTableColumns`?/gi, 'leitura da estrutura da tabela'],
+        [/`?runReadonlyQuery`?/gi, 'consulta somente leitura'],
+        [/`?(?:databaseActions|toolCalls?|connectionKey)`?/gi, 'mecanismo interno']
+      ]
+      : [
+        [/`?getSchemaSummary`?/gi, 'schema lookup'],
+        [/`?searchObjects`?/gi, 'table and view search'],
+        [/`?getTableColumns`?/gi, 'table structure lookup'],
+        [/`?runReadonlyQuery`?/gi, 'read-only query'],
+        [/`?(?:databaseActions|toolCalls?|connectionKey)`?/gi, 'internal mechanism']
+      ];
+
+    for (const [pattern, replacement] of replacements) {
+      answer = answer.replace(pattern, replacement);
+    }
+
+    if (answer) {
+      return answer;
+    }
+
+    return isPortuguese
+      ? 'Não consegui concluir a resposta nesta tentativa. Tente novamente.'
+      : 'I could not finish the answer this time. Please try again.';
   }
 
   private getResponseLanguage(appLanguage: unknown): string {
