@@ -23,7 +23,8 @@ import {
   AiAssistantProgressStage,
   AiAssistantSettings,
   AiChatInputSubmit,
-  AiChatMessage
+  AiChatMessage,
+  AiReadonlyDatabaseToolContext
 } from '../../../services/ai-assistant/ai-assistant.model'
 import { AiDatabaseContextService } from '../../../services/ai-assistant/ai-database-context.service'
 import { AiAssistantSettingsService } from '../../../services/ai-assistant/ai-assistant-settings.service'
@@ -442,7 +443,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     this.thinkingSteps = [...this.thinkingSteps, stage]
   }
 
-  private async prepareReadonlyToolContext() {
+  private async prepareReadonlyToolContext(): Promise<AiReadonlyDatabaseToolContext> {
     const sourceContext = this.databaseContext.buildRuntimeConnectionContext(
       this.selectedSchemaDB,
       this.dbSchemasData,
