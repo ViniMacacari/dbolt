@@ -3,6 +3,12 @@ import * as monaco from 'monaco-editor'
 import { AppSettingsService } from '../app-settings/app-settings.service'
 import { type TableAutocompleteItem, TableAutocompleteSourceService } from './table-autocomplete-source.service'
 import { ColumnAutocompleteItem, ColumnAutocompleteSourceService } from './column-autocomplete-source.service'
+import {
+  normalizeSqlIdentifier,
+  normalizeTableReferenceForMetadata,
+  parseQualifiedTableFragment,
+  splitSqlIdentifierParts
+} from './sql-identifier-reference'
 
 interface RegisteredEditor {
   getContext: () => any
@@ -13,6 +19,7 @@ interface TableCompletionRequest {
   type: 'table'
   fragment: string
   rawFragment: string
+  schema?: string
   range: monaco.IRange
 }
 
@@ -230,7 +237,7 @@ export class SqlTableAutocompleteService {
 
     const fragmentMatch = beforeCursor.match(/([A-Za-z0-9_$#.`"\[\]]*)$/)
     const rawFragment = fragmentMatch?.[1] || ''
-    const fragment = this.normalizeIdentifier(rawFragment).toLowerCase()
+    const fragment = parseQualifiedTableFragment(rawFragment).fragment.toLowerCase()
 
     if (fragment.length < this.minimumFragmentLength) {
       return ''
@@ -304,7 +311,10 @@ export class SqlTableAutocompleteService {
             request.fragment,
             this.settings.getTableAutocompleteMatchMode(),
             this.maxSuggestions,
-            { shouldCancel: () => token.isCancellationRequested }
+            {
+              shouldCancel: () => token.isCancellationRequested,
+              schema: request.schema
+            }
           )
           if (token.isCancellationRequested) {
             return { suggestions: [] }
@@ -348,7 +358,10 @@ export class SqlTableAutocompleteService {
 
     const fragmentMatch = beforeCursor.match(/([A-Za-z0-9_$#.`"\[\]]*)$/)
     const rawFragment = fragmentMatch?.[1] || ''
-    const fragment = this.normalizeIdentifier(rawFragment)
+    const qualifiedFragment = parseQualifiedTableFragment(rawFragment)
+    const rawTableFragment = qualifiedFragment.rawFragment
+    const fragment = qualifiedFragment.fragment
+    const schema = qualifiedFragment.schema
 
     if (fragment.length < this.minimumFragmentLength) {
       return null
@@ -362,11 +375,12 @@ export class SqlTableAutocompleteService {
     return {
       type: 'table',
       fragment,
-      rawFragment,
+      rawFragment: rawTableFragment,
+      schema: schema || undefined,
       range: {
         startLineNumber: position.lineNumber,
         endLineNumber: position.lineNumber,
-        startColumn: position.column - rawFragment.length,
+        startColumn: position.column - rawTableFragment.length,
         endColumn: position.column
       }
     }
@@ -807,10 +821,7 @@ export class SqlTableAutocompleteService {
   }
 
   private normalizeIdentifier(value: string): string {
-    return value
-      .trim()
-      .replace(/^[`"\[]+/, '')
-      .replace(/[`"\]]+$/, '')
+    return normalizeSqlIdentifier(value)
   }
 
   private isSimpleIdentifier(value: string): boolean {
@@ -972,50 +983,11 @@ export class SqlTableAutocompleteService {
   }
 
   private normalizeTableNameForMetadata(value: string): string {
-    return this.normalizeIdentifier(this.getIdentifierLastPart(value))
+    return normalizeTableReferenceForMetadata(value)
   }
 
   private splitIdentifierParts(value: string): string[] {
-    const parts: string[] = []
-    let current = ''
-    let quote: string | null = null
-
-    for (let index = 0; index < value.length; index++) {
-      const char = value[index]
-
-      if (quote) {
-        current += char
-
-        if ((quote === ']' && char === ']') || char === quote) {
-          const next = value[index + 1]
-          if ((quote === ']' && next === ']') || (quote === '"' && next === '"') || (quote === '`' && next === '`')) {
-            current += next
-            index++
-            continue
-          }
-
-          quote = null
-        }
-        continue
-      }
-
-      if (char === '"' || char === '`' || char === '[') {
-        quote = char === '[' ? ']' : char
-        current += char
-        continue
-      }
-
-      if (char === '.') {
-        parts.push(current)
-        current = ''
-        continue
-      }
-
-      current += char
-    }
-
-    parts.push(current)
-    return parts
+    return splitSqlIdentifierParts(value)
   }
 
   private getIdentifierLastPart(value: string): string {

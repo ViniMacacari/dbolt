@@ -108,10 +108,21 @@ export class ConnectionContextService {
     ].some((connectionError) => errorText.includes(connectionError))
   }
 
-  toQueryString(schemaDb: any): string {
-    return schemaDb?.connectionKey
-      ? `?connectionKey=${encodeURIComponent(schemaDb.connectionKey)}`
-      : ''
+  toQueryString(schemaDb: any, additionalParams: Record<string, unknown> = {}): string {
+    const params = new URLSearchParams()
+
+    if (schemaDb?.connectionKey) {
+      params.set('connectionKey', String(schemaDb.connectionKey))
+    }
+
+    Object.entries(additionalParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && String(value).trim()) {
+        params.set(key, String(value))
+      }
+    })
+
+    const queryString = params.toString()
+    return queryString ? `?${queryString}` : ''
   }
 
   withoutRuntimeFields(schemaDb: any): any {

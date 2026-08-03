@@ -123,16 +123,20 @@ class ListObjectsPgV1 {
     }
   }
 
-  async listTableObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
+  async listTableObjects(connectionKey?: string, schemaName?: string): Promise<DatabaseObjectsResult> {
     try {
-      const currentSchemaResult = (await this.db.executeQuery(
-        'SELECT current_schema() AS schema',
-        [],
-        connectionKey
-      )) as CurrentSchemaRow[];
-      const currentSchema = currentSchemaResult[0]?.schema;
+      let metadataSchema = schemaName;
 
-      if (!currentSchema) {
+      if (!metadataSchema) {
+        const currentSchemaResult = (await this.db.executeQuery(
+          'SELECT current_schema() AS schema',
+          [],
+          connectionKey
+        )) as CurrentSchemaRow[];
+        metadataSchema = currentSchemaResult[0]?.schema;
+      }
+
+      if (!metadataSchema) {
         throw new Error('No schema selected');
       }
 
@@ -154,7 +158,7 @@ class ListObjectsPgV1 {
           ) objects
           ORDER BY name
         `,
-        [currentSchema],
+        [metadataSchema],
         connectionKey
       )) as NamedObjectRow[];
 
@@ -177,9 +181,13 @@ class ListObjectsPgV1 {
     }
   }
 
-  async tableColumns(tableName: string, connectionKey?: string): Promise<TableColumnsResult> {
+  async tableColumns(
+    tableName: string,
+    connectionKey?: string,
+    schemaName?: string
+  ): Promise<TableColumnsResult> {
     try {
-      const object = await this.resolveTableLikeObject(tableName, connectionKey);
+      const object = await this.resolveTableLikeObject(tableName, connectionKey, schemaName);
       if (!object) {
         return { success: true, data: [] };
       }
@@ -348,7 +356,11 @@ class ListObjectsPgV1 {
     return dataType;
   }
 
-  private async resolveTableLikeObject(tableName: string, connectionKey?: string): Promise<TableLikeObjectRow | null> {
+  private async resolveTableLikeObject(
+    tableName: string,
+    connectionKey?: string,
+    schemaName?: string
+  ): Promise<TableLikeObjectRow | null> {
     const rows = (await this.db.executeQuery(
       `
         SELECT
@@ -362,7 +374,7 @@ class ListObjectsPgV1 {
           END AS object_type
         FROM pg_class c
         INNER JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE n.nspname = current_schema()
+        WHERE n.nspname = COALESCE($2::text, current_schema())
           AND c.relname = $1
           AND c.relkind IN ('r', 'p', 'v', 'm')
         ORDER BY
@@ -374,7 +386,7 @@ class ListObjectsPgV1 {
           END
         LIMIT 1
       `,
-      [tableName],
+      [tableName, schemaName || null],
       connectionKey
     )) as TableLikeObjectRow[];
 

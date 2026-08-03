@@ -80,15 +80,19 @@ class ListObjectsSQLServerV1 {
     }
   }
 
-  async listTableObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
+  async listTableObjects(connectionKey?: string, schemaName?: string): Promise<DatabaseObjectsResult> {
     try {
-      const selectedSchema = await SSSQLServerV1.getSelectedSchema(connectionKey);
-      if (!selectedSchema.success) {
-        throw new Error(selectedSchema.message);
+      let metadataSchema = schemaName;
+      if (!metadataSchema) {
+        const selectedSchema = await SSSQLServerV1.getSelectedSchema(connectionKey);
+        if (!selectedSchema.success) {
+          throw new Error(selectedSchema.message);
+        }
+        metadataSchema = selectedSchema.schema;
       }
 
       const parameters: SqlServerQueryParameter[] = [
-        { name: 'schemaName', type: sql.NVarChar, value: selectedSchema.schema }
+        { name: 'schemaName', type: sql.NVarChar, value: metadataSchema }
       ];
 
       const objects = (await this.db.executeQuery(`
@@ -117,14 +121,22 @@ class ListObjectsSQLServerV1 {
     }
   }
 
-  async tableColumns(tableName: string, connectionKey?: string): Promise<TableColumnsResult> {
+  async tableColumns(
+    tableName: string,
+    connectionKey?: string,
+    schemaName?: string
+  ): Promise<TableColumnsResult> {
     try {
-      const selectedSchema = await SSSQLServerV1.getSelectedSchema(connectionKey);
-      if (!selectedSchema.success) {
-        throw new Error(selectedSchema.message);
+      let metadataSchema = schemaName;
+      if (!metadataSchema) {
+        const selectedSchema = await SSSQLServerV1.getSelectedSchema(connectionKey);
+        if (!selectedSchema.success) {
+          throw new Error(selectedSchema.message);
+        }
+        metadataSchema = selectedSchema.schema;
       }
 
-      const object = await this.resolveTableLikeObject(tableName, selectedSchema.schema, connectionKey);
+      const object = await this.resolveTableLikeObject(tableName, metadataSchema, connectionKey);
       if (!object) {
         return { success: true, data: [] };
       }

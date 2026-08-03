@@ -8,7 +8,7 @@ import ListObjectsPgV1 from '../../services/database-info/postgres/v9.js';
 import DiagramPostgresV1 from '../../services/diagrams/postgres/v9.js';
 import DatabaseVersionService from '../../services/database-version/database-version.js';
 import { sendBadRequest, sendInternalError, sendServiceResult } from '../../utils/http.js';
-import { getConnectionKey } from '../../utils/request-context.js';
+import { getConnectionKey, getQueryString } from '../../utils/request-context.js';
 
 import type {
   ConnectionContextPayload,
@@ -134,7 +134,7 @@ class CPostgresV1 {
 
   async listTableObjects(req: Request, res: Response): Promise<void> {
     try {
-      const result = await ListObjectsPgV1.listTableObjects(getConnectionKey(req));
+      const result = await ListObjectsPgV1.listTableObjects(getConnectionKey(req), getQueryString(req, 'schema'));
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);
@@ -146,7 +146,11 @@ class CPostgresV1 {
     res: Response
   ): Promise<void> {
     try {
-      const result = await ListObjectsPgV1.tableColumns(req.params.tableName, getConnectionKey(req));
+      const result = await ListObjectsPgV1.tableColumns(
+        req.params.tableName,
+        getConnectionKey(req),
+        getQueryString(req, 'schema')
+      );
       sendServiceResult(res, result);
     } catch (error: unknown) {
       sendInternalError(res, error);

@@ -35,7 +35,13 @@ describe('TableAutocompleteSourceService', () => {
 
     const connectionContext = {
       ensureContext: jasmine.createSpy('ensureContext').and.callFake((value: any) => Promise.resolve(value)),
-      toQueryString: jasmine.createSpy('toQueryString').and.callFake((value: any) => `?connectionKey=${value.connectionKey}`),
+      toQueryString: jasmine.createSpy('toQueryString').and.callFake((value: any, additional: any = {}) => {
+        const params = new URLSearchParams({ connectionKey: value.connectionKey })
+        Object.entries(additional).forEach(([key, item]) => {
+          if (item) params.set(key, String(item))
+        })
+        return `?${params.toString()}`
+      }),
       forgetContext: jasmine.createSpy('forgetContext'),
       isConnectionError: jasmine.createSpy('isConnectionError').and.callFake((error: any) =>
         String(error?.message || error?.error || '').toLowerCase().includes('no active connection')
@@ -80,5 +86,25 @@ describe('TableAutocompleteSourceService', () => {
     expect(connectionContext.forgetContext).toHaveBeenCalledOnceWith('tab-1')
     expect(connectionContext.ensureContext).toHaveBeenCalledTimes(2)
     expect(api.get).toHaveBeenCalledTimes(2)
+  })
+
+  it('should load and filter tables from an explicitly qualified schema', async () => {
+    const { service, api, connectionContext } = createService({
+      success: true,
+      data: [{ name: 'orders', type: 'table' }]
+    })
+
+    await expectAsync(service.getTableSuggestions(
+      context,
+      'ord',
+      'contains',
+      50,
+      { schema: 'sales' }
+    )).toBeResolvedTo([{ name: 'orders', type: 'table' }])
+
+    expect(connectionContext.toQueryString).toHaveBeenCalledWith(context, { schema: 'sales' })
+    expect(api.get).toHaveBeenCalledWith(
+      '/api/SqlServer/v2008/list-table-objects?connectionKey=tab-1&schema=sales'
+    )
   })
 })
