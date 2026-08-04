@@ -31,6 +31,7 @@ import { AiAssistantSettingsService } from '../../../services/ai-assistant/ai-as
 import { AiAssistantConversationsService } from '../../../services/ai-assistant/ai-assistant-conversations.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
+import { OpenAiOAuthSessionService } from '../../../services/ai-assistant/openai-oauth-session.service'
 
 @Component({
   selector: 'app-ai-assistant-panel',
@@ -67,6 +68,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   thinkingSteps: AiAssistantProgressStage[] = []
   thinkingExpanded: boolean = false
   thinkingElapsedSeconds: number = 0
+  openAiOAuthSigningIn: boolean = false
 
   @ViewChild('messagesContainer')
   private messagesContainer?: ElementRef<HTMLDivElement>
@@ -86,7 +88,8 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     private conversationsService: AiAssistantConversationsService,
     private databaseContext: AiDatabaseContextService,
     private language: AppLanguageService,
-    private connectionContext: ConnectionContextService
+    private connectionContext: ConnectionContextService,
+    private openAiOAuth: OpenAiOAuthSessionService
   ) { }
 
   async ngOnInit(): Promise<void> {
@@ -121,6 +124,14 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
 
   get canChat(): boolean {
     return Boolean(this.settings?.hasApiKey) && !this.loadingSettings
+  }
+
+  get showOpenAiOAuthRecommendation(): boolean {
+    return Boolean(
+      this.settings &&
+      !this.settings.openAiOAuthConnected &&
+      !this.settings.openAiOAuthRecommendationDismissed
+    )
   }
 
   get databaseContextAvailable(): boolean {
@@ -177,6 +188,37 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.loadSettingsError'))
     } finally {
       this.loadingSettings = false
+    }
+  }
+
+  async connectOpenAiOAuth(): Promise<void> {
+    if (this.openAiOAuthSigningIn) return
+
+    this.openAiOAuthSigningIn = true
+    this.errorMessage = ''
+
+    try {
+      await this.openAiOAuth.signIn()
+      await this.loadSettings()
+    } catch (error: unknown) {
+      this.errorMessage = this.getErrorMessage(error, this.t('settings.ai.oauth.loginFailed'))
+    } finally {
+      this.openAiOAuthSigningIn = false
+    }
+  }
+
+  async dismissOpenAiOAuthRecommendation(): Promise<void> {
+    if (!this.settings) return
+
+    this.settings = {
+      ...this.settings,
+      openAiOAuthRecommendationDismissed: true
+    }
+
+    try {
+      this.settings = await this.settingsService.dismissOpenAiOAuthRecommendation()
+    } catch (error: unknown) {
+      this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.oauth.dismissFailed'))
     }
   }
 
