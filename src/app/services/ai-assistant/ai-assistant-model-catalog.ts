@@ -1,6 +1,7 @@
 import { AiAssistantProvider } from './ai-assistant.model'
 
 export interface AiAssistantModelOption {
+  [key: string]: string | number
   label: string
   value: string
 }
