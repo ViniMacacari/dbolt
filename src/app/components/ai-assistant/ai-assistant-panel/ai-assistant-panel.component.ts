@@ -262,7 +262,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       return
     }
 
-    this.modelOptions = [currentModelOption]
+    this.modelOptions = []
     this.modelOptionsLoading = true
 
     try {
@@ -270,9 +270,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       if (requestId !== this.modelOptionsRequestId) return
 
       const options = models.map(modelOption)
-      this.modelOptions = options.some((option) => option.value === settings.model)
-        ? options
-        : [currentModelOption, ...options]
+      this.modelOptions = options
     } catch (error: unknown) {
       if (requestId === this.modelOptionsRequestId) {
         this.errorMessage = this.getErrorMessage(error, this.t('settings.ai.oauth.modelsFailed'))
