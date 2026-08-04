@@ -13,6 +13,7 @@ const WINDOW_STATE_CHANGED_CHANNEL = 'dbolt:window-state-changed';
 const WINDOW_CLOSE_REQUESTED_CHANNEL = 'dbolt:window-close-requested';
 const WINDOW_CLOSE_RESPONSE_CHANNEL = 'dbolt:window-close-response';
 const DATABASE_EXPORT_PATH_CHANNEL = 'dbolt:database-export-path';
+const OPENAI_OAUTH_EXTERNAL_CHANNEL = 'dbolt:openai-oauth-external';
 
 contextBridge.exposeInMainWorld('dboltInternalApi', {
   getSession: async (): Promise<{ baseUrl: string; token: string; tokenHeader: string }> => {
@@ -116,5 +117,11 @@ contextBridge.exposeInMainWorld('dboltFileSystem', {
       canceled: boolean;
       filePath: string | null;
     }>;
+  }
+});
+
+contextBridge.exposeInMainWorld('dboltOpenAiOAuth', {
+  openAuthorizationUrl: async (authorizationUrl: string): Promise<void> => {
+    await ipcRenderer.invoke(OPENAI_OAUTH_EXTERNAL_CHANNEL, authorizationUrl);
   }
 });
