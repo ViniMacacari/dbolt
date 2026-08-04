@@ -14,7 +14,7 @@
 }
 
 .db-export-panel {
-    background-color: var(--dbolt-1b1b1b);
+    background: var(--dbolt-1b1b1b);
     border: 1px solid var(--dbolt-363535);
     border-radius: 16px;
     color: var(--dbolt-e8eaed);
@@ -24,16 +24,12 @@
     min-height: 0;
     min-width: 0;
     overflow: hidden;
-    padding: 24px;
+    padding: 20px 24px 16px;
 }
 
 .db-export-header {
-    align-items: flex-start;
-    display: flex;
     flex: 0 0 auto;
-    gap: 20px;
-    justify-content: space-between;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
 
     p,
     h2,
@@ -44,7 +40,7 @@
 
     p {
         color: var(--dbolt-969696);
-        font-size: .72em;
+        font-size: .7em;
         font-weight: 800;
         letter-spacing: .04em;
         text-transform: uppercase;
@@ -52,76 +48,131 @@
 
     h2 {
         color: var(--dbolt-e8eaed);
-        font-size: 1.35em;
+        font-size: 1.28em;
         font-weight: 800;
-        margin-top: 4px;
-    }
-
-    > div > span {
-        color: var(--dbolt-969696);
-        display: block;
-        font-size: .8em;
-        margin-top: 4px;
-    }
-}
-
-.header-selection {
-    align-items: center;
-    background: var(--dbolt-232020);
-    border: 1px solid var(--dbolt-353535);
-    border-radius: 12px;
-    display: flex;
-    flex: 0 0 auto;
-    gap: 7px;
-    padding: 9px 12px;
-
-    strong {
-        color: var(--dbolt-d8e9fb);
-        font-family: 'Nunito';
-        font-size: .92em;
+        margin-top: 3px;
     }
 
     span {
-        color: var(--dbolt-969696) !important;
-        font-size: .7em !important;
-        margin: 0 !important;
+        color: var(--dbolt-969696);
+        display: block;
+        font-size: .76em;
+        margin-top: 3px;
     }
 }
 
-.db-export-workspace {
+.export-stepper {
+    background: var(--dbolt-131313);
+    border: 1px solid var(--dbolt-303030);
+    border-radius: 14px;
     display: grid;
-    flex: 1 1 auto;
-    gap: 14px;
-    grid-template-columns: minmax(285px, 325px) minmax(0, 1fr);
-    min-height: 0;
-    overflow: auto;
-    padding-right: 4px;
+    flex: 0 0 auto;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-bottom: 14px;
+    min-height: 54px;
+    padding: 6px;
+
+    button {
+        align-items: center;
+        background: transparent;
+        border: none;
+        border-radius: 10px;
+        color: var(--dbolt-777);
+        cursor: pointer;
+        display: flex;
+        font-family: 'Nunito';
+        gap: 9px;
+        min-width: 0;
+        padding: 6px 10px;
+        position: relative;
+        text-align: left;
+
+        &:not(:last-child)::after {
+            background: var(--dbolt-303030);
+            content: '';
+            height: 1px;
+            position: absolute;
+            right: -6px;
+            top: 50%;
+            width: 12px;
+        }
+
+        &:hover:not(:disabled),
+        &.active {
+            background: var(--dbolt-232020);
+            color: var(--dbolt-e8eaed);
+        }
+
+        &.complete {
+            color: var(--dbolt-c9c9c9);
+        }
+
+        &:disabled {
+            cursor: default;
+            opacity: .48;
+        }
+    }
 }
 
-.export-setup,
-.export-content {
+.step-index {
+    align-items: center;
+    background: var(--dbolt-292727);
+    border: 1px solid var(--dbolt-3b3b3b);
+    border-radius: 50%;
+    display: flex;
+    flex: 0 0 28px;
+    font-size: .72em;
+    font-weight: 900;
+    height: 28px;
+    justify-content: center;
+    width: 28px;
+
+    .active & {
+        background: var(--dbolt-2b3340);
+        border-color: var(--dbolt-739eca);
+        color: var(--dbolt-d8e9fb);
+    }
+
+    .complete & {
+        color: var(--dbolt-9be0aa);
+    }
+}
+
+.step-label {
+    font-size: .76em;
+    font-weight: 800;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.step-viewport {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.step-pane {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    width: 100%;
 }
 
-.export-card {
-    background: var(--dbolt-232020);
-    border: 1px solid var(--dbolt-353535);
-    border-radius: 16px;
-    padding: 18px;
-}
-
-.card-disabled {
-    opacity: .58;
-}
-
+.step-pane-heading,
+.section-heading,
 .card-heading,
-.section-heading {
+.step-actions {
     align-items: flex-start;
     display: flex;
     gap: 10px;
+}
+
+.step-pane-heading {
+    flex: 0 0 auto;
+    justify-content: space-between;
+    margin-bottom: 12px;
 
     h3,
     p {
@@ -131,16 +182,27 @@
 
     h3 {
         color: var(--dbolt-e8eaed);
-        font-size: .98em;
+        font-size: 1em;
         font-weight: 800;
     }
 
     p {
         color: var(--dbolt-969696);
-        font-size: .76em;
-        line-height: 1.4;
-        margin-top: 4px;
+        font-size: .74em;
+        margin-top: 3px;
     }
+}
+
+.export-card {
+    background: var(--dbolt-232020);
+    border: 1px solid var(--dbolt-353535);
+    border-radius: 16px;
+    min-width: 0;
+    padding: 18px;
+}
+
+.card-disabled {
+    opacity: .56;
 }
 
 .card-heading {
@@ -151,20 +213,53 @@
         margin-top: 2px;
         opacity: .8;
     }
+
+    h3,
+    p {
+        font-family: 'Nunito';
+        margin: 0;
+    }
+
+    h3 {
+        color: var(--dbolt-e8eaed);
+        font-size: .92em;
+        font-weight: 800;
+    }
+
+    p {
+        color: var(--dbolt-969696);
+        font-size: .72em;
+        line-height: 1.35;
+        margin-top: 3px;
+    }
 }
 
-.section-heading {
-    justify-content: space-between;
-    margin-bottom: 14px;
+.source-grid,
+.content-grid,
+.destination-grid {
+    display: grid;
+    gap: 14px;
+    min-height: 0;
+}
+
+.source-grid {
+    align-content: start;
+    grid-template-columns: minmax(260px, .8fr) minmax(400px, 1.2fr);
+}
+
+.target-grid {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .field-label {
     color: var(--dbolt-969696);
     display: block;
     font-family: 'Nunito';
-    font-size: .78em;
+    font-size: .75em;
     font-weight: 700;
-    margin: 10px 0 7px;
+    margin: 0 0 7px;
 }
 
 app-input-list {
@@ -173,39 +268,33 @@ app-input-list {
     z-index: 3;
 }
 
-.export-setup app-button {
-    margin-top: 11px;
+.source-grid app-button,
+.destination-card app-button {
+    margin-top: 12px;
 }
 
-.safe-note {
+.safe-note,
+.destination-path {
     color: var(--dbolt-777);
     display: block;
     font-family: 'Nunito';
-    font-size: .69em;
+    font-size: .67em;
     line-height: 1.4;
     margin-top: 9px;
 }
 
-.option-row {
-    background: var(--dbolt-1b1b1b);
-    border: 1px solid var(--dbolt-353535);
-    border-radius: 12px;
-    display: grid;
-    gap: 5px;
-    margin-top: 9px;
-    padding: 10px 11px;
-
-    small {
-        color: var(--dbolt-777);
-        font-family: 'Nunito';
-        font-size: .68em;
-        line-height: 1.35;
-        padding-left: 60px;
-    }
+.step-actions {
+    align-items: center;
 }
 
-.nested-option {
-    margin-left: 12px;
+.selection-counter {
+    background: var(--dbolt-292727);
+    border-radius: 8px;
+    color: var(--dbolt-c9c9c9);
+    font-family: 'Nunito';
+    font-size: .7em;
+    font-weight: 800;
+    padding: 7px 9px;
 }
 
 .text-action {
@@ -214,7 +303,6 @@ app-input-list {
     border-radius: 8px;
     color: var(--dbolt-9fbede);
     cursor: pointer;
-    flex: 0 0 auto;
     font-family: 'Nunito';
     font-size: .72em;
     font-weight: 850;
@@ -230,58 +318,28 @@ app-input-list {
     }
 }
 
-.objects-card {
-    min-height: 270px;
-}
-
-.objects-empty {
-    align-items: center;
-    background: var(--dbolt-1b1b1b);
-    border: 1px dashed var(--dbolt-3b3b3b);
-    border-radius: 12px;
-    display: flex;
-    gap: 12px;
-    min-height: 112px;
-    padding: 18px;
-
-    img {
-        opacity: .6;
-    }
-
-    strong,
-    p {
-        font-family: 'Nunito';
-        margin: 0;
-    }
-
-    strong {
-        color: var(--dbolt-c9c9c9);
-        font-size: .82em;
-    }
-
-    p {
-        color: var(--dbolt-777);
-        font-size: .72em;
-        margin-top: 3px;
-    }
-}
-
 .object-search {
     display: block;
-    margin-bottom: 12px;
+    flex: 0 0 auto;
+    margin-bottom: 10px;
     max-width: 430px;
 }
 
 .object-groups {
     display: grid;
+    flex: 1 1 auto;
     gap: 10px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    min-height: 0;
 }
 
 .object-group {
     background: var(--dbolt-1b1b1b);
     border: 1px solid var(--dbolt-353535);
     border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     min-width: 0;
     overflow: hidden;
 }
@@ -292,17 +350,13 @@ app-input-list {
     border-bottom: 1px solid var(--dbolt-303030);
     cursor: pointer;
     display: flex;
+    flex: 0 0 40px;
     gap: 8px;
-    min-height: 39px;
     padding: 0 11px;
-
-    input,
-    img {
-        flex: 0 0 auto;
-    }
 
     input {
         accent-color: var(--dbolt-739eca);
+        flex: 0 0 auto;
         height: 14px;
         width: 14px;
     }
@@ -310,7 +364,7 @@ app-input-list {
     strong,
     span {
         font-family: 'Nunito';
-        font-size: .74em;
+        font-size: .71em;
     }
 
     strong {
@@ -325,7 +379,8 @@ app-input-list {
 }
 
 .object-list {
-    max-height: 216px;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow: auto;
     padding: 4px 8px 7px;
 }
@@ -335,7 +390,7 @@ app-input-list {
     border-bottom: 1px solid var(--dbolt-202020);
     cursor: pointer;
     display: flex;
-    gap: 9px;
+    gap: 8px;
     min-height: 39px;
     padding: 5px 4px;
 
@@ -371,13 +426,13 @@ app-input-list {
 
     strong {
         color: var(--dbolt-e8eaed);
-        font-size: .74em;
+        font-size: .71em;
         font-weight: 750;
     }
 
     small {
         color: var(--dbolt-777);
-        font-size: .62em;
+        font-size: .6em;
     }
 }
 
@@ -385,29 +440,111 @@ app-input-list {
     color: var(--dbolt-686868);
     flex: 0 0 auto;
     font-family: 'Nunito';
-    font-size: .58em;
+    font-size: .55em;
     text-transform: uppercase;
 }
 
 .empty-group {
     color: var(--dbolt-686868);
     font-family: 'Nunito';
-    font-size: .7em;
+    font-size: .69em;
     margin: 0;
     padding: 14px 11px;
 }
 
-.review-card,
-.progress-card {
+.content-grid {
+    flex: 1 1 auto;
+    grid-template-columns: minmax(310px, .8fr) minmax(430px, 1.2fr);
+}
+
+.options-card,
+.review-card {
+    height: 100%;
+    min-height: 0;
+}
+
+.review-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.option-row {
+    background: var(--dbolt-1b1b1b);
+    border: 1px solid var(--dbolt-353535);
+    border-radius: 12px;
+    display: grid;
+    gap: 5px;
+    margin-top: 9px;
+    padding: 10px 11px;
+
+    small {
+        color: var(--dbolt-777);
+        font-family: 'Nunito';
+        font-size: .66em;
+        line-height: 1.35;
+        padding-left: 60px;
+    }
+}
+
+.nested-option {
+    margin-left: 12px;
+}
+
+.section-heading {
     flex: 0 0 auto;
+    justify-content: space-between;
+    margin-bottom: 12px;
+
+    h3,
+    p {
+        font-family: 'Nunito';
+        margin: 0;
+    }
+
+    h3 {
+        color: var(--dbolt-e8eaed);
+        font-size: .92em;
+        font-weight: 800;
+    }
+
+    p {
+        color: var(--dbolt-969696);
+        font-size: .7em;
+        line-height: 1.35;
+        margin-top: 3px;
+    }
+}
+
+.analysis-empty {
+    align-items: center;
+    background: var(--dbolt-1b1b1b);
+    border: 1px dashed var(--dbolt-3b3b3b);
+    border-radius: 12px;
+    color: var(--dbolt-777);
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    font-family: 'Nunito';
+    font-size: .72em;
+    gap: 8px;
+    justify-content: center;
+    padding: 18px;
+    text-align: center;
+
+    img {
+        opacity: .6;
+    }
 }
 
 .estimate-panel {
     background: var(--dbolt-1b1b1b);
     border: 1px solid var(--dbolt-353535);
     border-radius: 12px;
-    margin-top: 12px;
-    padding: 14px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 13px;
 
     &.risk-medium,
     &.risk-high {
@@ -429,15 +566,14 @@ app-input-list {
         border-radius: 8px;
         color: var(--dbolt-c9c9c9);
         font-family: 'Nunito';
-        font-size: .65em;
+        font-size: .63em;
         font-weight: 850;
         padding: 5px 8px;
     }
 
     strong {
-        color: var(--dbolt-e8eaed);
         font-family: 'Nunito';
-        font-size: .78em;
+        font-size: .75em;
     }
 }
 
@@ -445,14 +581,14 @@ app-input-list {
     display: grid;
     gap: 8px;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin-top: 12px;
+    margin-top: 10px;
 
     > span {
         background: var(--dbolt-232020);
         border-radius: 9px;
         display: flex;
         flex-direction: column;
-        padding: 9px;
+        padding: 8px;
     }
 
     small,
@@ -462,12 +598,11 @@ app-input-list {
 
     small {
         color: var(--dbolt-777);
-        font-size: .62em;
+        font-size: .6em;
     }
 
     strong {
-        color: var(--dbolt-e8eaed);
-        font-size: .82em;
+        font-size: .78em;
         margin-top: 2px;
     }
 }
@@ -477,44 +612,70 @@ app-input-list {
     border-radius: 10px;
     color: var(--dbolt-ffb4b4);
     font-family: 'Nunito';
-    font-size: .72em;
-    line-height: 1.45;
-    margin-top: 10px;
-    padding: 11px 12px;
+    font-size: .68em;
+    line-height: 1.4;
+    margin-top: 9px;
+    padding: 9px 11px;
 
     ul {
-        margin: 6px 0 0;
-        padding-left: 17px;
+        margin: 5px 0 0;
+        padding-left: 16px;
     }
 }
 
 .acknowledgement {
     display: flex;
-    margin-top: 11px;
+    margin-top: 9px;
 }
 
-.destination-row {
-    align-items: center;
-    border-top: 1px solid var(--dbolt-303030);
-    display: flex;
-    gap: 11px;
-    margin-top: 14px;
-    padding-top: 14px;
+.destination-grid {
+    flex: 0 0 auto;
+    grid-template-columns: minmax(360px, 1fr) minmax(300px, .8fr);
+}
 
-    > span {
-        color: var(--dbolt-c9c9c9);
+.export-summary-card {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.summary-row {
+    background: var(--dbolt-1b1b1b);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 10px 12px;
+
+    span,
+    strong {
         font-family: 'Nunito';
-        font-size: .7em;
-        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
-        user-select: text;
         white-space: nowrap;
-
-        &.empty {
-            color: var(--dbolt-686868);
-        }
     }
+
+    span {
+        color: var(--dbolt-777);
+        font-size: .63em;
+    }
+
+    strong {
+        color: var(--dbolt-e8eaed);
+        font-size: .77em;
+        margin-top: 2px;
+    }
+}
+
+.destination-card .card-heading p {
+    overflow-wrap: anywhere;
+    user-select: text;
+}
+
+.progress-card {
+    flex: 1 1 auto;
+    margin-top: 14px;
+    min-height: 0;
 }
 
 .progress-heading {
@@ -536,17 +697,17 @@ app-input-list {
     }
 
     strong {
-        font-size: .8em;
+        font-size: .78em;
     }
 
     small {
         color: var(--dbolt-777);
-        font-size: .66em;
+        font-size: .64em;
     }
 
     > span:last-child {
         color: var(--dbolt-9fbede);
-        font-size: .73em;
+        font-size: .7em;
         font-weight: 850;
     }
 }
@@ -555,7 +716,7 @@ app-input-list {
     background: var(--dbolt-131313);
     border-radius: 99px;
     height: 6px;
-    margin-top: 12px;
+    margin-top: 11px;
     overflow: hidden;
 
     span {
@@ -571,9 +732,9 @@ app-input-list {
     display: flex;
     flex-wrap: wrap;
     font-family: 'Nunito';
-    font-size: .66em;
+    font-size: .64em;
     gap: 13px;
-    margin: 8px 0 11px;
+    margin-top: 7px;
 }
 
 .result-message {
@@ -595,18 +756,18 @@ app-input-list {
 
     strong {
         color: var(--dbolt-9be0aa);
-        font-size: .82em;
+        font-size: .8em;
     }
 
     span {
         color: var(--dbolt-c9c9c9);
-        font-size: .68em;
+        font-size: .66em;
         overflow-wrap: anywhere;
     }
 
     small {
         color: var(--dbolt-777);
-        font-size: .63em;
+        font-size: .61em;
         margin-top: 3px;
     }
 
@@ -619,22 +780,36 @@ app-input-list {
     align-items: center;
     border-top: 1px solid var(--dbolt-303030);
     display: flex;
-    flex: 0 0 auto;
+    flex: 0 0 52px;
     gap: 14px;
     justify-content: space-between;
-    margin-top: 16px;
-    padding-top: 14px;
+    margin-top: 13px;
+    padding-top: 12px;
+}
+
+.footer-status,
+.footer-actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
 }
 
 .footer-status {
     color: var(--dbolt-8d8d8d);
     font-family: 'Nunito';
-    font-size: .72em;
+    font-size: .7em;
     min-width: 0;
+}
+
+.step-position {
+    white-space: nowrap;
 }
 
 .export-error {
     color: var(--dbolt-ffb4b4);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .large-spinner,
@@ -660,46 +835,36 @@ app-input-list {
     to { transform: rotate(360deg); }
 }
 
-@media (max-width: 1080px) {
-    .db-export-workspace {
-        grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+@media (max-width: 1050px) {
+    .object-groups {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(2, minmax(0, 1fr));
     }
 
-    .object-groups {
-        grid-template-columns: 1fr;
+    .source-grid,
+    .content-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
 @media (max-width: 820px) {
     .db-export-panel {
-        padding: 16px;
+        padding-left: 16px;
+        padding-right: 16px;
     }
 
-    .db-export-workspace {
-        grid-template-columns: 1fr;
+    .step-label {
+        font-size: .68em;
     }
 
-    .export-setup {
-        display: grid;
+    .source-grid,
+    .content-grid,
+    .destination-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .export-setup .export-card:last-child {
-        grid-column: 1 / -1;
-    }
-}
-
-@media (max-width: 620px) {
-    .db-export-header,
-    .db-export-footer,
-    .section-heading,
-    .destination-row {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .export-setup,
-    .estimate-stats {
+    .target-grid,
+    .export-summary-card {
         grid-template-columns: 1fr;
     }
 }
