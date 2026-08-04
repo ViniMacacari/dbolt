@@ -104,6 +104,7 @@ export class SqlSyntaxMonacoMarkersService {
       severity: monaco.MarkerSeverity.Error,
       message: diagnostic.message,
       source: 'SQL syntax',
+      code: diagnostic.code,
       startLineNumber: diagnostic.startLineNumber,
       startColumn: diagnostic.startColumn,
       endLineNumber: diagnostic.endLineNumber,
