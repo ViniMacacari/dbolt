@@ -317,6 +317,41 @@ app-input-list {
     }
 }
 
+.object-kind-summary {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 9px;
+
+    > span {
+        align-items: center;
+        background: var(--dbolt-1b1b1b);
+        border: 1px solid var(--dbolt-303030);
+        border-radius: 8px;
+        color: var(--dbolt-686868);
+        display: inline-flex;
+        font-family: 'Nunito';
+        font-size: .65em;
+        gap: 6px;
+        padding: 5px 7px;
+
+        &.has-objects {
+            border-color: var(--dbolt-3b3b3b);
+            color: var(--dbolt-c9c9c9);
+        }
+    }
+
+    img {
+        opacity: .7;
+    }
+
+    strong {
+        color: var(--dbolt-9fbede);
+        font-size: .95em;
+    }
+}
+
 .object-search {
     display: block;
     flex: 0 0 auto;

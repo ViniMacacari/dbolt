@@ -1,3 +1,8 @@
+import { TestBed } from '@angular/core/testing'
+
+import { AppLanguageService } from '../../../services/language/app-language.service'
+import { ConnectionsService } from '../../../services/resolve-connections/connections.service'
+import { DatabaseExportService } from '../../../services/database-export/database-export.service'
 import { DbExportComponent } from './db-export.component'
 
 describe('DbExportComponent', () => {
@@ -17,6 +22,10 @@ describe('DbExportComponent', () => {
     connectAndLoadTargets: jasmine.Spy
     disconnect: jasmine.Spy
   }
+  let language: {
+    translate: (key: string) => string
+    getCurrentLanguage: () => string
+  }
   let component: DbExportComponent
 
   beforeEach(() => {
@@ -27,7 +36,7 @@ describe('DbExportComponent', () => {
       connectAndLoadTargets: jasmine.createSpy(),
       disconnect: jasmine.createSpy().and.resolveTo(undefined)
     }
-    const language = {
+    language = {
       translate: (key: string) => key,
       getCurrentLanguage: () => 'pt-BR'
     }
@@ -156,6 +165,42 @@ describe('DbExportComponent', () => {
     component.acknowledgedLargeExport = true
     component.nextStep()
     expect(Number(component.currentStep)).toBe(4)
+  })
+
+  it('renders every loaded object name in the object-selection step', () => {
+    TestBed.configureTestingModule({
+      imports: [DbExportComponent],
+      providers: [
+        { provide: ConnectionsService, useValue: connectionsService },
+        { provide: DatabaseExportService, useValue: databaseExport },
+        { provide: AppLanguageService, useValue: language }
+      ]
+    })
+    const fixture = TestBed.createComponent(DbExportComponent)
+    const renderedComponent = fixture.componentInstance
+    renderedComponent.currentStep = 2
+    renderedComponent.context = {
+      sgbd: 'MySQL',
+      version: 'v5',
+      connectionKey: 'db-export-mock',
+      connId: 7,
+      name: 'Mock connection'
+    }
+    renderedComponent.objects = [
+      { name: 'customers', type: 'table' },
+      { name: 'orders', type: 'table' }
+    ]
+    renderedComponent.updateObjectSearch('')
+
+    fixture.detectChanges()
+
+    const rows = Array.from(fixture.nativeElement.querySelectorAll('.object-row')) as HTMLElement[]
+    const typeSummary = fixture.nativeElement.querySelector('.object-kind-summary') as HTMLElement
+    expect(rows.length).toBe(2)
+    expect(rows.map((row) => row.textContent).join(' ')).toContain('customers')
+    expect(rows.map((row) => row.textContent).join(' ')).toContain('orders')
+    expect(typeSummary.textContent).toContain('dbExport.objects.routines')
+    expect(typeSummary.textContent).toContain('dbExport.objects.automation')
   })
 
   it('closes the isolated export connection when destroyed', async () => {

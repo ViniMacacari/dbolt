@@ -101,6 +101,14 @@
                     </div>
                 </div>
 
+                <div class="object-kind-summary" [attr.aria-label]="t('dbExport.selection.availableTypes')">
+                    <span *ngFor="let group of objectGroupSummaries" [class.has-objects]="group.totalCount > 0">
+                        <img [src]="group.icon" alt="" height="13px">
+                        {{ t(group.labelKey) }}
+                        <strong>{{ group.totalCount }}</strong>
+                    </span>
+                </div>
+
                 <app-input class="object-search" [compact]="true" [ngModel]="objectSearch"
                     (ngModelChange)="updateObjectSearch($event)" [disabled]="exporting"
                     [placeholder]="t('dbExport.selection.search')" [ariaLabel]="t('dbExport.selection.search')">
@@ -126,7 +134,7 @@
                                     <strong>{{ object.name }}</strong>
                                     <small *ngIf="object.table">{{ object.table }}</small>
                                 </span>
-                                <small class="object-type">{{ object.type }}</small>
+                                <small class="object-type">{{ objectTypeLabel(object.type) }}</small>
                             </label>
                         </div>
                         <ng-template #emptyGroup>
