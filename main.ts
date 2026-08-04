@@ -27,7 +27,10 @@ const WINDOW_STATE_CHANGED_CHANNEL = 'dbolt:window-state-changed';
 const WINDOW_CLOSE_REQUESTED_CHANNEL = 'dbolt:window-close-requested';
 const WINDOW_CLOSE_RESPONSE_CHANNEL = 'dbolt:window-close-response';
 const DATABASE_EXPORT_PATH_CHANNEL = 'dbolt:database-export-path';
+const OPENAI_OAUTH_EXTERNAL_CHANNEL = 'dbolt:openai-oauth-external';
 const ORIGINAL_REPOSITORY_URL = 'https://github.com/ViniMacacari/dbolt';
+const OPENAI_OAUTH_CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann';
+const OPENAI_OAUTH_REDIRECT_URI = 'http://localhost:1455/auth/callback';
 
 let win: InstanceType<typeof BrowserWindow> | null = null;
 let allowWindowClose = false;
@@ -56,6 +59,25 @@ function isTrustedRendererUrl(rawUrl: string): boolean {
     ]);
 
     return trustedOrigins.has(parsedUrl.origin);
+  } catch {
+    return false;
+  }
+}
+
+function isTrustedOpenAiOAuthUrl(rawUrl: string): boolean {
+  try {
+    const parsedUrl = new URL(rawUrl);
+    return parsedUrl.origin === 'https://auth.openai.com' &&
+      parsedUrl.pathname === '/oauth/authorize' &&
+      parsedUrl.username === '' &&
+      parsedUrl.password === '' &&
+      parsedUrl.hash === '' &&
+      parsedUrl.searchParams.get('client_id') === OPENAI_OAUTH_CLIENT_ID &&
+      parsedUrl.searchParams.get('redirect_uri') === OPENAI_OAUTH_REDIRECT_URI &&
+      parsedUrl.searchParams.get('response_type') === 'code' &&
+      parsedUrl.searchParams.get('code_challenge_method') === 'S256' &&
+      Boolean(parsedUrl.searchParams.get('code_challenge')) &&
+      Boolean(parsedUrl.searchParams.get('state'));
   } catch {
     return false;
   }
@@ -153,6 +175,16 @@ ipcMain.handle(DATABASE_EXPORT_PATH_CHANNEL, async (event, suggestedFileName: st
     canceled: result.canceled,
     filePath: result.filePath || null
   };
+});
+
+ipcMain.handle(OPENAI_OAUTH_EXTERNAL_CHANNEL, async (event, authorizationUrl: string) => {
+  assertTrustedIpcSender(event);
+
+  if (!isTrustedOpenAiOAuthUrl(String(authorizationUrl || ''))) {
+    throw new Error('Invalid OpenAI OAuth authorization URL.');
+  }
+
+  await shell.openExternal(authorizationUrl);
 });
 
 ipcMain.handle(WINDOW_CLOSE_RESPONSE_CHANNEL, (event, shouldClose: boolean) => {
