@@ -1,4 +1,4 @@
-import { Component, Input, HostListener, EventEmitter, Output, OnChanges, SimpleChanges, ElementRef } from '@angular/core'
+import { booleanAttribute, Component, Input, HostListener, EventEmitter, Output, OnChanges, SimpleChanges, ElementRef } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 
@@ -7,7 +7,10 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
   standalone: true,
   imports: [CommonModule],
   templateUrl: './input-list.component.html',
-  styleUrls: ['./input-list.component.scss']
+  styleUrls: ['./input-list.component.scss'],
+  host: {
+    '[class.dropdown-open]': 'isDropdownOpen'
+  }
 })
 export class InputListComponent implements OnChanges {
   @Output() itemSelected = new EventEmitter<{ [key: string]: string | number } | null>()
@@ -17,6 +20,7 @@ export class InputListComponent implements OnChanges {
   @Input() selectedValue: string | number | null = null
   @Input() width: string = '300px'
   @Input() placeholder: string = ''
+  @Input({ transform: booleanAttribute }) disabled: boolean = false
 
   searchValue: string = ''
   filteredList: { [key: string]: string | number }[] = []
@@ -29,6 +33,9 @@ export class InputListComponent implements OnChanges {
   ) { }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['disabled']?.currentValue) {
+      this.isDropdownOpen = false
+    }
     const optionsChanged = Boolean(
       changes['list'] ||
       changes['selectedValue'] ||
@@ -52,6 +59,7 @@ export class InputListComponent implements OnChanges {
   }
 
   openDropdown(): void {
+    if (this.disabled) return
     this.isDropdownOpen = true
     this.updateFilteredList(this.isShowingSelectedValue())
   }
@@ -66,11 +74,13 @@ export class InputListComponent implements OnChanges {
   }
 
   onSearchInput(event: Event): void {
+    if (this.disabled) return
     this.searchValue = (event.target as HTMLInputElement).value
     this.updateSearch()
   }
 
   selectItem(item: { [key: string]: string | number }): void {
+    if (this.disabled) return
     this.searchValue = item[this.displayKey]?.toString() || ''
     this.selectedItem = item
     this.itemSelected.emit(item)
@@ -87,6 +97,7 @@ export class InputListComponent implements OnChanges {
   }
 
   clearInput(): void {
+    if (this.disabled) return
     this.searchValue = ''
     this.selectedItem = null
     this.itemSelected.emit(null)
@@ -119,11 +130,20 @@ export class InputListComponent implements OnChanges {
   }
 
   private syncSelectedItem(): void {
-    if (this.selectedValue === null || this.selectedValue === undefined) return
+    const wasShowingSelectedValue = this.isShowingSelectedValue()
+    if (this.selectedValue === null || this.selectedValue === undefined || this.selectedValue === '') {
+      this.selectedItem = null
+      if (wasShowingSelectedValue) this.searchValue = ''
+      return
+    }
     if (this.selectedItem?.[this.valueKey] === this.selectedValue) return
 
     const selectedItem = this.list.find(item => item[this.valueKey] === this.selectedValue)
-    if (!selectedItem) return
+    if (!selectedItem) {
+      this.selectedItem = null
+      if (wasShowingSelectedValue) this.searchValue = ''
+      return
+    }
 
     this.selectedItem = selectedItem
     this.searchValue = selectedItem[this.displayKey]?.toString() || ''
