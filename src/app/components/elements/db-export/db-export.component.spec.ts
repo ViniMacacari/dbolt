@@ -92,6 +92,72 @@ describe('DbExportComponent', () => {
     expect(component.canStartExport).toBeTrue()
   })
 
+  it('advances through the wizard only after each step is complete', () => {
+    expect(component.currentStep).toBe(1)
+    expect(component.canOpenStep(2)).toBeFalse()
+
+    component.context = {
+      sgbd: 'MySQL',
+      version: 'v5',
+      connectionKey: 'db-export-mock',
+      connId: 7,
+      name: 'Mock connection'
+    }
+    component.nextStep()
+    expect(component.currentStep).toBe(2)
+
+    component.objects = [{ name: 'customers', type: 'table' }]
+    component.selectedObjectKeys.add('table::customers')
+    component.nextStep()
+    expect(component.currentStep).toBe(3)
+    expect(component.canOpenStep(4)).toBeFalse()
+
+    component.estimate = {
+      risk: 'low',
+      acknowledgementRequired: false,
+      estimatedRows: 10,
+      estimatedBytes: 1024,
+      unknownTableCount: 0,
+      selectedObjectCount: 1,
+      selectedTableCount: 1,
+      tables: [],
+      warnings: []
+    }
+    component.nextStep()
+    expect(component.currentStep).toBe(4)
+  })
+
+  it('keeps the destination step locked until a large-export warning is acknowledged', () => {
+    component.context = {
+      sgbd: 'MySQL',
+      version: 'v5',
+      connectionKey: 'db-export-mock',
+      connId: 7,
+      name: 'Mock connection'
+    }
+    component.objects = [{ name: 'events', type: 'table' }]
+    component.selectedObjectKeys.add('table::events')
+    component.currentStep = 3
+    component.estimate = {
+      risk: 'extreme',
+      acknowledgementRequired: true,
+      estimatedRows: 75_000_000,
+      estimatedBytes: 80 * (1024 ** 3),
+      unknownTableCount: 0,
+      selectedObjectCount: 1,
+      selectedTableCount: 1,
+      tables: [],
+      warnings: ['extreme']
+    }
+
+    component.nextStep()
+    expect(component.currentStep).toBe(3)
+
+    component.acknowledgedLargeExport = true
+    component.nextStep()
+    expect(Number(component.currentStep)).toBe(4)
+  })
+
   it('closes the isolated export connection when destroyed', async () => {
     const context = {
       sgbd: 'MySQL',
