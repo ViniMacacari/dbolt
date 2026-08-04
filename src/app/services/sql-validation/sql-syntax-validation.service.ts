@@ -170,6 +170,17 @@ export class SqlSyntaxValidationService {
   ): SqlSyntaxDiagnostic {
     const reservedWord = this.extractReservedWord(error)
     const reportedToken = reservedWord || this.extractReportedToken(error)
+
+    if (this.hasParserLocation(error.location)) {
+      return {
+        ...this.rangeFromParserLocation(error, sql),
+        message: reservedWord
+          ? this.reservedWordMessage(reservedWord, database)
+          : this.normalizeMessage(error, reportedToken),
+        code: reservedWord ? 'reserved-word-alias' : 'sql-syntax'
+      }
+    }
+
     const reportedTokenOffset = reportedToken
       ? this.findReportedTokenOffset(sql, reportedToken)
       : -1
@@ -191,6 +202,11 @@ export class SqlSyntaxValidationService {
       message: this.normalizeMessage(error),
       code: 'sql-syntax'
     }
+  }
+
+  private hasParserLocation(location?: ParserLocation): boolean {
+    return Number.isFinite(location?.start?.offset)
+      || (Number.isFinite(location?.start?.line) && Number.isFinite(location?.start?.column))
   }
 
   private rangeFromParserLocation(error: SqlParserError, sql: string): SqlSyntaxDiagnosticRange {
@@ -263,7 +279,7 @@ export class SqlSyntaxValidationService {
       const matchedToken = aliasMatch[1]
       if (!matchedToken) continue
 
-      aliasOffset = aliasMatch.index + aliasMatch[0].lastIndexOf(matchedToken)
+      aliasOffset = aliasMatch.index + aliasMatch[0].length - matchedToken.length
     }
 
     if (aliasOffset >= 0) return aliasOffset
