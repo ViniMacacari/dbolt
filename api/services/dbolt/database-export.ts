@@ -18,7 +18,19 @@ import { normalizeIdentifier, quoteIdentifier, quoteSqlServerIdentifier, quoteSq
 import type { QueryRow, TableColumn } from '../../types.js';
 
 export type DatabaseExportEngine = 'mysql' | 'postgres' | 'hana' | 'sqlserver' | 'sqlite';
-export type DatabaseExportObjectType = 'table' | 'view' | 'procedure' | 'function' | 'index';
+export type DatabaseExportObjectType =
+  | 'table'
+  | 'view'
+  | 'materialized_view'
+  | 'procedure'
+  | 'function'
+  | 'trigger'
+  | 'event'
+  | 'sequence'
+  | 'synonym'
+  | 'type'
+  | 'domain'
+  | 'index';
 export type DatabaseExportRisk = 'low' | 'medium' | 'high' | 'extreme';
 
 export interface DatabaseExportContext {
@@ -93,6 +105,7 @@ type DatabaseModel = {
 type DatabaseInfoProvider = {
   tableDDL: (name: string, connectionKey?: string) => Promise<{ success: boolean; ddl?: string; message?: string; error?: string }>;
   procedureDDL: (name: string, connectionKey?: string) => Promise<{ success: boolean; ddl?: string; message?: string; error?: string }>;
+  objectDDL: (object: DatabaseExportObjectSelection, connectionKey?: string) => Promise<{ success: boolean; ddl?: string; message?: string; error?: string }>;
   tableColumns: (name: string, connectionKey?: string, schema?: string) => Promise<{ success: boolean; data?: TableColumn[]; message?: string; error?: string }>;
   tableKeys: (name: string, connectionKey?: string) => Promise<{ success: boolean; data?: QueryRow[]; message?: string; error?: string }>;
   tableIndexes: (name: string, connectionKey?: string) => Promise<{ success: boolean; data?: QueryRow[]; message?: string; error?: string }>;
@@ -350,7 +363,10 @@ export class DatabaseExportService {
       throw new Error(`Select no more than ${MAX_SELECTED_OBJECTS} database objects per export.`);
     }
 
-    const validTypes = new Set<DatabaseExportObjectType>(['table', 'view', 'procedure', 'function', 'index']);
+    const validTypes = new Set<DatabaseExportObjectType>([
+      'table', 'view', 'materialized_view', 'procedure', 'function', 'trigger',
+      'event', 'sequence', 'synonym', 'type', 'domain', 'index'
+    ]);
     const unique = new Map<string, DatabaseExportObjectSelection>();
 
     for (const object of objects) {
@@ -358,7 +374,7 @@ export class DatabaseExportService {
       const normalized = {
         name: normalizeIdentifier(object.name, 'Object name'),
         type: object.type,
-        table: object.table ? normalizeIdentifier(object.table, 'Index table name') : undefined
+        table: object.table ? normalizeIdentifier(object.table, 'Parent table name') : undefined
       };
       unique.set(`${normalized.type}:${normalized.table || ''}:${normalized.name}`, normalized);
     }
@@ -485,11 +501,18 @@ export class DatabaseExportService {
 
   private sortStructureObjects(objects: DatabaseExportObjectSelection[]): DatabaseExportObjectSelection[] {
     const priority: Record<DatabaseExportObjectType, number> = {
-      table: 0,
-      index: 1,
-      view: 2,
-      procedure: 3,
-      function: 3
+      type: 0,
+      domain: 0,
+      sequence: 1,
+      table: 2,
+      index: 3,
+      materialized_view: 4,
+      view: 5,
+      procedure: 6,
+      function: 6,
+      synonym: 7,
+      trigger: 8,
+      event: 8
     };
 
     return [...objects].sort((left, right) =>
@@ -515,7 +538,7 @@ export class DatabaseExportService {
 
     if (addDropStatements) statements.push(this.buildDropStatement(context, object));
 
-    if (object.type === 'table' || object.type === 'view') {
+    if (object.type === 'table' || object.type === 'view' || object.type === 'materialized_view') {
       const result = await provider.tableDDL(object.name, context.connectionKey);
       this.assertProviderResult(result, `Could not load DDL for ${object.name}.`);
       if (result.ddl?.trim()) statements.push(this.terminateStatement(result.ddl));
@@ -523,14 +546,20 @@ export class DatabaseExportService {
       return statements;
     }
 
-    if (object.type === 'procedure' || object.type === 'function') {
-      const result = await provider.procedureDDL(object.name, context.connectionKey);
-      this.assertProviderResult(result, `Could not load routine DDL for ${object.name}.`);
-      if (result.ddl?.trim()) statements.push(this.formatRoutineStatement(context.sgbd, result.ddl));
+    if (object.type === 'index') {
+      statements.push(...await this.loadSelectedIndexStatements(context, object));
       return statements;
     }
 
-    statements.push(...await this.loadSelectedIndexStatements(context, object));
+    const result = await provider.objectDDL(object, context.connectionKey);
+    this.assertProviderResult(result, `Could not load ${object.type} DDL for ${object.name}.`);
+    if (result.ddl?.trim()) {
+      const delimiterObject = context.sgbd === 'mysql' &&
+        ['procedure', 'function', 'trigger', 'event'].includes(object.type);
+      statements.push(delimiterObject
+        ? this.formatRoutineStatement(context.sgbd, result.ddl)
+        : this.terminateStatement(result.ddl));
+    }
     return statements;
   }
 
@@ -820,16 +849,24 @@ export class DatabaseExportService {
 
     const qualified = this.qualifyTable(context, object.name);
     if (context.sgbd === 'sqlserver') {
-      const dropType = object.type === 'function' ? 'FUNCTION' : object.type.toUpperCase();
+      const dropType = this.dropType(object.type);
+      if (object.type === 'type') {
+        return `IF TYPE_ID(N'${qualified.replaceAll("'", "''")}') IS NOT NULL DROP TYPE ${qualified};`;
+      }
       return `IF OBJECT_ID(N'${qualified.replaceAll("'", "''")}') IS NOT NULL DROP ${dropType} ${qualified};`;
     }
 
-    const dropType = object.type === 'function' ? 'FUNCTION' : object.type.toUpperCase();
+    const dropType = this.dropType(object.type);
     if (context.sgbd === 'postgres' && (object.type === 'function' || object.type === 'procedure')) {
       return '-- PostgreSQL routine DDL uses CREATE OR REPLACE; overload signatures are preserved.';
     }
     if (context.sgbd === 'hana') return `DROP ${dropType} ${qualified};`;
     return `DROP ${dropType} IF EXISTS ${qualified};`;
+  }
+
+  private dropType(type: DatabaseExportObjectType): string {
+    if (type === 'materialized_view') return 'MATERIALIZED VIEW';
+    return type.toUpperCase();
   }
 
   private formatRoutineStatement(engine: DatabaseExportEngine, ddl: string): string {
