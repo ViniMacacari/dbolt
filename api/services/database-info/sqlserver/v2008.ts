@@ -278,9 +278,12 @@ class ListObjectsSQLServerV1 {
       const columns = (await this.loadObjectColumns(object, connectionKey)) as QueryRow[];
       const columnLines = columns.map((column) => {
         const type = this.formatSQLServerColumnType(column);
+        const identity = this.isSQLServerIdentity(column['is_identity'])
+          ? ` IDENTITY(${column['identity_seed'] ?? 1}, ${column['identity_increment'] ?? 1})`
+          : '';
         const nullable = this.isSQLServerNullable(column['is_nullable']) ? ' NULL' : ' NOT NULL';
         const defaultValue = column['column_default'] ? ` DEFAULT ${String(column['column_default'])}` : '';
-        return `  ${quoteIdentifier(String(column['name']))} ${type}${defaultValue}${nullable}`;
+        return `  ${quoteIdentifier(String(column['name']))} ${type}${identity}${defaultValue}${nullable}`;
       });
       const ddl = `CREATE TABLE ${quoteIdentifier(object.schema_name)}.${quoteIdentifier(object.name)} (\n${columnLines.join(',\n')}\n);`;
 
@@ -415,6 +418,8 @@ class ListObjectsSQLServerV1 {
           dc.definition AS column_default,
           c.collation_name,
           c.is_identity,
+          identity_columns.seed_value AS identity_seed,
+          identity_columns.increment_value AS identity_increment,
           c.is_computed,
           cc.definition AS computed_definition,
           ep.value AS description,
@@ -425,6 +430,9 @@ class ListObjectsSQLServerV1 {
         LEFT JOIN sys.computed_columns cc
           ON cc.object_id = c.object_id
           AND cc.column_id = c.column_id
+        LEFT JOIN sys.identity_columns identity_columns
+          ON identity_columns.object_id = c.object_id
+          AND identity_columns.column_id = c.column_id
         LEFT JOIN sys.extended_properties ep
           ON ep.major_id = c.object_id
           AND ep.minor_id = c.column_id
@@ -449,6 +457,8 @@ class ListObjectsSQLServerV1 {
       column_default: column['column_default'],
       collation_name: column['collation_name'],
       is_identity: column['is_identity'],
+      identity_seed: column['identity_seed'],
+      identity_increment: column['identity_increment'],
       is_computed: column['is_computed'],
       computed_definition: column['computed_definition'],
       description: column['description'],
@@ -472,6 +482,10 @@ class ListObjectsSQLServerV1 {
 
   private isSQLServerNullable(value: QueryRow[keyof QueryRow]): boolean {
     return value === true || value === 1 || value === 'YES' || value === 'true';
+  }
+
+  private isSQLServerIdentity(value: QueryRow[keyof QueryRow]): boolean {
+    return value === true || value === 1 || value === 'true';
   }
 }
 
