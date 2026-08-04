@@ -9,6 +9,7 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
     {} as any,
     {} as any,
     {} as any,
+    {} as any,
     {} as any
   )
 
@@ -82,7 +83,8 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
       {} as any,
       databaseContext as any,
       {} as any,
-      connectionContext as any
+      connectionContext as any,
+      {} as any
     )
 
     const result = await (component as any).prepareReadonlyToolContext()
@@ -90,5 +92,53 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
     expect(connectionContext.ensureContext).toHaveBeenCalledOnceWith(connectedContext)
     expect(databaseContext.buildReadonlyToolContext).toHaveBeenCalled()
     expect(result.connectionKey).toBe('ai-context')
+  })
+
+  it('recommends ChatGPT even with another provider configured and persists dismissal', async () => {
+    const dismissedSettings = {
+      provider: 'gemini' as const,
+      baseUrl: '',
+      model: 'gemini-test',
+      hasApiKey: true,
+      hasApiKeys: {
+        openai: false,
+        gemini: true,
+        anthropic: false,
+        openrouter: false
+      },
+      openAiOAuthConnected: false,
+      openAiOAuthRecommendationDismissed: true,
+      limits: {
+        maxApiCallsPerMessage: 4,
+        maxDatabaseRequestsPerMessage: 4,
+        maxDatabaseRequestsPerApiCall: 2,
+        maxContextMessages: 10,
+        maxToolResultChars: 9000,
+        maxToolTranscriptChars: 18000
+      }
+    }
+    const settingsService = {
+      dismissOpenAiOAuthRecommendation: jasmine.createSpy().and.resolveTo(dismissedSettings)
+    }
+    const component = new AiAssistantPanelComponent(
+      settingsService as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any
+    )
+    component.settings = {
+      ...dismissedSettings,
+      openAiOAuthRecommendationDismissed: false
+    }
+
+    expect(component.showOpenAiOAuthRecommendation).toBeTrue()
+
+    await component.dismissOpenAiOAuthRecommendation()
+
+    expect(settingsService.dismissOpenAiOAuthRecommendation).toHaveBeenCalledTimes(1)
+    expect(component.showOpenAiOAuthRecommendation).toBeFalse()
   })
 })
