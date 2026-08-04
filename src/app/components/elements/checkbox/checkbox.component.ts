@@ -10,7 +10,8 @@ let checkboxId = 0
   templateUrl: './checkbox.component.html',
   styleUrl: './checkbox.component.scss',
   host: {
-    '[class.wrap-label-host]': 'wrapLabel'
+    '[class.wrap-label-host]': 'wrapLabel',
+    '[class.box-variant-host]': "variant === 'box'"
   }
 })
 export class CheckboxComponent {
@@ -18,6 +19,8 @@ export class CheckboxComponent {
   @Input() disabled: boolean = false
   @Input() label: string = ''
   @Input() title: string = ''
+  @Input() ariaLabel: string = ''
+  @Input() variant: 'switch' | 'box' = 'switch'
   @Input({ transform: booleanAttribute }) wrapLabel: boolean = false
   @Output() checkedChange = new EventEmitter<boolean>()
 
