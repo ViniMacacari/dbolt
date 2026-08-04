@@ -31,7 +31,12 @@ export class InternalApiService {
     }
   }
 
-  async postStream<T>(url: string, body: unknown, onEvent: (event: T) => void): Promise<void> {
+  async postStream<T>(
+    url: string,
+    body: unknown,
+    onEvent: (event: T) => void,
+    signal?: AbortSignal
+  ): Promise<void> {
     try {
       const session = await this.sessionToken.getSession()
       const response = await fetch(session.baseUrl + url, {
@@ -42,7 +47,8 @@ export class InternalApiService {
           'Content-Type': 'application/json',
           [session.tokenHeader]: session.token
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
+        signal
       })
 
       if (!response.ok) {

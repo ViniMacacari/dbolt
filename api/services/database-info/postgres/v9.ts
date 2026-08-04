@@ -1,7 +1,7 @@
 import PgV1 from '../../../models/postgres/v9.js';
 import { getErrorMessage } from '../../../utils/errors.js';
 import { groupDatabaseObjects, toIndexDatabaseObject, toNamedDatabaseObject } from '../../../utils/database-objects.js';
-import { quoteIdentifier } from '../../../utils/sql-identifiers.js';
+import { quoteIdentifier, quoteSqlString } from '../../../utils/sql-identifiers.js';
 
 import type {
   DatabaseObject,
@@ -14,7 +14,11 @@ import type {
 } from '../../../types.js';
 
 type CurrentSchemaRow = QueryRow & { schema: string };
-type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'function' | 'procedure' };
+type NamedObjectRow = QueryRow & {
+  name: string;
+  type: 'table' | 'view' | 'materialized_view' | 'function' | 'procedure' | 'trigger' | 'sequence' | 'type' | 'domain';
+  table_name?: string;
+};
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type: string };
 type ColumnRow = QueryRow & TableColumn;
 type TableLikeObjectRow = QueryRow & {
@@ -66,6 +70,19 @@ class ListObjectsPgV1 {
         connectionKey
       )) as NamedObjectRow[];
 
+      const materializedViews = (await this.db.executeQuery(
+        `
+          SELECT c.relname AS name, 'materialized_view' AS type
+          FROM pg_class c
+          INNER JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = $1
+            AND c.relkind = 'm'
+          ORDER BY c.relname
+        `,
+        [currentSchema],
+        connectionKey
+      )) as NamedObjectRow[];
+
       const routines = (await this.db.executeQuery(
         `
           SELECT
@@ -101,10 +118,53 @@ class ListObjectsPgV1 {
         connectionKey
       )) as IndexRow[];
 
+      const triggers = (await this.db.executeQuery(
+        `
+          SELECT t.tgname AS name, c.relname AS table_name, 'trigger' AS type
+          FROM pg_trigger t
+          INNER JOIN pg_class c ON c.oid = t.tgrelid
+          INNER JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = $1
+            AND NOT t.tgisinternal
+          ORDER BY c.relname, t.tgname
+        `,
+        [currentSchema],
+        connectionKey
+      )) as NamedObjectRow[];
+
+      const sequences = (await this.db.executeQuery(
+        `
+          SELECT sequence_name AS name, 'sequence' AS type
+          FROM information_schema.sequences
+          WHERE sequence_schema = $1
+          ORDER BY sequence_name
+        `,
+        [currentSchema],
+        connectionKey
+      )) as NamedObjectRow[];
+
+      const customTypes = (await this.db.executeQuery(
+        `
+          SELECT t.typname AS name,
+                 CASE WHEN t.typtype = 'd' THEN 'domain' ELSE 'type' END AS type
+          FROM pg_type t
+          INNER JOIN pg_namespace n ON n.oid = t.typnamespace
+          WHERE n.nspname = $1
+            AND (t.typtype = 'e' OR t.typtype = 'd')
+          ORDER BY type, t.typname
+        `,
+        [currentSchema],
+        connectionKey
+      )) as NamedObjectRow[];
+
       const data: DatabaseObject[] = [
         ...tables.map((object, index) => toNamedDatabaseObject(object, 'table', index)),
         ...views.map((object, index) => toNamedDatabaseObject(object, 'view', index)),
+        ...materializedViews.map((object, index) => toNamedDatabaseObject(object, 'materialized_view', index)),
         ...routines.map((object, index) => toNamedDatabaseObject(object, object.type, index)),
+        ...triggers.map((object, index) => toNamedDatabaseObject(object, 'trigger', index, String(object.table_name || ''))),
+        ...sequences.map((object, index) => toNamedDatabaseObject(object, 'sequence', index)),
+        ...customTypes.map((object, index) => toNamedDatabaseObject(object, object.type, index)),
         ...indexes.map((object, index) => toIndexDatabaseObject(object, index))
       ];
 
@@ -332,6 +392,138 @@ class ListObjectsPgV1 {
       return {
         success: false,
         message: 'Error occurred while loading procedure DDL.',
+        error: getErrorMessage(error)
+      };
+    }
+  }
+
+  async objectDDL(
+    object: { name: string; type: string; table?: string },
+    connectionKey?: string
+  ): Promise<TableDDLResult> {
+    if (object.type === 'procedure' || object.type === 'function') {
+      return this.procedureDDL(object.name, connectionKey);
+    }
+
+    try {
+      if (object.type === 'trigger') {
+        const rows = (await this.db.executeQuery(
+          `
+            SELECT pg_get_triggerdef(t.oid, true) AS ddl
+            FROM pg_trigger t
+            INNER JOIN pg_class c ON c.oid = t.tgrelid
+            INNER JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = current_schema()
+              AND t.tgname = $1
+              AND ($2::text IS NULL OR c.relname = $2)
+              AND NOT t.tgisinternal
+            ORDER BY c.relname
+            LIMIT 1
+          `,
+          [object.name, object.table || null],
+          connectionKey
+        )) as QueryRow[];
+        return { success: true, ddl: String(rows[0]?.['ddl'] || '') };
+      }
+
+      if (object.type === 'sequence') {
+        const rows = (await this.db.executeQuery(
+          `
+            SELECT sequence_schema, sequence_name, start_value, minimum_value,
+                   maximum_value, increment, cycle_option
+            FROM information_schema.sequences
+            WHERE sequence_schema = current_schema()
+              AND sequence_name = $1
+            LIMIT 1
+          `,
+          [object.name],
+          connectionKey
+        )) as QueryRow[];
+        const row = rows[0];
+        if (!row) return { success: true, ddl: '' };
+        const qualified = `${quoteIdentifier(String(row['sequence_schema']))}.${quoteIdentifier(object.name)}`;
+        const ddl = [
+          `CREATE SEQUENCE ${qualified}`,
+          `START WITH ${row['start_value']}`,
+          `INCREMENT BY ${row['increment']}`,
+          `MINVALUE ${row['minimum_value']}`,
+          `MAXVALUE ${row['maximum_value']}`,
+          String(row['cycle_option']).toUpperCase() === 'YES' ? 'CYCLE' : 'NO CYCLE'
+        ].join('\n  ');
+        return { success: true, ddl };
+      }
+
+      if (object.type === 'type') {
+        const rows = (await this.db.executeQuery(
+          `
+            SELECT n.nspname AS schema_name, e.enumlabel
+            FROM pg_type t
+            INNER JOIN pg_namespace n ON n.oid = t.typnamespace
+            INNER JOIN pg_enum e ON e.enumtypid = t.oid
+            WHERE n.nspname = current_schema()
+              AND t.typname = $1
+            ORDER BY e.oid
+          `,
+          [object.name],
+          connectionKey
+        )) as QueryRow[];
+        if (rows.length === 0) return { success: true, ddl: '' };
+        const qualified = `${quoteIdentifier(String(rows[0]?.['schema_name']))}.${quoteIdentifier(object.name)}`;
+        const labels = rows.map((row) => quoteSqlString(String(row['enumlabel']))).join(', ');
+        return { success: true, ddl: `CREATE TYPE ${qualified} AS ENUM (${labels})` };
+      }
+
+      if (object.type === 'domain') {
+        const rows = (await this.db.executeQuery(
+          `
+            SELECT n.nspname AS schema_name,
+                   format_type(t.typbasetype, t.typtypmod) AS base_type,
+                   t.typnotnull AS not_null,
+                   pg_get_expr(t.typdefaultbin, 0) AS default_value
+            FROM pg_type t
+            INNER JOIN pg_namespace n ON n.oid = t.typnamespace
+            WHERE n.nspname = current_schema()
+              AND t.typname = $1
+              AND t.typtype = 'd'
+            LIMIT 1
+          `,
+          [object.name],
+          connectionKey
+        )) as QueryRow[];
+        const row = rows[0];
+        if (!row) return { success: true, ddl: '' };
+        const qualified = `${quoteIdentifier(String(row['schema_name']))}.${quoteIdentifier(object.name)}`;
+        const defaultValue = row['default_value'] ? ` DEFAULT ${row['default_value']}` : '';
+        const notNull = row['not_null'] === true || String(row['not_null']).toLowerCase() === 'true' ? ' NOT NULL' : '';
+        const constraints = (await this.db.executeQuery(
+          `
+            SELECT c.conname, pg_get_constraintdef(c.oid, true) AS definition
+            FROM pg_constraint c
+            INNER JOIN pg_type t ON t.oid = c.contypid
+            INNER JOIN pg_namespace n ON n.oid = t.typnamespace
+            WHERE n.nspname = current_schema()
+              AND t.typname = $1
+            ORDER BY c.conname
+          `,
+          [object.name],
+          connectionKey
+        )) as QueryRow[];
+        const constraintDDL = constraints
+          .map((constraint) =>
+            ` CONSTRAINT ${quoteIdentifier(String(constraint['conname']))} ${constraint['definition']}`
+          )
+          .join('');
+        return {
+          success: true,
+          ddl: `CREATE DOMAIN ${qualified} AS ${row['base_type']}${defaultValue}${notNull}${constraintDDL}`
+        };
+      }
+
+      return { success: false, message: `PostgreSQL does not support exporting ${object.type} through this provider.` };
+    } catch (error: unknown) {
+      return {
+        success: false,
+        message: `Error occurred while loading ${object.type} DDL.`,
         error: getErrorMessage(error)
       };
     }

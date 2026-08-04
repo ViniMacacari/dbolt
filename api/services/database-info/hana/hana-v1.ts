@@ -13,7 +13,11 @@ import type {
   TableMetadataRowsResult
 } from '../../../types.js';
 
-type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'procedure' };
+type NamedObjectRow = QueryRow & {
+  name: string;
+  type: 'table' | 'view' | 'procedure' | 'function' | 'trigger' | 'sequence' | 'synonym';
+  table_name?: string;
+};
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type?: string };
 type ColumnRow = QueryRow & TableColumn;
 type TableLikeObjectRow = QueryRow & {
@@ -48,12 +52,44 @@ class ListObjectsHanaV1 {
         ORDER BY PROCEDURE_NAME
       `, [], connectionKey)) as NamedObjectRow[];
 
+      const functions = (await this.db.executeQuery(`
+        SELECT FUNCTION_NAME AS "name", 'function' AS "type"
+        FROM SYS.FUNCTIONS
+        WHERE SCHEMA_NAME = CURRENT_SCHEMA
+        ORDER BY FUNCTION_NAME
+      `, [], connectionKey)) as NamedObjectRow[];
+
+      const triggers = (await this.db.executeQuery(`
+        SELECT TRIGGER_NAME AS "name", SUBJECT_TABLE_NAME AS "table_name", 'trigger' AS "type"
+        FROM SYS.TRIGGERS
+        WHERE SCHEMA_NAME = CURRENT_SCHEMA
+        ORDER BY SUBJECT_TABLE_NAME, TRIGGER_NAME
+      `, [], connectionKey)) as NamedObjectRow[];
+
+      const sequences = (await this.db.executeQuery(`
+        SELECT SEQUENCE_NAME AS "name", 'sequence' AS "type"
+        FROM SYS.SEQUENCES
+        WHERE SCHEMA_NAME = CURRENT_SCHEMA
+        ORDER BY SEQUENCE_NAME
+      `, [], connectionKey)) as NamedObjectRow[];
+
+      const synonyms = (await this.db.executeQuery(`
+        SELECT SYNONYM_NAME AS "name", 'synonym' AS "type"
+        FROM SYS.SYNONYMS
+        WHERE SCHEMA_NAME = CURRENT_SCHEMA
+        ORDER BY SYNONYM_NAME
+      `, [], connectionKey)) as NamedObjectRow[];
+
       const indexes = await this.listIndexes(connectionKey);
 
       const data: DatabaseObject[] = [
         ...tables.map((object, index) => toNamedDatabaseObject(object, 'table', index)),
         ...views.map((object, index) => toNamedDatabaseObject(object, 'view', index)),
         ...procedures.map((object, index) => toNamedDatabaseObject(object, 'procedure', index)),
+        ...functions.map((object, index) => toNamedDatabaseObject(object, 'function', index)),
+        ...triggers.map((object, index) => toNamedDatabaseObject(object, 'trigger', index, String(object.table_name || ''))),
+        ...sequences.map((object, index) => toNamedDatabaseObject(object, 'sequence', index)),
+        ...synonyms.map((object, index) => toNamedDatabaseObject(object, 'synonym', index)),
         ...indexes.map((object, index) => toIndexDatabaseObject(object, index))
       ];
 
@@ -264,6 +300,85 @@ class ListObjectsHanaV1 {
       return {
         success: false,
         message: 'Error occurred while loading procedure DDL.',
+        error: getErrorMessage(error)
+      };
+    }
+  }
+
+  async objectDDL(
+    object: { name: string; type: string; table?: string },
+    connectionKey?: string
+  ): Promise<TableDDLResult> {
+    if (object.type === 'procedure') return this.procedureDDL(object.name, connectionKey);
+
+    try {
+      if (object.type === 'function' || object.type === 'trigger') {
+        const catalog = object.type === 'function' ? 'FUNCTIONS' : 'TRIGGERS';
+        const nameColumn = object.type === 'function' ? 'FUNCTION_NAME' : 'TRIGGER_NAME';
+        const rows = (await this.db.executeQuery(
+          `SELECT DEFINITION AS "ddl" FROM SYS.${catalog} ` +
+          `WHERE SCHEMA_NAME = CURRENT_SCHEMA AND ${nameColumn} = ?`,
+          [object.name],
+          connectionKey
+        )) as QueryRow[];
+        return { success: true, ddl: String(rows[0]?.['ddl'] || '') };
+      }
+
+      if (object.type === 'sequence') {
+        const rows = (await this.db.executeQuery(
+          `
+            SELECT START_NUMBER AS "start_number", MIN_VALUE AS "min_value",
+                   MAX_VALUE AS "max_value", INCREMENT_BY AS "increment_by",
+                   IS_CYCLED AS "is_cycled", CACHE_SIZE AS "cache_size",
+                   RESET_BY_QUERY AS "reset_by_query"
+            FROM SYS.SEQUENCES
+            WHERE SCHEMA_NAME = CURRENT_SCHEMA
+              AND SEQUENCE_NAME = ?
+          `,
+          [object.name],
+          connectionKey
+        )) as QueryRow[];
+        const row = rows[0];
+        if (!row) return { success: true, ddl: '' };
+        const ddl = [
+          `CREATE SEQUENCE ${quoteIdentifier(object.name)}`,
+          `START WITH ${row['start_number']}`,
+          `INCREMENT BY ${row['increment_by']}`,
+          `MINVALUE ${row['min_value']}`,
+          `MAXVALUE ${row['max_value']}`,
+          String(row['is_cycled']).toUpperCase() === 'TRUE' ? 'CYCLE' : 'NO CYCLE',
+          Number(row['cache_size'] || 0) > 0 ? `CACHE ${row['cache_size']}` : 'NO CACHE',
+          row['reset_by_query'] ? `RESET BY ${row['reset_by_query']}` : ''
+        ].filter(Boolean).join('\n  ');
+        return { success: true, ddl };
+      }
+
+      if (object.type === 'synonym') {
+        const rows = (await this.db.executeQuery(
+          `
+            SELECT OBJECT_DATABASE AS "object_database", OBJECT_SCHEMA AS "object_schema",
+                   OBJECT_NAME AS "object_name"
+            FROM SYS.SYNONYMS
+            WHERE SCHEMA_NAME = CURRENT_SCHEMA
+              AND SYNONYM_NAME = ?
+          `,
+          [object.name],
+          connectionKey
+        )) as QueryRow[];
+        const row = rows[0];
+        if (!row) return { success: true, ddl: '' };
+        const target = [row['object_database'], row['object_schema'], row['object_name']]
+          .filter(Boolean)
+          .map((part) => quoteIdentifier(String(part)))
+          .join('.');
+        return { success: true, ddl: `CREATE SYNONYM ${quoteIdentifier(object.name)} FOR ${target}` };
+      }
+
+      return { success: false, message: `HANA does not support exporting ${object.type} through this provider.` };
+    } catch (error: unknown) {
+      return {
+        success: false,
+        message: `Error occurred while loading ${object.type} DDL.`,
         error: getErrorMessage(error)
       };
     }

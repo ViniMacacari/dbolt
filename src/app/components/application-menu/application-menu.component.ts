@@ -5,6 +5,7 @@ import { Router } from '@angular/router'
 import { AppLanguageService } from '../../services/language/app-language.service'
 import { AppPlatformService } from '../../services/platform/app-platform.service'
 import { AppInfoService } from '../../services/app-info/app-info.service'
+import { ToolsNavigationService } from '../../services/tools/tools-navigation.service'
 
 type WindowAction =
   | 'minimize'
@@ -24,7 +25,7 @@ type WindowAction =
   | 'select-all'
   | 'open-original-repository'
 
-type AppMenuCommand = WindowAction | 'open-help'
+type AppMenuCommand = WindowAction | 'open-help' | 'open-database-export'
 
 interface WindowState {
   isFullScreen: boolean
@@ -35,6 +36,7 @@ interface WindowState {
 interface ApplicationMenuItem {
   command?: AppMenuCommand
   disabledWithoutElectron?: boolean
+  disabledWithoutWorkspace?: boolean
   labelKey?: string
   separator?: boolean
   shortcut?: string
@@ -96,6 +98,17 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
       ]
     },
     {
+      id: 'tools',
+      labelKey: 'applicationMenu.tools',
+      items: [
+        {
+          labelKey: 'applicationMenu.tools.databaseExport',
+          command: 'open-database-export',
+          disabledWithoutWorkspace: true
+        }
+      ]
+    },
+    {
       id: 'window',
       labelKey: 'applicationMenu.window',
       items: [
@@ -130,7 +143,8 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
     private router: Router,
     private language: AppLanguageService,
     private platform: AppPlatformService,
-    private appInfo: AppInfoService
+    private appInfo: AppInfoService,
+    private toolsNavigation: ToolsNavigationService
   ) { }
 
   async ngOnInit(): Promise<void> {
@@ -229,11 +243,17 @@ export class ApplicationMenuComponent implements OnInit, OnDestroy {
       return
     }
 
+    if (item.command === 'open-database-export') {
+      this.toolsNavigation.open('database-export')
+      return
+    }
+
     await this.runAction(item.command)
   }
 
   isMenuItemDisabled(item: ApplicationMenuItem): boolean {
-    return !!item.disabledWithoutElectron && !this.isElectron
+    return (!!item.disabledWithoutElectron && !this.isElectron) ||
+      (!!item.disabledWithoutWorkspace && !this.router.url.startsWith('/database-management/'))
   }
 
   async runAction(action: WindowAction): Promise<void> {

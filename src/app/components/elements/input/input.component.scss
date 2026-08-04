@@ -7,6 +7,11 @@
 .input-page {
     box-sizing: border-box;
     min-width: 0;
+
+    &::placeholder {
+        color: var(--dbolt-777);
+        opacity: 1;
+    }
 }
 
 .input-page-compact {

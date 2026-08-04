@@ -10,7 +10,7 @@ import {
 } from './api/services/security/internal-session-token.js';
 import { registerAppUpdateIpc } from './electron/services/app-update.js';
 
-const { app, BrowserWindow, Menu, ipcMain, shell } = require('electron') as typeof import('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron') as typeof import('electron');
 const appRoot = path.resolve(__dirname, '..');
 const angularIndexPath = path.join(
   appRoot,
@@ -26,6 +26,7 @@ const WINDOW_STATE_CHANNEL = 'dbolt:window-state';
 const WINDOW_STATE_CHANGED_CHANNEL = 'dbolt:window-state-changed';
 const WINDOW_CLOSE_REQUESTED_CHANNEL = 'dbolt:window-close-requested';
 const WINDOW_CLOSE_RESPONSE_CHANNEL = 'dbolt:window-close-response';
+const DATABASE_EXPORT_PATH_CHANNEL = 'dbolt:database-export-path';
 const ORIGINAL_REPOSITORY_URL = 'https://github.com/ViniMacacari/dbolt';
 
 let win: InstanceType<typeof BrowserWindow> | null = null;
@@ -128,6 +129,30 @@ ipcMain.handle(WINDOW_STATE_CHANNEL, (event) => {
   assertTrustedIpcSender(event);
 
   return getWindowState(getEventWindow(event));
+});
+
+ipcMain.handle(DATABASE_EXPORT_PATH_CHANNEL, async (event, suggestedFileName: string) => {
+  assertTrustedIpcSender(event);
+
+  const safeFileName = path.basename(String(suggestedFileName || 'dbolt-export.sql'))
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
+    .replace(/\.+$/g, '') || 'dbolt-export.sql';
+  const normalizedFileName = safeFileName.toLowerCase().endsWith('.sql')
+    ? safeFileName
+    : `${safeFileName}.sql`;
+  const result = await dialog.showSaveDialog(getEventWindow(event), {
+    title: 'DBolt - Database Export',
+    defaultPath: path.join(app.getPath('documents'), normalizedFileName),
+    filters: [
+      { name: 'SQL', extensions: ['sql'] }
+    ],
+    properties: ['createDirectory', 'showOverwriteConfirmation']
+  });
+
+  return {
+    canceled: result.canceled,
+    filePath: result.filePath || null
+  };
 });
 
 ipcMain.handle(WINDOW_CLOSE_RESPONSE_CHANNEL, (event, shouldClose: boolean) => {

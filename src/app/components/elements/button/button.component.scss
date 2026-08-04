@@ -1,5 +1,10 @@
 :host {
     display: inline-flex;
+
+    &.full-width-host {
+        display: flex;
+        width: 100%;
+    }
 }
 
 .app-button {
@@ -35,6 +40,16 @@
         &:hover:not(:disabled) {
             background-color: #b81414;
         }
+    }
+
+    &.full-width {
+        width: 100%;
+    }
+
+    &.compact {
+        min-height: 34px;
+        padding: 7px 12px;
+        width: auto;
     }
 
 }

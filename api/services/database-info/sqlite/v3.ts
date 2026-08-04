@@ -13,7 +13,7 @@ import type {
   TableMetadataRowsResult
 } from '../../../types.js';
 
-type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' };
+type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'trigger'; table_name?: string };
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type: string };
 type ColumnRow = QueryRow & TableColumn;
 type TableLikeObjectRow = QueryRow & { schema_name: string; name: string; type: 'table' | 'view' };
@@ -50,9 +50,20 @@ class ListObjectsSQLiteV3 {
         ORDER BY tbl_name, name
       `, [], connectionKey)) as IndexRow[];
 
+      const triggers = (await this.db.executeQuery(`
+        SELECT name, tbl_name AS table_name, 'trigger' AS type
+        FROM sqlite_master
+        WHERE type = 'trigger'
+          AND name NOT LIKE 'sqlite_%'
+        ORDER BY tbl_name, name
+      `, [], connectionKey)) as NamedObjectRow[];
+
       const data: DatabaseObject[] = [
         ...objects.map((object, index) =>
           toNamedDatabaseObject(object, object.type === 'view' ? 'view' : 'table', index)
+        ),
+        ...triggers.map((object, index) =>
+          toNamedDatabaseObject(object, 'trigger', index, String(object.table_name || ''))
         ),
         ...indexes.map((object, index) => toIndexDatabaseObject(object, index))
       ];
@@ -223,6 +234,30 @@ class ListObjectsSQLiteV3 {
       success: false,
       message: 'SQLite does not support stored procedures.'
     };
+  }
+
+  async objectDDL(
+    object: { name: string; type: string; table?: string },
+    connectionKey?: string
+  ): Promise<TableDDLResult> {
+    if (object.type !== 'trigger') {
+      return { success: false, message: `SQLite does not support exporting ${object.type} through this provider.` };
+    }
+
+    try {
+      const rows = (await this.db.executeQuery(
+        `SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = ? LIMIT 1`,
+        [object.name],
+        connectionKey
+      )) as QueryRow[];
+      return { success: true, ddl: String(rows[0]?.['sql'] || '') };
+    } catch (error: unknown) {
+      return {
+        success: false,
+        message: 'Error occurred while loading trigger DDL.',
+        error: getErrorMessage(error)
+      };
+    }
   }
 
   private async resolveTableLikeObject(

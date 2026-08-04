@@ -41,4 +41,31 @@ describe('InputListComponent', () => {
       .map(option => option.textContent?.trim());
     expect(options).toEqual(['Escuro', 'Claro']);
   });
+
+  it('does not open the dropdown while disabled', () => {
+    fixture.componentRef.setInput('list', [{ id: 1, name: 'Connection' }]);
+    fixture.componentRef.setInput('disabled', true);
+    fixture.detectChanges();
+
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('input');
+    input.dispatchEvent(new Event('focus'));
+    fixture.detectChanges();
+
+    expect(input.disabled).toBeTrue();
+    expect(fixture.nativeElement.querySelector('.dropdown-list')).toBeNull();
+  });
+
+  it('clears the displayed item when the selected value is cleared', () => {
+    fixture.componentRef.setInput('list', [{ value: 'dark', label: 'Escuro' }]);
+    fixture.componentRef.setInput('displayKey', 'label');
+    fixture.componentRef.setInput('valueKey', 'value');
+    fixture.componentRef.setInput('selectedValue', 'dark');
+    fixture.detectChanges();
+
+    fixture.componentRef.setInput('selectedValue', null);
+    fixture.detectChanges();
+
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('input');
+    expect(input.value).toBe('');
+  });
 });

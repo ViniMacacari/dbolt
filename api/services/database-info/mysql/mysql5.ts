@@ -13,7 +13,11 @@ import type {
   TableMetadataRowsResult
 } from '../../../types.js';
 
-type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'procedure' };
+type NamedObjectRow = QueryRow & {
+  name: string;
+  type: 'table' | 'view' | 'procedure' | 'function' | 'trigger' | 'event';
+  table_name?: string;
+};
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type: string };
 type ColumnRow = QueryRow & TableColumn;
 type TableLikeObjectRow = QueryRow & {
@@ -49,12 +53,26 @@ class ListObjectsMySQLV1 {
         ORDER BY TABLE_NAME
       `, [], connectionKey)) as NamedObjectRow[];
 
-      const procedures = (await this.db.executeQuery(`
-        SELECT ROUTINE_NAME AS name, 'procedure' AS type
+      const routines = (await this.db.executeQuery(`
+        SELECT ROUTINE_NAME AS name,
+               CASE WHEN ROUTINE_TYPE = 'FUNCTION' THEN 'function' ELSE 'procedure' END AS type
         FROM INFORMATION_SCHEMA.ROUTINES
         WHERE ROUTINE_SCHEMA = DATABASE()
-          AND ROUTINE_TYPE = 'PROCEDURE'
-        ORDER BY ROUTINE_NAME
+        ORDER BY ROUTINE_TYPE, ROUTINE_NAME
+      `, [], connectionKey)) as NamedObjectRow[];
+
+      const triggers = (await this.db.executeQuery(`
+        SELECT TRIGGER_NAME AS name, EVENT_OBJECT_TABLE AS table_name, 'trigger' AS type
+        FROM INFORMATION_SCHEMA.TRIGGERS
+        WHERE TRIGGER_SCHEMA = DATABASE()
+        ORDER BY EVENT_OBJECT_TABLE, TRIGGER_NAME
+      `, [], connectionKey)) as NamedObjectRow[];
+
+      const events = (await this.db.executeQuery(`
+        SELECT EVENT_NAME AS name, 'event' AS type
+        FROM INFORMATION_SCHEMA.EVENTS
+        WHERE EVENT_SCHEMA = DATABASE()
+        ORDER BY EVENT_NAME
       `, [], connectionKey)) as NamedObjectRow[];
 
       const indexes = (await this.db.executeQuery(`
@@ -71,7 +89,9 @@ class ListObjectsMySQLV1 {
       const data: DatabaseObject[] = [
         ...tables.map((object, index) => toNamedDatabaseObject(object, 'table', index)),
         ...views.map((object, index) => toNamedDatabaseObject(object, 'view', index)),
-        ...procedures.map((object, index) => toNamedDatabaseObject(object, 'procedure', index)),
+        ...routines.map((object, index) => toNamedDatabaseObject(object, object.type, index)),
+        ...triggers.map((object, index) => toNamedDatabaseObject(object, 'trigger', index, String(object.table_name || ''))),
+        ...events.map((object, index) => toNamedDatabaseObject(object, 'event', index)),
         ...indexes.map((object, index) => toIndexDatabaseObject(object, index))
       ];
 
@@ -249,19 +269,38 @@ class ListObjectsMySQLV1 {
   }
 
   async procedureDDL(procedureName: string, connectionKey?: string): Promise<TableDDLResult> {
+    return this.objectDDL({ name: procedureName, type: 'procedure' }, connectionKey);
+  }
+
+  async objectDDL(
+    object: { name: string; type: string; table?: string },
+    connectionKey?: string
+  ): Promise<TableDDLResult> {
     try {
+      const objectType = object.type as 'procedure' | 'function' | 'trigger' | 'event';
+      if (!['procedure', 'function', 'trigger', 'event'].includes(objectType)) {
+        return { success: false, message: `MySQL does not support exporting ${object.type} through this provider.` };
+      }
+      const command = objectType.toUpperCase();
       const rows = (await this.db.executeQuery(
-        `SHOW CREATE PROCEDURE ${quoteIdentifier(procedureName, '`')}`,
+        `SHOW CREATE ${command} ${quoteIdentifier(object.name, '`')}`,
         [],
         connectionKey
       )) as QueryRow[];
-      const ddl = String(rows[0]?.['Create Procedure'] || '');
+      const ddlKeys: Record<typeof objectType, string[]> = {
+        procedure: ['Create Procedure'],
+        function: ['Create Function'],
+        trigger: ['SQL Original Statement', 'Create Trigger'],
+        event: ['Create Event']
+      };
+      const row = rows[0] || {};
+      const ddl = String(ddlKeys[objectType].map((key) => row[key]).find(Boolean) || '');
 
       return { success: true, ddl };
     } catch (error: unknown) {
       return {
         success: false,
-        message: 'Error occurred while loading procedure DDL.',
+        message: `Error occurred while loading ${object.type} DDL.`,
         error: getErrorMessage(error)
       };
     }

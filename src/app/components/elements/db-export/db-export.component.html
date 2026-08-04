@@ -1,0 +1,350 @@
+<div class="db-export-container">
+    <section class="db-export-panel">
+        <header class="db-export-header">
+            <div>
+                <p>{{ t('dbExport.kicker') }}</p>
+                <h2>{{ t('dbExport.title') }}</h2>
+                <span>{{ t('dbExport.description') }}</span>
+            </div>
+        </header>
+
+        <nav class="export-stepper" [attr.aria-label]="t('dbExport.title')">
+            <button type="button" *ngFor="let step of steps" [class.active]="currentStep === step.id"
+                [class.complete]="isStepComplete(step.id)" [disabled]="!canOpenStep(step.id) || exporting"
+                (click)="goToStep(step.id)">
+                <span class="step-index">{{ isStepComplete(step.id) ? '✓' : step.id }}</span>
+                <span class="step-label">{{ t(step.labelKey) }}</span>
+            </button>
+        </nav>
+
+        <div class="step-viewport" [ngSwitch]="currentStep">
+            <section class="step-pane source-step" *ngSwitchCase="1">
+                <div class="step-pane-heading">
+                    <div>
+                        <h3>{{ t('dbExport.steps.source') }}</h3>
+                        <p>{{ t('dbExport.connection.description') }}</p>
+                    </div>
+                </div>
+
+                <div class="source-grid">
+                    <section class="export-card">
+                        <div class="card-heading">
+                            <img src="icons/database.png" alt="" height="18px">
+                            <div>
+                                <h3>{{ t('dbExport.connection.title') }}</h3>
+                                <p>{{ t('dbExport.connection.field') }}</p>
+                            </div>
+                        </div>
+
+                        <app-input-list [list]="connectionListOptions" [displayKey]="'label'" [valueKey]="'id'"
+                            [selectedValue]="selectedConnectionId" [width]="'100%'"
+                            [placeholder]="loadingConnections ? t('dbExport.connection.loading') : t('dbExport.connection.placeholder')"
+                            [disabled]="loadingConnections || exporting" (itemSelected)="onConnectionSelected($event)">
+                        </app-input-list>
+
+                        <app-button [fullWidth]="true" [disabled]="!selectedConnection || loadingTargets || exporting"
+                            (pressed)="loadTargets()">
+                            <span class="button-spinner" *ngIf="loadingTargets"></span>
+                            {{ loadingTargets ? t('dbExport.connection.loadingTargets') : t('dbExport.connection.loadTargets') }}
+                        </app-button>
+                        <small class="safe-note">{{ t('dbExport.connection.safeNote') }}</small>
+                    </section>
+
+                    <section class="export-card" [class.card-disabled]="!connectionState">
+                        <div class="card-heading">
+                            <img src="icons/schema.png" alt="" height="18px">
+                            <div>
+                                <h3>{{ t('dbExport.target.title') }}</h3>
+                                <p>{{ t('dbExport.target.description') }}</p>
+                            </div>
+                        </div>
+
+                        <div class="target-grid">
+                            <div>
+                                <label class="field-label">{{ t('dbExport.target.database') }}</label>
+                                <app-input-list [list]="databaseListOptions" [displayKey]="'name'" [valueKey]="'name'"
+                                    [selectedValue]="selectedDatabase" [width]="'100%'"
+                                    [placeholder]="t('dbExport.target.databasePlaceholder')"
+                                    [disabled]="!connectionState || exporting" (itemSelected)="onDatabaseSelected($event)">
+                                </app-input-list>
+                            </div>
+                            <div>
+                                <label class="field-label">{{ t('dbExport.target.schema') }}</label>
+                                <app-input-list [list]="schemaListOptions" [displayKey]="'name'" [valueKey]="'name'"
+                                    [selectedValue]="selectedSchema" [width]="'100%'"
+                                    [placeholder]="t('dbExport.target.schemaPlaceholder')"
+                                    [disabled]="!selectedDatabase || exporting" (itemSelected)="onSchemaSelected($event)">
+                                </app-input-list>
+                            </div>
+                        </div>
+
+                        <app-button [fullWidth]="true" [disabled]="!canLoadObjects || exporting"
+                            (pressed)="loadObjects()">
+                            <span class="button-spinner" *ngIf="loadingObjects"></span>
+                            {{ loadingObjects ? t('dbExport.target.loadingObjects') : t('dbExport.target.loadObjects') }}
+                        </app-button>
+                    </section>
+                </div>
+            </section>
+
+            <section class="step-pane objects-step" *ngSwitchCase="2">
+                <div class="step-pane-heading">
+                    <div>
+                        <h3>{{ t('dbExport.selection.title') }}</h3>
+                        <p>{{ t('dbExport.selection.description') }}</p>
+                    </div>
+                    <div class="step-actions">
+                        <span class="selection-counter">{{ selectedObjectCount }} {{ t('dbExport.selection.selected') }}</span>
+                        <button type="button" class="text-action" (click)="toggleAllObjects()" [disabled]="exporting">
+                            {{ allObjectsSelected ? t('dbExport.selection.clearAll') : t('dbExport.selection.selectAll') }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="object-kind-summary" [attr.aria-label]="t('dbExport.selection.availableTypes')">
+                    <span *ngFor="let group of objectGroupSummaries" [class.has-objects]="group.totalCount > 0">
+                        <img [src]="group.icon" alt="" height="13px">
+                        {{ t(group.labelKey) }}
+                        <strong>{{ group.totalCount }}</strong>
+                    </span>
+                </div>
+
+                <app-input class="object-search" [compact]="true" [ngModel]="objectSearch"
+                    (ngModelChange)="updateObjectSearch($event)" [disabled]="exporting"
+                    [placeholder]="t('dbExport.selection.search')" [ariaLabel]="t('dbExport.selection.search')">
+                </app-input>
+
+                <div class="object-groups" *ngIf="objectGroupViews.length; else noSchemaObjects">
+                    <section class="object-group" *ngFor="let group of objectGroupViews">
+                        <div class="group-header" (click)="toggleGroup(group, !group.allVisibleSelected)">
+                            <app-checkbox variant="box" [checked]="group.allVisibleSelected"
+                                [disabled]="group.objects.length === 0 || exporting"
+                                [ariaLabel]="t(group.labelKey)" (click)="$event.stopPropagation()"
+                                (checkedChange)="toggleGroup(group, $event)">
+                            </app-checkbox>
+                            <img [src]="group.icon" alt="" height="15px">
+                            <strong>{{ t(group.labelKey) }}</strong>
+                            <span>{{ group.selectedCount }}/{{ group.totalCount }}</span>
+                        </div>
+
+                        <div class="object-list" *ngIf="group.objects.length; else emptyGroup">
+                            <div class="object-row" *ngFor="let object of group.objects; trackBy: trackObject"
+                                [class.selected]="isObjectSelected(object)"
+                                (click)="toggleObject(object, !isObjectSelected(object))">
+                                <app-checkbox variant="box" [checked]="isObjectSelected(object)"
+                                    [disabled]="exporting" [ariaLabel]="object.name"
+                                    (click)="$event.stopPropagation()"
+                                    (checkedChange)="toggleObject(object, $event)">
+                                </app-checkbox>
+                                <span class="object-name">
+                                    <strong>{{ object.name }}</strong>
+                                    <small *ngIf="object.table">{{ object.table }}</small>
+                                </span>
+                                <small class="object-type">{{ objectTypeLabel(object.type) }}</small>
+                            </div>
+                        </div>
+                        <ng-template #emptyGroup>
+                            <p class="empty-group">{{ t('dbExport.selection.noObjects') }}</p>
+                        </ng-template>
+                    </section>
+                </div>
+                <ng-template #noSchemaObjects>
+                    <div class="empty-selection">
+                        <img src="icons/database.png" alt="" height="22px">
+                        <strong>{{ t('dbExport.selection.emptyTitle') }}</strong>
+                        <span>{{ t('dbExport.selection.noObjects') }}</span>
+                    </div>
+                </ng-template>
+            </section>
+
+            <section class="step-pane content-step" *ngSwitchCase="3">
+                <div class="step-pane-heading">
+                    <div>
+                        <h3>{{ t('dbExport.steps.content') }}</h3>
+                        <p>{{ t('dbExport.review.description') }}</p>
+                    </div>
+                </div>
+
+                <div class="content-grid">
+                    <section class="export-card options-card">
+                        <div class="card-heading">
+                            <img src="icons/export.png" alt="" height="18px">
+                            <div>
+                                <h3>{{ t('dbExport.options.title') }}</h3>
+                                <p>{{ t('dbExport.options.description') }}</p>
+                            </div>
+                        </div>
+
+                        <div class="option-row">
+                            <app-checkbox variant="box" [checked]="includeStructure" [disabled]="exporting"
+                                [label]="t('dbExport.options.structure')" (checkedChange)="setIncludeStructure($event)">
+                            </app-checkbox>
+                            <small>{{ t('dbExport.options.structureDescription') }}</small>
+                        </div>
+                        <div class="option-row">
+                            <app-checkbox variant="box" [checked]="includeData" [disabled]="exporting"
+                                [label]="t('dbExport.options.data')" (checkedChange)="setIncludeData($event)">
+                            </app-checkbox>
+                            <small>{{ t('dbExport.options.dataDescription') }}</small>
+                        </div>
+                        <div class="option-row" [class.card-disabled]="!includeStructure">
+                            <app-checkbox variant="box" [checked]="addDropStatements" [disabled]="!includeStructure || exporting"
+                                [label]="t('dbExport.options.drop')" (checkedChange)="setAddDropStatements($event)">
+                            </app-checkbox>
+                            <small>{{ t('dbExport.options.dropDescription') }}</small>
+                        </div>
+                    </section>
+
+                    <section class="export-card review-card">
+                        <div class="section-heading">
+                            <div>
+                                <h3>{{ t('dbExport.review.title') }}</h3>
+                                <p>{{ estimate ? (estimate.risk === 'low' ? t('dbExport.review.ready') : t('dbExport.review.attention')) : t('dbExport.review.analyzeFirst') }}</p>
+                            </div>
+                            <app-button [compact]="true" [disabled]="!canEstimate" (pressed)="analyzeExport()">
+                                <span class="button-spinner" *ngIf="estimating"></span>
+                                {{ estimating ? t('dbExport.review.estimating') : t('dbExport.review.analyze') }}
+                            </app-button>
+                        </div>
+
+                        <div class="analysis-empty" *ngIf="!estimate">
+                            <img src="icons/run.png" alt="" height="22px">
+                            <span>{{ t('dbExport.review.analyzeFirst') }}</span>
+                        </div>
+
+                        <div class="estimate-panel" *ngIf="estimate" [ngClass]="'risk-' + estimate.risk">
+                            <div class="risk-heading">
+                                <span>{{ riskLabel(estimate.risk) }}</span>
+                                <strong>{{ estimate.risk === 'low' ? t('dbExport.review.ready') : t('dbExport.review.attention') }}</strong>
+                            </div>
+
+                            <div class="estimate-stats">
+                                <span><small>{{ t('dbExport.review.objects') }}</small><strong>{{ estimate.selectedObjectCount }}</strong></span>
+                                <span><small>{{ t('dbExport.review.estimatedRows') }}</small><strong>{{ formatNumber(estimate.estimatedRows) }}</strong></span>
+                                <span><small>{{ t('dbExport.review.estimatedSize') }}</small><strong>{{ formatBytes(estimate.estimatedBytes) }}</strong></span>
+                            </div>
+
+                            <div class="export-warning" *ngIf="estimate.warnings.length">
+                                <strong>{{ t('dbExport.warning.title') }}</strong>
+                                <ul><li *ngFor="let warning of estimate.warnings">{{ warningLabel(warning) }}</li></ul>
+                            </div>
+
+                            <app-checkbox class="acknowledgement" variant="box" *ngIf="estimate.acknowledgementRequired"
+                                [checked]="acknowledgedLargeExport" [disabled]="exporting" [wrapLabel]="true"
+                                [label]="t('dbExport.warning.acknowledgement')"
+                                (checkedChange)="acknowledgedLargeExport = $event">
+                            </app-checkbox>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section class="step-pane destination-step" *ngSwitchCase="4">
+                <div class="step-pane-heading">
+                    <div>
+                        <h3>{{ t('dbExport.destination.title') }}</h3>
+                        <p>{{ t('dbExport.destination.description') }}</p>
+                    </div>
+                </div>
+
+                <div class="destination-grid">
+                    <section class="export-card export-summary-card">
+                        <div class="summary-row">
+                            <span>{{ t('dbExport.destination.connection') }}</span>
+                            <strong>{{ selectedConnection?.name }}</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>{{ t('dbExport.destination.target') }}</span>
+                            <strong>{{ selectedDatabase }} · {{ selectedSchema }}</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>{{ t('dbExport.review.objects') }}</span>
+                            <strong>{{ selectedObjectCount }}</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>{{ t('dbExport.destination.content') }}</span>
+                            <strong>
+                                {{ includeStructure && includeData ? t('dbExport.destination.structureAndData') :
+                                    (includeStructure ? t('dbExport.destination.structureOnly') : t('dbExport.destination.dataOnly')) }}
+                            </strong>
+                        </div>
+                    </section>
+
+                    <section class="export-card destination-card">
+                        <div class="card-heading">
+                            <img src="icons/folder.png" alt="" height="18px">
+                            <div>
+                                <h3>{{ t('dbExport.destination.choose') }}</h3>
+                                <p>{{ outputPath || t('dbExport.destination.none') }}</p>
+                            </div>
+                        </div>
+                        <app-button [fullWidth]="true" [disabled]="!destinationAvailable || exporting"
+                            (pressed)="chooseDestination()">
+                            <img src="icons/folder.png" alt="" height="14px">
+                            {{ t('dbExport.destination.choose') }}
+                        </app-button>
+                        <small class="destination-path" *ngIf="!destinationAvailable">
+                            {{ t('dbExport.destination.desktopOnly') }}
+                        </small>
+                    </section>
+                </div>
+
+                <section class="export-card progress-card" *ngIf="exporting || progress || result || cancelled">
+                    <ng-container *ngIf="exporting && progress">
+                        <div class="progress-heading">
+                            <span class="large-spinner"></span>
+                            <div>
+                                <strong>{{ progressStageLabel() }}</strong>
+                                <small *ngIf="progress.currentObject">{{ progress.currentObject }}</small>
+                            </div>
+                            <span>{{ exportProgressPercentage }}%</span>
+                        </div>
+                        <div class="progress-track"><span [style.width.%]="exportProgressPercentage"></span></div>
+                        <div class="progress-stats">
+                            <span>{{ t('dbExport.progress.objects', { current: progress.completedObjects, total: progress.totalObjects }) }}</span>
+                            <span>{{ t('dbExport.progress.rows', { rows: formatNumber(progress.rowsWritten) }) }}</span>
+                            <span>{{ formatBytes(progress.bytesWritten) }}</span>
+                        </div>
+                    </ng-container>
+
+                    <div class="result-message success" *ngIf="!exporting && result">
+                        <img src="icons/check.png" alt="" height="22px">
+                        <div>
+                            <strong>{{ t('dbExport.result.success') }}</strong>
+                            <span>{{ result.filePath }}</span>
+                            <small>{{ t('dbExport.result.summary', { rows: formatNumber(result.rowsWritten), size: formatBytes(result.bytesWritten) }) }}</small>
+                        </div>
+                    </div>
+
+                    <div class="result-message cancelled" *ngIf="!exporting && cancelled && !result">
+                        <strong>{{ t('dbExport.result.cancelled') }}</strong>
+                        <span>{{ t('dbExport.result.cancelledDescription') }}</span>
+                    </div>
+                </section>
+            </section>
+        </div>
+
+        <footer class="db-export-footer">
+            <div class="footer-status">
+                <span class="step-position">{{ t('dbExport.footer.step', { current: currentStep }) }}</span>
+                <span *ngIf="errorMessage" class="export-error">{{ errorMessage }}</span>
+            </div>
+            <div class="footer-actions">
+                <app-button *ngIf="currentStep > 1 && !exporting" [compact]="true" (pressed)="previousStep()">
+                    {{ t('dbExport.actions.previous') }}
+                </app-button>
+                <app-button *ngIf="currentStep < 4" [disabled]="!canContinue || exporting" (pressed)="nextStep()">
+                    {{ t('dbExport.actions.next') }}
+                </app-button>
+                <app-button *ngIf="currentStep === 4 && !exporting" [disabled]="!canStartExport"
+                    (pressed)="startExport()">
+                    <img src="icons/export.png" alt="" height="15px">
+                    {{ t('dbExport.actions.export') }}
+                </app-button>
+                <app-button *ngIf="currentStep === 4 && exporting" variant="danger" (pressed)="cancelExport()">
+                    {{ t('dbExport.actions.cancel') }}
+                </app-button>
+            </div>
+        </footer>
+    </section>
+</div>

@@ -12,6 +12,7 @@ const WINDOW_STATE_CHANNEL = 'dbolt:window-state';
 const WINDOW_STATE_CHANGED_CHANNEL = 'dbolt:window-state-changed';
 const WINDOW_CLOSE_REQUESTED_CHANNEL = 'dbolt:window-close-requested';
 const WINDOW_CLOSE_RESPONSE_CHANNEL = 'dbolt:window-close-response';
+const DATABASE_EXPORT_PATH_CHANNEL = 'dbolt:database-export-path';
 
 contextBridge.exposeInMainWorld('dboltInternalApi', {
   getSession: async (): Promise<{ baseUrl: string; token: string; tokenHeader: string }> => {
@@ -103,5 +104,17 @@ contextBridge.exposeInMainWorld('dboltWindow', {
     ipcRenderer.on(WINDOW_STATE_CHANGED_CHANNEL, listener);
 
     return () => ipcRenderer.removeListener(WINDOW_STATE_CHANGED_CHANNEL, listener);
+  }
+});
+
+contextBridge.exposeInMainWorld('dboltFileSystem', {
+  chooseDatabaseExportPath: async (suggestedFileName: string): Promise<{
+    canceled: boolean;
+    filePath: string | null;
+  }> => {
+    return ipcRenderer.invoke(DATABASE_EXPORT_PATH_CHANNEL, suggestedFileName) as Promise<{
+      canceled: boolean;
+      filePath: string | null;
+    }>;
   }
 });
