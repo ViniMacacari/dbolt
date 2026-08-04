@@ -21,8 +21,27 @@ import {
 } from '../../../services/database-export/database-export.model'
 import { DatabaseExportService } from '../../../services/database-export/database-export.service'
 
-type ExportObjectGroup = 'tables' | 'views' | 'routines' | 'indexes'
+type ExportObjectGroup = 'tables' | 'views' | 'routines' | 'automation' | 'sequences' | 'types' | 'synonyms' | 'indexes'
 type DatabaseExportStep = 1 | 2 | 3 | 4
+
+interface ExportObjectGroupDefinition {
+  id: ExportObjectGroup
+  types: DatabaseExportObjectType[]
+  labelKey: string
+  icon: string
+  engines: string[]
+}
+
+interface ExportObjectGroupView extends ExportObjectGroupDefinition {
+  objects: DatabaseExportObject[]
+  selectedCount: number
+  totalCount: number
+  allVisibleSelected: boolean
+}
+
+interface ExportObjectGroupSummary extends ExportObjectGroupDefinition {
+  totalCount: number
+}
 
 @Component({
   selector: 'app-db-export',
@@ -44,6 +63,8 @@ export class DbExportComponent implements OnInit, OnDestroy {
   selectedSchema: string = ''
   context: DatabaseExportContext | null = null
   objects: DatabaseExportObject[] = []
+  objectGroupViews: ExportObjectGroupView[] = []
+  objectGroupSummaries: ExportObjectGroupSummary[] = []
   selectedObjectKeys = new Set<string>()
   objectSearch: string = ''
 
@@ -65,16 +86,15 @@ export class DbExportComponent implements OnInit, OnDestroy {
   result: DatabaseExportResult | null = null
   outputPath: string = ''
 
-  readonly objectGroups: Array<{
-    id: ExportObjectGroup
-    types: DatabaseExportObjectType[]
-    labelKey: string
-    icon: string
-  }> = [
-    { id: 'tables', types: ['table'], labelKey: 'dbExport.objects.tables', icon: 'icons/table.png' },
-    { id: 'views', types: ['view'], labelKey: 'dbExport.objects.views', icon: 'icons/view.png' },
-    { id: 'routines', types: ['procedure', 'function'], labelKey: 'dbExport.objects.routines', icon: 'icons/procedure.png' },
-    { id: 'indexes', types: ['index'], labelKey: 'dbExport.objects.indexes', icon: 'icons/index.png' }
+  readonly objectGroups: ExportObjectGroupDefinition[] = [
+    { id: 'tables', types: ['table'], labelKey: 'dbExport.objects.tables', icon: 'icons/table.png', engines: ['mysql', 'postgres', 'hana', 'sqlserver', 'sqlite'] },
+    { id: 'views', types: ['view', 'materialized_view'], labelKey: 'dbExport.objects.views', icon: 'icons/view.png', engines: ['mysql', 'postgres', 'hana', 'sqlserver', 'sqlite'] },
+    { id: 'routines', types: ['procedure', 'function'], labelKey: 'dbExport.objects.routines', icon: 'icons/procedure.png', engines: ['mysql', 'postgres', 'hana', 'sqlserver'] },
+    { id: 'automation', types: ['trigger', 'event'], labelKey: 'dbExport.objects.automation', icon: 'icons/run.png', engines: ['mysql', 'postgres', 'hana', 'sqlserver', 'sqlite'] },
+    { id: 'sequences', types: ['sequence'], labelKey: 'dbExport.objects.sequences', icon: 'icons/key.png', engines: ['postgres', 'hana', 'sqlserver'] },
+    { id: 'types', types: ['type', 'domain'], labelKey: 'dbExport.objects.types', icon: 'icons/code.png', engines: ['postgres', 'sqlserver'] },
+    { id: 'synonyms', types: ['synonym'], labelKey: 'dbExport.objects.synonyms', icon: 'icons/database.png', engines: ['hana', 'sqlserver'] },
+    { id: 'indexes', types: ['index'], labelKey: 'dbExport.objects.indexes', icon: 'icons/index.png', engines: ['mysql', 'postgres', 'hana', 'sqlserver', 'sqlite'] }
   ]
 
   readonly steps: Array<{ id: DatabaseExportStep; labelKey: string }> = [
@@ -259,6 +279,7 @@ export class DbExportComponent implements OnInit, OnDestroy {
       )
       this.context = result.context
       this.objects = result.objects
+      this.refreshObjectGroupViews()
       this.currentStep = 2
     } catch (error: unknown) {
       this.errorMessage = this.getErrorMessage(error, this.t('dbExport.errors.loadObjects'))
@@ -269,46 +290,27 @@ export class DbExportComponent implements OnInit, OnDestroy {
 
   updateObjectSearch(value: string | number | null): void {
     this.objectSearch = String(value || '')
+    this.refreshObjectGroupViews()
   }
 
-  visibleObjects(group: typeof this.objectGroups[number]): DatabaseExportObject[] {
-    const search = this.objectSearch.trim().toLowerCase()
-    return this.objects.filter((object) =>
-      group.types.includes(object.type) &&
-      (!search || object.name.toLowerCase().includes(search) || object.table?.toLowerCase().includes(search))
-    )
-  }
-
-  groupObjectCount(group: typeof this.objectGroups[number]): number {
-    return this.objects.filter((object) => group.types.includes(object.type)).length
-  }
-
-  selectedGroupCount(group: typeof this.objectGroups[number]): number {
-    return this.objects.filter((object) =>
-      group.types.includes(object.type) && this.isObjectSelected(object)
-    ).length
-  }
-
-  isGroupSelected(group: typeof this.objectGroups[number]): boolean {
-    const groupObjects = this.visibleObjects(group)
-    return groupObjects.length > 0 && groupObjects.every((object) => this.isObjectSelected(object))
-  }
-
-  toggleGroup(group: typeof this.objectGroups[number], event: Event): void {
+  toggleGroup(group: ExportObjectGroupView, event: Event): void {
     const selected = (event.target as HTMLInputElement).checked
-    this.visibleObjects(group).forEach((object) => this.setObjectSelected(object, selected))
+    group.objects.forEach((object) => this.setObjectSelected(object, selected))
     this.invalidateEstimate()
+    this.refreshObjectGroupViews()
   }
 
   toggleObject(object: DatabaseExportObject, event: Event): void {
     this.setObjectSelected(object, (event.target as HTMLInputElement).checked)
     this.invalidateEstimate()
+    this.refreshObjectGroupViews()
   }
 
   toggleAllObjects(): void {
     const select = !this.allObjectsSelected
     this.objects.forEach((object) => this.setObjectSelected(object, select))
     this.invalidateEstimate()
+    this.refreshObjectGroupViews()
   }
 
   isObjectSelected(object: DatabaseExportObject): boolean {
@@ -492,7 +494,11 @@ export class DbExportComponent implements OnInit, OnDestroy {
   }
 
   trackObject(_index: number, object: DatabaseExportObject): string {
-    return this.objectKey(object)
+    return `${object.type}:${object.table || ''}:${object.name}`
+  }
+
+  objectTypeLabel(type: DatabaseExportObjectType): string {
+    return this.t(`dbExport.objectType.${type}`)
   }
 
   t(key: string, params: Record<string, string | number> = {}): string {
@@ -521,6 +527,43 @@ export class DbExportComponent implements OnInit, OnDestroy {
     else this.selectedObjectKeys.delete(key)
   }
 
+  private refreshObjectGroupViews(): void {
+    const search = this.objectSearch.trim().toLowerCase()
+    const engine = this.normalizeEngine(this.context?.sgbd)
+    const supportedGroups = this.objectGroups.filter((group) => group.engines.includes(engine))
+
+    this.objectGroupSummaries = supportedGroups.map((group) => ({
+      ...group,
+      totalCount: this.objects.filter((object) => group.types.includes(object.type)).length
+    }))
+
+    this.objectGroupViews = supportedGroups
+      .map((group) => {
+        const groupObjects = this.objects.filter((object) => group.types.includes(object.type))
+        const visibleObjects = groupObjects.filter((object) =>
+          !search ||
+          object.name.toLowerCase().includes(search) ||
+          Boolean(object.table?.toLowerCase().includes(search))
+        )
+
+        return {
+          ...group,
+          objects: visibleObjects,
+          selectedCount: groupObjects.filter((object) => this.isObjectSelected(object)).length,
+          totalCount: groupObjects.length,
+          allVisibleSelected: visibleObjects.length > 0 && visibleObjects.every((object) => this.isObjectSelected(object))
+        }
+      })
+      .filter((group) => group.totalCount > 0)
+  }
+
+  private normalizeEngine(value: unknown): string {
+    const engine = String(value || '').trim().toLowerCase()
+    if (engine === 'postgresql') return 'postgres'
+    if (engine === 'mssql') return 'sqlserver'
+    return engine
+  }
+
   private invalidateEstimate(): void {
     this.estimate = null
     this.acknowledgedLargeExport = false
@@ -541,6 +584,8 @@ export class DbExportComponent implements OnInit, OnDestroy {
     this.currentStep = 1
     this.context = null
     this.objects = []
+    this.objectGroupViews = []
+    this.objectGroupSummaries = []
     this.selectedObjectKeys.clear()
     this.objectSearch = ''
     this.outputPath = ''
