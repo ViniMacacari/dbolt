@@ -176,8 +176,19 @@
 
         </div>
 
-        <div class="settings-stack" *ngIf="activeTab === 'ai'">
-            <p class="settings-error" *ngIf="aiSettingsError">{{ aiSettingsError }}</p>
+        <div class="settings-stack ai-settings-stack" *ngIf="activeTab === 'ai'">
+            <div class="ai-settings-command-bar">
+                <div class="ai-settings-command-copy">
+                    <strong>{{ t('settings.ai.saveBar.title') }}</strong>
+                    <span *ngIf="!aiSettingsMessage && !aiSettingsError">{{ t('settings.ai.saveBar.description') }}</span>
+                    <small class="settings-error" *ngIf="aiSettingsError">{{ aiSettingsError }}</small>
+                    <small class="ai-settings-success" *ngIf="aiSettingsMessage">{{ aiSettingsMessage }}</small>
+                </div>
+                <app-button variant="accent" [compact]="true" (pressed)="saveAiSettings()"
+                    [disabled]="aiSettingsSaving || aiSettingsLoading || !aiModel.trim() || (aiProvider === 'openai-oauth' && !aiOpenAiOAuthConnected) || ((aiProvider === 'openai' || aiProvider === 'openrouter') && !aiBaseUrl.trim())">
+                    {{ aiSettingsSaving ? t('settings.ai.saving') : t('settings.actions.save') }}
+                </app-button>
+            </div>
 
             <div class="settings-card ai-settings-card">
                 <div class="ai-settings-header">
@@ -333,13 +344,6 @@
                 </div>
             </div>
 
-            <div class="settings-actions-row">
-                <button type="button" (click)="saveAiSettings()"
-                    [disabled]="aiSettingsSaving || aiSettingsLoading || !aiModel.trim() || (aiProvider === 'openai-oauth' && !aiOpenAiOAuthConnected) || ((aiProvider === 'openai' || aiProvider === 'openrouter') && !aiBaseUrl.trim())">
-                    {{ t('settings.actions.save') }}
-                </button>
-                <small *ngIf="aiSettingsMessage">{{ aiSettingsMessage }}</small>
-            </div>
         </div>
 
         <div class="settings-stack" *ngIf="activeTab === 'highlight'">

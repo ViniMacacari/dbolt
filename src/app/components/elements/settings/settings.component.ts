@@ -12,6 +12,7 @@ import {
 import { ConnectionsService, SavedConnection } from '../../../services/resolve-connections/connections.service'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { InputListComponent } from '../input-list/input-list.component'
+import { ButtonComponent } from '../button/button.component'
 import { LoadingComponent } from '../../modal/loading/loading.component'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { AppLanguage } from '../../../services/language/language.model'
@@ -24,6 +25,12 @@ import {
   AiAssistantSettings
 } from '../../../services/ai-assistant/ai-assistant.model'
 import { OpenAiOAuthSessionService } from '../../../services/ai-assistant/openai-oauth-session.service'
+import {
+  ANTHROPIC_MODEL_OPTIONS,
+  formatAiModelLabel,
+  GEMINI_MODEL_OPTIONS,
+  OPENAI_MODEL_OPTIONS
+} from '../../../services/ai-assistant/ai-assistant-model-catalog'
 
 type SettingsTab = 'query' | 'connections' | 'autocomplete' | 'highlight' | 'appearance' | 'language' | 'ai'
 
@@ -41,7 +48,7 @@ const DEFAULT_AI_LIMITS: AiAssistantLimits = {
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, InputListComponent],
+  imports: [CommonModule, InputListComponent, ButtonComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss'
 })
@@ -123,37 +130,9 @@ export class SettingsComponent implements OnInit, OnChanges {
     { provider: 'anthropic', label: 'Claude' },
     { provider: 'openrouter', label: 'OpenRouter' }
   ]
-  readonly openAiModelOptions: { label: string, value: string }[] = [
-    { label: 'GPT-5.5', value: 'gpt-5.5' },
-    { label: 'GPT-5.4', value: 'gpt-5.4' },
-    { label: 'GPT-5.4 mini', value: 'gpt-5.4-mini' },
-    { label: 'GPT-5.4 nano', value: 'gpt-5.4-nano' },
-    { label: 'GPT-5.2', value: 'gpt-5.2' },
-    { label: 'GPT-5.1', value: 'gpt-5.1' },
-    { label: 'GPT-5', value: 'gpt-5' },
-    { label: 'GPT-5 mini', value: 'gpt-5-mini' },
-    { label: 'GPT-5 nano', value: 'gpt-5-nano' },
-    { label: 'GPT-4.1 mini', value: 'gpt-4.1-mini' },
-    { label: 'GPT-4.1', value: 'gpt-4.1' },
-    { label: 'GPT-4.1 nano', value: 'gpt-4.1-nano' },
-    { label: 'GPT-4o mini', value: 'gpt-4o-mini' },
-    { label: 'GPT-4o', value: 'gpt-4o' },
-    { label: 'o4-mini', value: 'o4-mini' }
-  ]
-  readonly geminiModelOptions: { label: string, value: string }[] = [
-    { label: 'Gemini 3.5 Flash', value: 'gemini-3.5-flash' },
-    { label: 'Gemini 3.1 Pro Preview', value: 'gemini-3.1-pro-preview' },
-    { label: 'Gemini 3.1 Flash-Lite', value: 'gemini-3.1-flash-lite' },
-    { label: 'Gemini 3 Flash Preview', value: 'gemini-3-flash-preview' },
-    { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
-    { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
-    { label: 'Gemini 2.5 Flash-Lite', value: 'gemini-2.5-flash-lite' }
-  ]
-  readonly anthropicModelOptions: { label: string, value: string }[] = [
-    { label: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
-    { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-    { label: 'Claude Haiku 4.5', value: 'claude-haiku-4-5-20251001' }
-  ]
+  readonly openAiModelOptions = OPENAI_MODEL_OPTIONS
+  readonly geminiModelOptions = GEMINI_MODEL_OPTIONS
+  readonly anthropicModelOptions = ANTHROPIC_MODEL_OPTIONS
 
   constructor(
     private settings: AppSettingsService,
@@ -963,10 +942,7 @@ export class SettingsComponent implements OnInit, OnChanges {
   }
 
   private formatOpenAiOAuthModelLabel(model: string): string {
-    return model
-      .split('-')
-      .map((part) => part.toLowerCase() === 'gpt' ? 'GPT' : part)
-      .join(' ')
+    return formatAiModelLabel(model)
   }
 
   private sanitizeAiLimits(limits: Partial<AiAssistantLimits>): AiAssistantLimits {
