@@ -9,7 +9,8 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
   templateUrl: './input-list.component.html',
   styleUrls: ['./input-list.component.scss'],
   host: {
-    '[class.dropdown-open]': 'isDropdownOpen'
+    '[class.dropdown-open]': 'isDropdownOpen',
+    '[class.compact]': 'compact'
   }
 })
 export class InputListComponent implements OnChanges {
@@ -21,6 +22,7 @@ export class InputListComponent implements OnChanges {
   @Input() width: string = '300px'
   @Input() placeholder: string = ''
   @Input({ transform: booleanAttribute }) disabled: boolean = false
+  @Input({ transform: booleanAttribute }) compact: boolean = false
 
   searchValue: string = ''
   filteredList: { [key: string]: string | number }[] = []
