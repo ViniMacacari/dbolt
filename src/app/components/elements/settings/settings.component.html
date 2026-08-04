@@ -201,10 +201,29 @@
                             (input)="onAiModelInput($event)">
                         <app-input-list *ngIf="aiProvider !== 'openrouter'" [list]="aiModelOptions"
                             [displayKey]="'label'" [valueKey]="'value'" [selectedValue]="aiModel" [width]="'100%'"
-                            [placeholder]="t('settings.ai.model')"
+                            [placeholder]="aiOpenAiOAuthLoadingModels ? t('settings.ai.oauth.loadingModels') : t('settings.ai.model')"
+                            [disabled]="aiProvider === 'openai-oauth' && (!aiOpenAiOAuthConnected || aiOpenAiOAuthLoadingModels)"
                             (itemSelected)="onAiModelSelected($event)">
                         </app-input-list>
                     </div>
+                </div>
+
+                <div class="ai-oauth-connection" *ngIf="aiProvider === 'openai-oauth'"
+                    [class.connected]="aiOpenAiOAuthConnected">
+                    <img src="icons/ai.png" width="22" height="22" [alt]="t('settings.ai.oauth.title')">
+                    <div class="ai-oauth-connection-copy">
+                        <strong>{{ aiOpenAiOAuthConnected ? t('settings.ai.oauth.connected') : t('settings.ai.oauth.title') }}</strong>
+                        <span>{{ aiOpenAiOAuthConnected ? t('settings.ai.oauth.connectedDescription') : t('settings.ai.oauth.description') }}</span>
+                        <small>{{ t('settings.ai.oauth.unofficial') }}</small>
+                    </div>
+                    <button type="button" *ngIf="!aiOpenAiOAuthConnected" (click)="connectOpenAiOAuth()"
+                        [disabled]="aiOpenAiOAuthSigningIn">
+                        {{ aiOpenAiOAuthSigningIn ? t('settings.ai.oauth.waiting') : t('settings.ai.oauth.signIn') }}
+                    </button>
+                    <button type="button" class="disconnect" *ngIf="aiOpenAiOAuthConnected"
+                        (click)="disconnectOpenAiOAuth()" [disabled]="aiOpenAiOAuthSigningIn">
+                        {{ t('settings.ai.oauth.disconnect') }}
+                    </button>
                 </div>
 
                 <label class="ai-toggle" for="ai-custom-endpoint" *ngIf="aiProvider === 'openai'">
@@ -316,7 +335,7 @@
 
             <div class="settings-actions-row">
                 <button type="button" (click)="saveAiSettings()"
-                    [disabled]="aiSettingsSaving || aiSettingsLoading || !aiModel.trim() || ((aiProvider === 'openai' || aiProvider === 'openrouter') && !aiBaseUrl.trim())">
+                    [disabled]="aiSettingsSaving || aiSettingsLoading || !aiModel.trim() || (aiProvider === 'openai-oauth' && !aiOpenAiOAuthConnected) || ((aiProvider === 'openai' || aiProvider === 'openrouter') && !aiBaseUrl.trim())">
                     {{ t('settings.actions.save') }}
                 </button>
                 <small *ngIf="aiSettingsMessage">{{ aiSettingsMessage }}</small>
