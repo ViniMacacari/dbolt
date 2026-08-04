@@ -19,6 +19,11 @@ const OAUTH_REDIRECT_URI = `http://localhost:${OAUTH_CALLBACK_PORT}${OAUTH_CALLB
 const OAUTH_SESSION_FILENAME = 'openai-oauth.json';
 const LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
 const TOKEN_REFRESH_WINDOW_MS = 2 * 60 * 1000;
+const NON_CONVERSATIONAL_MODEL_PATTERNS = [
+  /(^|[-_.:])image(?:[-_.:]|\d|$)/i,
+  /^dall-e(?:[-_.:]|$)/i,
+  /^sora(?:[-_.:]|$)/i
+];
 
 type OpenAiOAuthCoreModule = typeof import('@openai-oauth/core');
 
@@ -164,7 +169,8 @@ class AiAssistantOpenAiOAuthService {
 
     const models = (payload.data || [])
       .map((item) => typeof item.id === 'string' ? item.id.trim() : '')
-      .filter((model) => /^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/.test(model));
+      .filter((model) => /^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/.test(model))
+      .filter((model) => !NON_CONVERSATIONAL_MODEL_PATTERNS.some((pattern) => pattern.test(model)));
 
     return [...new Set(models)].slice(0, 100);
   }
