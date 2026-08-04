@@ -288,6 +288,11 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       quickSuggestionsDelay: 250,
       suggestOnTriggerCharacters: true,
       wordBasedSuggestions: 'off',
+      hover: {
+        enabled: true,
+        delay: 150,
+        sticky: true
+      },
       contextmenu: true
     })
 
