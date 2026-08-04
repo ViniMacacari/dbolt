@@ -81,3 +81,49 @@ input:focus-visible + .toggle-track {
     text-overflow: clip;
     white-space: normal;
 }
+
+:host.box-variant-host {
+    flex: 0 0 auto;
+}
+
+.checkbox-control-box {
+    gap: 8px;
+
+    .toggle-control {
+        flex-basis: 16px;
+        height: 16px;
+        width: 16px;
+    }
+
+    .toggle-track {
+        border-radius: 4px;
+
+        &::before {
+            align-items: center;
+            background: transparent;
+            color: var(--dbolt-131313);
+            content: '✓';
+            display: flex;
+            font-family: 'Nunito';
+            font-size: 11px;
+            font-weight: 1000;
+            height: 14px;
+            justify-content: center;
+            left: 0;
+            opacity: 0;
+            top: 0;
+            transform: none;
+            width: 14px;
+        }
+    }
+
+    input:checked + .toggle-track {
+        background: var(--dbolt-739eca);
+        border-color: var(--dbolt-739eca);
+
+        &::before {
+            opacity: 1;
+            transform: none;
+        }
+    }
+}
