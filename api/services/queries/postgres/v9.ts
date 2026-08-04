@@ -21,7 +21,12 @@ type CountRow = QueryRow & { total_rows: number };
 class SQueryPgV1 {
   private readonly db = new PgV1();
 
-  async query(sql: string, maxLines: number | null = null, connectionKey?: string): Promise<QueryExecutionResult> {
+  async query(
+    sql: string,
+    maxLines: number | null = null,
+    connectionKey?: string,
+    includeTotalRows: boolean = true
+  ): Promise<QueryExecutionResult> {
     const isSelectQuery = isReadOnlySelectQuery(sql);
     const rowLimit = normalizeRowLimit(maxLines);
 
@@ -36,12 +41,14 @@ class SQueryPgV1 {
     }
 
     let totalRows: number | null = null;
-    try {
-      const countSql = this.getCountQuery(sql);
-      const countResult = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
-      totalRows = countResult[0]?.total_rows ?? 0;
-    } catch (error: unknown) {
-      console.warn('Unable to count PostgreSQL query rows. Running main query without total row count.', error);
+    if (includeTotalRows) {
+      try {
+        const countSql = this.getCountQuery(sql);
+        const countResult = (await this.db.executeQuery(countSql, [], connectionKey)) as CountRow[];
+        totalRows = countResult[0]?.total_rows ?? 0;
+      } catch (error: unknown) {
+        console.warn('Unable to count PostgreSQL query rows. Running main query without total row count.', error);
+      }
     }
 
     let executableSql = trimStatementTerminator(sql);

@@ -8,6 +8,7 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
     {} as any,
     {} as any,
     {} as any,
+    {} as any,
     {} as any
   )
 
@@ -48,4 +49,46 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
     expect(component.showConversationsModal).toBeFalse()
     expect(component.conversationsModalClosing).toBeFalse()
   }))
+
+  it('ensures a live connection before building readonly AI context', async () => {
+    const connectedContext = {
+      connectionKey: 'ai-context',
+      connId: 7,
+      sgbd: 'mysql',
+      version: 'v5',
+      database: 'sales'
+    }
+    const databaseContext = {
+      buildRuntimeConnectionContext: jasmine.createSpy().and.returnValue({
+        connId: 7,
+        sgbd: 'mysql',
+        version: 'v5',
+        database: 'sales'
+      }),
+      buildReadonlyToolContext: jasmine.createSpy().and.returnValue({
+        connectionKey: 'ai-context',
+        sgbd: 'mysql',
+        version: 'v5',
+        database: 'sales'
+      })
+    }
+    const connectionContext = {
+      createContext: jasmine.createSpy().and.returnValue(connectedContext),
+      ensureContext: jasmine.createSpy().and.resolveTo(connectedContext)
+    }
+    const component = new AiAssistantPanelComponent(
+      {} as any,
+      {} as any,
+      {} as any,
+      databaseContext as any,
+      {} as any,
+      connectionContext as any
+    )
+
+    const result = await (component as any).prepareReadonlyToolContext()
+
+    expect(connectionContext.ensureContext).toHaveBeenCalledOnceWith(connectedContext)
+    expect(databaseContext.buildReadonlyToolContext).toHaveBeenCalled()
+    expect(result.connectionKey).toBe('ai-context')
+  })
 })

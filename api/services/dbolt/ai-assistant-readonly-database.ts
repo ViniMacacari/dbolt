@@ -37,7 +37,12 @@ type DatabaseInfoProvider = {
 };
 
 type DatabaseQueryProvider = {
-  query: (sql: string, maxLines?: number | null, connectionKey?: string) => Promise<QueryExecutionResult>;
+  query: (
+    sql: string,
+    maxLines?: number | null,
+    connectionKey?: string,
+    includeTotalRows?: boolean
+  ) => Promise<QueryExecutionResult>;
 };
 
 export interface AiReadonlyDatabaseContext {
@@ -196,7 +201,9 @@ class AiAssistantReadonlyDatabaseService {
     const executableSql = this.normalizeReadOnlySql(sql);
     const rowLimit = this.normalizeLimit(maxRows, DEFAULT_QUERY_LIMIT, MAX_QUERY_LIMIT);
     const provider = this.getDatabaseQueryProvider(context);
-    const result = await provider.query(executableSql, rowLimit, context.connectionKey);
+    // The assistant only needs a bounded sample. A full COUNT over the generated query can be
+    // considerably slower than the limited SELECT and previously left the UI waiting indefinitely.
+    const result = await provider.query(executableSql, rowLimit, context.connectionKey, false);
 
     if (!result.success) {
       throw new Error(this.getServiceErrorMessage(result, 'Could not execute the read-only query.'));

@@ -20,14 +20,17 @@ import {
   AiAssistantApiMessage,
   AiAssistantConversation,
   AiAssistantConversationsState,
+  AiAssistantProgressStage,
   AiAssistantSettings,
   AiChatInputSubmit,
-  AiChatMessage
+  AiChatMessage,
+  AiReadonlyDatabaseToolContext
 } from '../../../services/ai-assistant/ai-assistant.model'
 import { AiDatabaseContextService } from '../../../services/ai-assistant/ai-database-context.service'
 import { AiAssistantSettingsService } from '../../../services/ai-assistant/ai-assistant-settings.service'
 import { AiAssistantConversationsService } from '../../../services/ai-assistant/ai-assistant-conversations.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
+import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
 
 @Component({
   selector: 'app-ai-assistant-panel',
@@ -45,6 +48,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   @Input() tabInfo: unknown
   @Output() close = new EventEmitter<void>()
   @Output() settingsRequested = new EventEmitter<void>()
+  @Output() sqlRequested = new EventEmitter<string>()
 
   settings: AiAssistantSettings | null = null
   conversations: AiAssistantConversation[] = []
@@ -60,20 +64,29 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   showConversationsModal: boolean = false
   conversationsModalClosing: boolean = false
   pendingDeleteConversation: AiAssistantConversation | null = null
+  thinkingSteps: AiAssistantProgressStage[] = []
+  thinkingExpanded: boolean = false
+  thinkingElapsedSeconds: number = 0
 
   @ViewChild('messagesContainer')
   private messagesContainer?: ElementRef<HTMLDivElement>
 
   private lastScrolledMessageId: string = ''
+  private lastScrolledProgressStepCount: number = 0
   private readonly conversationsModalAnimationDuration: number = 180
   private conversationsModalCloseTimer: number | null = null
+  private readonlyRuntimeContext: Record<string, unknown> | null = null
+  private readonlyRuntimeContextIdentity: string = ''
+  private thinkingStartedAt: number = 0
+  private thinkingElapsedTimer: number | null = null
 
   constructor(
     private settingsService: AiAssistantSettingsService,
     private chatService: AiAssistantChatService,
     private conversationsService: AiAssistantConversationsService,
     private databaseContext: AiDatabaseContextService,
-    private language: AppLanguageService
+    private language: AppLanguageService,
+    private connectionContext: ConnectionContextService
   ) { }
 
   async ngOnInit(): Promise<void> {
@@ -85,20 +98,25 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
 
   ngOnDestroy(): void {
     this.cancelConversationsModalClose()
+    this.stopThinkingElapsedTimer()
   }
 
   ngAfterViewChecked(): void {
     const lastMessage = this.messages[this.messages.length - 1]
+    const messageChanged = Boolean(lastMessage && lastMessage.id !== this.lastScrolledMessageId)
+    const progressChanged = this.sending && this.thinkingSteps.length !== this.lastScrolledProgressStepCount
 
-    if (!lastMessage) return
-    if (lastMessage.id === this.lastScrolledMessageId) return
+    if (!messageChanged && !progressChanged) return
 
     const container = this.messagesContainer?.nativeElement
     if (!container) return
 
     container.scrollTop = container.scrollHeight
 
-    this.lastScrolledMessageId = lastMessage.id
+    if (lastMessage) {
+      this.lastScrolledMessageId = lastMessage.id
+    }
+    this.lastScrolledProgressStepCount = this.thinkingSteps.length
   }
 
   get canChat(): boolean {
@@ -131,6 +149,22 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     return this.activeConversation
       ? this.getConversationTitle(this.activeConversation)
       : this.t('aiAssistant.newConversation')
+  }
+
+  get currentThinkingStepLabel(): string {
+    const currentStep = this.thinkingSteps[this.thinkingSteps.length - 1]
+    return currentStep ? this.getThinkingStepLabel(currentStep) : this.t('aiAssistant.answering')
+  }
+
+  get visibleThinkingSteps(): AiAssistantProgressStage[] {
+    return this.thinkingSteps.slice(-5)
+  }
+
+  openSqlInEditor(sql: string): void {
+    const normalizedSql = String(sql || '').trim()
+    if (!normalizedSql) return
+
+    this.sqlRequested.emit(normalizedSql)
   }
 
   async loadSettings(): Promise<void> {
@@ -176,14 +210,21 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     const userMessage = this.createMessage('user', event.message)
     this.messages = [...this.messages, userMessage]
     this.sending = true
+    this.thinkingSteps = ['analyzing-request']
+    this.thinkingExpanded = false
+    this.startThinkingElapsedTimer()
     this.errorMessage = ''
     await this.saveConversationMessages(conversationId, this.messages)
 
     try {
-      const readonlyToolContext = this.databaseContextAvailable
-        ? this.databaseContext.buildReadonlyToolContext(this.selectedSchemaDB, this.dbSchemasData, this.tabInfo)
+      const readonlyToolContext = event.allowDatabaseContext && this.databaseContextAvailable
+        ? await this.prepareReadonlyToolContext()
         : undefined
-      const response = await this.chatService.sendMessage(this.toApiMessages(), readonlyToolContext)
+      const response = await this.chatService.sendMessage(
+        this.toApiMessages(),
+        readonlyToolContext,
+        (stage) => this.addThinkingStep(stage)
+      )
       this.messages = [...this.messages, this.createMessage('assistant', response.message)]
       await this.saveConversationMessages(conversationId, this.messages)
     } catch (error: unknown) {
@@ -194,7 +235,18 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       await this.saveConversationMessages(conversationId, this.messages)
     } finally {
       this.sending = false
+      this.stopThinkingElapsedTimer()
+      this.thinkingSteps = []
+      this.lastScrolledProgressStepCount = 0
     }
+  }
+
+  toggleThinkingProgress(): void {
+    this.thinkingExpanded = !this.thinkingExpanded
+  }
+
+  getThinkingStepLabel(stage: AiAssistantProgressStage): string {
+    return this.t(`aiAssistant.progress.${stage}`)
   }
 
   trackMessage(_index: number, message: AiChatMessage): string {
@@ -401,6 +453,69 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     this.activeConversationId = state.activeConversationId
     this.messages = this.activeConversation?.messages || []
     this.lastScrolledMessageId = ''
+  }
+
+  private addThinkingStep(stage: AiAssistantProgressStage): void {
+    if (!this.sending) return
+    if (this.thinkingSteps[this.thinkingSteps.length - 1] === stage) return
+
+    this.thinkingSteps = [
+      ...this.thinkingSteps.filter((existingStage) => existingStage !== stage),
+      stage
+    ].slice(-5)
+  }
+
+  private startThinkingElapsedTimer(): void {
+    this.stopThinkingElapsedTimer()
+    this.thinkingStartedAt = Date.now()
+    this.thinkingElapsedSeconds = 0
+    this.thinkingElapsedTimer = window.setInterval(() => {
+      this.thinkingElapsedSeconds = Math.floor((Date.now() - this.thinkingStartedAt) / 1000)
+    }, 1000)
+  }
+
+  private stopThinkingElapsedTimer(): void {
+    if (this.thinkingElapsedTimer !== null) {
+      window.clearInterval(this.thinkingElapsedTimer)
+      this.thinkingElapsedTimer = null
+    }
+
+    this.thinkingStartedAt = 0
+    this.thinkingElapsedSeconds = 0
+  }
+
+  private async prepareReadonlyToolContext(): Promise<AiReadonlyDatabaseToolContext> {
+    const sourceContext = this.databaseContext.buildRuntimeConnectionContext(
+      this.selectedSchemaDB,
+      this.dbSchemasData,
+      this.tabInfo
+    )
+    const identity = [
+      sourceContext['connId'],
+      sourceContext['name'],
+      sourceContext['host'],
+      sourceContext['port'],
+      sourceContext['sgbd'],
+      sourceContext['database'],
+      sourceContext['schema']
+    ].map((value) => String(value || '')).join(':')
+    const reusableConnectionKey = identity === this.readonlyRuntimeContextIdentity
+      ? this.readonlyRuntimeContext?.['connectionKey']
+      : undefined
+    const context = this.connectionContext.createContext({
+      ...sourceContext,
+      connectionKey: sourceContext['connectionKey'] || reusableConnectionKey
+    })
+    const connectedContext = await this.connectionContext.ensureContext(context)
+
+    this.readonlyRuntimeContextIdentity = identity
+    this.readonlyRuntimeContext = connectedContext
+
+    return this.databaseContext.buildReadonlyToolContext(
+      connectedContext,
+      this.dbSchemasData,
+      this.tabInfo
+    )
   }
 
   private cancelConversationsModalClose(): void {
