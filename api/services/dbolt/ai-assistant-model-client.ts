@@ -2,6 +2,7 @@ import type {
   AiAssistantProvider,
   AiAssistantResolvedSettings
 } from './ai-assistant-settings.js';
+import OpenAiOAuth from './ai-assistant-openai-oauth.js';
 
 export interface AiModelMessage {
   role: 'user' | 'assistant';
@@ -88,6 +89,20 @@ interface AnthropicMessageResponse {
   }>;
 }
 
+interface OpenAiOAuthResponsesResponse {
+  model?: string;
+  output_text?: string;
+  output?: Array<{
+    type?: string;
+    name?: string;
+    arguments?: unknown;
+    content?: Array<{
+      type?: string;
+      text?: string;
+    }>;
+  }>;
+}
+
 interface NativeDatabaseActionCall {
   name?: string;
   arguments?: Record<string, unknown>;
@@ -99,6 +114,10 @@ class AiAssistantModelClient {
     systemPrompt: string,
     messages: AiModelMessage[]
   ): Promise<AiModelCompletion> {
+    if (settings.provider === 'openai-oauth') {
+      return await this.completeWithOpenAiOAuth(settings.model, systemPrompt, messages);
+    }
+
     if (settings.provider === 'gemini') {
       return await this.completeWithGemini(settings.model, settings.apiKey, systemPrompt, messages);
     }
@@ -129,6 +148,10 @@ class AiAssistantModelClient {
   }
 
   getProviderLabel(provider: AiAssistantProvider): string {
+    if (provider === 'openai-oauth') {
+      return 'OpenAI OAuth';
+    }
+
     if (provider === 'anthropic') {
       return 'Claude';
     }
@@ -138,6 +161,69 @@ class AiAssistantModelClient {
     }
 
     return provider === 'gemini' ? 'Gemini' : 'OpenAI compatible';
+  }
+
+  private async completeWithOpenAiOAuth(
+    model: string,
+    systemPrompt: string,
+    messages: AiModelMessage[]
+  ): Promise<AiModelCompletion> {
+    const transport = await OpenAiOAuth.getTransport();
+    const response = await transport.request('/v1/responses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify({
+        model,
+        instructions: systemPrompt,
+        input: this.normalizeChatMessages(messages).map((message) => ({
+          role: message.role,
+          content: message.content
+        })),
+        store: false
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(await this.extractErrorMessage(response));
+    }
+
+    const completion = await response.json() as OpenAiOAuthResponsesResponse;
+    const content = this.readOpenAiOAuthOutput(completion);
+
+    if (!content) {
+      throw new Error('OpenAI OAuth did not return a valid response.');
+    }
+
+    return {
+      content,
+      model: completion.model || model
+    };
+  }
+
+  private readOpenAiOAuthOutput(completion: OpenAiOAuthResponsesResponse): string {
+    const outputText = completion.output_text?.trim();
+    if (outputText) return outputText;
+
+    const text = (completion.output || [])
+      .flatMap((item) => item.content || [])
+      .filter((part) => part.type === 'output_text' || !part.type)
+      .map((part) => part.text || '')
+      .join('')
+      .trim();
+
+    if (text) return text;
+
+    const calls = (completion.output || [])
+      .filter((item) => item.type === 'function_call' && item.name)
+      .map((item) => ({
+        name: item.name,
+        arguments: this.parseNativeCallArguments(item.arguments)
+      }));
+
+    return this.buildDatabaseActionsJson(calls);
   }
 
   private async completeWithOpenRouter(
