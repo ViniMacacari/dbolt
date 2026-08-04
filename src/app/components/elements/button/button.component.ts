@@ -6,7 +6,10 @@ export type AppButtonVariant = 'primary' | 'danger'
   selector: 'app-button',
   standalone: true,
   templateUrl: './button.component.html',
-  styleUrl: './button.component.scss'
+  styleUrl: './button.component.scss',
+  host: {
+    '[class.full-width-host]': 'fullWidth'
+  }
 })
 export class ButtonComponent {
   @Input() type: 'button' | 'submit' = 'button'
@@ -14,6 +17,8 @@ export class ButtonComponent {
   @Input() title = ''
   @Input() ariaLabel = ''
   @Input({ transform: booleanAttribute }) disabled = false
+  @Input({ transform: booleanAttribute }) fullWidth = false
+  @Input({ transform: booleanAttribute }) compact = false
   @Output() pressed = new EventEmitter<MouseEvent>()
 
   onClick(event: MouseEvent): void {
