@@ -79,10 +79,10 @@ export class AiAssistantSettingsService {
       return
     }
 
-    const authorizationWindow = window.open(authorizationUrl, '_blank', 'noopener,noreferrer')
-    if (!authorizationWindow) {
-      throw new Error('The browser blocked the ChatGPT login window.')
-    }
+    // With `noopener`, browsers are allowed to return `null` even when the tab was
+    // opened successfully. The OAuth flow is confirmed by polling the backend, so
+    // treating that return value as a popup-blocker signal aborts valid logins.
+    window.open(authorizationUrl, '_blank', 'noopener,noreferrer')
   }
 
   private async readData<T>(response: ApiResponse<T>, fallback: string): Promise<T> {
