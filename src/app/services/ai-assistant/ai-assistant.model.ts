@@ -1,5 +1,6 @@
 export type AiChatRole = 'user' | 'assistant'
-export type AiAssistantProvider = 'openai' | 'gemini' | 'anthropic' | 'openrouter'
+export type AiAssistantProvider = 'openai' | 'openai-oauth' | 'gemini' | 'anthropic' | 'openrouter'
+export type AiAssistantApiKeyProvider = Exclude<AiAssistantProvider, 'openai-oauth'>
 
 export interface AiAssistantLimits {
   maxApiCallsPerMessage: number
@@ -15,7 +16,9 @@ export interface AiAssistantSettings {
   baseUrl: string
   model: string
   hasApiKey: boolean
-  hasApiKeys?: Record<AiAssistantProvider, boolean>
+  hasApiKeys?: Record<AiAssistantApiKeyProvider, boolean>
+  openAiOAuthConnected: boolean
+  openAiOAuthRecommendationDismissed: boolean
   maskedApiKey?: string
   limits: AiAssistantLimits
 }
@@ -26,8 +29,9 @@ export interface AiAssistantSettingsUpdate {
   model: string
   apiKey?: string
   clearApiKey?: boolean
-  apiKeys?: Partial<Record<AiAssistantProvider, string>>
-  clearApiKeys?: Partial<Record<AiAssistantProvider, boolean>>
+  apiKeys?: Partial<Record<AiAssistantApiKeyProvider, string>>
+  clearApiKeys?: Partial<Record<AiAssistantApiKeyProvider, boolean>>
+  openAiOAuthRecommendationDismissed?: boolean
   limits?: Partial<AiAssistantLimits>
 }
 
@@ -65,6 +69,18 @@ export interface AiAssistantApiMessage {
 export interface AiAssistantChatResponse {
   message: string
   model: string
+}
+
+export interface OpenAiOAuthStatus {
+  connected: boolean
+  signingIn: boolean
+  secureStorageAvailable: boolean
+  error?: string
+}
+
+export interface OpenAiOAuthLoginStart {
+  connected: boolean
+  authorizationUrl?: string
 }
 
 export type AiAssistantProgressStage =

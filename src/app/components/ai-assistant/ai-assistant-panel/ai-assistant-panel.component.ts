@@ -31,11 +31,18 @@ import { AiAssistantSettingsService } from '../../../services/ai-assistant/ai-as
 import { AiAssistantConversationsService } from '../../../services/ai-assistant/ai-assistant-conversations.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
+import { OpenAiOAuthSessionService } from '../../../services/ai-assistant/openai-oauth-session.service'
+import { InputListComponent } from '../../elements/input-list/input-list.component'
+import {
+  AiAssistantModelOption,
+  modelOption,
+  staticModelOptionsForProvider
+} from '../../../services/ai-assistant/ai-assistant-model-catalog'
 
 @Component({
   selector: 'app-ai-assistant-panel',
   standalone: true,
-  imports: [CommonModule, AiChatInputComponent, AiChatMessageComponent, YesNoModalComponent],
+  imports: [CommonModule, AiChatInputComponent, AiChatMessageComponent, YesNoModalComponent, InputListComponent],
   templateUrl: './ai-assistant-panel.component.html',
   styleUrl: './ai-assistant-panel.component.scss',
   host: {
@@ -67,6 +74,11 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   thinkingSteps: AiAssistantProgressStage[] = []
   thinkingExpanded: boolean = false
   thinkingElapsedSeconds: number = 0
+  openAiOAuthSigningIn: boolean = false
+  modelOptions: AiAssistantModelOption[] = []
+  modelOptionsLoading: boolean = false
+  modelSaving: boolean = false
+  modelStatusMessage: string = ''
 
   @ViewChild('messagesContainer')
   private messagesContainer?: ElementRef<HTMLDivElement>
@@ -79,6 +91,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   private readonlyRuntimeContextIdentity: string = ''
   private thinkingStartedAt: number = 0
   private thinkingElapsedTimer: number | null = null
+  private modelOptionsRequestId: number = 0
 
   constructor(
     private settingsService: AiAssistantSettingsService,
@@ -86,7 +99,8 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     private conversationsService: AiAssistantConversationsService,
     private databaseContext: AiDatabaseContextService,
     private language: AppLanguageService,
-    private connectionContext: ConnectionContextService
+    private connectionContext: ConnectionContextService,
+    private openAiOAuth: OpenAiOAuthSessionService
   ) { }
 
   async ngOnInit(): Promise<void> {
@@ -121,6 +135,14 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
 
   get canChat(): boolean {
     return Boolean(this.settings?.hasApiKey) && !this.loadingSettings
+  }
+
+  get showOpenAiOAuthRecommendation(): boolean {
+    return Boolean(
+      this.settings &&
+      !this.settings.openAiOAuthConnected &&
+      !this.settings.openAiOAuthRecommendationDismissed
+    )
   }
 
   get databaseContextAvailable(): boolean {
@@ -173,10 +195,105 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
 
     try {
       this.settings = await this.settingsService.loadSettings()
+      void this.loadModelOptions(this.settings)
     } catch (error: unknown) {
       this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.loadSettingsError'))
     } finally {
       this.loadingSettings = false
+    }
+  }
+
+  async onModelSelected(item: { [key: string]: string | number } | null): Promise<void> {
+    const model = typeof item?.['value'] === 'string' ? item['value'].trim() : ''
+    const currentSettings = this.settings
+
+    if (!currentSettings || !model || model === currentSettings.model || this.sending || this.modelSaving) return
+    if (!this.modelOptions.some((option) => option.value === model)) return
+
+    this.modelSaving = true
+    this.modelStatusMessage = this.t('aiAssistant.modelChanging')
+    this.errorMessage = ''
+    this.settings = { ...currentSettings, model }
+
+    try {
+      this.settings = await this.settingsService.saveSettings({
+        provider: currentSettings.provider,
+        model,
+        baseUrl: currentSettings.baseUrl || undefined,
+        limits: currentSettings.limits
+      })
+      this.modelStatusMessage = this.t('aiAssistant.modelChanged')
+    } catch (error: unknown) {
+      this.settings = currentSettings
+      this.modelStatusMessage = ''
+      this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.modelChangeFailed'))
+    } finally {
+      this.modelSaving = false
+    }
+  }
+
+  async connectOpenAiOAuth(): Promise<void> {
+    if (this.openAiOAuthSigningIn) return
+
+    this.openAiOAuthSigningIn = true
+    this.errorMessage = ''
+
+    try {
+      await this.openAiOAuth.signIn()
+      await this.loadSettings()
+    } catch (error: unknown) {
+      this.errorMessage = this.getErrorMessage(error, this.t('settings.ai.oauth.loginFailed'))
+    } finally {
+      this.openAiOAuthSigningIn = false
+    }
+  }
+
+  private async loadModelOptions(settings: AiAssistantSettings): Promise<void> {
+    const requestId = ++this.modelOptionsRequestId
+    const currentModelOption = modelOption(settings.model)
+    this.modelStatusMessage = ''
+
+    if (settings.provider !== 'openai-oauth' || !settings.openAiOAuthConnected) {
+      const options = staticModelOptionsForProvider(settings.provider, settings.model)
+      this.modelOptions = options.some((option) => option.value === settings.model)
+        ? options
+        : [currentModelOption, ...options]
+      this.modelOptionsLoading = false
+      return
+    }
+
+    this.modelOptions = []
+    this.modelOptionsLoading = true
+
+    try {
+      const models = await this.openAiOAuth.loadModels()
+      if (requestId !== this.modelOptionsRequestId) return
+
+      const options = models.map(modelOption)
+      this.modelOptions = options
+    } catch (error: unknown) {
+      if (requestId === this.modelOptionsRequestId) {
+        this.errorMessage = this.getErrorMessage(error, this.t('settings.ai.oauth.modelsFailed'))
+      }
+    } finally {
+      if (requestId === this.modelOptionsRequestId) {
+        this.modelOptionsLoading = false
+      }
+    }
+  }
+
+  async dismissOpenAiOAuthRecommendation(): Promise<void> {
+    if (!this.settings) return
+
+    this.settings = {
+      ...this.settings,
+      openAiOAuthRecommendationDismissed: true
+    }
+
+    try {
+      this.settings = await this.settingsService.dismissOpenAiOAuthRecommendation()
+    } catch (error: unknown) {
+      this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.oauth.dismissFailed'))
     }
   }
 

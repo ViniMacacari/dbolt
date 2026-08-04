@@ -23,6 +23,7 @@ export class AiSettingsFormComponent implements OnChanges {
   @Input() saving: boolean = false
   @Output() save = new EventEmitter<AiAssistantSettingsUpdate>()
   @Output() cancel = new EventEmitter<void>()
+  @Output() openAiOAuthLoginRequested = new EventEmitter<void>()
 
   apiKey: string = ''
   provider: AiAssistantProvider = 'openai'
@@ -32,6 +33,7 @@ export class AiSettingsFormComponent implements OnChanges {
   customEndpointEnabled: boolean = false
   readonly providerOptions: { label: string, value: AiAssistantProvider }[] = [
     { label: 'OpenAI', value: 'openai' },
+    { label: 'OpenAI OAuth', value: 'openai-oauth' },
     { label: 'Gemini', value: 'gemini' },
     { label: 'Claude', value: 'anthropic' },
     { label: 'OpenRouter', value: 'openrouter' }
@@ -85,7 +87,9 @@ export class AiSettingsFormComponent implements OnChanges {
   }
 
   get hasApiKeyForSelectedProvider(): boolean {
-    return Boolean(this.settings?.hasApiKeys?.[this.provider])
+    return this.provider === 'openai-oauth'
+      ? Boolean(this.settings?.openAiOAuthConnected)
+      : Boolean(this.settings?.hasApiKeys?.[this.provider])
   }
 
   onProviderSelected(item: { [key: string]: string | number } | null): void {
@@ -146,6 +150,10 @@ export class AiSettingsFormComponent implements OnChanges {
   }
 
   private defaultModelForProvider(provider: AiAssistantProvider): string {
+    if (provider === 'openai-oauth') {
+      return 'gpt-5.6-sol'
+    }
+
     if (provider === 'anthropic') {
       return 'claude-sonnet-4-6'
     }
@@ -164,6 +172,10 @@ export class AiSettingsFormComponent implements OnChanges {
   }
 
   private modelOptionsForProvider(provider: AiAssistantProvider): { label: string, value: string }[] {
+    if (provider === 'openai-oauth') {
+      return []
+    }
+
     if (provider === 'openrouter') {
       return []
     }
@@ -178,7 +190,7 @@ export class AiSettingsFormComponent implements OnChanges {
   }
 
   private normalizeProvider(value: string | number | undefined): AiAssistantProvider {
-    if (value === 'gemini' || value === 'anthropic' || value === 'openrouter') {
+    if (value === 'openai-oauth' || value === 'gemini' || value === 'anthropic' || value === 'openrouter') {
       return value
     }
 

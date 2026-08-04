@@ -12,16 +12,25 @@ import {
 import { ConnectionsService, SavedConnection } from '../../../services/resolve-connections/connections.service'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { InputListComponent } from '../input-list/input-list.component'
+import { ButtonComponent } from '../button/button.component'
 import { LoadingComponent } from '../../modal/loading/loading.component'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { AppLanguage } from '../../../services/language/language.model'
 import { AiAssistantSettingsService } from '../../../services/ai-assistant/ai-assistant-settings.service'
 import { AppThemeService } from '../../../services/theme/app-theme.service'
 import {
+  AiAssistantApiKeyProvider,
   AiAssistantLimits,
   AiAssistantProvider,
   AiAssistantSettings
 } from '../../../services/ai-assistant/ai-assistant.model'
+import { OpenAiOAuthSessionService } from '../../../services/ai-assistant/openai-oauth-session.service'
+import {
+  ANTHROPIC_MODEL_OPTIONS,
+  formatAiModelLabel,
+  GEMINI_MODEL_OPTIONS,
+  OPENAI_MODEL_OPTIONS
+} from '../../../services/ai-assistant/ai-assistant-model-catalog'
 
 type SettingsTab = 'query' | 'connections' | 'autocomplete' | 'highlight' | 'appearance' | 'language' | 'ai'
 
@@ -39,7 +48,7 @@ const DEFAULT_AI_LIMITS: AiAssistantLimits = {
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, InputListComponent],
+  imports: [CommonModule, InputListComponent, ButtonComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss'
 })
@@ -90,14 +99,18 @@ export class SettingsComponent implements OnInit, OnChanges {
   aiSettings: AiAssistantSettings | null = null
   aiSettingsLoading: boolean = false
   aiSettingsSaving: boolean = false
-  aiRemovingApiKey: AiAssistantProvider | null = null
+  aiRemovingApiKey: AiAssistantApiKeyProvider | null = null
   aiSettingsMessage: string = ''
   aiSettingsError: string = ''
   aiProvider: AiAssistantProvider = 'openai'
   aiModel: string = 'gpt-5.4-mini'
   aiBaseUrl: string = DEFAULT_AI_BASE_URL
   aiCustomEndpointEnabled: boolean = false
-  aiApiKeys: Record<AiAssistantProvider, string> = {
+  aiOpenAiOAuthConnected: boolean = false
+  aiOpenAiOAuthSigningIn: boolean = false
+  aiOpenAiOAuthLoadingModels: boolean = false
+  aiOpenAiOAuthModels: { label: string, value: string }[] = []
+  aiApiKeys: Record<AiAssistantApiKeyProvider, string> = {
     openai: '',
     gemini: '',
     anthropic: '',
@@ -106,47 +119,20 @@ export class SettingsComponent implements OnInit, OnChanges {
   aiLimits: AiAssistantLimits = { ...DEFAULT_AI_LIMITS }
   readonly aiProviderOptions: { label: string, value: AiAssistantProvider }[] = [
     { label: 'OpenAI', value: 'openai' },
+    { label: 'OpenAI OAuth', value: 'openai-oauth' },
     { label: 'Gemini', value: 'gemini' },
     { label: 'Claude', value: 'anthropic' },
     { label: 'OpenRouter', value: 'openrouter' }
   ]
-  readonly aiApiKeyFields: { provider: AiAssistantProvider, label: string }[] = [
+  readonly aiApiKeyFields: { provider: AiAssistantApiKeyProvider, label: string }[] = [
     { provider: 'openai', label: 'OpenAI' },
     { provider: 'gemini', label: 'Gemini' },
     { provider: 'anthropic', label: 'Claude' },
     { provider: 'openrouter', label: 'OpenRouter' }
   ]
-  readonly openAiModelOptions: { label: string, value: string }[] = [
-    { label: 'GPT-5.5', value: 'gpt-5.5' },
-    { label: 'GPT-5.4', value: 'gpt-5.4' },
-    { label: 'GPT-5.4 mini', value: 'gpt-5.4-mini' },
-    { label: 'GPT-5.4 nano', value: 'gpt-5.4-nano' },
-    { label: 'GPT-5.2', value: 'gpt-5.2' },
-    { label: 'GPT-5.1', value: 'gpt-5.1' },
-    { label: 'GPT-5', value: 'gpt-5' },
-    { label: 'GPT-5 mini', value: 'gpt-5-mini' },
-    { label: 'GPT-5 nano', value: 'gpt-5-nano' },
-    { label: 'GPT-4.1 mini', value: 'gpt-4.1-mini' },
-    { label: 'GPT-4.1', value: 'gpt-4.1' },
-    { label: 'GPT-4.1 nano', value: 'gpt-4.1-nano' },
-    { label: 'GPT-4o mini', value: 'gpt-4o-mini' },
-    { label: 'GPT-4o', value: 'gpt-4o' },
-    { label: 'o4-mini', value: 'o4-mini' }
-  ]
-  readonly geminiModelOptions: { label: string, value: string }[] = [
-    { label: 'Gemini 3.5 Flash', value: 'gemini-3.5-flash' },
-    { label: 'Gemini 3.1 Pro Preview', value: 'gemini-3.1-pro-preview' },
-    { label: 'Gemini 3.1 Flash-Lite', value: 'gemini-3.1-flash-lite' },
-    { label: 'Gemini 3 Flash Preview', value: 'gemini-3-flash-preview' },
-    { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
-    { label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
-    { label: 'Gemini 2.5 Flash-Lite', value: 'gemini-2.5-flash-lite' }
-  ]
-  readonly anthropicModelOptions: { label: string, value: string }[] = [
-    { label: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
-    { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-    { label: 'Claude Haiku 4.5', value: 'claude-haiku-4-5-20251001' }
-  ]
+  readonly openAiModelOptions = OPENAI_MODEL_OPTIONS
+  readonly geminiModelOptions = GEMINI_MODEL_OPTIONS
+  readonly anthropicModelOptions = ANTHROPIC_MODEL_OPTIONS
 
   constructor(
     private settings: AppSettingsService,
@@ -154,6 +140,7 @@ export class SettingsComponent implements OnInit, OnChanges {
     private IAPI: InternalApiService,
     private language: AppLanguageService,
     private aiSettingsService: AiAssistantSettingsService,
+    private openAiOAuth: OpenAiOAuthSessionService,
     private theme: AppThemeService
   ) {
     this.defaultQueryRows = this.settings.getDefaultQueryRows()
@@ -303,6 +290,10 @@ export class SettingsComponent implements OnInit, OnChanges {
     } else {
       this.aiCustomEndpointEnabled = false
     }
+
+    if (provider === 'openai-oauth' && this.aiOpenAiOAuthConnected) {
+      void this.loadOpenAiOAuthModels()
+    }
   }
 
   onAiModelSelected(item: { [key: string]: string | number } | null): void {
@@ -330,7 +321,7 @@ export class SettingsComponent implements OnInit, OnChanges {
     this.aiSettingsMessage = ''
   }
 
-  onAiApiKeyInput(provider: AiAssistantProvider, event: Event): void {
+  onAiApiKeyInput(provider: AiAssistantApiKeyProvider, event: Event): void {
     this.aiApiKeys = {
       ...this.aiApiKeys,
       [provider]: (event.target as HTMLInputElement).value
@@ -347,13 +338,13 @@ export class SettingsComponent implements OnInit, OnChanges {
     this.aiSettingsMessage = ''
   }
 
-  getAiApiKeyPlaceholder(provider: AiAssistantProvider): string {
+  getAiApiKeyPlaceholder(provider: AiAssistantApiKeyProvider): string {
     return this.hasAiApiKeyForProvider(provider)
       ? this.t('settings.ai.apiKeys.configured')
       : this.t('settings.ai.apiKeys.placeholder')
   }
 
-  hasAiApiKeyForProvider(provider: AiAssistantProvider): boolean {
+  hasAiApiKeyForProvider(provider: AiAssistantApiKeyProvider): boolean {
     return Boolean(this.aiSettings?.hasApiKeys?.[provider])
   }
 
@@ -363,7 +354,7 @@ export class SettingsComponent implements OnInit, OnChanges {
     this.aiSettingsError = ''
 
     try {
-      const apiKeys: Partial<Record<AiAssistantProvider, string>> = {}
+      const apiKeys: Partial<Record<AiAssistantApiKeyProvider, string>> = {}
 
       this.aiApiKeyFields.forEach((field) => {
         const apiKey = this.aiApiKeys[field.provider].trim()
@@ -390,7 +381,7 @@ export class SettingsComponent implements OnInit, OnChanges {
     }
   }
 
-  async removeAiApiKey(provider: AiAssistantProvider): Promise<void> {
+  async removeAiApiKey(provider: AiAssistantApiKeyProvider): Promise<void> {
     if (this.aiSettingsSaving || this.aiSettingsLoading || this.aiRemovingApiKey) return
 
     const persistedSettings = this.aiSettings
@@ -418,6 +409,51 @@ export class SettingsComponent implements OnInit, OnChanges {
       this.aiSettingsError = this.getErrorMessage(error, this.t('settings.ai.saveFailed'))
     } finally {
       this.aiRemovingApiKey = null
+    }
+  }
+
+  async connectOpenAiOAuth(): Promise<void> {
+    if (this.aiOpenAiOAuthSigningIn) return
+
+    this.aiOpenAiOAuthSigningIn = true
+    this.aiSettingsError = ''
+    this.aiSettingsMessage = ''
+
+    try {
+      const status = await this.openAiOAuth.signIn((nextStatus) => {
+        this.aiOpenAiOAuthConnected = nextStatus.connected
+        this.aiOpenAiOAuthSigningIn = nextStatus.signingIn || !nextStatus.connected
+      })
+      this.aiOpenAiOAuthConnected = status.connected
+      this.patchOpenAiOAuthConnectionStatus(status.connected)
+      if (this.aiSettings) this.aiSettingsSaved.emit(this.aiSettings)
+      await this.loadOpenAiOAuthModels()
+      this.aiSettingsMessage = this.t('settings.ai.oauth.connected')
+    } catch (error: unknown) {
+      this.aiSettingsError = this.getErrorMessage(error, this.t('settings.ai.oauth.loginFailed'))
+    } finally {
+      this.aiOpenAiOAuthSigningIn = false
+    }
+  }
+
+  async disconnectOpenAiOAuth(): Promise<void> {
+    if (this.aiOpenAiOAuthSigningIn) return
+
+    this.aiOpenAiOAuthSigningIn = true
+    this.aiSettingsError = ''
+    this.aiSettingsMessage = ''
+
+    try {
+      const status = await this.openAiOAuth.disconnect()
+      this.aiOpenAiOAuthConnected = status.connected
+      this.aiOpenAiOAuthModels = []
+      this.patchOpenAiOAuthConnectionStatus(false)
+      if (this.aiSettings) this.aiSettingsSaved.emit(this.aiSettings)
+      this.aiSettingsMessage = this.t('settings.ai.oauth.disconnected')
+    } catch (error: unknown) {
+      this.aiSettingsError = this.getErrorMessage(error, this.t('settings.ai.oauth.logoutFailed'))
+    } finally {
+      this.aiOpenAiOAuthSigningIn = false
     }
   }
 
@@ -746,6 +782,7 @@ export class SettingsComponent implements OnInit, OnChanges {
     this.aiModel = settings.model || this.defaultModelForAiProvider(settings.provider)
     this.aiBaseUrl = settings.baseUrl || this.defaultBaseUrlForAiProvider(settings.provider)
     this.aiCustomEndpointEnabled = settings.provider === 'openai' && this.aiBaseUrl !== DEFAULT_AI_BASE_URL
+    this.aiOpenAiOAuthConnected = settings.openAiOAuthConnected
     this.aiApiKeys = {
       openai: '',
       gemini: '',
@@ -753,6 +790,10 @@ export class SettingsComponent implements OnInit, OnChanges {
       openrouter: ''
     }
     this.aiLimits = this.sanitizeAiLimits(settings.limits || DEFAULT_AI_LIMITS)
+
+    if (settings.openAiOAuthConnected && settings.provider === 'openai-oauth') {
+      void this.loadOpenAiOAuthModels()
+    }
   }
 
   private async loadConnections(): Promise<void> {
@@ -809,6 +850,10 @@ export class SettingsComponent implements OnInit, OnChanges {
   }
 
   private defaultModelForAiProvider(provider: AiAssistantProvider): string {
+    if (provider === 'openai-oauth') {
+      return this.aiOpenAiOAuthModels[0]?.value || 'gpt-5.6-sol'
+    }
+
     if (provider === 'anthropic') {
       return 'claude-sonnet-4-6'
     }
@@ -836,6 +881,10 @@ export class SettingsComponent implements OnInit, OnChanges {
   }
 
   private modelOptionsForAiProvider(provider: AiAssistantProvider): { label: string, value: string }[] {
+    if (provider === 'openai-oauth') {
+      return this.aiOpenAiOAuthModels
+    }
+
     if (provider === 'openrouter') {
       return []
     }
@@ -850,11 +899,50 @@ export class SettingsComponent implements OnInit, OnChanges {
   }
 
   private normalizeAiProvider(value: string | number | undefined): AiAssistantProvider {
-    if (value === 'gemini' || value === 'anthropic' || value === 'openrouter') {
+    if (value === 'openai-oauth' || value === 'gemini' || value === 'anthropic' || value === 'openrouter') {
       return value
     }
 
     return 'openai'
+  }
+
+  private async loadOpenAiOAuthModels(): Promise<void> {
+    if (!this.aiOpenAiOAuthConnected || this.aiOpenAiOAuthLoadingModels) return
+
+    this.aiOpenAiOAuthLoadingModels = true
+
+    try {
+      const models = await this.openAiOAuth.loadModels()
+      this.aiOpenAiOAuthModels = models.map((model) => ({
+        label: this.formatOpenAiOAuthModelLabel(model),
+        value: model
+      }))
+
+      if (this.aiProvider === 'openai-oauth' &&
+        !this.aiOpenAiOAuthModels.some((option) => option.value === this.aiModel)) {
+        this.aiModel = this.aiOpenAiOAuthModels[0]?.value || 'gpt-5.6-sol'
+      }
+    } catch (error: unknown) {
+      this.aiSettingsError = this.getErrorMessage(error, this.t('settings.ai.oauth.modelsFailed'))
+    } finally {
+      this.aiOpenAiOAuthLoadingModels = false
+    }
+  }
+
+  private patchOpenAiOAuthConnectionStatus(connected: boolean): void {
+    if (!this.aiSettings) return
+
+    this.aiSettings = {
+      ...this.aiSettings,
+      openAiOAuthConnected: connected,
+      hasApiKey: this.aiSettings.provider === 'openai-oauth'
+        ? connected
+        : this.aiSettings.hasApiKey
+    }
+  }
+
+  private formatOpenAiOAuthModelLabel(model: string): string {
+    return formatAiModelLabel(model)
   }
 
   private sanitizeAiLimits(limits: Partial<AiAssistantLimits>): AiAssistantLimits {

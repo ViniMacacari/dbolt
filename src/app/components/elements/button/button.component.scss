@@ -34,6 +34,16 @@
         opacity: .55;
     }
 
+    &.accent {
+        background-color: var(--dbolt-2b3340);
+        border: 1px solid rgba(115, 158, 202, .45);
+        color: var(--dbolt-d8e9fb);
+
+        &:hover:not(:disabled) {
+            background-color: var(--dbolt-334052);
+        }
+    }
+
     &.danger {
         background-color: #8d0000;
 

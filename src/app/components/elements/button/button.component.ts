@@ -1,6 +1,6 @@
 import { booleanAttribute, Component, EventEmitter, Input, Output } from '@angular/core'
 
-export type AppButtonVariant = 'primary' | 'danger'
+export type AppButtonVariant = 'primary' | 'accent' | 'danger'
 
 @Component({
   selector: 'app-button',

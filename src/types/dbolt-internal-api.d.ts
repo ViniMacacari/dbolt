@@ -69,5 +69,8 @@ declare global {
         filePath: string | null;
       }>;
     };
+    dboltOpenAiOAuth?: {
+      openAuthorizationUrl(authorizationUrl: string): Promise<void>;
+    };
   }
 }

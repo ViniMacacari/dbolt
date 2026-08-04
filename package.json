@@ -92,6 +92,7 @@
     "@angular/router": "^18.2.0",
     "@electron/remote": "^2.1.2",
     "@monaco-editor/loader": "^1.4.0",
+    "@openai-oauth/core": "2.0.0",
     "@sap/hana-client": "^2.22.32",
     "ag-grid-angular": "^33.0.1",
     "bootstrap": "5.3",
