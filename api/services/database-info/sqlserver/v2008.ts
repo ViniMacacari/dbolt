@@ -17,7 +17,11 @@ import type {
   TableMetadataRowsResult
 } from '../../../types.js';
 
-type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'procedure' };
+type NamedObjectRow = QueryRow & {
+  name: string;
+  type: 'table' | 'view' | 'procedure' | 'function' | 'trigger' | 'sequence' | 'synonym' | 'type';
+  table_name?: string;
+};
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type: string };
 type ColumnRow = QueryRow & TableColumn;
 type TableLikeObjectRow = QueryRow & {
@@ -47,25 +51,33 @@ class ListObjectsSQLServerV1 {
             CASE
               WHEN o.type = 'U' THEN 'table'
               WHEN o.type = 'V' THEN 'view'
-              ELSE 'procedure'
-            END AS type
+              WHEN o.type IN ('P', 'PC') THEN 'procedure'
+              WHEN o.type IN ('FN', 'IF', 'TF', 'FS', 'FT') THEN 'function'
+              ELSE 'trigger'
+            END AS type,
+            OBJECT_NAME(o.parent_object_id) AS table_name
         FROM sys.objects o
         WHERE o.schema_id = SCHEMA_ID(@schemaName)
-          AND o.type IN ('U', 'V', 'P', 'PC')
+          AND o.type IN ('U', 'V', 'P', 'PC', 'FN', 'IF', 'TF', 'FS', 'FT', 'TR', 'TA')
           AND o.is_ms_shipped = 0
         ORDER BY
           CASE
             WHEN o.type = 'U' THEN 0
             WHEN o.type = 'V' THEN 1
-            ELSE 2
+            WHEN o.type IN ('P', 'PC', 'FN', 'IF', 'TF', 'FS', 'FT') THEN 2
+            ELSE 3
           END,
           o.name
       `, parameters, connectionKey)) as NamedObjectRow[];
 
       const indexes = await this.listSchemaIndexes(parameters, connectionKey);
+      const additionalObjects = await this.listAdditionalSchemaObjects(parameters, connectionKey);
 
       const data: DatabaseObject[] = [
-        ...objects.map((object, index) => toNamedDatabaseObject(object, object.type, index)),
+        ...objects.map((object, index) =>
+          toNamedDatabaseObject(object, object.type, index, String(object.table_name || ''))
+        ),
+        ...additionalObjects.map((object, index) => toNamedDatabaseObject(object, object.type, index)),
         ...indexes.map((object, index) => toIndexDatabaseObject(object, index))
       ];
 
@@ -400,6 +412,178 @@ class ListObjectsSQLServerV1 {
       console.warn('Could not list SQL Server indexes while loading schema objects:', getErrorMessage(error));
       return [];
     }
+  }
+
+  async objectDDL(
+    object: { name: string; type: string; table?: string },
+    connectionKey?: string
+  ): Promise<TableDDLResult> {
+    if (object.type === 'procedure' || object.type === 'function') {
+      return this.procedureDDL(object.name, connectionKey);
+    }
+
+    try {
+      const selectedSchema = await SSSQLServerV1.getSelectedSchema(connectionKey);
+      if (!selectedSchema.success) throw new Error(selectedSchema.message);
+      const parameters: SqlServerQueryParameter[] = [
+        { name: 'objectName', type: sql.NVarChar, value: object.name },
+        { name: 'schemaName', type: sql.NVarChar, value: selectedSchema.schema }
+      ];
+
+      if (object.type === 'trigger') {
+        const rows = (await this.db.executeQuery(
+          `
+            SELECT m.definition AS ddl
+            FROM sys.sql_modules m
+            INNER JOIN sys.objects o ON o.object_id = m.object_id
+            WHERE o.schema_id = SCHEMA_ID(@schemaName)
+              AND o.name = @objectName
+              AND o.type IN ('TR', 'TA')
+          `,
+          parameters,
+          connectionKey
+        )) as QueryRow[];
+        return { success: true, ddl: String(rows[0]?.['ddl'] || '') };
+      }
+
+      if (object.type === 'synonym') {
+        const rows = (await this.db.executeQuery(
+          `
+            SELECT base_object_name
+            FROM sys.synonyms
+            WHERE schema_id = SCHEMA_ID(@schemaName)
+              AND name = @objectName
+          `,
+          parameters,
+          connectionKey
+        )) as QueryRow[];
+        const target = String(rows[0]?.['base_object_name'] || '');
+        const qualified = `${quoteIdentifier(selectedSchema.schema)}.${quoteIdentifier(object.name)}`;
+        return { success: true, ddl: target ? `CREATE SYNONYM ${qualified} FOR ${target}` : '' };
+      }
+
+      if (object.type === 'sequence') {
+        const rows = (await this.db.executeQuery(
+          `
+            SELECT TYPE_NAME(user_type_id) AS data_type, start_value, increment,
+                   minimum_value, maximum_value, is_cycling, cache_size
+            FROM sys.sequences
+            WHERE schema_id = SCHEMA_ID(@schemaName)
+              AND name = @objectName
+          `,
+          parameters,
+          connectionKey
+        )) as QueryRow[];
+        const row = rows[0];
+        if (!row) return { success: true, ddl: '' };
+        const qualified = `${quoteIdentifier(selectedSchema.schema)}.${quoteIdentifier(object.name)}`;
+        const ddl = [
+          `CREATE SEQUENCE ${qualified} AS ${row['data_type']}`,
+          `START WITH ${row['start_value']}`,
+          `INCREMENT BY ${row['increment']}`,
+          `MINVALUE ${row['minimum_value']}`,
+          `MAXVALUE ${row['maximum_value']}`,
+          this.isSQLServerIdentity(row['is_cycling']) ? 'CYCLE' : 'NO CYCLE',
+          Number(row['cache_size'] || 0) > 0 ? `CACHE ${row['cache_size']}` : 'NO CACHE'
+        ].join('\n  ');
+        return { success: true, ddl };
+      }
+
+      if (object.type === 'type') {
+        const rows = (await this.db.executeQuery(
+          `
+            SELECT t.user_type_id, t.is_table_type, TYPE_NAME(t.system_type_id) AS data_type,
+                   CASE WHEN TYPE_NAME(t.system_type_id) IN ('nchar', 'nvarchar') AND t.max_length > 0
+                        THEN t.max_length / 2 ELSE t.max_length END AS character_maximum_length,
+                   t.precision AS numeric_precision, t.scale AS numeric_scale, t.is_nullable
+            FROM sys.types t
+            INNER JOIN sys.schemas s ON s.schema_id = t.schema_id
+            WHERE s.name = @schemaName
+              AND t.name = @objectName
+              AND t.is_user_defined = 1
+          `,
+          parameters,
+          connectionKey
+        )) as QueryRow[];
+        const typeRow = rows[0];
+        if (!typeRow) return { success: true, ddl: '' };
+        const qualified = `${quoteIdentifier(selectedSchema.schema)}.${quoteIdentifier(object.name)}`;
+
+        if (!this.isSQLServerIdentity(typeRow['is_table_type'])) {
+          const baseType = this.formatSQLServerColumnType(typeRow);
+          const nullable = this.isSQLServerNullable(typeRow['is_nullable']) ? ' NULL' : ' NOT NULL';
+          return { success: true, ddl: `CREATE TYPE ${qualified} FROM ${baseType}${nullable}` };
+        }
+
+        const columnRows = (await this.db.executeQuery(
+          `
+            SELECT c.name, bt.name AS data_type,
+                   CASE WHEN bt.name IN ('nchar', 'nvarchar') AND c.max_length > 0
+                        THEN c.max_length / 2 ELSE c.max_length END AS character_maximum_length,
+                   c.precision AS numeric_precision, c.scale AS numeric_scale, c.is_nullable
+            FROM sys.table_types tt
+            INNER JOIN sys.columns c ON c.object_id = tt.type_table_object_id
+            INNER JOIN sys.types bt ON bt.user_type_id = c.user_type_id
+            WHERE tt.user_type_id = @typeId
+            ORDER BY c.column_id
+          `,
+          [{ name: 'typeId', type: sql.Int, value: Number(typeRow['user_type_id']) }],
+          connectionKey
+        )) as QueryRow[];
+        const columns = columnRows.map((column) =>
+          `  ${quoteIdentifier(String(column['name']))} ${this.formatSQLServerColumnType(column)}` +
+          (this.isSQLServerNullable(column['is_nullable']) ? ' NULL' : ' NOT NULL')
+        );
+        return { success: true, ddl: `CREATE TYPE ${qualified} AS TABLE (\n${columns.join(',\n')}\n)` };
+      }
+
+      return { success: false, message: `SQL Server does not support exporting ${object.type} through this provider.` };
+    } catch (error: unknown) {
+      return {
+        success: false,
+        message: `Error occurred while loading ${object.type} DDL.`,
+        error: getErrorMessage(error)
+      };
+    }
+  }
+
+  private async listAdditionalSchemaObjects(
+    parameters: SqlServerQueryParameter[],
+    connectionKey?: string
+  ): Promise<NamedObjectRow[]> {
+    const queries = [
+      `
+        SELECT name, 'synonym' AS type
+        FROM sys.synonyms
+        WHERE schema_id = SCHEMA_ID(@schemaName)
+        ORDER BY name
+      `,
+      `
+        SELECT t.name, 'type' AS type
+        FROM sys.types t
+        INNER JOIN sys.schemas s ON s.schema_id = t.schema_id
+        WHERE s.name = @schemaName
+          AND t.is_user_defined = 1
+        ORDER BY t.name
+      `,
+      `
+        SELECT name, 'sequence' AS type
+        FROM sys.sequences
+        WHERE schema_id = SCHEMA_ID(@schemaName)
+        ORDER BY name
+      `
+    ];
+    const objects: NamedObjectRow[] = [];
+
+    for (const query of queries) {
+      try {
+        objects.push(...await this.db.executeQuery(query, parameters, connectionKey) as NamedObjectRow[]);
+      } catch (error: unknown) {
+        console.warn('Could not list an optional SQL Server object type:', getErrorMessage(error));
+      }
+    }
+
+    return objects;
   }
 
   private async loadObjectColumns(object: TableLikeObjectRow, connectionKey?: string): Promise<ColumnRow[]> {

@@ -132,14 +132,22 @@ export interface DatabaseSchemaEntry {
 export type DatabaseObjectType =
   | 'table'
   | 'view'
+  | 'materialized_view'
   | 'procedure'
   | 'function'
+  | 'trigger'
+  | 'event'
+  | 'sequence'
+  | 'synonym'
+  | 'type'
+  | 'domain'
   | 'index';
 
 export interface NamedDatabaseObject {
   id?: string;
   name: string;
   type: Exclude<DatabaseObjectType, 'index'>;
+  table?: string;
 }
 
 export interface IndexedDatabaseObject {
