@@ -141,4 +141,59 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
     expect(settingsService.dismissOpenAiOAuthRecommendation).toHaveBeenCalledTimes(1)
     expect(component.showOpenAiOAuthRecommendation).toBeFalse()
   })
+
+  it('changes the active model from the conversation without clearing its messages', async () => {
+    const currentSettings = {
+      provider: 'gemini' as const,
+      baseUrl: '',
+      model: 'gemini-3.5-flash',
+      hasApiKey: true,
+      openAiOAuthConnected: false,
+      openAiOAuthRecommendationDismissed: true,
+      limits: {
+        maxApiCallsPerMessage: 4,
+        maxDatabaseRequestsPerMessage: 4,
+        maxDatabaseRequestsPerApiCall: 2,
+        maxContextMessages: 10,
+        maxToolResultChars: 9000,
+        maxToolTranscriptChars: 18000
+      }
+    }
+    const savedSettings = { ...currentSettings, model: 'gemini-2.5-pro' }
+    const settingsService = {
+      saveSettings: jasmine.createSpy().and.resolveTo(savedSettings)
+    }
+    const component = new AiAssistantPanelComponent(
+      settingsService as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any
+    )
+    component.settings = currentSettings
+    component.modelOptions = [
+      { label: 'Gemini 3.5 Flash', value: 'gemini-3.5-flash' },
+      { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' }
+    ]
+    component.messages = [{
+      id: 'existing-message',
+      role: 'user',
+      content: 'Keep this message',
+      createdAt: '2026-08-04T00:00:00.000Z'
+    }]
+
+    await component.onModelSelected({ value: 'gemini-2.5-pro' })
+
+    expect(settingsService.saveSettings).toHaveBeenCalledOnceWith({
+      provider: 'gemini',
+      model: 'gemini-2.5-pro',
+      baseUrl: undefined,
+      limits: currentSettings.limits
+    })
+    expect(component.settings?.model).toBe('gemini-2.5-pro')
+    expect(component.messages.length).toBe(1)
+    expect(component.modelStatusMessage).toBeTruthy()
+  })
 })
