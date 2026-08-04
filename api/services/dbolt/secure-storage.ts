@@ -3,11 +3,31 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 const DPAPI_ENCRYPTED_VALUE_PREFIX = 'dbolt+dpapi:v1:';
+const ELECTRON_ENCRYPTED_VALUE_PREFIX = 'dbolt+electron-safe:v1:';
 const PLAINTEXT_ENCRYPTED_VALUE_PREFIX = 'dbolt+plain:v1:';
 const DPAPI_ENTROPY = 'dbolt-credential-storage';
 const POWERSHELL_EXECUTABLE = 'powershell.exe';
 
+interface ElectronSafeStorage {
+  isEncryptionAvailable(): boolean;
+  getSelectedStorageBackend?(): string;
+  encryptString(value: string): Buffer;
+  decryptString(value: Buffer): string;
+}
+
 class SecureStorageService {
+  isSecurePersistenceAvailable(): boolean {
+    return this.supportsWindowsDpapi() || this.getElectronSafeStorage() !== null;
+  }
+
+  async encryptStringSecurely(value: string): Promise<string> {
+    if (!this.isSecurePersistenceAvailable()) {
+      throw new Error('Secure credential storage is unavailable on this system.');
+    }
+
+    return await this.encryptString(value);
+  }
+
   async encryptString(value: string): Promise<string> {
     const encryptedValues = await this.encryptStrings([value]);
     const encryptedValue = encryptedValues[0];
@@ -41,6 +61,13 @@ class SecureStorageService {
     }
 
     if (!this.supportsWindowsDpapi()) {
+      const electronSafeStorage = this.getElectronSafeStorage();
+      if (electronSafeStorage) {
+        return values.map((value) =>
+          `${ELECTRON_ENCRYPTED_VALUE_PREFIX}${electronSafeStorage.encryptString(value).toString('base64')}`
+        );
+      }
+
       return values.map((value) =>
         `${PLAINTEXT_ENCRYPTED_VALUE_PREFIX}${Buffer.from(value, 'utf8').toString('base64')}`
       );
@@ -64,10 +91,22 @@ class SecureStorageService {
     }
 
     const decryptedValues = [...values];
+    const electronSafeStorage = this.getElectronSafeStorage();
     const windowsEncryptedIndexes: number[] = [];
     const windowsEncryptedBase64Values: string[] = [];
 
     values.forEach((value, index) => {
+      if (value.startsWith(ELECTRON_ENCRYPTED_VALUE_PREFIX)) {
+        if (!electronSafeStorage) {
+          throw new Error('Electron secure storage is unavailable.');
+        }
+
+        decryptedValues[index] = electronSafeStorage.decryptString(
+          Buffer.from(value.slice(ELECTRON_ENCRYPTED_VALUE_PREFIX.length), 'base64')
+        );
+        return;
+      }
+
       if (this.isPlaintextEncrypted(value)) {
         decryptedValues[index] = Buffer.from(
           value.slice(PLAINTEXT_ENCRYPTED_VALUE_PREFIX.length),
@@ -117,7 +156,9 @@ class SecureStorageService {
   }
 
   isEncrypted(value: string): boolean {
-    return this.isWindowsEncrypted(value) || this.isPlaintextEncrypted(value);
+    return this.isWindowsEncrypted(value) ||
+      value.startsWith(ELECTRON_ENCRYPTED_VALUE_PREFIX) ||
+      this.isPlaintextEncrypted(value);
   }
 
   private isWindowsEncrypted(value: string): boolean {
@@ -130,6 +171,26 @@ class SecureStorageService {
 
   private supportsWindowsDpapi(): boolean {
     return process.platform === 'win32';
+  }
+
+  private getElectronSafeStorage(): ElectronSafeStorage | null {
+    if (!process.versions['electron']) {
+      return null;
+    }
+
+    try {
+      const electron = require('electron') as { safeStorage?: ElectronSafeStorage };
+      const safeStorage = electron.safeStorage;
+      if (!safeStorage?.isEncryptionAvailable()) return null;
+
+      if (process.platform === 'linux' && safeStorage.getSelectedStorageBackend?.() === 'basic_text') {
+        return null;
+      }
+
+      return safeStorage;
+    } catch (_error: unknown) {
+      return null;
+    }
   }
 
   private async protectBase64Values(values: string[]): Promise<string[]> {
