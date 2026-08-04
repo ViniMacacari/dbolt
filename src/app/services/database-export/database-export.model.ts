@@ -1,6 +1,18 @@
 import { SavedConnection } from '../resolve-connections/connections.service'
 
-export type DatabaseExportObjectType = 'table' | 'view' | 'procedure' | 'function' | 'index'
+export type DatabaseExportObjectType =
+  | 'table'
+  | 'view'
+  | 'materialized_view'
+  | 'procedure'
+  | 'function'
+  | 'trigger'
+  | 'event'
+  | 'sequence'
+  | 'synonym'
+  | 'type'
+  | 'domain'
+  | 'index'
 export type DatabaseExportRisk = 'low' | 'medium' | 'high' | 'extreme'
 
 export interface DatabaseExportTarget {

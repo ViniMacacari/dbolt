@@ -116,26 +116,32 @@
 
                 <div class="object-groups" *ngIf="objectGroupViews.length; else noSchemaObjects">
                     <section class="object-group" *ngFor="let group of objectGroupViews">
-                        <label class="group-header">
-                            <input type="checkbox" [checked]="group.allVisibleSelected"
-                                (change)="toggleGroup(group, $event)"
-                                [disabled]="group.objects.length === 0 || exporting">
+                        <div class="group-header" (click)="toggleGroup(group, !group.allVisibleSelected)">
+                            <app-checkbox variant="box" [checked]="group.allVisibleSelected"
+                                [disabled]="group.objects.length === 0 || exporting"
+                                [ariaLabel]="t(group.labelKey)" (click)="$event.stopPropagation()"
+                                (checkedChange)="toggleGroup(group, $event)">
+                            </app-checkbox>
                             <img [src]="group.icon" alt="" height="15px">
                             <strong>{{ t(group.labelKey) }}</strong>
                             <span>{{ group.selectedCount }}/{{ group.totalCount }}</span>
-                        </label>
+                        </div>
 
                         <div class="object-list" *ngIf="group.objects.length; else emptyGroup">
-                            <label class="object-row" *ngFor="let object of group.objects; trackBy: trackObject"
-                                [class.selected]="isObjectSelected(object)">
-                                <input type="checkbox" [checked]="isObjectSelected(object)"
-                                    (change)="toggleObject(object, $event)" [disabled]="exporting">
+                            <div class="object-row" *ngFor="let object of group.objects; trackBy: trackObject"
+                                [class.selected]="isObjectSelected(object)"
+                                (click)="toggleObject(object, !isObjectSelected(object))">
+                                <app-checkbox variant="box" [checked]="isObjectSelected(object)"
+                                    [disabled]="exporting" [ariaLabel]="object.name"
+                                    (click)="$event.stopPropagation()"
+                                    (checkedChange)="toggleObject(object, $event)">
+                                </app-checkbox>
                                 <span class="object-name">
                                     <strong>{{ object.name }}</strong>
                                     <small *ngIf="object.table">{{ object.table }}</small>
                                 </span>
                                 <small class="object-type">{{ objectTypeLabel(object.type) }}</small>
-                            </label>
+                            </div>
                         </div>
                         <ng-template #emptyGroup>
                             <p class="empty-group">{{ t('dbExport.selection.noObjects') }}</p>
@@ -170,19 +176,19 @@
                         </div>
 
                         <div class="option-row">
-                            <app-checkbox [checked]="includeStructure" [disabled]="exporting"
+                            <app-checkbox variant="box" [checked]="includeStructure" [disabled]="exporting"
                                 [label]="t('dbExport.options.structure')" (checkedChange)="setIncludeStructure($event)">
                             </app-checkbox>
                             <small>{{ t('dbExport.options.structureDescription') }}</small>
                         </div>
                         <div class="option-row">
-                            <app-checkbox [checked]="includeData" [disabled]="exporting"
+                            <app-checkbox variant="box" [checked]="includeData" [disabled]="exporting"
                                 [label]="t('dbExport.options.data')" (checkedChange)="setIncludeData($event)">
                             </app-checkbox>
                             <small>{{ t('dbExport.options.dataDescription') }}</small>
                         </div>
-                        <div class="option-row nested-option" [class.card-disabled]="!includeStructure">
-                            <app-checkbox [checked]="addDropStatements" [disabled]="!includeStructure || exporting"
+                        <div class="option-row" [class.card-disabled]="!includeStructure">
+                            <app-checkbox variant="box" [checked]="addDropStatements" [disabled]="!includeStructure || exporting"
                                 [label]="t('dbExport.options.drop')" (checkedChange)="setAddDropStatements($event)">
                             </app-checkbox>
                             <small>{{ t('dbExport.options.dropDescription') }}</small>
@@ -223,7 +229,7 @@
                                 <ul><li *ngFor="let warning of estimate.warnings">{{ warningLabel(warning) }}</li></ul>
                             </div>
 
-                            <app-checkbox class="acknowledgement" *ngIf="estimate.acknowledgementRequired"
+                            <app-checkbox class="acknowledgement" variant="box" *ngIf="estimate.acknowledgementRequired"
                                 [checked]="acknowledgedLargeExport" [disabled]="exporting" [wrapLabel]="true"
                                 [label]="t('dbExport.warning.acknowledgement')"
                                 (checkedChange)="acknowledgedLargeExport = $event">

@@ -203,6 +203,25 @@ describe('DbExportComponent', () => {
     expect(typeSummary.textContent).toContain('dbExport.objects.automation')
   })
 
+  it('uses compact shared checkboxes for export content options', () => {
+    TestBed.configureTestingModule({
+      imports: [DbExportComponent],
+      providers: [
+        { provide: ConnectionsService, useValue: connectionsService },
+        { provide: DatabaseExportService, useValue: databaseExport },
+        { provide: AppLanguageService, useValue: language }
+      ]
+    })
+    const fixture = TestBed.createComponent(DbExportComponent)
+    fixture.componentInstance.currentStep = 3
+    fixture.detectChanges()
+
+    const sharedCheckboxes = fixture.nativeElement.querySelectorAll('app-checkbox.box-variant-host')
+    const switches = fixture.nativeElement.querySelectorAll('app-checkbox:not(.box-variant-host)')
+    expect(sharedCheckboxes.length).toBe(3)
+    expect(switches.length).toBe(0)
+  })
+
   it('closes the isolated export connection when destroyed', async () => {
     const context = {
       sgbd: 'MySQL',

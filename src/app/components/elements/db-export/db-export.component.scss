@@ -388,13 +388,6 @@ app-input-list {
     gap: 8px;
     padding: 0 11px;
 
-    input {
-        accent-color: var(--dbolt-739eca);
-        flex: 0 0 auto;
-        height: 14px;
-        width: 14px;
-    }
-
     strong,
     span {
         font-family: 'Nunito';
@@ -440,12 +433,6 @@ app-input-list {
         background: color-mix(in srgb, var(--dbolt-2b3340) 55%, transparent);
     }
 
-    input {
-        accent-color: var(--dbolt-739eca);
-        flex: 0 0 auto;
-        height: 14px;
-        width: 14px;
-    }
 }
 
 .object-name {
@@ -553,12 +540,8 @@ app-input-list {
         font-family: 'Nunito';
         font-size: .66em;
         line-height: 1.35;
-        padding-left: 60px;
+        padding-left: 24px;
     }
-}
-
-.nested-option {
-    margin-left: 12px;
 }
 
 .section-heading {

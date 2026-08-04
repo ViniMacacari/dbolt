@@ -183,10 +183,15 @@ export class DatabaseExportService {
   private normalizeObjects(value: unknown): DatabaseExportObject[] {
     if (!Array.isArray(value)) return []
 
+    const validTypes = new Set([
+      'table', 'view', 'materialized_view', 'procedure', 'function', 'trigger',
+      'event', 'sequence', 'synonym', 'type', 'domain', 'index'
+    ])
+
     return value.reduce<DatabaseExportObject[]>((objects, object) => {
       const name = String(object?.name || '')
-      const type = object?.type
-      if (!name || !['table', 'view', 'procedure', 'function', 'index'].includes(type)) return objects
+      const type = String(object?.type || '').toLowerCase() as DatabaseExportObject['type']
+      if (!name || !validTypes.has(type)) return objects
 
       objects.push({
         id: object?.id ? String(object.id) : undefined,

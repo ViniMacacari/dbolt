@@ -293,15 +293,16 @@ export class DbExportComponent implements OnInit, OnDestroy {
     this.refreshObjectGroupViews()
   }
 
-  toggleGroup(group: ExportObjectGroupView, event: Event): void {
-    const selected = (event.target as HTMLInputElement).checked
+  toggleGroup(group: ExportObjectGroupView, selected: boolean): void {
+    if (this.exporting || group.objects.length === 0) return
     group.objects.forEach((object) => this.setObjectSelected(object, selected))
     this.invalidateEstimate()
     this.refreshObjectGroupViews()
   }
 
-  toggleObject(object: DatabaseExportObject, event: Event): void {
-    this.setObjectSelected(object, (event.target as HTMLInputElement).checked)
+  toggleObject(object: DatabaseExportObject, selected: boolean): void {
+    if (this.exporting) return
+    this.setObjectSelected(object, selected)
     this.invalidateEstimate()
     this.refreshObjectGroupViews()
   }

@@ -67,4 +67,34 @@ describe('DatabaseExportService', () => {
     expect(internalApi.post).toHaveBeenCalledWith('/api/database-export/disconnect', context)
     expect(connectionContext.forgetContext).toHaveBeenCalledWith('db-export-mock')
   })
+
+  it('keeps engine-specific schema objects when loading an export source', async () => {
+    internalApi.get.and.resolveTo({
+      success: true,
+      data: [
+        { name: 'refresh_totals', type: 'procedure' },
+        { name: 'audit_orders', type: 'trigger', table: 'orders' },
+        { name: 'order_number_seq', type: 'sequence' }
+      ]
+    })
+    const context = {
+      sgbd: 'Postgres',
+      version: 'v9',
+      connectionKey: 'db-export-mock',
+      connId: 11,
+      name: 'Mock Postgres'
+    }
+
+    const result = await service.loadObjects(
+      { connection: savedConnection, context, targets: [{ database: 'app', schemas: ['public'] }] },
+      'app',
+      'public'
+    )
+
+    expect(result.objects).toEqual([
+      { id: undefined, name: 'refresh_totals', type: 'procedure', table: undefined, index_type: undefined },
+      { id: undefined, name: 'audit_orders', type: 'trigger', table: 'orders', index_type: undefined },
+      { id: undefined, name: 'order_number_seq', type: 'sequence', table: undefined, index_type: undefined }
+    ])
+  })
 })
