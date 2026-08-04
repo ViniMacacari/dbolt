@@ -64,6 +64,42 @@
     opacity: .7;
 }
 
+.ai-model-picker {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 5px;
+    margin: 0 4px 9px;
+    min-width: 0;
+}
+
+.ai-model-picker-heading {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    min-height: 16px;
+    padding: 0 3px;
+
+    span,
+    small {
+        font-family: 'Nunito';
+        font-size: .68em;
+        font-weight: 700;
+    }
+
+    span {
+        color: var(--dbolt-8f8f8f);
+        text-transform: uppercase;
+    }
+
+    small {
+        color: var(--dbolt-d8e9fb);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
 .context-summary-combined {
     align-items: center;
     display: grid !important;
