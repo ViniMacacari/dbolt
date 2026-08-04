@@ -205,6 +205,24 @@ export class TabsComponent implements OnInit, OnDestroy {
     this.selectTab(newTabIndex)
   }
 
+  openDatabaseExportTab(): void {
+    const existingIndex = this.tabs.findIndex(tab => tab.type === 'database-export')
+    if (existingIndex >= 0) {
+      this.selectTab(existingIndex)
+      return
+    }
+
+    const newTab: any = {
+      id: 'database-export',
+      name: this.t('tabs.databaseExport'),
+      type: 'database-export',
+      info: {},
+      icon: 'DATABASE_EXPORT'
+    }
+    const newTabIndex = this.appendTab(newTab)
+    this.selectTab(newTabIndex)
+  }
+
   openSavedQueryTab(query: any): void {
     const existingIndex = this.tabs.findIndex(tab =>
       tab.type === 'sql' &&
@@ -396,6 +414,7 @@ export class TabsComponent implements OnInit, OnDestroy {
     if (tab.icon === 'QUERY_ASSISTANT') return 'icons/code-block.png'
     if (tab.icon === 'SELECT_BUILDER') return 'icons/table.png'
     if (tab.icon === 'COMPARE' || tab.type === 'query-compare') return 'icons/ddl.png'
+    if (tab.icon === 'DATABASE_EXPORT' || tab.type === 'database-export') return 'icons/export.png'
     if (tab.type === 'diagram') return 'icons/diagram.png'
     if (tab.type === 'procedure') return 'icons/procedure.png'
 
