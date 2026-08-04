@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing'
 
+import { InternalApiService } from '../requests/internal-api.service'
 import { AiAssistantSettingsService } from './ai-assistant-settings.service'
 import { OpenAiOAuthSessionService } from './openai-oauth-session.service'
 
@@ -55,5 +56,28 @@ describe('OpenAiOAuthSessionService', () => {
     settingsService.loadOpenAiOAuthModels.and.resolveTo(['gpt-5.6-sol', 'gpt-5.6-terra'])
 
     await expectAsync(service.loadModels()).toBeResolvedTo(['gpt-5.6-sol', 'gpt-5.6-terra'])
+  })
+})
+
+describe('AiAssistantSettingsService OAuth browser fallback', () => {
+  it('does not report a blocked window when noopener returns null after opening it', async () => {
+    const service = new AiAssistantSettingsService({} as InternalApiService)
+    const oauthBridge = window.dboltOpenAiOAuth
+    const openSpy = spyOn(window, 'open').and.returnValue(null)
+
+    window.dboltOpenAiOAuth = undefined
+
+    try {
+      await expectAsync(
+        service.openOpenAiOAuthAuthorizationUrl('https://auth.openai.com/oauth/authorize?state=test')
+      ).toBeResolved()
+      expect(openSpy).toHaveBeenCalledWith(
+        'https://auth.openai.com/oauth/authorize?state=test',
+        '_blank',
+        'noopener,noreferrer'
+      )
+    } finally {
+      window.dboltOpenAiOAuth = oauthBridge
+    }
   })
 })
