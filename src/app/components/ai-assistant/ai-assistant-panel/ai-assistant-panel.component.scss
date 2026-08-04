@@ -64,6 +64,42 @@
     opacity: .7;
 }
 
+.ai-model-picker {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 5px;
+    margin: 0 4px 9px;
+    min-width: 0;
+}
+
+.ai-model-picker-heading {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    min-height: 16px;
+    padding: 0 3px;
+
+    span,
+    small {
+        font-family: 'Nunito';
+        font-size: .68em;
+        font-weight: 700;
+    }
+
+    span {
+        color: var(--dbolt-8f8f8f);
+        text-transform: uppercase;
+    }
+
+    small {
+        color: var(--dbolt-d8e9fb);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
 .context-summary-combined {
     align-items: center;
     display: grid !important;
@@ -135,6 +171,92 @@
         font-weight: 800;
         height: 30px;
         padding: 0 10px;
+    }
+}
+
+.openai-oauth-recommendation {
+    background: var(--dbolt-20252d);
+    border: 1px solid var(--dbolt-34475d);
+    border-radius: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin: 0 4px 10px;
+    padding: 12px;
+    position: relative;
+
+    p,
+    small,
+    strong,
+    button {
+        font-family: 'Nunito';
+    }
+
+    p {
+        color: var(--dbolt-cfcfcf);
+        font-size: .74em;
+        line-height: 1.4;
+        margin: 0;
+        padding-right: 14px;
+    }
+
+    small {
+        color: var(--dbolt-777);
+        font-size: .65em;
+        line-height: 1.3;
+    }
+}
+
+.oauth-recommendation-heading {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    padding-right: 24px;
+
+    img {
+        object-fit: contain;
+    }
+
+    strong {
+        color: var(--dbolt-e8eaed);
+        font-size: .8em;
+        font-weight: 800;
+    }
+}
+
+.oauth-recommendation-close {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    display: flex;
+    height: 26px;
+    justify-content: center;
+    opacity: .65;
+    padding: 0;
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    width: 26px;
+
+    &:hover {
+        opacity: 1;
+    }
+}
+
+.oauth-recommendation-action {
+    align-self: flex-start;
+    background: var(--dbolt-2b3340);
+    border: 1px solid rgba(115, 158, 202, .4);
+    border-radius: 8px;
+    color: var(--dbolt-d8e9fb);
+    font-size: .73em;
+    font-weight: 800;
+    min-height: 30px;
+    padding: 0 10px;
+
+    &:disabled {
+        cursor: default;
+        opacity: .55;
     }
 }
 
@@ -523,8 +645,179 @@
     }
 }
 
-.typing {
-    cursor: default !important;
+.thinking-message {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.thinking-avatar {
+    align-items: center;
+    background: var(--dbolt-1b1b1b);
+    border-radius: 15px;
+    display: flex;
+    flex: 0 0 28px;
+    height: 28px;
+    justify-content: center;
+    width: 28px;
+
+    img {
+        height: 16px;
+        object-fit: contain;
+        width: 16px;
+    }
+}
+
+.thinking-bubble {
+    background: var(--dbolt-232020);
+    border: 1px solid var(--dbolt-353535);
+    border-radius: 15px;
+    max-width: calc(100% - 36px);
+    min-width: 0;
+    overflow: hidden;
+    width: 100%;
+}
+
+.thinking-summary {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: var(--dbolt-cfcfcf);
+    display: grid;
+    font-family: 'Nunito';
+    gap: 8px;
+    grid-template-columns: 18px minmax(0, 1fr) auto 10px;
+    min-height: 48px;
+    padding: 7px 9px;
+    text-align: left;
+    width: 100%;
+
+    &:hover {
+        background: var(--dbolt-292727);
+    }
+}
+
+.thinking-summary-copy {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+
+    strong,
+    small {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    strong {
+        color: var(--dbolt-e8eaed);
+        font-size: .76em;
+        font-weight: 800;
+    }
+
+    small {
+        color: var(--dbolt-969696);
+        font-size: .68em;
+        margin-top: 1px;
+    }
+}
+
+.thinking-dots {
+    align-items: center;
+    display: flex;
+    gap: 2px;
+    justify-content: center;
+
+    i {
+        animation: ai-thinking-dot 1.2s ease-in-out infinite;
+        background: var(--dbolt-969696);
+        border-radius: 50%;
+        display: block;
+        height: 3px;
+        width: 3px;
+
+        &:nth-child(2) {
+            animation-delay: .15s;
+        }
+
+        &:nth-child(3) {
+            animation-delay: .3s;
+        }
+    }
+}
+
+.thinking-elapsed {
+    color: var(--dbolt-8f8f8f);
+    font-size: .66em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.thinking-toggle {
+    color: var(--dbolt-8f8f8f);
+    display: block;
+    font-size: 1em;
+    line-height: 1;
+    transform: rotate(90deg);
+    transition: transform .15s ease;
+
+    &.expanded {
+        transform: rotate(-90deg);
+    }
+}
+
+.thinking-progress {
+    border-top: 1px solid var(--dbolt-303030);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 8px 10px 10px 13px;
+
+    li {
+        align-items: flex-start;
+        color: var(--dbolt-8f8f8f);
+        display: grid;
+        font-family: 'Nunito';
+        font-size: .68em;
+        gap: 7px;
+        grid-template-columns: 7px minmax(0, 1fr);
+        line-height: 1.35;
+
+        &.current {
+            color: var(--dbolt-cfcfcf);
+
+            .thinking-step-marker {
+                background: var(--dbolt-cfcfcf);
+            }
+        }
+    }
+}
+
+.thinking-step-marker {
+    background: var(--dbolt-5f5f5f);
+    border-radius: 50%;
+    display: block;
+    height: 4px;
+    margin-top: 3px;
+    width: 4px;
+}
+
+@keyframes ai-thinking-dot {
+    0%,
+    60%,
+    100% {
+        opacity: .35;
+        transform: translateY(0);
+    }
+
+    30% {
+        opacity: 1;
+        transform: translateY(-2px);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -533,7 +826,8 @@
     }
 
     .conversation-modal-backdrop,
-    .conversation-modal {
+    .conversation-modal,
+    .thinking-dots i {
         animation-delay: 0s !important;
         animation-duration: 0.01ms !important;
     }

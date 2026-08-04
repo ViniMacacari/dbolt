@@ -1,5 +1,10 @@
 :host {
     display: inline-flex;
+
+    &.full-width-host {
+        display: flex;
+        width: 100%;
+    }
 }
 
 .app-button {
@@ -29,12 +34,32 @@
         opacity: .55;
     }
 
+    &.accent {
+        background-color: var(--dbolt-2b3340);
+        border: 1px solid rgba(115, 158, 202, .45);
+        color: var(--dbolt-d8e9fb);
+
+        &:hover:not(:disabled) {
+            background-color: var(--dbolt-334052);
+        }
+    }
+
     &.danger {
         background-color: #8d0000;
 
         &:hover:not(:disabled) {
             background-color: #b81414;
         }
+    }
+
+    &.full-width {
+        width: 100%;
+    }
+
+    &.compact {
+        min-height: 34px;
+        padding: 7px 12px;
+        width: auto;
     }
 
 }

@@ -29,4 +29,26 @@ describe('InternalApiService', () => {
   it('should be created', () => {
     expect(service).toBeTruthy();
   });
+
+  it('parses newline-delimited events split across response chunks', async () => {
+    const encoder = new TextEncoder();
+    const responseBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('{"type":"progress","stage":"analyzing'));
+        controller.enqueue(encoder.encode('-request"}\n{"type":"result","data":{"message":"Done","model":"test"}}\n'));
+        controller.close();
+      }
+    });
+    spyOn(window, 'fetch').and.resolveTo(new Response(responseBody, { status: 200 }));
+    const events: Array<Record<string, unknown>> = [];
+
+    await service.postStream<Record<string, unknown>>('/api/ai-assistant/chat/stream', {}, (event) => {
+      events.push(event);
+    });
+
+    expect(events).toEqual([
+      { type: 'progress', stage: 'analyzing-request' },
+      { type: 'result', data: { message: 'Done', model: 'test' } }
+    ]);
+  });
 });

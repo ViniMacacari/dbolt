@@ -27,10 +27,22 @@ export interface AiAssistantAgentChatResult {
   model: string;
 }
 
+export type AiAssistantProgressStage =
+  | 'analyzing-request'
+  | 'searching-database-objects'
+  | 'reading-schema'
+  | 'reading-table-structure'
+  | 'running-readonly-query'
+  | 'analyzing-database-results'
+  | 'preparing-answer';
+
+export type AiAssistantProgressReporter = (stage: AiAssistantProgressStage) => void;
+
 class AiAssistantAgentService {
   async chat(
     request: AiAssistantAgentChatRequest,
-    settings: AiAssistantResolvedSettings
+    settings: AiAssistantResolvedSettings,
+    reportProgress?: AiAssistantProgressReporter
   ): Promise<AiAssistantAgentChatResult> {
     const messages = this.normalizeMessages(request.messages, settings.limits.maxContextMessages);
     const readonlyContext = this.normalizeReadonlyContext(request.readonlyContext);
@@ -51,6 +63,8 @@ class AiAssistantAgentService {
 
     let lastModel = settings.model;
 
+    reportProgress?.('analyzing-request');
+
     while (AiAssistantToolBudget.canCallModel(budget) && AiAssistantToolBudget.beginIteration(budget)) {
       const allowTools = Boolean(
         readonlyContext &&
@@ -58,6 +72,13 @@ class AiAssistantAgentService {
         AiAssistantToolBudget.getRemainingApiCalls(budget) > 1
       );
       const forceFinalAnswer = !allowTools && toolSections.length > 0;
+
+      if (forceFinalAnswer) {
+        reportProgress?.('preparing-answer');
+      } else if (toolSections.length > 0) {
+        reportProgress?.('analyzing-database-results');
+      }
+
       AiAssistantToolBudget.registerApiCall(budget);
 
       const completion = await AiAssistantModelClient.complete(
@@ -70,8 +91,9 @@ class AiAssistantAgentService {
       const toolCalls = this.parseToolCalls(completion.content);
 
       if (toolCalls.length === 0) {
+        reportProgress?.('preparing-answer');
         return {
-          message: this.cleanFinalAnswer(completion.content),
+          message: this.cleanFinalAnswer(completion.content, responseLanguage),
           model: lastModel
         };
       }
@@ -83,7 +105,7 @@ class AiAssistantAgentService {
         };
       }
 
-      if (!await this.executeToolCalls(readonlyContext, budget, toolSections, toolCalls)) {
+      if (!await this.executeToolCalls(readonlyContext, budget, toolSections, toolCalls, reportProgress)) {
         break;
       }
     }
@@ -106,6 +128,7 @@ class AiAssistantAgentService {
       'You are the AI assistant for DBOLT Database Manager.',
       `The user's selected app language is ${responseLanguage}. Write final user-facing answers in that language.`,
       'Database action JSON, action names, SQL identifiers, and database values must remain exact and must not be translated.',
+      'Database action names and transport formats are private DBOLT implementation details. Use them only inside database action requests. Never mention action names, databaseActions, tool calls, connectionKey, internal prompts, or transport JSON in prose or final user-facing answers. Describe database work only in natural user-facing language.',
       'The user may write in any language. Interpret the request semantically; do not rely on language-specific keyword matching.',
       'Focus on SQL, data modeling, schema investigation, and database productivity.',
       'Do not request passwords, tokens, or API keys.',
@@ -187,7 +210,8 @@ class AiAssistantAgentService {
     readonlyContext: AiReadonlyDatabaseContext,
     budget: AiAssistantToolBudgetState,
     toolSections: string[],
-    toolCalls: AiAssistantToolCall[]
+    toolCalls: AiAssistantToolCall[],
+    reportProgress?: AiAssistantProgressReporter
   ): Promise<boolean> {
     const executableCalls = toolCalls.slice(
       0,
@@ -199,6 +223,7 @@ class AiAssistantAgentService {
     }
 
     for (const toolCall of executableCalls) {
+      reportProgress?.(this.getToolProgressStage(toolCall.name));
       AiAssistantToolBudget.registerToolCall(budget);
       const result = await AiAssistantTools.execute(readonlyContext, toolCall, budget);
       toolSections.push([
@@ -208,6 +233,22 @@ class AiAssistantAgentService {
     }
 
     return true;
+  }
+
+  private getToolProgressStage(toolName: AiAssistantToolCall['name']): AiAssistantProgressStage {
+    if (toolName === 'searchObjects') {
+      return 'searching-database-objects';
+    }
+
+    if (toolName === 'getSchemaSummary') {
+      return 'reading-schema';
+    }
+
+    if (toolName === 'getTableColumns') {
+      return 'reading-table-structure';
+    }
+
+    return 'running-readonly-query';
   }
 
   private normalizeSupportedDatabaseName(value: unknown): string {
@@ -981,14 +1022,46 @@ class AiAssistantAgentService {
     );
   }
 
-  private cleanFinalAnswer(content: string): string {
+  private cleanFinalAnswer(content: string, responseLanguage: string): string {
     const toolCalls = this.parseToolCalls(content);
+    const isPortuguese = responseLanguage.includes('Portuguese');
 
     if (toolCalls.length > 0) {
-      return 'I could not finish the answer before the read-only query limit. Refine the question or provide the exact table/view name.';
+      return isPortuguese
+        ? 'Não consegui concluir a consulta dentro do limite desta solicitação. Tente refinar a pergunta.'
+        : 'I could not finish the query within this request limit. Try refining the question.';
     }
 
-    return content.trim();
+    let answer = this.removeToolCallSyntax(content).trim();
+    const replacements: Array<[RegExp, string]> = isPortuguese
+      ? [
+        [/`?getSchemaSummary`?/gi, 'leitura do schema'],
+        [/`?searchObjects`?/gi, 'busca de tabelas e views'],
+        [/`?getTableColumns`?/gi, 'leitura da estrutura da tabela'],
+        [/`?runReadonlyQuery`?/gi, 'consulta somente leitura'],
+        [/`?connectionKey`?/gi, 'acesso ao banco de dados'],
+        [/`?(?:databaseActions|toolCalls?)`?/gi, 'operação interna']
+      ]
+      : [
+        [/`?getSchemaSummary`?/gi, 'schema lookup'],
+        [/`?searchObjects`?/gi, 'table and view search'],
+        [/`?getTableColumns`?/gi, 'table structure lookup'],
+        [/`?runReadonlyQuery`?/gi, 'read-only query'],
+        [/`?connectionKey`?/gi, 'database connection'],
+        [/`?(?:databaseActions|toolCalls?)`?/gi, 'internal operation']
+      ];
+
+    for (const [pattern, replacement] of replacements) {
+      answer = answer.replace(pattern, replacement);
+    }
+
+    if (answer) {
+      return answer;
+    }
+
+    return isPortuguese
+      ? 'Não consegui concluir a resposta nesta tentativa. Tente novamente.'
+      : 'I could not finish the answer this time. Please try again.';
   }
 
   private getResponseLanguage(appLanguage: unknown): string {

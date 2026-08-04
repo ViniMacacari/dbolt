@@ -4,6 +4,7 @@ import AiAssistant from '../../services/dbolt/ai-assistant.js';
 import AiAssistantConversations from '../../services/dbolt/ai-assistant-conversations.js';
 import AiAssistantReadonlyDatabase from '../../services/dbolt/ai-assistant-readonly-database.js';
 import AiAssistantSettings from '../../services/dbolt/ai-assistant-settings.js';
+import OpenAiOAuth from '../../services/dbolt/ai-assistant-openai-oauth.js';
 import { sendBadRequest, sendInternalError } from '../../utils/http.js';
 
 const router = express.Router();
@@ -28,6 +29,53 @@ router.put('/settings', async (req, res) => {
     res.status(200).json({ success: true, data: settings });
   } catch (error: unknown) {
     sendInternalError(res, error, 'Failed to save AI assistant settings');
+  }
+});
+
+router.get('/openai-oauth/status', async (_req, res) => {
+  try {
+    const status = await OpenAiOAuth.getStatus();
+    res.status(200).json({ success: true, data: status });
+  } catch (error: unknown) {
+    sendInternalError(res, error, 'Failed to load OpenAI OAuth status');
+  }
+});
+
+router.post('/openai-oauth/login', async (_req, res) => {
+  try {
+    const result = await OpenAiOAuth.startLogin();
+    res.status(200).json({ success: true, data: result });
+  } catch (error: unknown) {
+    sendInternalError(res, error, 'Failed to start ChatGPT login');
+  }
+});
+
+router.delete('/openai-oauth/session', async (_req, res) => {
+  try {
+    const status = await OpenAiOAuth.disconnect();
+    res.status(200).json({ success: true, data: status });
+  } catch (error: unknown) {
+    sendInternalError(res, error, 'Failed to disconnect ChatGPT');
+  }
+});
+
+router.get('/openai-oauth/models', async (_req, res) => {
+  try {
+    const models = await OpenAiOAuth.listModels();
+    res.status(200).json({ success: true, data: models });
+  } catch (error: unknown) {
+    sendInternalError(res, error, 'Failed to load OpenAI OAuth models');
+  }
+});
+
+router.post('/openai-oauth/recommendation/dismiss', async (_req, res) => {
+  try {
+    const settings = await AiAssistantSettings.saveSettings({
+      openAiOAuthRecommendationDismissed: true
+    });
+    res.status(200).json({ success: true, data: settings });
+  } catch (error: unknown) {
+    sendInternalError(res, error, 'Failed to dismiss OpenAI OAuth recommendation');
   }
 });
 
@@ -119,6 +167,52 @@ router.post('/chat', async (req, res) => {
     res.status(200).json({ success: true, data: result });
   } catch (error: unknown) {
     sendInternalError(res, error, 'Failed to request AI assistant response');
+  }
+});
+
+router.post('/chat/stream', async (req, res) => {
+  if (!req.body || typeof req.body !== 'object') {
+    sendBadRequest(res, 'No AI assistant chat payload provided');
+    return;
+  }
+
+  res.status(200);
+  res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  let currentStage = 'analyzing-request';
+
+  const writeEvent = (event: Record<string, unknown>): void => {
+    if (!res.writableEnded && !res.destroyed) {
+      res.write(`${JSON.stringify(event)}\n`);
+    }
+  };
+
+  const heartbeat = setInterval(() => {
+    // Repeat only the safe stage so long provider/database work remains visibly active.
+    writeEvent({ type: 'progress', stage: currentStage });
+  }, 2500);
+  const stopHeartbeat = (): void => clearInterval(heartbeat);
+  res.once('close', stopHeartbeat);
+
+  try {
+    const result = await AiAssistant.chat(req.body, (stage) => {
+      // Progress events intentionally contain no model output, SQL, arguments, or database results.
+      currentStage = stage;
+      writeEvent({ type: 'progress', stage });
+    });
+    writeEvent({ type: 'result', data: result });
+  } catch (error: unknown) {
+    writeEvent({
+      type: 'error',
+      message: error instanceof Error ? error.message : 'Failed to request AI assistant response'
+    });
+  } finally {
+    stopHeartbeat();
+    res.end();
   }
 });
 

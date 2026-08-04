@@ -31,6 +31,54 @@ export class InternalApiService {
     }
   }
 
+  async postStream<T>(
+    url: string,
+    body: unknown,
+    onEvent: (event: T) => void,
+    signal?: AbortSignal
+  ): Promise<void> {
+    try {
+      const session = await this.sessionToken.getSession()
+      const response = await fetch(session.baseUrl + url, {
+        method: 'POST',
+        cache: 'no-store',
+        credentials: 'omit',
+        headers: {
+          'Content-Type': 'application/json',
+          [session.tokenHeader]: session.token
+        },
+        body: JSON.stringify(body),
+        signal
+      })
+
+      if (!response.ok) {
+        throw new Error(await this.readFetchError(response))
+      }
+
+      if (!response.body) {
+        throw new Error('The internal API did not return a response stream.')
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        buffer += decoder.decode(value, { stream: !done })
+        buffer = this.consumeStreamLines(buffer, onEvent)
+
+        if (done) break
+      }
+
+      if (buffer.trim()) {
+        this.emitStreamEvent(buffer, onEvent)
+      }
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
   async put<T>(url: string, body: any): Promise<T> {
     try {
       const options = await this.requestOptions()
@@ -67,6 +115,43 @@ export class InternalApiService {
         [session.tokenHeader]: session.token
       })
     }
+  }
+
+  private consumeStreamLines<T>(buffer: string, onEvent: (event: T) => void): string {
+    const lines = buffer.split('\n')
+    const remaining = lines.pop() || ''
+
+    for (const line of lines) {
+      if (line.trim()) {
+        this.emitStreamEvent(line, onEvent)
+      }
+    }
+
+    return remaining
+  }
+
+  private emitStreamEvent<T>(line: string, onEvent: (event: T) => void): void {
+    try {
+      onEvent(JSON.parse(line) as T)
+    } catch (error: unknown) {
+      if (error instanceof SyntaxError) {
+        throw new Error('The internal API returned an invalid streamed response.')
+      }
+
+      throw error
+    }
+  }
+
+  private async readFetchError(response: Response): Promise<string> {
+    try {
+      const payload = await response.json() as Record<string, unknown>
+      const detail = payload['error'] || payload['message']
+      if (typeof detail === 'string' && detail.trim()) return detail
+    } catch (_error: unknown) {
+      // Ignore invalid error bodies and use the HTTP status below.
+    }
+
+    return `Internal API request failed (${response.status}).`
   }
 
   private handleError(error: any): any {

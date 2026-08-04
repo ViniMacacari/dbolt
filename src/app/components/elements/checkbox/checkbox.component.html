@@ -1,7 +1,8 @@
-<label class="checkbox-control" [class.disabled]="disabled" [attr.for]="inputId"
+<label class="checkbox-control" [class.checkbox-control-box]="variant === 'box'" [class.disabled]="disabled" [attr.for]="inputId"
     [attr.title]="title || label || null">
     <span class="toggle-control">
         <input [id]="inputId" type="checkbox" [checked]="checked" [disabled]="disabled"
+            [attr.aria-label]="ariaLabel || label || title || null"
             (change)="onInputChange($event)">
         <span class="toggle-track"></span>
     </span>

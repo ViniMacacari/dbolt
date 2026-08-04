@@ -63,5 +63,14 @@ declare global {
       onCloseRequested(callback: () => void): () => void;
       onStateChanged(callback: (state: DboltWindowState) => void): () => void;
     };
+    dboltFileSystem?: {
+      chooseDatabaseExportPath(suggestedFileName: string): Promise<{
+        canceled: boolean;
+        filePath: string | null;
+      }>;
+    };
+    dboltOpenAiOAuth?: {
+      openAuthorizationUrl(authorizationUrl: string): Promise<void>;
+    };
   }
 }

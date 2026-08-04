@@ -236,15 +236,79 @@
             overflow: hidden;
         }
 
-        .md-code-language {
+        .md-code-header {
+            align-items: center;
             border-bottom: 1px solid var(--dbolt-353535);
+            display: flex;
+            justify-content: space-between;
+            min-height: 33px;
+            padding: 4px 6px 4px 9px;
+        }
+
+        .md-code-language {
             color: var(--dbolt-969696);
             display: block;
             font-family: 'Nunito';
             font-size: .72em;
             font-weight: 800;
-            padding: 6px 9px;
             text-transform: uppercase;
+        }
+
+        .md-code-actions {
+            display: flex;
+            flex: 0 0 auto;
+            gap: 4px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .md-code-action {
+            align-items: center;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--dbolt-969696);
+            cursor: pointer;
+            display: inline-flex;
+            height: 24px;
+            justify-content: center;
+            padding: 0;
+            transition: background-color .14s ease, border-color .14s ease, color .14s ease;
+            user-select: none;
+            -webkit-user-select: none;
+            width: 26px;
+
+            &:hover {
+                background: var(--dbolt-292727);
+                border-color: var(--dbolt-3b3b3b);
+                color: var(--dbolt-e8eaed);
+            }
+
+            &:focus-visible {
+                border-color: var(--dbolt-8aaed2);
+                outline: none;
+            }
+
+            &.copied {
+                border-color: var(--dbolt-345c3e);
+                color: var(--dbolt-9be0aa);
+            }
+
+            &.error {
+                border-color: var(--dbolt-6b3030);
+                color: var(--dbolt-ffb4b4);
+            }
+
+            svg {
+                fill: none;
+                height: 14px;
+                pointer-events: none;
+                stroke: currentColor;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+                stroke-width: 1.8;
+                width: 14px;
+            }
         }
 
         pre {

@@ -5,8 +5,9 @@ import { AppLanguageService } from '../language/app-language.service'
 import {
   AiAssistantApiMessage,
   AiAssistantChatResponse,
-  AiReadonlyDatabaseToolContext,
-  ApiResponse
+  AiAssistantProgressStage,
+  AiAssistantStreamEvent,
+  AiReadonlyDatabaseToolContext
 } from './ai-assistant.model'
 
 @Injectable({
@@ -20,18 +21,32 @@ export class AiAssistantChatService {
 
   async sendMessage(
     messages: AiAssistantApiMessage[],
-    readonlyContext?: AiReadonlyDatabaseToolContext
+    readonlyContext?: AiReadonlyDatabaseToolContext,
+    onProgress?: (stage: AiAssistantProgressStage) => void
   ): Promise<AiAssistantChatResponse> {
-    const response = await this.internalApi.post<ApiResponse<AiAssistantChatResponse>>('/api/ai-assistant/chat', {
+    let result: AiAssistantChatResponse | undefined
+
+    await this.internalApi.postStream<AiAssistantStreamEvent>('/api/ai-assistant/chat/stream', {
       messages,
       readonlyContext,
       appLanguage: this.language.getCurrentLanguage()
+    }, (event) => {
+      if (event.type === 'progress') {
+        onProgress?.(event.stage)
+        return
+      }
+
+      if (event.type === 'error') {
+        throw new Error(event.message || 'Could not get an AI response.')
+      }
+
+      result = event.data
     })
 
-    if (!response.success || !response.data) {
-      throw new Error(response.message || response.error || 'Could not get an AI response.')
+    if (!result) {
+      throw new Error('The AI response ended before returning a result.')
     }
 
-    return response.data
+    return result
   }
 }

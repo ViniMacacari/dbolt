@@ -10,7 +10,7 @@ import {
 } from './api/services/security/internal-session-token.js';
 import { registerAppUpdateIpc } from './electron/services/app-update.js';
 
-const { app, BrowserWindow, Menu, ipcMain, shell } = require('electron') as typeof import('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron') as typeof import('electron');
 const appRoot = path.resolve(__dirname, '..');
 const angularIndexPath = path.join(
   appRoot,
@@ -26,7 +26,11 @@ const WINDOW_STATE_CHANNEL = 'dbolt:window-state';
 const WINDOW_STATE_CHANGED_CHANNEL = 'dbolt:window-state-changed';
 const WINDOW_CLOSE_REQUESTED_CHANNEL = 'dbolt:window-close-requested';
 const WINDOW_CLOSE_RESPONSE_CHANNEL = 'dbolt:window-close-response';
+const DATABASE_EXPORT_PATH_CHANNEL = 'dbolt:database-export-path';
+const OPENAI_OAUTH_EXTERNAL_CHANNEL = 'dbolt:openai-oauth-external';
 const ORIGINAL_REPOSITORY_URL = 'https://github.com/ViniMacacari/dbolt';
+const OPENAI_OAUTH_CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann';
+const OPENAI_OAUTH_REDIRECT_URI = 'http://localhost:1455/auth/callback';
 
 let win: InstanceType<typeof BrowserWindow> | null = null;
 let allowWindowClose = false;
@@ -55,6 +59,25 @@ function isTrustedRendererUrl(rawUrl: string): boolean {
     ]);
 
     return trustedOrigins.has(parsedUrl.origin);
+  } catch {
+    return false;
+  }
+}
+
+function isTrustedOpenAiOAuthUrl(rawUrl: string): boolean {
+  try {
+    const parsedUrl = new URL(rawUrl);
+    return parsedUrl.origin === 'https://auth.openai.com' &&
+      parsedUrl.pathname === '/oauth/authorize' &&
+      parsedUrl.username === '' &&
+      parsedUrl.password === '' &&
+      parsedUrl.hash === '' &&
+      parsedUrl.searchParams.get('client_id') === OPENAI_OAUTH_CLIENT_ID &&
+      parsedUrl.searchParams.get('redirect_uri') === OPENAI_OAUTH_REDIRECT_URI &&
+      parsedUrl.searchParams.get('response_type') === 'code' &&
+      parsedUrl.searchParams.get('code_challenge_method') === 'S256' &&
+      Boolean(parsedUrl.searchParams.get('code_challenge')) &&
+      Boolean(parsedUrl.searchParams.get('state'));
   } catch {
     return false;
   }
@@ -128,6 +151,40 @@ ipcMain.handle(WINDOW_STATE_CHANNEL, (event) => {
   assertTrustedIpcSender(event);
 
   return getWindowState(getEventWindow(event));
+});
+
+ipcMain.handle(DATABASE_EXPORT_PATH_CHANNEL, async (event, suggestedFileName: string) => {
+  assertTrustedIpcSender(event);
+
+  const safeFileName = path.basename(String(suggestedFileName || 'dbolt-export.sql'))
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
+    .replace(/\.+$/g, '') || 'dbolt-export.sql';
+  const normalizedFileName = safeFileName.toLowerCase().endsWith('.sql')
+    ? safeFileName
+    : `${safeFileName}.sql`;
+  const result = await dialog.showSaveDialog(getEventWindow(event), {
+    title: 'DBolt - Database Export',
+    defaultPath: path.join(app.getPath('documents'), normalizedFileName),
+    filters: [
+      { name: 'SQL', extensions: ['sql'] }
+    ],
+    properties: ['createDirectory', 'showOverwriteConfirmation']
+  });
+
+  return {
+    canceled: result.canceled,
+    filePath: result.filePath || null
+  };
+});
+
+ipcMain.handle(OPENAI_OAUTH_EXTERNAL_CHANNEL, async (event, authorizationUrl: string) => {
+  assertTrustedIpcSender(event);
+
+  if (!isTrustedOpenAiOAuthUrl(String(authorizationUrl || ''))) {
+    throw new Error('Invalid OpenAI OAuth authorization URL.');
+  }
+
+  await shell.openExternal(authorizationUrl);
 });
 
 ipcMain.handle(WINDOW_CLOSE_RESPONSE_CHANNEL, (event, shouldClose: boolean) => {

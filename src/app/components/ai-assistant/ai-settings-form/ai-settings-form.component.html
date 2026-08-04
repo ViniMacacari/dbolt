@@ -1,9 +1,16 @@
 <form class="settings-form" (ngSubmit)="submit()">
-    <div class="settings-row">
+    <div class="settings-row" *ngIf="provider !== 'openai-oauth'">
         <label for="ai-api-key">{{ t('aiAssistant.apiKey') }}</label>
         <input id="ai-api-key" class="input-page" type="password" [(ngModel)]="apiKey" name="apiKey"
             [placeholder]="hasApiKeyForSelectedProvider ? t('aiAssistant.apiKeyConfigured') : t('aiAssistant.apiKeyPlaceholder')"
             [disabled]="saving">
+    </div>
+
+    <div class="settings-row" *ngIf="provider === 'openai-oauth'">
+        <label>{{ t('settings.ai.oauth.title') }}</label>
+        <button type="button" class="btn-page-2" (click)="openAiOAuthLoginRequested.emit()" [disabled]="saving">
+            {{ settings?.openAiOAuthConnected ? t('settings.ai.oauth.connected') : t('settings.ai.oauth.signIn') }}
+        </button>
     </div>
 
     <div class="settings-row">
@@ -21,6 +28,7 @@
             (input)="onModelInput($event)">
         <app-input-list *ngIf="provider !== 'openrouter'" [list]="modelOptions" [displayKey]="'label'" [valueKey]="'value'"
             [selectedValue]="model" [width]="'100%'" [placeholder]="t('aiAssistant.model')"
+            [disabled]="provider === 'openai-oauth' && !settings?.openAiOAuthConnected"
             (itemSelected)="onModelSelected($event)">
         </app-input-list>
     </div>

@@ -34,6 +34,7 @@ const VALID_TOOL_NAMES = new Set<AiAssistantReadonlyToolName>([
   'getSchemaSummary',
   'runReadonlyQuery'
 ]);
+const DATABASE_ACTION_TIMEOUT_MS = 25000;
 
 class AiAssistantToolsService {
   isValidToolName(name: string): name is AiAssistantReadonlyToolName {
@@ -66,7 +67,10 @@ class AiAssistantToolsService {
     budget: AiAssistantToolBudgetState
   ): Promise<AiAssistantToolExecutionResult> {
     try {
-      const content = await this.executeTool(context, toolCall);
+      const content = await this.withTimeout(
+        this.executeTool(context, toolCall),
+        DATABASE_ACTION_TIMEOUT_MS
+      );
 
       return {
         name: toolCall.name,
@@ -79,6 +83,25 @@ class AiAssistantToolsService {
         success: false,
         content: this.buildToolErrorContent(context, toolCall, error)
       };
+    }
+  }
+
+  private async withTimeout<T>(operation: Promise<T>, timeoutMs: number): Promise<T> {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+
+    try {
+      return await Promise.race([
+        operation,
+        new Promise<T>((_resolve, reject) => {
+          timeout = setTimeout(() => {
+            reject(new Error(`The read-only database operation timed out after ${Math.floor(timeoutMs / 1000)} seconds.`));
+          }, timeoutMs);
+        })
+      ]);
+    } finally {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
     }
   }
 

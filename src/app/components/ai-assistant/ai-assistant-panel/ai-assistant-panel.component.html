@@ -20,7 +20,18 @@
     </div>
     <div class="py-2"></div>
 
-    <p class="selected-title">{{ t('aiAssistant.model') }} - {{ settings?.model || t('aiAssistant.configure') }}</p>
+    <div class="ai-model-picker">
+        <div class="ai-model-picker-heading">
+            <span>{{ t('aiAssistant.model') }}</span>
+            <small *ngIf="modelStatusMessage">{{ modelStatusMessage }}</small>
+        </div>
+        <app-input-list [list]="modelOptions" [displayKey]="'label'" [valueKey]="'value'"
+            [selectedValue]="settings?.model || null" [width]="'100%'" [compact]="true"
+            [placeholder]="modelOptionsLoading ? t('aiAssistant.loadingModels') : t('aiAssistant.selectModel')"
+            [disabled]="loadingSettings || modelOptionsLoading || modelSaving || sending || !settings?.hasApiKey"
+            (itemSelected)="onModelSelected($event)">
+        </app-input-list>
+    </div>
     <button type="button" class="database context-summary context-summary-combined"
         [disabled]="!databaseContextAvailable" [title]="contextSummaryLabel">
         <span class="context-summary-item">
@@ -60,6 +71,23 @@
         {{ errorMessage }}
     </div>
 
+    <section class="openai-oauth-recommendation" *ngIf="showOpenAiOAuthRecommendation">
+        <button type="button" class="oauth-recommendation-close" (click)="dismissOpenAiOAuthRecommendation()"
+            [title]="t('generic.close')" [attr.aria-label]="t('generic.close')">
+            <img src="icons/close.png" width="12" height="12" [alt]="t('generic.close')">
+        </button>
+        <div class="oauth-recommendation-heading">
+            <img src="icons/ai.png" width="20" height="20" [alt]="t('aiAssistant.oauth.recommendationTitle')">
+            <strong>{{ t('aiAssistant.oauth.recommendationTitle') }}</strong>
+        </div>
+        <p>{{ t('aiAssistant.oauth.recommendationDescription') }}</p>
+        <small>{{ t('settings.ai.oauth.unofficial') }}</small>
+        <button type="button" class="oauth-recommendation-action" (click)="connectOpenAiOAuth()"
+            [disabled]="openAiOAuthSigningIn">
+            {{ openAiOAuthSigningIn ? t('settings.ai.oauth.waiting') : t('settings.ai.oauth.signIn') }}
+        </button>
+    </section>
+
     <div class="connection ai-config-needed" *ngIf="!loadingSettings && !settings?.hasApiKey">
         <p>{{ t('aiAssistant.settingsRequired') }}</p>
         <button type="button" (click)="settingsRequested.emit()">{{ t('aiAssistant.openSettings') }}</button>
@@ -72,12 +100,34 @@
         </div>
 
         <div #messageItem *ngFor="let message of messages; trackBy: trackMessage">
-            <app-ai-chat-message [message]="message">
+            <app-ai-chat-message [message]="message" (sqlRequested)="openSqlInEditor($event)">
             </app-ai-chat-message>
         </div>
 
-        <div class="connection typing text-min-gray m-1" *ngIf="sending">
-            {{ t('aiAssistant.answering') }}
+        <div class="thinking-message" *ngIf="sending" aria-live="polite">
+            <div class="thinking-avatar" aria-hidden="true">
+                <img src="icons/ai.png" [alt]="t('aiAssistant.assistant')">
+            </div>
+            <div class="thinking-bubble">
+                <button type="button" class="thinking-summary" (click)="toggleThinkingProgress()"
+                    [attr.aria-expanded]="thinkingExpanded" aria-controls="ai-thinking-progress">
+                    <span class="thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                    <span class="thinking-summary-copy">
+                        <strong>{{ t('aiAssistant.answering') }}</strong>
+                        <small>{{ currentThinkingStepLabel }}</small>
+                    </span>
+                    <span class="thinking-elapsed">{{ thinkingElapsedSeconds }}s</span>
+                    <span class="thinking-toggle" [class.expanded]="thinkingExpanded" aria-hidden="true">›</span>
+                </button>
+
+                <ol class="thinking-progress" id="ai-thinking-progress" *ngIf="thinkingExpanded">
+                    <li *ngFor="let step of visibleThinkingSteps; let stepIndex = index"
+                        [class.current]="stepIndex === visibleThinkingSteps.length - 1">
+                        <span class="thinking-step-marker" aria-hidden="true"></span>
+                        <span>{{ getThinkingStepLabel(step) }}</span>
+                    </li>
+                </ol>
+            </div>
         </div>
     </div>
 

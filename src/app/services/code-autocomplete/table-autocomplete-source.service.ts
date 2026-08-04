@@ -10,6 +10,7 @@ export interface TableAutocompleteItem {
 
 interface TableAutocompleteSuggestionOptions {
   shouldCancel?: () => boolean
+  schema?: string
 }
 
 @Injectable({
@@ -25,14 +26,14 @@ export class TableAutocompleteSourceService {
     private connectionContext: ConnectionContextService
   ) { }
 
-  async getTables(context: any): Promise<TableAutocompleteItem[]> {
+  async getTables(context: any, schema?: string): Promise<TableAutocompleteItem[]> {
     if (!context?.sgbd && !context?.connId && !context?.connectionId) {
       return []
     }
 
-    const cacheKey = this.buildCacheKey(context)
+    const cacheKey = this.buildCacheKey(context, schema)
     if (!this.cache.has(cacheKey)) {
-      this.cache.set(cacheKey, this.fetchTablesForContext(context, cacheKey).catch((error) => {
+      this.cache.set(cacheKey, this.fetchTablesForContext(context, cacheKey, schema).catch((error) => {
         this.cache.delete(cacheKey)
         this.chunks.delete(cacheKey)
         throw error
@@ -52,11 +53,11 @@ export class TableAutocompleteSourceService {
     limit: number,
     options: TableAutocompleteSuggestionOptions = {}
   ): Promise<TableAutocompleteItem[]> {
-    const tables = await this.getTables(context)
+    const tables = await this.getTables(context, options.schema)
     if (options.shouldCancel?.()) return []
 
     const normalizedFragment = fragment.toLowerCase()
-    const tableChunks = this.getChunks(context, tables)
+    const tableChunks = this.getChunks(context, tables, options.schema)
     const candidates: TableAutocompleteItem[] = []
     const candidateLimit = Math.max(limit * 4, limit)
 
@@ -85,9 +86,13 @@ export class TableAutocompleteSourceService {
     return candidates
   }
 
-  private async fetchTablesForContext(context: any, originalCacheKey: string): Promise<TableAutocompleteItem[]> {
+  private async fetchTablesForContext(
+    context: any,
+    originalCacheKey: string,
+    schema?: string
+  ): Promise<TableAutocompleteItem[]> {
     const ensuredContext = await this.connectionContext.ensureContext(context)
-    const ensuredCacheKey = this.buildCacheKey(ensuredContext)
+    const ensuredCacheKey = this.buildCacheKey(ensuredContext, schema)
 
     if (ensuredCacheKey !== originalCacheKey) {
       const cachedTables = this.cache.get(ensuredCacheKey)
@@ -95,7 +100,7 @@ export class TableAutocompleteSourceService {
         return cachedTables
       }
 
-      const fetchPromise = this.fetchTablesWithReconnect(ensuredContext)
+      const fetchPromise = this.fetchTablesWithReconnect(ensuredContext, schema)
       this.cache.set(ensuredCacheKey, fetchPromise)
 
       try {
@@ -107,12 +112,12 @@ export class TableAutocompleteSourceService {
       }
     }
 
-    return this.fetchTablesWithReconnect(ensuredContext)
+    return this.fetchTablesWithReconnect(ensuredContext, schema)
   }
 
-  private async fetchTablesWithReconnect(context: any): Promise<TableAutocompleteItem[]> {
+  private async fetchTablesWithReconnect(context: any, schema?: string): Promise<TableAutocompleteItem[]> {
     try {
-      return await this.fetchTables(context)
+      return await this.fetchTables(context, schema)
     } catch (error: any) {
       if (!this.connectionContext.isConnectionError(error)) {
         throw error
@@ -120,12 +125,12 @@ export class TableAutocompleteSourceService {
 
       this.connectionContext.forgetContext(context.connectionKey)
       const reconnectedContext = await this.connectionContext.ensureContext(context, true)
-      return await this.fetchTables(reconnectedContext)
+      return await this.fetchTables(reconnectedContext, schema)
     }
   }
 
-  private async fetchTables(context: any): Promise<TableAutocompleteItem[]> {
-    const queryString = this.connectionContext.toQueryString(context)
+  private async fetchTables(context: any, schema?: string): Promise<TableAutocompleteItem[]> {
+    const queryString = this.connectionContext.toQueryString(context, { schema })
     const response: any = await this.IAPI.get(`/api/${context.sgbd}/${context.version}/list-table-objects${queryString}`)
 
     if (response?.success === false) {
@@ -169,8 +174,8 @@ export class TableAutocompleteSourceService {
     return Array.from(objects.values())
   }
 
-  private getChunks(context: any, tables: TableAutocompleteItem[]): TableAutocompleteItem[][] {
-    const cacheKey = this.buildCacheKey(context)
+  private getChunks(context: any, tables: TableAutocompleteItem[], schema?: string): TableAutocompleteItem[][] {
+    const cacheKey = this.buildCacheKey(context, schema)
     const cachedChunks = this.chunks.get(cacheKey)
     if (cachedChunks) return cachedChunks
 
@@ -274,7 +279,7 @@ export class TableAutocompleteSourceService {
     await new Promise((resolve) => setTimeout(resolve, 0))
   }
 
-  private buildCacheKey(context: any): string {
+  private buildCacheKey(context: any, schema?: string): string {
     return [
       context.sgbd,
       context.version,
@@ -283,7 +288,8 @@ export class TableAutocompleteSourceService {
       context.host,
       context.port,
       context.database,
-      context.schema
+      context.schema,
+      schema
     ].filter((part) => part !== undefined && part !== null).join(':')
   }
 }

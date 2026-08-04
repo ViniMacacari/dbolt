@@ -13,10 +13,10 @@ import type {
   TableMetadataRowsResult
 } from '../../../types.js';
 
-type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' };
+type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'trigger'; table_name?: string };
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type: string };
 type ColumnRow = QueryRow & TableColumn;
-type TableLikeObjectRow = QueryRow & { name: string; type: 'table' | 'view' };
+type TableLikeObjectRow = QueryRow & { schema_name: string; name: string; type: 'table' | 'view' };
 
 class ListObjectsSQLiteV3 {
   private readonly db = new SQLiteV3();
@@ -50,9 +50,20 @@ class ListObjectsSQLiteV3 {
         ORDER BY tbl_name, name
       `, [], connectionKey)) as IndexRow[];
 
+      const triggers = (await this.db.executeQuery(`
+        SELECT name, tbl_name AS table_name, 'trigger' AS type
+        FROM sqlite_master
+        WHERE type = 'trigger'
+          AND name NOT LIKE 'sqlite_%'
+        ORDER BY tbl_name, name
+      `, [], connectionKey)) as NamedObjectRow[];
+
       const data: DatabaseObject[] = [
         ...objects.map((object, index) =>
           toNamedDatabaseObject(object, object.type === 'view' ? 'view' : 'table', index)
+        ),
+        ...triggers.map((object, index) =>
+          toNamedDatabaseObject(object, 'trigger', index, String(object.table_name || ''))
         ),
         ...indexes.map((object, index) => toIndexDatabaseObject(object, index))
       ];
@@ -68,7 +79,7 @@ class ListObjectsSQLiteV3 {
     }
   }
 
-  async listTableObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
+  async listTableObjects(connectionKey?: string, schemaName?: string): Promise<DatabaseObjectsResult> {
     if (this.db.getStatus(connectionKey) !== 'connected') {
       return {
         success: false,
@@ -77,9 +88,10 @@ class ListObjectsSQLiteV3 {
     }
 
     try {
+      const metadataSchema = schemaName || 'main';
       const objects = (await this.db.executeQuery(`
         SELECT name, type
-        FROM sqlite_master
+        FROM ${quoteIdentifier(metadataSchema)}.sqlite_master
         WHERE type IN ('table', 'view')
           AND name NOT LIKE 'sqlite_%'
         ORDER BY name
@@ -100,14 +112,18 @@ class ListObjectsSQLiteV3 {
     }
   }
 
-  async tableColumns(tableName: string, connectionKey?: string): Promise<TableColumnsResult> {
+  async tableColumns(
+    tableName: string,
+    connectionKey?: string,
+    schemaName?: string
+  ): Promise<TableColumnsResult> {
     try {
-      const object = await this.resolveTableLikeObject(tableName, connectionKey);
+      const object = await this.resolveTableLikeObject(tableName, connectionKey, schemaName);
       if (!object) {
         return { success: true, data: [] };
       }
 
-      const columns = await this.loadObjectColumns(object.name, connectionKey);
+      const columns = await this.loadObjectColumns(object.name, connectionKey, object.schema_name);
 
       return {
         success: true,
@@ -220,26 +236,60 @@ class ListObjectsSQLiteV3 {
     };
   }
 
-  private async resolveTableLikeObject(tableName: string, connectionKey?: string): Promise<TableLikeObjectRow | null> {
+  async objectDDL(
+    object: { name: string; type: string; table?: string },
+    connectionKey?: string
+  ): Promise<TableDDLResult> {
+    if (object.type !== 'trigger') {
+      return { success: false, message: `SQLite does not support exporting ${object.type} through this provider.` };
+    }
+
+    try {
+      const rows = (await this.db.executeQuery(
+        `SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = ? LIMIT 1`,
+        [object.name],
+        connectionKey
+      )) as QueryRow[];
+      return { success: true, ddl: String(rows[0]?.['sql'] || '') };
+    } catch (error: unknown) {
+      return {
+        success: false,
+        message: 'Error occurred while loading trigger DDL.',
+        error: getErrorMessage(error)
+      };
+    }
+  }
+
+  private async resolveTableLikeObject(
+    tableName: string,
+    connectionKey?: string,
+    schemaName?: string
+  ): Promise<TableLikeObjectRow | null> {
+    const metadataSchema = schemaName || 'main';
     const rows = (await this.db.executeQuery(
       `
-        SELECT name, type
-        FROM sqlite_master
+        SELECT ? AS schema_name, name, type
+        FROM ${quoteIdentifier(metadataSchema)}.sqlite_master
         WHERE type IN ('table', 'view')
           AND name = ?
         LIMIT 1
       `,
-      [tableName],
+      [metadataSchema, tableName],
       connectionKey
     )) as TableLikeObjectRow[];
 
     return rows[0] || null;
   }
 
-  private async loadObjectColumns(tableName: string, connectionKey?: string): Promise<QueryRow[]> {
+  private async loadObjectColumns(
+    tableName: string,
+    connectionKey?: string,
+    schemaName = 'main'
+  ): Promise<QueryRow[]> {
+    const quotedSchema = quoteIdentifier(schemaName);
     try {
       const columns = (await this.db.executeQuery(
-        `PRAGMA table_xinfo(${quoteIdentifier(tableName)})`,
+        `PRAGMA ${quotedSchema}.table_xinfo(${quoteIdentifier(tableName)})`,
         [],
         connectionKey
       )) as QueryRow[];
@@ -252,7 +302,7 @@ class ListObjectsSQLiteV3 {
     }
 
     return (await this.db.executeQuery(
-      `PRAGMA table_info(${quoteIdentifier(tableName)})`,
+      `PRAGMA ${quotedSchema}.table_info(${quoteIdentifier(tableName)})`,
       [],
       connectionKey
     )) as QueryRow[];

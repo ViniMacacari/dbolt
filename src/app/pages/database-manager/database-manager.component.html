@@ -10,7 +10,8 @@
         [class.active]="aiAssistantOpen" [attr.aria-hidden]="!aiAssistantOpen"
         [attr.inert]="!aiAssistantOpen ? '' : null" [selectedSchemaDB]="selectedSchemaDB"
         [dbSchemasData]="dbSchemasData" [tabInfo]="tabInfo" (close)="closeAiAssistant()"
-        (settingsRequested)="onAiSettingsRequested()"></app-ai-assistant-panel>
+        (settingsRequested)="onAiSettingsRequested()"
+        (sqlRequested)="onAiSqlRequested($event)"></app-ai-assistant-panel>
     <div class="main-area">
         <div class="tabs pt-3 px-3">
             <app-tabs (tabSelected)="onTabSelected($event)" (tabClosed)="onTabClosed($event)"
@@ -165,6 +166,13 @@
                     [style.--workspace-tab-switch-offset]="tabInfo?.switchOffset || null"
                     (editRequested)="onCompareEditRequested($event)"
                     (restoreRequested)="onCompareRestoreRequested($event)"></app-query-version-compare>
+                <app-db-export class="workspace-tab-content" *ngIf="databaseExportInitialized"
+                    [hidden]="!databaseExportOpen" [tabInfo]="tabInfo"
+                    [class.workspace-tab-opening]="databaseExportOpen && tabInfo?.opening"
+                    [class.workspace-tab-closing]="databaseExportOpen && tabInfo?.closing"
+                    [class.workspace-tab-switching]="databaseExportOpen && tabInfo?.switching"
+                    [style.--workspace-tab-switch-offset]="tabInfo?.switchOffset || null">
+                </app-db-export>
 
                 <app-code-editor class="workspace-tab-content" *ngFor="let tab of openTabs; trackBy: trackTabByIdentity"
                     [class.workspace-tab-opening]="tab.opening && isActiveSqlTab(tab)"

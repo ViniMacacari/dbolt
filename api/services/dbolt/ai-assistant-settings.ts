@@ -3,16 +3,20 @@ import { join } from 'path';
 import { homedir } from 'os';
 
 import SecureStorage from './secure-storage.js';
+import OpenAiOAuth from './ai-assistant-openai-oauth.js';
 
 const SETTINGS_FILENAME = 'settings.json';
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1/chat/completions';
 const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const DEFAULT_OPENAI_OAUTH_BASE_URL = 'https://openai-oauth.local/v1/responses';
 const DEFAULT_OPENAI_MODEL = 'gpt-5.4-mini';
 const DEFAULT_OPENROUTER_MODEL = '~openai/gpt-latest';
 const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
 const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-4-6';
+const DEFAULT_OPENAI_OAUTH_MODEL = 'gpt-5.6-sol';
 
-export type AiAssistantProvider = 'openai' | 'gemini' | 'anthropic' | 'openrouter';
+export type AiAssistantProvider = 'openai' | 'openai-oauth' | 'gemini' | 'anthropic' | 'openrouter';
+export type AiAssistantApiKeyProvider = Exclude<AiAssistantProvider, 'openai-oauth'>;
 
 export interface AiAssistantLimits {
   maxApiCallsPerMessage: number;
@@ -37,7 +41,9 @@ export interface AiAssistantPublicSettings {
   baseUrl: string;
   model: string;
   hasApiKey: boolean;
-  hasApiKeys: Record<AiAssistantProvider, boolean>;
+  hasApiKeys: Record<AiAssistantApiKeyProvider, boolean>;
+  openAiOAuthConnected: boolean;
+  openAiOAuthRecommendationDismissed: boolean;
   maskedApiKey?: string;
   limits: AiAssistantLimits;
 }
@@ -48,8 +54,9 @@ export interface AiAssistantSettingsInput {
   model?: string;
   apiKey?: string;
   clearApiKey?: boolean;
-  apiKeys?: Partial<Record<AiAssistantProvider, string>>;
-  clearApiKeys?: Partial<Record<AiAssistantProvider, boolean>>;
+  apiKeys?: Partial<Record<AiAssistantApiKeyProvider, string>>;
+  clearApiKeys?: Partial<Record<AiAssistantApiKeyProvider, boolean>>;
+  openAiOAuthRecommendationDismissed?: boolean;
   limits?: Partial<AiAssistantLimits>;
 }
 
@@ -65,8 +72,9 @@ interface StoredAiAssistantSettings {
   provider: AiAssistantProvider;
   baseUrl: string;
   model: string;
-  encryptedApiKeys?: Partial<Record<AiAssistantProvider, string>>;
+  encryptedApiKeys?: Partial<Record<AiAssistantApiKeyProvider, string>>;
   encryptedApiKey?: string;
+  openAiOAuthRecommendationDismissed?: boolean;
   limits?: AiAssistantLimits;
   updatedAt?: string;
 }
@@ -80,7 +88,7 @@ class AiAssistantSettingsService {
 
   async getSettings(): Promise<AiAssistantPublicSettings> {
     const storedSettings = await this.readSettingsFile();
-    return this.toPublicSettings(storedSettings);
+    return await this.toPublicSettings(storedSettings);
   }
 
   async saveSettings(input: AiAssistantSettingsInput): Promise<AiAssistantPublicSettings> {
@@ -105,12 +113,19 @@ class AiAssistantSettingsService {
         ...(storedSettings.limits || {}),
         ...(input.limits || {})
       }),
+      openAiOAuthRecommendationDismissed: typeof input.openAiOAuthRecommendationDismissed === 'boolean'
+        ? input.openAiOAuthRecommendationDismissed
+        : storedSettings.openAiOAuthRecommendationDismissed,
       updatedAt: new Date().toISOString()
     };
 
-    if (input.clearApiKey) {
+    if (provider === 'openai-oauth' && typeof input.model === 'string') {
+      await this.validateOpenAiOAuthModel(nextSettings.model);
+    }
+
+    if (input.clearApiKey && provider !== 'openai-oauth') {
       delete encryptedApiKeys[provider];
-    } else if (typeof input.apiKey === 'string' && input.apiKey.trim()) {
+    } else if (provider !== 'openai-oauth' && typeof input.apiKey === 'string' && input.apiKey.trim()) {
       encryptedApiKeys[provider] = await SecureStorage.encryptString(input.apiKey.trim());
     }
 
@@ -119,11 +134,26 @@ class AiAssistantSettingsService {
     delete nextSettings.encryptedApiKey;
     await this.writeSettingsFile(nextSettings);
 
-    return this.toPublicSettings(nextSettings);
+    return await this.toPublicSettings(nextSettings);
   }
 
   async getResolvedSettings(): Promise<AiAssistantResolvedSettings> {
     const storedSettings = await this.readSettingsFile();
+
+    if (storedSettings.provider === 'openai-oauth') {
+      if (!await OpenAiOAuth.getSession()) {
+        throw new Error('Sign in with ChatGPT before using OpenAI OAuth.');
+      }
+
+      return {
+        provider: storedSettings.provider,
+        baseUrl: DEFAULT_OPENAI_OAUTH_BASE_URL,
+        model: storedSettings.model,
+        apiKey: '',
+        limits: this.normalizeLimits(storedSettings.limits)
+      };
+    }
+
     const encryptedApiKey = storedSettings.encryptedApiKeys?.[storedSettings.provider];
 
     if (!encryptedApiKey) {
@@ -163,6 +193,7 @@ class AiAssistantSettingsService {
         model: this.normalizeModel(parsed.model || this.defaultModelForProvider(provider)),
         encryptedApiKeys,
         limits: this.normalizeLimits(parsed.limits),
+        openAiOAuthRecommendationDismissed: parsed.openAiOAuthRecommendationDismissed === true,
         updatedAt: parsed.updatedAt
       };
     } catch (error: unknown) {
@@ -198,35 +229,44 @@ class AiAssistantSettingsService {
       baseUrl: DEFAULT_OPENAI_BASE_URL,
       model: DEFAULT_OPENAI_MODEL,
       encryptedApiKeys: {},
+      openAiOAuthRecommendationDismissed: false,
       limits: DEFAULT_LIMITS
     };
   }
 
-  private toPublicSettings(settings: StoredAiAssistantSettings): AiAssistantPublicSettings {
+  private async toPublicSettings(settings: StoredAiAssistantSettings): Promise<AiAssistantPublicSettings> {
     const hasApiKeys = {
       openai: Boolean(settings.encryptedApiKeys?.openai),
       gemini: Boolean(settings.encryptedApiKeys?.gemini),
       anthropic: Boolean(settings.encryptedApiKeys?.anthropic),
       openrouter: Boolean(settings.encryptedApiKeys?.openrouter)
     };
+    const openAiOAuthConnected = Boolean(await OpenAiOAuth.getSession().catch(() => null));
+    const hasActiveCredential = settings.provider === 'openai-oauth'
+      ? openAiOAuthConnected
+      : hasApiKeys[settings.provider];
 
     return {
       provider: settings.provider,
       baseUrl: settings.baseUrl,
       model: settings.model,
-      hasApiKey: hasApiKeys[settings.provider],
+      hasApiKey: hasActiveCredential,
       hasApiKeys,
-      maskedApiKey: hasApiKeys[settings.provider] ? '••••••••' : undefined,
+      openAiOAuthConnected,
+      openAiOAuthRecommendationDismissed: settings.openAiOAuthRecommendationDismissed === true,
+      maskedApiKey: settings.provider !== 'openai-oauth' && hasApiKeys[settings.provider]
+        ? '••••••••'
+        : undefined,
       limits: this.normalizeLimits(settings.limits)
     };
   }
 
   private async applyApiKeyUpdates(
-    encryptedApiKeys: Partial<Record<AiAssistantProvider, string>>,
-    apiKeys: Partial<Record<AiAssistantProvider, string>> | undefined,
-    clearApiKeys: Partial<Record<AiAssistantProvider, boolean>> | undefined
+    encryptedApiKeys: Partial<Record<AiAssistantApiKeyProvider, string>>,
+    apiKeys: Partial<Record<AiAssistantApiKeyProvider, string>> | undefined,
+    clearApiKeys: Partial<Record<AiAssistantApiKeyProvider, boolean>> | undefined
   ): Promise<void> {
-    const providers: AiAssistantProvider[] = ['openai', 'gemini', 'anthropic', 'openrouter'];
+    const providers: AiAssistantApiKeyProvider[] = ['openai', 'gemini', 'anthropic', 'openrouter'];
 
     providers.forEach((provider) => {
       if (clearApiKeys?.[provider]) {
@@ -243,6 +283,10 @@ class AiAssistantSettingsService {
   }
 
   private normalizeProvider(provider: unknown): AiAssistantProvider {
+    if (provider === 'openai-oauth') {
+      return 'openai-oauth';
+    }
+
     if (provider === 'gemini') {
       return 'gemini';
     }
@@ -259,6 +303,10 @@ class AiAssistantSettingsService {
   }
 
   private defaultModelForProvider(provider: AiAssistantProvider): string {
+    if (provider === 'openai-oauth') {
+      return DEFAULT_OPENAI_OAUTH_MODEL;
+    }
+
     if (provider === 'anthropic') {
       return DEFAULT_ANTHROPIC_MODEL;
     }
@@ -271,6 +319,7 @@ class AiAssistantSettingsService {
   }
 
   private defaultBaseUrlForProvider(provider: AiAssistantProvider): string {
+    if (provider === 'openai-oauth') return DEFAULT_OPENAI_OAUTH_BASE_URL;
     return provider === 'openrouter' ? DEFAULT_OPENROUTER_BASE_URL : DEFAULT_OPENAI_BASE_URL;
   }
 
@@ -279,6 +328,10 @@ class AiAssistantSettingsService {
     storedSettings: StoredAiAssistantSettings,
     inputBaseUrl: string | undefined
   ): string {
+    if (provider === 'openai-oauth') {
+      return DEFAULT_OPENAI_OAUTH_BASE_URL;
+    }
+
     if (provider !== 'openai' && provider !== 'openrouter') {
       return storedSettings.baseUrl || DEFAULT_OPENAI_BASE_URL;
     }
@@ -302,6 +355,17 @@ class AiAssistantSettingsService {
     }
 
     return normalized;
+  }
+
+  private async validateOpenAiOAuthModel(model: string): Promise<void> {
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/.test(model)) {
+      throw new Error('Invalid OpenAI OAuth model.');
+    }
+
+    const availableModels = await OpenAiOAuth.listModels();
+    if (!availableModels.includes(model)) {
+      throw new Error('The selected model is not available for this ChatGPT account.');
+    }
   }
 
   private normalizeBaseUrl(baseUrl: string): string {

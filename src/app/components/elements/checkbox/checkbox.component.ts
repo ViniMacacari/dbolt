@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common'
-import { Component, EventEmitter, Input, Output } from '@angular/core'
+import { booleanAttribute, Component, EventEmitter, Input, Output } from '@angular/core'
 
 let checkboxId = 0
 
@@ -8,13 +8,20 @@ let checkboxId = 0
   standalone: true,
   imports: [CommonModule],
   templateUrl: './checkbox.component.html',
-  styleUrl: './checkbox.component.scss'
+  styleUrl: './checkbox.component.scss',
+  host: {
+    '[class.wrap-label-host]': 'wrapLabel',
+    '[class.box-variant-host]': "variant === 'box'"
+  }
 })
 export class CheckboxComponent {
   @Input() checked: boolean = false
   @Input() disabled: boolean = false
   @Input() label: string = ''
   @Input() title: string = ''
+  @Input() ariaLabel: string = ''
+  @Input() variant: 'switch' | 'box' = 'switch'
+  @Input({ transform: booleanAttribute }) wrapLabel: boolean = false
   @Output() checkedChange = new EventEmitter<boolean>()
 
   readonly inputId = `dbolt-checkbox-${checkboxId++}`

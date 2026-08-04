@@ -21,11 +21,14 @@ import { QuerySaveService, SavedQuery } from '../../services/query-save/query-sa
 import { AppLanguageService } from '../../services/language/app-language.service'
 import { AiAssistantPanelComponent } from '../../components/ai-assistant/ai-assistant-panel/ai-assistant-panel.component'
 import { DatabaseDiagramComponent } from '../../components/elements/database-diagram/database-diagram.component'
+import { DbExportComponent } from '../../components/elements/db-export/db-export.component'
+import { ToolsNavigationService } from '../../services/tools/tools-navigation.service'
+import { Subscription } from 'rxjs'
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent, DatabaseDiagramComponent],
+  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent, DatabaseDiagramComponent, DbExportComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
@@ -55,12 +58,14 @@ export class DatabaseManagerComponent implements OnDestroy {
   queryAssistantOpen: boolean = false
   selectBuilderOpen: boolean = false
   queryCompareOpen: boolean = false
+  databaseExportOpen: boolean = false
   aiAssistantOpen: boolean = false
   aiAssistantMounted: boolean = false
   dbInfoInitialized: boolean = false
   tableInfoInitialized: boolean = false
   procedureInfoInitialized: boolean = false
   settingsInitialized: boolean = false
+  databaseExportInitialized: boolean = false
 
   sqlContent: string = ''
   tabInfo: any
@@ -73,6 +78,7 @@ export class DatabaseManagerComponent implements OnDestroy {
 
   widthTable: number = 300
   private aiAssistantAnimationFrame: number | null = null
+  private toolsSubscription: Subscription | null = null
 
   constructor(
     private IAPI: InternalApiService,
@@ -81,11 +87,19 @@ export class DatabaseManagerComponent implements OnDestroy {
     private connectionsService: ConnectionsService,
     private connectionContext: ConnectionContextService,
     private querySave: QuerySaveService,
-    private language: AppLanguageService
-  ) { }
+    private language: AppLanguageService,
+    private toolsNavigation: ToolsNavigationService
+  ) {
+    this.toolsSubscription = this.toolsNavigation.requests$.subscribe((destination) => {
+      if (destination === 'database-export') {
+        this.tabsComponent?.openDatabaseExportTab()
+      }
+    })
+  }
 
   ngOnDestroy(): void {
     this.cancelAiAssistantAnimationFrame()
+    this.toolsSubscription?.unsubscribe()
   }
 
   async ngAfterViewInit(): Promise<void> {
@@ -278,6 +292,7 @@ export class DatabaseManagerComponent implements OnDestroy {
     this.queryAssistantOpen = tab.type === 'query-assistant'
     this.selectBuilderOpen = tab.type === 'select-builder'
     this.queryCompareOpen = tab.type === 'query-compare'
+    this.databaseExportOpen = tab.type === 'database-export'
     this.procedureInfoOpen = tab.type === 'procedure'
     this.tableInfoOpen = tab.type === 'table'
 
@@ -289,6 +304,10 @@ export class DatabaseManagerComponent implements OnDestroy {
 
     if (this.settingsOpen) {
       this.settingsInitialized = true
+    }
+
+    if (this.databaseExportOpen) {
+      this.databaseExportInitialized = true
     }
 
     if (this.tableInfoOpen) {
@@ -313,6 +332,10 @@ export class DatabaseManagerComponent implements OnDestroy {
       this.settingsInitialized = false
     }
 
+    if (tab?.type === 'database-export') {
+      this.databaseExportInitialized = false
+    }
+
     if (event?.hasTabs) {
       return
     }
@@ -327,6 +350,7 @@ export class DatabaseManagerComponent implements OnDestroy {
     this.queryAssistantOpen = false
     this.selectBuilderOpen = false
     this.queryCompareOpen = false
+    this.databaseExportOpen = false
     void this.loadRecentQueries()
   }
 
@@ -393,6 +417,16 @@ export class DatabaseManagerComponent implements OnDestroy {
 
   onAiSettingsRequested(): void {
     this.tabsComponent.openSettingsTab('ai')
+  }
+
+  onAiSqlRequested(sql: string): void {
+    const normalizedSql = String(sql || '').trim()
+    if (!normalizedSql) return
+
+    this.tabsComponent.newTab('sql', {
+      sql: normalizedSql,
+      context: this.tabInfo?.dbInfo || this.selectedSchemaDB
+    }, this.t('tabs.newQuery'))
   }
 
   onAiSettingsSaved(): void {

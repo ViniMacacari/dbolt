@@ -13,10 +13,18 @@ import type {
   TableMetadataRowsResult
 } from '../../../types.js';
 
-type NamedObjectRow = QueryRow & { name: string; type: 'table' | 'view' | 'procedure' };
+type NamedObjectRow = QueryRow & {
+  name: string;
+  type: 'table' | 'view' | 'procedure' | 'function' | 'trigger' | 'sequence' | 'synonym';
+  table_name?: string;
+};
 type IndexRow = QueryRow & { index_name: string; table_name: string; index_type?: string };
 type ColumnRow = QueryRow & TableColumn;
-type TableLikeObjectRow = QueryRow & { name: string; type: 'table' | 'view' };
+type TableLikeObjectRow = QueryRow & {
+  schema_name: string;
+  name: string;
+  type: 'table' | 'view';
+};
 
 class ListObjectsHanaV1 {
   private readonly db = new HanaV1();
@@ -44,12 +52,44 @@ class ListObjectsHanaV1 {
         ORDER BY PROCEDURE_NAME
       `, [], connectionKey)) as NamedObjectRow[];
 
+      const functions = (await this.db.executeQuery(`
+        SELECT FUNCTION_NAME AS "name", 'function' AS "type"
+        FROM SYS.FUNCTIONS
+        WHERE SCHEMA_NAME = CURRENT_SCHEMA
+        ORDER BY FUNCTION_NAME
+      `, [], connectionKey)) as NamedObjectRow[];
+
+      const triggers = (await this.db.executeQuery(`
+        SELECT TRIGGER_NAME AS "name", SUBJECT_TABLE_NAME AS "table_name", 'trigger' AS "type"
+        FROM SYS.TRIGGERS
+        WHERE SCHEMA_NAME = CURRENT_SCHEMA
+        ORDER BY SUBJECT_TABLE_NAME, TRIGGER_NAME
+      `, [], connectionKey)) as NamedObjectRow[];
+
+      const sequences = (await this.db.executeQuery(`
+        SELECT SEQUENCE_NAME AS "name", 'sequence' AS "type"
+        FROM SYS.SEQUENCES
+        WHERE SCHEMA_NAME = CURRENT_SCHEMA
+        ORDER BY SEQUENCE_NAME
+      `, [], connectionKey)) as NamedObjectRow[];
+
+      const synonyms = (await this.db.executeQuery(`
+        SELECT SYNONYM_NAME AS "name", 'synonym' AS "type"
+        FROM SYS.SYNONYMS
+        WHERE SCHEMA_NAME = CURRENT_SCHEMA
+        ORDER BY SYNONYM_NAME
+      `, [], connectionKey)) as NamedObjectRow[];
+
       const indexes = await this.listIndexes(connectionKey);
 
       const data: DatabaseObject[] = [
         ...tables.map((object, index) => toNamedDatabaseObject(object, 'table', index)),
         ...views.map((object, index) => toNamedDatabaseObject(object, 'view', index)),
         ...procedures.map((object, index) => toNamedDatabaseObject(object, 'procedure', index)),
+        ...functions.map((object, index) => toNamedDatabaseObject(object, 'function', index)),
+        ...triggers.map((object, index) => toNamedDatabaseObject(object, 'trigger', index, String(object.table_name || ''))),
+        ...sequences.map((object, index) => toNamedDatabaseObject(object, 'sequence', index)),
+        ...synonyms.map((object, index) => toNamedDatabaseObject(object, 'synonym', index)),
         ...indexes.map((object, index) => toIndexDatabaseObject(object, index))
       ];
 
@@ -64,21 +104,21 @@ class ListObjectsHanaV1 {
     }
   }
 
-  async listTableObjects(connectionKey?: string): Promise<DatabaseObjectsResult> {
+  async listTableObjects(connectionKey?: string, schemaName?: string): Promise<DatabaseObjectsResult> {
     try {
       const objects = (await this.db.executeQuery(`
         SELECT "name", "type"
         FROM (
           SELECT TABLE_NAME AS "name", 'table' AS "type"
           FROM PUBLIC.TABLES
-          WHERE SCHEMA_NAME = CURRENT_SCHEMA
+          WHERE SCHEMA_NAME = COALESCE(?, CURRENT_SCHEMA)
           UNION ALL
           SELECT VIEW_NAME AS "name", 'view' AS "type"
           FROM PUBLIC.VIEWS
-          WHERE SCHEMA_NAME = CURRENT_SCHEMA
+          WHERE SCHEMA_NAME = COALESCE(?, CURRENT_SCHEMA)
         ) objects
         ORDER BY "name"
-      `, [], connectionKey)) as NamedObjectRow[];
+      `, [schemaName || null, schemaName || null], connectionKey)) as NamedObjectRow[];
 
       const data: DatabaseObject[] = objects.map((object, index) =>
         toNamedDatabaseObject(object, object.type === 'view' ? 'view' : 'table', index)
@@ -95,9 +135,13 @@ class ListObjectsHanaV1 {
     }
   }
 
-  async tableColumns(tableName: string, connectionKey?: string): Promise<TableColumnsResult> {
+  async tableColumns(
+    tableName: string,
+    connectionKey?: string,
+    schemaName?: string
+  ): Promise<TableColumnsResult> {
     try {
-      const object = await this.resolveTableLikeObject(tableName, connectionKey);
+      const object = await this.resolveTableLikeObject(tableName, connectionKey, schemaName);
       if (!object) {
         return { success: true, data: [] };
       }
@@ -261,6 +305,85 @@ class ListObjectsHanaV1 {
     }
   }
 
+  async objectDDL(
+    object: { name: string; type: string; table?: string },
+    connectionKey?: string
+  ): Promise<TableDDLResult> {
+    if (object.type === 'procedure') return this.procedureDDL(object.name, connectionKey);
+
+    try {
+      if (object.type === 'function' || object.type === 'trigger') {
+        const catalog = object.type === 'function' ? 'FUNCTIONS' : 'TRIGGERS';
+        const nameColumn = object.type === 'function' ? 'FUNCTION_NAME' : 'TRIGGER_NAME';
+        const rows = (await this.db.executeQuery(
+          `SELECT DEFINITION AS "ddl" FROM SYS.${catalog} ` +
+          `WHERE SCHEMA_NAME = CURRENT_SCHEMA AND ${nameColumn} = ?`,
+          [object.name],
+          connectionKey
+        )) as QueryRow[];
+        return { success: true, ddl: String(rows[0]?.['ddl'] || '') };
+      }
+
+      if (object.type === 'sequence') {
+        const rows = (await this.db.executeQuery(
+          `
+            SELECT START_NUMBER AS "start_number", MIN_VALUE AS "min_value",
+                   MAX_VALUE AS "max_value", INCREMENT_BY AS "increment_by",
+                   IS_CYCLED AS "is_cycled", CACHE_SIZE AS "cache_size",
+                   RESET_BY_QUERY AS "reset_by_query"
+            FROM SYS.SEQUENCES
+            WHERE SCHEMA_NAME = CURRENT_SCHEMA
+              AND SEQUENCE_NAME = ?
+          `,
+          [object.name],
+          connectionKey
+        )) as QueryRow[];
+        const row = rows[0];
+        if (!row) return { success: true, ddl: '' };
+        const ddl = [
+          `CREATE SEQUENCE ${quoteIdentifier(object.name)}`,
+          `START WITH ${row['start_number']}`,
+          `INCREMENT BY ${row['increment_by']}`,
+          `MINVALUE ${row['min_value']}`,
+          `MAXVALUE ${row['max_value']}`,
+          String(row['is_cycled']).toUpperCase() === 'TRUE' ? 'CYCLE' : 'NO CYCLE',
+          Number(row['cache_size'] || 0) > 0 ? `CACHE ${row['cache_size']}` : 'NO CACHE',
+          row['reset_by_query'] ? `RESET BY ${row['reset_by_query']}` : ''
+        ].filter(Boolean).join('\n  ');
+        return { success: true, ddl };
+      }
+
+      if (object.type === 'synonym') {
+        const rows = (await this.db.executeQuery(
+          `
+            SELECT OBJECT_DATABASE AS "object_database", OBJECT_SCHEMA AS "object_schema",
+                   OBJECT_NAME AS "object_name"
+            FROM SYS.SYNONYMS
+            WHERE SCHEMA_NAME = CURRENT_SCHEMA
+              AND SYNONYM_NAME = ?
+          `,
+          [object.name],
+          connectionKey
+        )) as QueryRow[];
+        const row = rows[0];
+        if (!row) return { success: true, ddl: '' };
+        const target = [row['object_database'], row['object_schema'], row['object_name']]
+          .filter(Boolean)
+          .map((part) => quoteIdentifier(String(part)))
+          .join('.');
+        return { success: true, ddl: `CREATE SYNONYM ${quoteIdentifier(object.name)} FOR ${target}` };
+      }
+
+      return { success: false, message: `HANA does not support exporting ${object.type} through this provider.` };
+    } catch (error: unknown) {
+      return {
+        success: false,
+        message: `Error occurred while loading ${object.type} DDL.`,
+        error: getErrorMessage(error)
+      };
+    }
+  }
+
   private formatHanaColumnType(column: QueryRow): string {
     const dataType = String(column['data_type'] || '');
     if (column['length'] && ['NVARCHAR', 'VARCHAR', 'CHAR', 'NCHAR', 'VARBINARY', 'BINARY'].includes(dataType)) {
@@ -274,7 +397,11 @@ class ListObjectsHanaV1 {
     return dataType;
   }
 
-  private async resolveTableLikeObject(tableName: string, connectionKey?: string): Promise<TableLikeObjectRow | null> {
+  private async resolveTableLikeObject(
+    tableName: string,
+    connectionKey?: string,
+    schemaName?: string
+  ): Promise<TableLikeObjectRow | null> {
     const lookupNames = this.buildLookupNames(tableName);
     if (!lookupNames[0]) {
       return null;
@@ -282,16 +409,16 @@ class ListObjectsHanaV1 {
 
     const rows = (await this.db.executeQuery(
       `
-        SELECT "name", "type"
+        SELECT "schema_name", "name", "type"
         FROM (
-          SELECT TABLE_NAME AS "name", 'table' AS "type"
+          SELECT SCHEMA_NAME AS "schema_name", TABLE_NAME AS "name", 'table' AS "type"
           FROM SYS.TABLES
-          WHERE SCHEMA_NAME = CURRENT_SCHEMA
+          WHERE SCHEMA_NAME = COALESCE(?, CURRENT_SCHEMA)
             AND TABLE_NAME IN (?, ?)
           UNION ALL
-          SELECT VIEW_NAME AS "name", 'view' AS "type"
+          SELECT SCHEMA_NAME AS "schema_name", VIEW_NAME AS "name", 'view' AS "type"
           FROM SYS.VIEWS
-          WHERE SCHEMA_NAME = CURRENT_SCHEMA
+          WHERE SCHEMA_NAME = COALESCE(?, CURRENT_SCHEMA)
             AND VIEW_NAME IN (?, ?)
         ) objects
         ORDER BY
@@ -299,7 +426,15 @@ class ListObjectsHanaV1 {
           CASE WHEN "type" = 'table' THEN 0 ELSE 1 END
         LIMIT 1
       `,
-      [lookupNames[0], lookupNames[1], lookupNames[0], lookupNames[1], lookupNames[0]],
+      [
+        schemaName || null,
+        lookupNames[0],
+        lookupNames[1],
+        schemaName || null,
+        lookupNames[0],
+        lookupNames[1],
+        lookupNames[0]
+      ],
       connectionKey
     )) as TableLikeObjectRow[];
 
@@ -322,11 +457,11 @@ class ListObjectsHanaV1 {
             INDEX_TYPE AS "index_type",
             POSITION AS "ordinal_position"
           FROM SYS.VIEW_COLUMNS
-          WHERE SCHEMA_NAME = CURRENT_SCHEMA
+          WHERE SCHEMA_NAME = ?
             AND VIEW_NAME = ?
           ORDER BY POSITION
         `,
-        [object.name],
+        [object.schema_name, object.name],
         connectionKey
       )) as ColumnRow[];
     }
@@ -345,11 +480,11 @@ class ListObjectsHanaV1 {
           INDEX_TYPE AS "index_type",
           POSITION AS "ordinal_position"
         FROM SYS.TABLE_COLUMNS
-        WHERE SCHEMA_NAME = CURRENT_SCHEMA
+        WHERE SCHEMA_NAME = ?
           AND TABLE_NAME = ?
         ORDER BY POSITION
       `,
-      [object.name],
+      [object.schema_name, object.name],
       connectionKey
     )) as ColumnRow[];
   }

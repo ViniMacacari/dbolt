@@ -11,6 +11,7 @@
                 {{ copyLabel }}
             </button>
         </div>
-        <div class="message-content text-min" [innerHTML]="formattedContent"></div>
+        <div class="message-content text-min" [innerHTML]="formattedContent"
+            (click)="onFormattedContentClick($event)"></div>
     </div>
 </article>

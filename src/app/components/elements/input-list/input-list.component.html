@@ -1,6 +1,6 @@
-<div class="dropdown-container">
+<div class="dropdown-container" [class.disabled]="disabled">
     <input type="text" class="filter-input" [placeholder]="placeholder || t('generic.search')" [value]="searchValue"
-        (input)="onSearchInput($event)" (focus)="openDropdown()" [style.width]="width" />
+        (input)="onSearchInput($event)" (focus)="openDropdown()" [style.width]="width" [disabled]="disabled" />
     <ul *ngIf="isDropdownOpen" class="dropdown-list">
         <li *ngFor="let item of filteredList" class="dropdown-item" (click)="selectItem(item)">
             {{ item[displayKey] }}

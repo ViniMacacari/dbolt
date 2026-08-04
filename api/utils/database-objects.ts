@@ -20,14 +20,16 @@ function buildObjectId(type: DatabaseObjectType, name: string, index: number, pa
 export function toNamedDatabaseObject(
   row: ObjectRow,
   type: Exclude<DatabaseObjectType, 'index'>,
-  index: number
+  index: number,
+  parentName = ''
 ): DatabaseObject {
   const name = readString(row, ['name', 'NAME', 'table_name', 'TABLE_NAME', 'view_name', 'VIEW_NAME', 'routine_name', 'ROUTINE_NAME', 'procedure_name', 'PROCEDURE_NAME']);
 
   return {
-    id: buildObjectId(type, name, index),
+    id: buildObjectId(type, name, index, parentName),
     name,
-    type
+    type,
+    ...(parentName ? { table: parentName } : {})
   };
 }
 
