@@ -1,3 +1,13 @@
+:host {
+    display: block;
+    position: relative;
+    width: 100%;
+}
+
+:host.dropdown-open {
+    z-index: 10000;
+}
+
 .dropdown-container {
     position: relative;
     width: 100%;
@@ -5,6 +15,10 @@
     border-radius: 15px;
     background-color: var(--dbolt-1b1b1b);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    &.disabled {
+        opacity: .55;
+    }
 }
 
 .filter-input {
@@ -18,6 +32,10 @@
     border-radius: 15px;
 
     font-family: 'Nunito';
+
+    &:disabled {
+        cursor: not-allowed;
+    }
 }
 
 .dropdown-list {
