@@ -395,6 +395,16 @@ export class DatabaseManagerComponent implements OnDestroy {
     this.tabsComponent.openSettingsTab('ai')
   }
 
+  onAiSqlRequested(sql: string): void {
+    const normalizedSql = String(sql || '').trim()
+    if (!normalizedSql) return
+
+    this.tabsComponent.newTab('sql', {
+      sql: normalizedSql,
+      context: this.tabInfo?.dbInfo || this.selectedSchemaDB
+    }, this.t('tabs.newQuery'))
+  }
+
   onAiSettingsSaved(): void {
     if (this.aiAssistantOpen) {
       void this.aiAssistantPanel?.loadSettings()
