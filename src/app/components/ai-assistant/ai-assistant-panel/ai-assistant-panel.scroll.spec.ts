@@ -125,7 +125,7 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
+      { translate: (key: string) => key } as any,
       {} as any,
       {} as any
     )
@@ -168,7 +168,7 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
+      { translate: (key: string) => key } as any,
       {} as any,
       {} as any
     )
