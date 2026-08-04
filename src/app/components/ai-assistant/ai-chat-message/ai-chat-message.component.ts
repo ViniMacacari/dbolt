@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common'
-import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core'
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core'
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser'
 
 import { AiChatMessage } from '../../../services/ai-assistant/ai-assistant.model'
@@ -16,9 +16,13 @@ import { QueryResultExportService } from '../../../services/query-result-export/
 })
 export class AiChatMessageComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) message!: AiChatMessage
+  @Output() sqlRequested = new EventEmitter<string>()
 
   formattedContent!: SafeHtml
   private displayContent: string = ''
+  private sqlCodeBlocks: string[] = []
+  private sqlCopyStates = new Map<number, 'copied' | 'error'>()
+  private sqlCopyResetTimers = new Map<number, ReturnType<typeof setTimeout>>()
 
   copyState: 'idle' | 'copied' | 'error' = 'idle'
   private copyResetTimer?: ReturnType<typeof setTimeout>
@@ -30,12 +34,12 @@ export class AiChatMessageComponent implements OnChanges, OnDestroy {
   ) { }
 
   ngOnChanges(_changes: SimpleChanges): void {
+    this.clearSqlCopyResetTimers()
+    this.sqlCopyStates.clear()
     this.displayContent = this.message.role === 'assistant'
       ? sanitizeAiAssistantContent(this.message.content || '', this.language.getCurrentLanguage())
       : this.message.content || ''
-    this.formattedContent = this.sanitizer.bypassSecurityTrustHtml(
-      this.formatMarkdown(this.displayContent)
-    )
+    this.renderFormattedContent()
   }
 
   get authorLabel(): string {
@@ -67,8 +71,38 @@ export class AiChatMessageComponent implements OnChanges, OnDestroy {
     }, 1600)
   }
 
+  async onFormattedContentClick(event: MouseEvent): Promise<void> {
+    const target = event.target
+    if (!(target instanceof Element)) return
+
+    const actionButton = target.closest<HTMLButtonElement>('button[data-ai-code-action]')
+    if (!actionButton) return
+
+    const codeIndex = Number(actionButton.getAttribute('data-ai-code-index'))
+    const sql = this.sqlCodeBlocks[codeIndex]
+    if (!Number.isInteger(codeIndex) || !sql) return
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (actionButton.getAttribute('data-ai-code-action') === 'open-sql') {
+      this.sqlRequested.emit(sql)
+      return
+    }
+
+    await this.copySqlCode(sql, codeIndex)
+  }
+
   ngOnDestroy(): void {
     this.clearCopyResetTimer()
+    this.clearSqlCopyResetTimers()
+  }
+
+  private renderFormattedContent(): void {
+    this.sqlCodeBlocks = []
+    this.formattedContent = this.sanitizer.bypassSecurityTrustHtml(
+      this.formatMarkdown(this.displayContent)
+    )
   }
 
   private formatMarkdown(content: string): string {
@@ -82,15 +116,96 @@ export class AiChatMessageComponent implements OnChanges, OnDestroy {
 
   private formatCodeBlock(block: string): string {
     const match = block.match(/^```([A-Za-z0-9_-]*)\n?([\s\S]*?)```$/)
-    const language = this.escapeHtml(match?.[1] || '')
-    const code = this.escapeHtml(match?.[2] || block.replace(/^```|```$/g, ''))
+    const rawLanguage = match?.[1] || ''
+    const rawCode = (match?.[2] || block.replace(/^```|```$/g, '')).replace(/\n$/, '')
+    const language = this.escapeHtml(rawLanguage)
+    const code = this.escapeHtml(rawCode)
+    const sqlCodeIndex = this.message.role === 'assistant' && this.isSqlCodeBlock(rawLanguage, rawCode)
+      ? this.sqlCodeBlocks.push(rawCode) - 1
+      : -1
+    const header = language || sqlCodeIndex >= 0
+      ? [
+        '<div class="md-code-header">',
+        language ? `<span class="md-code-language">${language}</span>` : '<span></span>',
+        sqlCodeIndex >= 0 ? this.formatSqlCodeActions(sqlCodeIndex) : '',
+        '</div>'
+      ].join('')
+      : ''
 
     return [
       '<div class="md-code-block">',
-      language ? `<span class="md-code-language">${language}</span>` : '',
+      header,
       `<pre><code>${code}</code></pre>`,
       '</div>'
     ].join('')
+  }
+
+  private formatSqlCodeActions(codeIndex: number): string {
+    const copyState = this.sqlCopyStates.get(codeIndex)
+    const copyLabel = copyState === 'copied'
+      ? this.language.translate('aiAssistant.copied')
+      : copyState === 'error'
+        ? this.language.translate('aiAssistant.copyFailed')
+        : this.language.translate('aiAssistant.copySql')
+    const openLabel = this.language.translate('aiAssistant.openSqlInNewTab')
+    const stateClass = copyState ? ` ${copyState}` : ''
+
+    return [
+      '<span class="md-code-actions">',
+      `<button type="button" class="md-code-action${stateClass}" data-ai-code-action="copy-sql" data-ai-code-index="${codeIndex}" title="${this.escapeHtml(copyLabel)}" aria-label="${this.escapeHtml(copyLabel)}">`,
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path></svg>',
+      '</button>',
+      `<button type="button" class="md-code-action" data-ai-code-action="open-sql" data-ai-code-index="${codeIndex}" title="${this.escapeHtml(openLabel)}" aria-label="${this.escapeHtml(openLabel)}">`,
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"></path><path d="m20 4-9 9"></path><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"></path></svg>',
+      '</button>',
+      '</span>'
+    ].join('')
+  }
+
+  private isSqlCodeBlock(language: string, code: string): boolean {
+    const normalizedLanguage = language.trim().toLowerCase()
+    const sqlLanguages = new Set([
+      'sql',
+      'mysql',
+      'postgres',
+      'postgresql',
+      'pgsql',
+      'sqlite',
+      'tsql',
+      'mssql',
+      'sqlserver',
+      'hana'
+    ])
+
+    if (sqlLanguages.has(normalizedLanguage)) return true
+    if (normalizedLanguage) return false
+
+    const withoutLeadingComments = code
+      .replace(/^\s*(?:--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/\s*)*/i, '')
+
+    return /^(?:SELECT|WITH|INSERT|UPDATE|DELETE|MERGE|CREATE|ALTER|DROP|TRUNCATE|EXPLAIN|SHOW|DESCRIBE|USE|CALL|EXEC|GRANT|REVOKE)\b/i
+      .test(withoutLeadingComments)
+  }
+
+  private async copySqlCode(sql: string, codeIndex: number): Promise<void> {
+    const currentTimer = this.sqlCopyResetTimers.get(codeIndex)
+    if (currentTimer) clearTimeout(currentTimer)
+
+    try {
+      await this.clipboard.copyText(sql)
+      this.sqlCopyStates.set(codeIndex, 'copied')
+    } catch (_error: unknown) {
+      this.sqlCopyStates.set(codeIndex, 'error')
+    }
+
+    this.renderFormattedContent()
+
+    const timer = setTimeout(() => {
+      this.sqlCopyStates.delete(codeIndex)
+      this.sqlCopyResetTimers.delete(codeIndex)
+      this.renderFormattedContent()
+    }, 1600)
+    this.sqlCopyResetTimers.set(codeIndex, timer)
   }
 
   private formatTextBlock(block: string): string {
@@ -288,5 +403,10 @@ export class AiChatMessageComponent implements OnChanges, OnDestroy {
 
     clearTimeout(this.copyResetTimer)
     this.copyResetTimer = undefined
+  }
+
+  private clearSqlCopyResetTimers(): void {
+    this.sqlCopyResetTimers.forEach((timer) => clearTimeout(timer))
+    this.sqlCopyResetTimers.clear()
   }
 }
