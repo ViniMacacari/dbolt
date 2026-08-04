@@ -481,6 +481,8 @@ export const ptBrTranslations: TranslationCatalog = {
   'aiAssistant.askPlaceholder': 'Pergunte algo...',
   'aiAssistant.send': 'Enviar',
   'aiAssistant.copyAnswer': 'Copiar',
+  'aiAssistant.copySql': 'Copiar SQL',
+  'aiAssistant.openSqlInNewTab': 'Abrir em nova guia',
   'aiAssistant.copied': 'Copiado',
   'aiAssistant.copyFailed': 'Erro ao copiar',
   'aiAssistant.emptyState': 'Faça uma pergunta sobre o schema atual.',

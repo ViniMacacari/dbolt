@@ -481,6 +481,8 @@ export const enTranslations: TranslationCatalog = {
   'aiAssistant.askPlaceholder': 'Ask something...',
   'aiAssistant.send': 'Send',
   'aiAssistant.copyAnswer': 'Copy',
+  'aiAssistant.copySql': 'Copy SQL',
+  'aiAssistant.openSqlInNewTab': 'Open in new tab',
   'aiAssistant.copied': 'Copied',
   'aiAssistant.copyFailed': 'Copy failed',
   'aiAssistant.emptyState': 'Ask a question about the current schema.',
