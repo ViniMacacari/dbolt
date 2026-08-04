@@ -72,7 +72,7 @@
         </div>
 
         <div #messageItem *ngFor="let message of messages; trackBy: trackMessage">
-            <app-ai-chat-message [message]="message">
+            <app-ai-chat-message [message]="message" (sqlRequested)="openSqlInEditor($event)">
             </app-ai-chat-message>
         </div>
 

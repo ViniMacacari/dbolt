@@ -48,6 +48,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   @Input() tabInfo: unknown
   @Output() close = new EventEmitter<void>()
   @Output() settingsRequested = new EventEmitter<void>()
+  @Output() sqlRequested = new EventEmitter<string>()
 
   settings: AiAssistantSettings | null = null
   conversations: AiAssistantConversation[] = []
@@ -157,6 +158,13 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
 
   get visibleThinkingSteps(): AiAssistantProgressStage[] {
     return this.thinkingSteps.slice(-5)
+  }
+
+  openSqlInEditor(sql: string): void {
+    const normalizedSql = String(sql || '').trim()
+    if (!normalizedSql) return
+
+    this.sqlRequested.emit(normalizedSql)
   }
 
   async loadSettings(): Promise<void> {
