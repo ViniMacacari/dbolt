@@ -74,3 +74,10 @@ input:focus-visible + .toggle-track {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+:host.wrap-label-host .checkbox-label {
+    line-height: 1.35;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+}
