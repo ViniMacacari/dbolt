@@ -2,6 +2,10 @@ import { CommonModule } from '@angular/common'
 import { Component, Input, OnDestroy, OnInit } from '@angular/core'
 import { FormsModule } from '@angular/forms'
 
+import { ButtonComponent } from '../button/button.component'
+import { CheckboxComponent } from '../checkbox/checkbox.component'
+import { InputComponent } from '../input/input.component'
+import { InputListComponent } from '../input-list/input-list.component'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { ConnectionsService, SavedConnection } from '../../../services/resolve-connections/connections.service'
 import {
@@ -18,16 +22,19 @@ import {
 import { DatabaseExportService } from '../../../services/database-export/database-export.service'
 
 type ExportObjectGroup = 'tables' | 'views' | 'routines' | 'indexes'
+type DatabaseExportStep = 1 | 2 | 3 | 4
 
 @Component({
   selector: 'app-db-export',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ButtonComponent, CheckboxComponent, InputComponent, InputListComponent],
   templateUrl: './db-export.component.html',
   styleUrl: './db-export.component.scss'
 })
 export class DbExportComponent implements OnInit, OnDestroy {
   @Input() tabInfo: unknown
+
+  currentStep: DatabaseExportStep = 1
 
   connections: SavedConnection[] = []
   selectedConnectionId: number | null = null
@@ -68,6 +75,13 @@ export class DbExportComponent implements OnInit, OnDestroy {
     { id: 'views', types: ['view'], labelKey: 'dbExport.objects.views', icon: 'icons/view.png' },
     { id: 'routines', types: ['procedure', 'function'], labelKey: 'dbExport.objects.routines', icon: 'icons/procedure.png' },
     { id: 'indexes', types: ['index'], labelKey: 'dbExport.objects.indexes', icon: 'icons/index.png' }
+  ]
+
+  readonly steps: Array<{ id: DatabaseExportStep; labelKey: string }> = [
+    { id: 1, labelKey: 'dbExport.steps.source' },
+    { id: 2, labelKey: 'dbExport.steps.objects' },
+    { id: 3, labelKey: 'dbExport.steps.content' },
+    { id: 4, labelKey: 'dbExport.steps.destination' }
   ]
 
   private exportAbortController: AbortController | null = null
@@ -139,6 +153,18 @@ export class DbExportComponent implements OnInit, OnDestroy {
     )
   }
 
+  get canContinue(): boolean {
+    if (this.currentStep === 1) return Boolean(this.context)
+    if (this.currentStep === 2) return this.selectedObjectCount > 0
+    if (this.currentStep === 3) {
+      return Boolean(
+        this.estimate &&
+        (!this.estimate.acknowledgementRequired || this.acknowledgedLargeExport)
+      )
+    }
+    return this.canStartExport
+  }
+
   get exportProgressPercentage(): number {
     if (!this.progress?.totalObjects) return 0
     return Math.min(100, Math.round((this.progress.completedObjects / this.progress.totalObjects) * 100))
@@ -146,6 +172,21 @@ export class DbExportComponent implements OnInit, OnDestroy {
 
   get destinationAvailable(): boolean {
     return typeof window !== 'undefined' && Boolean(window.dboltFileSystem)
+  }
+
+  get connectionListOptions(): Array<{ id: number; label: string }> {
+    return this.connections.map((connection) => ({
+      id: connection.id,
+      label: `${connection.name} · ${connection.database}`
+    }))
+  }
+
+  get databaseListOptions(): Array<{ name: string }> {
+    return this.databaseOptions.map((name) => ({ name }))
+  }
+
+  get schemaListOptions(): Array<{ name: string }> {
+    return this.schemaOptions.map((name) => ({ name }))
   }
 
   async loadConnections(): Promise<void> {
@@ -161,9 +202,9 @@ export class DbExportComponent implements OnInit, OnDestroy {
     }
   }
 
-  onConnectionSelected(event: Event): void {
+  onConnectionSelected(item: { [key: string]: string | number } | null): void {
     const previousContext = this.connectionState?.context
-    const value = Number((event.target as HTMLSelectElement).value)
+    const value = Number(item?.['id'])
     this.selectedConnectionId = Number.isFinite(value) && value > 0 ? value : null
     this.resetTargetState()
     void this.releaseConnection(previousContext)
@@ -192,14 +233,14 @@ export class DbExportComponent implements OnInit, OnDestroy {
     }
   }
 
-  onDatabaseSelected(event: Event): void {
-    this.selectedDatabase = (event.target as HTMLSelectElement).value
+  onDatabaseSelected(item: { [key: string]: string | number } | null): void {
+    this.selectedDatabase = String(item?.['name'] || '')
     this.refreshSelectedSchema()
     this.resetObjectState()
   }
 
-  onSchemaSelected(event: Event): void {
-    this.selectedSchema = (event.target as HTMLSelectElement).value
+  onSchemaSelected(item: { [key: string]: string | number } | null): void {
+    this.selectedSchema = String(item?.['name'] || '')
     this.resetObjectState()
   }
 
@@ -218,6 +259,7 @@ export class DbExportComponent implements OnInit, OnDestroy {
       )
       this.context = result.context
       this.objects = result.objects
+      this.currentStep = 2
     } catch (error: unknown) {
       this.errorMessage = this.getErrorMessage(error, this.t('dbExport.errors.loadObjects'))
     } finally {
@@ -225,8 +267,8 @@ export class DbExportComponent implements OnInit, OnDestroy {
     }
   }
 
-  updateObjectSearch(event: Event): void {
-    this.objectSearch = (event.target as HTMLInputElement).value
+  updateObjectSearch(value: string | number | null): void {
+    this.objectSearch = String(value || '')
   }
 
   visibleObjects(group: typeof this.objectGroups[number]): DatabaseExportObject[] {
@@ -280,6 +322,60 @@ export class DbExportComponent implements OnInit, OnDestroy {
   onExportOptionChanged(): void {
     if (!this.includeStructure) this.addDropStatements = false
     this.invalidateEstimate()
+  }
+
+  setIncludeStructure(value: boolean): void {
+    this.includeStructure = value
+    this.onExportOptionChanged()
+  }
+
+  setIncludeData(value: boolean): void {
+    this.includeData = value
+    this.onExportOptionChanged()
+  }
+
+  setAddDropStatements(value: boolean): void {
+    this.addDropStatements = value
+    this.onExportOptionChanged()
+  }
+
+  goToStep(step: DatabaseExportStep): void {
+    if (this.exporting || !this.canOpenStep(step)) return
+    this.currentStep = step
+  }
+
+  previousStep(): void {
+    if (this.exporting || this.currentStep === 1) return
+    this.currentStep = (this.currentStep - 1) as DatabaseExportStep
+  }
+
+  nextStep(): void {
+    if (this.exporting || !this.canContinue || this.currentStep === 4) return
+    this.currentStep = (this.currentStep + 1) as DatabaseExportStep
+  }
+
+  canOpenStep(step: DatabaseExportStep): boolean {
+    if (step === 1) return true
+    if (step === 2) return Boolean(this.context)
+    if (step === 3) return Boolean(this.context && this.selectedObjectCount > 0)
+    return Boolean(
+      this.context &&
+      this.selectedObjectCount > 0 &&
+      this.estimate &&
+      (!this.estimate.acknowledgementRequired || this.acknowledgedLargeExport)
+    )
+  }
+
+  isStepComplete(step: DatabaseExportStep): boolean {
+    if (step === 1) return Boolean(this.context)
+    if (step === 2) return this.selectedObjectCount > 0
+    if (step === 3) {
+      return Boolean(
+        this.estimate &&
+        (!this.estimate.acknowledgementRequired || this.acknowledgedLargeExport)
+      )
+    }
+    return Boolean(this.result)
   }
 
   async analyzeExport(): Promise<void> {
@@ -442,6 +538,7 @@ export class DbExportComponent implements OnInit, OnDestroy {
   }
 
   private resetObjectState(): void {
+    this.currentStep = 1
     this.context = null
     this.objects = []
     this.selectedObjectKeys.clear()
