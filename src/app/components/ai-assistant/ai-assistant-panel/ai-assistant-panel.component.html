@@ -20,7 +20,18 @@
     </div>
     <div class="py-2"></div>
 
-    <p class="selected-title">{{ t('aiAssistant.model') }} - {{ settings?.model || t('aiAssistant.configure') }}</p>
+    <div class="ai-model-picker">
+        <div class="ai-model-picker-heading">
+            <span>{{ t('aiAssistant.model') }}</span>
+            <small *ngIf="modelStatusMessage">{{ modelStatusMessage }}</small>
+        </div>
+        <app-input-list [list]="modelOptions" [displayKey]="'label'" [valueKey]="'value'"
+            [selectedValue]="settings?.model || null" [width]="'100%'" [compact]="true"
+            [placeholder]="modelOptionsLoading ? t('aiAssistant.loadingModels') : t('aiAssistant.selectModel')"
+            [disabled]="loadingSettings || modelOptionsLoading || modelSaving || sending || !settings?.hasApiKey"
+            (itemSelected)="onModelSelected($event)">
+        </app-input-list>
+    </div>
     <button type="button" class="database context-summary context-summary-combined"
         [disabled]="!databaseContextAvailable" [title]="contextSummaryLabel">
         <span class="context-summary-item">
