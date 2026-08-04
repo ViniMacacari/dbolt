@@ -106,19 +106,19 @@
                     [placeholder]="t('dbExport.selection.search')" [ariaLabel]="t('dbExport.selection.search')">
                 </app-input>
 
-                <div class="object-groups">
-                    <section class="object-group" *ngFor="let group of objectGroups">
+                <div class="object-groups" *ngIf="objectGroupViews.length; else noSchemaObjects">
+                    <section class="object-group" *ngFor="let group of objectGroupViews">
                         <label class="group-header">
-                            <input type="checkbox" [checked]="isGroupSelected(group)"
+                            <input type="checkbox" [checked]="group.allVisibleSelected"
                                 (change)="toggleGroup(group, $event)"
-                                [disabled]="visibleObjects(group).length === 0 || exporting">
+                                [disabled]="group.objects.length === 0 || exporting">
                             <img [src]="group.icon" alt="" height="15px">
                             <strong>{{ t(group.labelKey) }}</strong>
-                            <span>{{ selectedGroupCount(group) }}/{{ groupObjectCount(group) }}</span>
+                            <span>{{ group.selectedCount }}/{{ group.totalCount }}</span>
                         </label>
 
-                        <div class="object-list" *ngIf="visibleObjects(group).length; else emptyGroup">
-                            <label class="object-row" *ngFor="let object of visibleObjects(group); trackBy: trackObject"
+                        <div class="object-list" *ngIf="group.objects.length; else emptyGroup">
+                            <label class="object-row" *ngFor="let object of group.objects; trackBy: trackObject"
                                 [class.selected]="isObjectSelected(object)">
                                 <input type="checkbox" [checked]="isObjectSelected(object)"
                                     (change)="toggleObject(object, $event)" [disabled]="exporting">
@@ -134,6 +134,13 @@
                         </ng-template>
                     </section>
                 </div>
+                <ng-template #noSchemaObjects>
+                    <div class="empty-selection">
+                        <img src="icons/database.png" alt="" height="22px">
+                        <strong>{{ t('dbExport.selection.emptyTitle') }}</strong>
+                        <span>{{ t('dbExport.selection.noObjects') }}</span>
+                    </div>
+                </ng-template>
             </section>
 
             <section class="step-pane content-step" *ngSwitchCase="3">
