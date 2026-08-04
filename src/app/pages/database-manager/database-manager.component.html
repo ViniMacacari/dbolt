@@ -166,6 +166,13 @@
                     [style.--workspace-tab-switch-offset]="tabInfo?.switchOffset || null"
                     (editRequested)="onCompareEditRequested($event)"
                     (restoreRequested)="onCompareRestoreRequested($event)"></app-query-version-compare>
+                <app-db-export class="workspace-tab-content" *ngIf="databaseExportInitialized"
+                    [hidden]="!databaseExportOpen" [tabInfo]="tabInfo"
+                    [class.workspace-tab-opening]="databaseExportOpen && tabInfo?.opening"
+                    [class.workspace-tab-closing]="databaseExportOpen && tabInfo?.closing"
+                    [class.workspace-tab-switching]="databaseExportOpen && tabInfo?.switching"
+                    [style.--workspace-tab-switch-offset]="tabInfo?.switchOffset || null">
+                </app-db-export>
 
                 <app-code-editor class="workspace-tab-content" *ngFor="let tab of openTabs; trackBy: trackTabByIdentity"
                     [class.workspace-tab-opening]="tab.opening && isActiveSqlTab(tab)"
