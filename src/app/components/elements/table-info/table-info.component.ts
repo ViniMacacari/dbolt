@@ -3,11 +3,11 @@ import { CommonModule } from '@angular/common'
 import { AgGridAngular } from 'ag-grid-angular'
 import { AllCommunityModule, ColDef, GridApi, GridReadyEvent, ModuleRegistry } from 'ag-grid-community'
 import { ToastComponent } from '../../toast/toast.component'
-import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
 import { TableDataQueryService } from '../../../services/table-data-query/table-data-query.service'
 import { TableQueryComponent } from '../table-query/table-query.component'
 import { AppLanguageService } from '../../../services/language/app-language.service'
+import { DatabaseMetadataService } from '../../../services/db-metadata/database-metadata.service'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
@@ -73,7 +73,7 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
   private dataFilterTimeout: any
 
   constructor(
-    private IAPI: InternalApiService,
+    private databaseMetadata: DatabaseMetadataService,
     private runQuery: RunQueryService,
     private tableDataQuery: TableDataQueryService,
     private language: AppLanguageService
@@ -213,25 +213,14 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
     this.refreshActiveRows()
 
     try {
-      const tableName = encodeURIComponent(this.elementName)
-      const queryString = context.connectionKey
-        ? `?connectionKey=${encodeURIComponent(context.connectionKey)}`
-        : ''
-      const baseUrl = `/api/${context.sgbd}/${context.version}`
-
-      const [columns, keys, indexes, ddl] = await Promise.all([
-        this.getMetadata(`${baseUrl}/table-columns/${tableName}${queryString}`),
-        this.getMetadata(`${baseUrl}/table-keys/${tableName}${queryString}`),
-        this.getMetadata(`${baseUrl}/table-indexes/${tableName}${queryString}`),
-        this.getMetadata(`${baseUrl}/table-ddl/${tableName}${queryString}`)
-      ])
+      const metadata = await this.databaseMetadata.loadTableMetadata(context, this.elementName)
 
       if (requestId !== this.metadataRequestId) return
 
-      this.columnsRows = this.normalizeRows(columns?.data || [])
-      this.keysRows = this.normalizeRows(keys?.data || [])
-      this.indexesRows = this.normalizeRows(indexes?.data || [])
-      this.ddl = ddl?.ddl || ''
+      this.columnsRows = this.normalizeRows(metadata.columns)
+      this.keysRows = this.normalizeRows(metadata.keys)
+      this.indexesRows = this.normalizeRows(metadata.indexes)
+      this.ddl = metadata.ddl
 
       this.refreshActiveRows()
       this.queueGridResize()
@@ -312,16 +301,6 @@ export class TableInfoComponent implements OnInit, OnChanges, OnDestroy, AfterVi
         this.isLoadingData = false
         this.isLoadingMoreData = false
       }
-    }
-  }
-
-  private async getMetadata(url: string): Promise<any> {
-    try {
-      const response = await this.IAPI.get<any>(url)
-      return response?.success === false ? {} : response
-    } catch (error) {
-      console.error(error)
-      return {}
     }
   }
 

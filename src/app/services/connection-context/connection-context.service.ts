@@ -13,6 +13,7 @@ interface EnsuredContextState {
 })
 export class ConnectionContextService {
   private ensuredContexts = new Map<string, EnsuredContextState>()
+  private ensureQueues = new Map<string, Promise<void>>()
 
   constructor(
     private IAPI: InternalApiService,
@@ -57,23 +58,25 @@ export class ConnectionContextService {
       context.schema
     ].join(':')
 
-    const ensuredContext = this.ensuredContexts.get(context.connectionKey)
-    if (
-      !forceReconnect &&
-      ensuredContext?.stateKey === stateKey &&
-      !this.isExpired(ensuredContext)
-    ) {
-      ensuredContext.lastUsedAt = Date.now()
+    return this.runExclusive(context.connectionKey, async () => {
+      const ensuredContext = this.ensuredContexts.get(context.connectionKey)
+      if (
+        !forceReconnect &&
+        ensuredContext?.stateKey === stateKey &&
+        !this.isExpired(ensuredContext)
+      ) {
+        ensuredContext.lastUsedAt = Date.now()
+        return context
+      }
+
+      await this.connectContext(context, connection)
+
+      this.ensuredContexts.set(context.connectionKey, {
+        stateKey,
+        lastUsedAt: Date.now()
+      })
       return context
-    }
-
-    await this.connectContext(context, connection)
-
-    this.ensuredContexts.set(context.connectionKey, {
-      stateKey,
-      lastUsedAt: Date.now()
     })
-    return context
   }
 
   forgetContext(connectionKey?: string): void {
@@ -130,6 +133,22 @@ export class ConnectionContextService {
 
     const { connectionKey, ...persistableSchemaDb } = schemaDb
     return persistableSchemaDb
+  }
+
+  private runExclusive<T>(connectionKey: string, task: () => Promise<T>): Promise<T> {
+    const previous = this.ensureQueues.get(connectionKey) || Promise.resolve()
+    const current = previous.then(task, task)
+    const tail: Promise<void> = current
+      .then(() => undefined, () => undefined)
+      .then(() => {
+        if (this.ensureQueues.get(connectionKey) === tail) {
+          this.ensureQueues.delete(connectionKey)
+        }
+      })
+
+    this.ensureQueues.set(connectionKey, tail)
+
+    return current
   }
 
   private createConnectionKey(): string {
