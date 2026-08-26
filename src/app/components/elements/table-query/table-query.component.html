@@ -34,6 +34,17 @@
             </button>
 
             <div class="edit-actions" *ngIf="isSelectResult">
+                <ng-container *ngIf="canUseDirectRowActions() && !editingEnabled">
+                    <button type="button" class="result-icon-button" [title]="t('results.addRow')"
+                        (click)="addRowDirect()">
+                        <img src="icons/add.png" height="13px" width="13px">
+                    </button>
+                    <button type="button" class="result-icon-button danger" [title]="t('results.deleteSelectedRows')"
+                        [disabled]="getDirectDeleteCount() === 0" (click)="deleteSelectedRowsDirect()">
+                        <img src="icons/delete.png" height="13px" width="13px">
+                    </button>
+                </ng-container>
+
                 <button type="button" class="result-icon-button" [title]="t('results.editRows')" *ngIf="!editingEnabled"
                     [disabled]="!canStartEditing()" (click)="startEditing()">
                     <img src="icons/edit.png" height="13px" width="13px">
@@ -91,7 +102,7 @@
                 [rowHeight]="resultRowHeight" [headerHeight]="resultHeaderHeight"
                 [rowBuffer]="20" [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false"
                 [suppressNoRowsOverlay]="true" [animateRows]="false" [rowClassRules]="rowClassRules"
-                (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)" (filterChanged)="onGridFilterChanged()"
+                (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)" (filterChanged)="onGridFilterChanged($event)"
                 (columnHeaderClicked)="onColumnHeaderClicked($event)"
                 (cellMouseDown)="onGridCellMouseDown($event)" (cellMouseOver)="onGridCellMouseOver($event)"
                 (cellContextMenu)="onGridCellContextMenu($event)">
@@ -104,7 +115,7 @@
                     [rowHeight]="resultRowHeight" [headerHeight]="resultHeaderHeight"
                     [suppressRowVirtualisation]="false" [suppressColumnVirtualisation]="false"
                     [suppressNoRowsOverlay]="true" [animateRows]="false" [rowClassRules]="rowClassRules"
-                    (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)" (filterChanged)="onGridFilterChanged()"
+                    (firstDataRendered)="query" (bodyScroll)="onBodyScroll($event)" (filterChanged)="onGridFilterChanged($event)"
                     (columnHeaderClicked)="onColumnHeaderClicked($event)"
                     (cellMouseDown)="onGridCellMouseDown($event)" (cellMouseOver)="onGridCellMouseOver($event)"
                     (cellContextMenu)="onGridCellContextMenu($event)">

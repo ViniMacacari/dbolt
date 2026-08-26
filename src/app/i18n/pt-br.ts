@@ -401,6 +401,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'results.applyChanges': 'Aplicar alterações',
   'results.cancelChanges': 'Cancelar alterações',
   'results.previewRowDelete': 'Pré-visualizar exclusão da linha',
+  'results.deleteSelectedRows': 'Excluir linhas selecionadas',
   'results.pendingSingular': '{count} pendente',
   'results.pendingPlural': '{count} pendentes',
   'results.restore': 'Restaurar resultados',
