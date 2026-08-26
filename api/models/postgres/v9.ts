@@ -3,8 +3,10 @@ import { Client, type ClientConfig } from 'pg';
 import type {
   ConnectionStatus,
   DatabaseConnectionConfig,
-  QueryRows
+  QueryRows,
+  QueryRowsWithColumns
 } from '../../types.js';
+import { normalizeColumnNames } from '../../utils/query-columns.js';
 
 type PgConnectionInput = DatabaseConnectionConfig | ClientConfig;
 
@@ -77,6 +79,33 @@ class PgV1 {
         [...params]
       );
       return result.rows as QueryRows;
+    } catch (error: unknown) {
+      console.error('Error executing query:', error);
+      throw error;
+    }
+  }
+
+  async executeQueryWithColumns(
+    query: string,
+    params: readonly unknown[] = [],
+    connectionKey?: string
+  ): Promise<QueryRowsWithColumns> {
+    const state = PgV1.connections.get(this.getConnectionKey(connectionKey));
+    if (!state) {
+      throw new Error('Not connected to PostgreSQL.');
+    }
+
+    try {
+      const result = await state.connection.query<Record<string, unknown>>(
+        query,
+        [...params]
+      );
+      const lastResult = Array.isArray(result) ? result[result.length - 1] : result;
+
+      return {
+        rows: (lastResult?.rows ?? []) as QueryRows,
+        columns: normalizeColumnNames((lastResult?.fields ?? []).map((field: { name?: string }) => field?.name))
+      };
     } catch (error: unknown) {
       console.error('Error executing query:', error);
       throw error;

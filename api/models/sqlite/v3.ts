@@ -4,8 +4,10 @@ import sqlite3 from 'sqlite3';
 import type {
   ConnectionStatus,
   DatabaseConnectionConfig,
-  QueryRows
+  QueryRows,
+  QueryRowsWithColumns
 } from '../../types.js';
+import { columnNamesFromRows, normalizeColumnNames } from '../../utils/query-columns.js';
 
 type SqliteConnectionConfig = Partial<DatabaseConnectionConfig> & {
   filename?: string;
@@ -73,6 +75,29 @@ class SQLiteV3 {
     }
   }
 
+  async executeQueryWithColumns(
+    query: string,
+    params: readonly unknown[] = [],
+    connectionKey?: string
+  ): Promise<QueryRowsWithColumns> {
+    const state = SQLiteV3.connections.get(this.getConnectionKey(connectionKey));
+    if (!state) {
+      throw new Error('Not connected to SQLite.');
+    }
+
+    const rows = (await this.all(state.connection, query, [...params])) as QueryRows;
+    if (rows.length > 0) {
+      return { rows, columns: columnNamesFromRows(rows) };
+    }
+
+    return {
+      rows,
+      columns: params.length > 0
+        ? []
+        : await this.readQueryColumns(state.connection, query)
+    };
+  }
+
   getStatus(connectionKey?: string): ConnectionStatus {
     return SQLiteV3.connections.has(this.getConnectionKey(connectionKey)) ? 'connected' : 'disconnected';
   }
@@ -124,6 +149,32 @@ class SQLiteV3 {
         resolve();
       });
     });
+  }
+
+  private async readQueryColumns(connection: sqlite3.Database, query: string): Promise<string[]> {
+    const statement = query.trim().replace(/;+\s*$/, '');
+    if (!statement || !/^(select|with)\b/i.test(statement)) return [];
+
+    const viewName = `dbolt_query_columns_${process.pid}`;
+
+    try {
+      await this.run(connection, `DROP VIEW IF EXISTS temp."${viewName}"`);
+      await this.run(connection, `CREATE TEMP VIEW "${viewName}" AS ${statement}`);
+      const columnRows = await this.all(connection, `PRAGMA temp.table_info("${viewName}")`, []);
+
+      return normalizeColumnNames(
+        (columnRows as Array<Record<string, unknown>>).map((columnRow) => columnRow['name'])
+      );
+    } catch (error: unknown) {
+      console.warn('Unable to read SQLite query columns for an empty result.', error);
+      return [];
+    } finally {
+      try {
+        await this.run(connection, `DROP VIEW IF EXISTS temp."${viewName}"`);
+      } catch (error: unknown) {
+        console.warn('Unable to drop the temporary SQLite column view.', error);
+      }
+    }
   }
 
   private run(connection: sqlite3.Database, sql: string): Promise<void> {

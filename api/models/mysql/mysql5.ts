@@ -9,8 +9,10 @@ import mysql, {
 import type {
   ConnectionStatus,
   DatabaseConnectionConfig,
-  QueryRows
+  QueryRows,
+  QueryRowsWithColumns
 } from '../../types.js';
+import { normalizeColumnNames } from '../../utils/query-columns.js';
 
 type MySqlConnectionInput = DatabaseConnectionConfig | MySqlConnectionOptions;
 
@@ -88,6 +90,31 @@ class MySQLV1 {
       ]);
 
       return Array.isArray(rows) ? (rows as unknown as QueryRows) : [];
+    } catch (error: unknown) {
+      console.error('Error executing query:', error);
+      throw error;
+    }
+  }
+
+  async executeQueryWithColumns(
+    query: string,
+    params: readonly unknown[] = [],
+    connectionKey?: string
+  ): Promise<QueryRowsWithColumns> {
+    const state = MySQLV1.connections.get(this.getConnectionKey(connectionKey));
+    if (!state) {
+      throw new Error('Not connected to MySQL.');
+    }
+
+    try {
+      const [rows, fields] = await state.connection.execute<MySqlExecutionResult>(query, [
+        ...params
+      ]);
+
+      return {
+        rows: Array.isArray(rows) ? (rows as unknown as QueryRows) : [],
+        columns: normalizeColumnNames((fields ?? []).map((field) => field?.name))
+      };
     } catch (error: unknown) {
       console.error('Error executing query:', error);
       throw error;
