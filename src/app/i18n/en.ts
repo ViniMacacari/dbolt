@@ -401,6 +401,7 @@ export const enTranslations: TranslationCatalog = {
   'results.applyChanges': 'Apply changes',
   'results.cancelChanges': 'Cancel changes',
   'results.previewRowDelete': 'Preview row delete',
+  'results.deleteSelectedRows': 'Delete selected rows',
   'results.pendingSingular': '{count} pending',
   'results.pendingPlural': '{count} pending',
   'results.restore': 'Restore results',
