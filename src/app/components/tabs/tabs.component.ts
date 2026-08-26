@@ -10,6 +10,7 @@ import { AppLanguageService } from '../../services/language/app-language.service
 import { ApplicationCloseGuardService } from '../../services/application-close/application-close-guard.service'
 import { TabGroup, TabGroupsService, TabLayoutDescriptor, TabLayoutItem } from '../../services/tab-groups/tab-groups.service'
 import { KeyboardShortcutService } from '../../services/keyboard-shortcuts/keyboard-shortcut.service'
+import { TabSelectionService } from '../../services/tab-selection/tab-selection.service'
 
 @Component({
   selector: 'app-tabs',
@@ -62,7 +63,8 @@ export class TabsComponent implements OnInit, OnDestroy {
     private language: AppLanguageService,
     private applicationCloseGuard: ApplicationCloseGuardService,
     private tabGroups: TabGroupsService,
-    private keyboardShortcuts: KeyboardShortcutService
+    private keyboardShortcuts: KeyboardShortcutService,
+    private tabSelection: TabSelectionService
   ) { }
 
   ngOnInit(): void {
@@ -384,7 +386,7 @@ export class TabsComponent implements OnInit, OnDestroy {
 
     const wasActive = this.activeTab === index
     this.releaseTabResources(tab)
-    this.selectedTabs.delete(tab)
+    this.selectedTabs = this.tabSelection.prune(this.tabs.filter((item) => item !== tab), this.selectedTabs)
     this.tabs.splice(index, 1)
     this.tabClosed.emit({
       tab,
@@ -520,7 +522,8 @@ export class TabsComponent implements OnInit, OnDestroy {
   }
 
   openTabContextMenu(tab: any, event: MouseEvent): void {
-    const selectionCount = this.selectedTabs.has(tab) ? this.getSelectedTabsCount() : 0
+    this.selectedTabs = this.tabSelection.includeForContextMenu(this.selectedTabs, tab)
+    const selectionCount = this.getSelectedTabsCount()
 
     this.closeTabMenus()
     this.tabContextMenu = {
@@ -649,11 +652,7 @@ export class TabsComponent implements OnInit, OnDestroy {
   }
 
   toggleTabSelection(tab: any): void {
-    if (this.selectedTabs.has(tab)) {
-      this.selectedTabs.delete(tab)
-    } else {
-      this.selectedTabs.add(tab)
-    }
+    this.selectedTabs = this.tabSelection.toggle(this.selectedTabs, tab, this.getActiveTab())
 
     if (this.selectedTabs.size === 0) this.closeTabMenus()
   }
@@ -661,7 +660,7 @@ export class TabsComponent implements OnInit, OnDestroy {
   clearTabSelection(): void {
     if (this.selectedTabs.size === 0) return
 
-    this.selectedTabs.clear()
+    this.selectedTabs = new Set<any>()
   }
 
   isTabSelected(tab: any): boolean {
@@ -708,7 +707,7 @@ export class TabsComponent implements OnInit, OnDestroy {
   }
 
   private getSelectedTabs(): any[] {
-    return this.tabs.filter((tab) => this.selectedTabs.has(tab) && !tab.closing)
+    return this.tabSelection.resolve(this.tabs, this.selectedTabs)
   }
 
   private requestTabsClose(tabsToClose: any[]): void {
