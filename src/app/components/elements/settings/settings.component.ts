@@ -869,7 +869,8 @@ export class SettingsComponent implements OnInit, OnChanges {
     return [
       { value: 'dark', label: this.t('settings.appearance.theme.dark') },
       { value: 'light', label: this.t('settings.appearance.theme.light') },
-      { value: 'dracula', label: this.t('settings.appearance.theme.dracula') }
+      { value: 'dracula', label: this.t('settings.appearance.theme.dracula') },
+      { value: 'dark-gray', label: this.t('settings.appearance.theme.darkGray') }
     ]
   }
 
