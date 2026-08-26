@@ -20,28 +20,177 @@
                     <img src="icons/code-block.png" height="10px">
                     {{ t('tabs.queryAssistant') }}
                 </li>
+                <li class="text-min" [class.disabled]="!getActiveTab()" (click)="createGroupForActiveTab($event)">
+                    <img src="icons/folder.png" height="10px">
+                    {{ t('tabs.group.newGroupWithActiveTab') }}
+                </li>
             </ul>
         </div>
     </div>
     <div class="wrap-tables">
-        <div class="tabs" #tabsContainer>
-            <div class="tab gap-3" *ngFor="let tab of tabs; let i = index; trackBy: trackTabByIdentity"
-                [class.active]="i === activeTab" [class.tab-opening]="tab.opening"
-                [class.tab-closing]="tab.closing"
-                [style.--tab-animation-width]="tab.animationWidth ? tab.animationWidth + 'px' : null"
-                (click)="selectTab(i)">
-                <img class="tab-icon" [src]="getTabIcon(tab)" height="15px" />
-                <div class="text" title="{{ tab.name }}">
-                    <p class="text-min">{{ tab.name }}</p>
+        <div class="tabs" #tabsContainer [class.dragging]="isDraggingTab">
+            <ng-container *ngFor="let item of layout; trackBy: trackLayoutItem">
+                <div *ngIf="item.kind === 'group'" class="tab-group-chip"
+                    [attr.data-group-id]="item.group.id"
+                    [class.collapsed]="item.group.collapsed"
+                    [class.has-active]="item.hasActiveTab"
+                    [style.--tab-group-color]="getGroupColorValue(item.group)"
+                    [style.--tab-group-color-soft]="getGroupColorSoft(item.group)"
+                    [title]="item.group.collapsed ? t('tabs.group.expandHint') : t('tabs.group.collapseHint')"
+                    (click)="toggleGroupCollapse(item.group, $event)"
+                    (contextmenu)="openGroupContextMenu(item.group, $event)">
+                    <span class="tab-group-caret"></span>
+                    <p class="text-min">{{ item.group.name }}</p>
+                    <span class="tab-group-count" *ngIf="item.group.collapsed">{{ item.tabCount }}</span>
                 </div>
-                <img class="tab-close" src="icons/close.png" height="15px" (click)="closeTab(i, $event, tab)" />
-            </div>
+
+                <div *ngIf="item.kind === 'tab'" class="tab gap-3"
+                    [attr.data-tab-key]="item.tab.layoutKey"
+                    [class.active]="item.index === activeTab"
+                    [class.grouped]="item.group"
+                    [class.tab-opening]="item.tab.opening"
+                    [class.tab-closing]="item.tab.closing"
+                    [class.tab-collapsing]="item.tab.collapsing"
+                    [class.tab-flash]="item.tab.groupFlash"
+                    [class.multi-selected]="isTabSelected(item.tab)"
+                    [style.--tab-group-color]="item.group ? getGroupColorValue(item.group) : null"
+                    [style.--tab-group-color-soft]="item.group ? getGroupColorSoft(item.group) : null"
+                    [style.--tab-animation-width]="item.tab.animationWidth ? item.tab.animationWidth + 'px' : null"
+                    (click)="onTabClick(item.tab, $event)"
+                    (mousedown)="onTabMouseDown(item.tab, $event)"
+                    (auxclick)="onTabAuxClick(item.tab, $event)"
+                    (contextmenu)="openTabContextMenu(item.tab, $event)">
+                    <img class="tab-icon" [src]="getTabIcon(item.tab)" height="15px" />
+                    <div class="text" title="{{ item.tab.name }}">
+                        <p class="text-min">{{ item.tab.name }}</p>
+                    </div>
+                    <img class="tab-close" src="icons/close.png" height="15px"
+                        (click)="closeTabRef(item.tab, $event)" />
+                </div>
+            </ng-container>
         </div>
     </div>
+</div>
+
+<div class="tabs-context-menu" *ngIf="tabContextMenu" [style.left.px]="tabContextMenu.x"
+    [style.top.px]="tabContextMenu.y" (click)="$event.stopPropagation()"
+    (contextmenu)="$event.preventDefault()">
+    <div class="context-menu-header">
+        <span>{{ tabContextMenu.selectionCount > 1 ? t('tabs.selection.section') : t('tabs.group.tabSection') }}</span>
+        <strong>{{ tabContextMenu.selectionCount > 1
+            ? t('tabs.selection.count', { count: tabContextMenu.selectionCount })
+            : tabContextMenu.tab.name }}</strong>
+    </div>
+
+    <ng-container *ngIf="tabContextMenu.selectionCount > 1">
+        <button type="button" (click)="createGroupForSelectedTabs($event)">
+            <img src="icons/folder.png" height="13px" width="13px">
+            {{ t('tabs.selection.newGroup', { count: tabContextMenu.selectionCount }) }}
+        </button>
+
+        <button type="button" (click)="clearSelectionFromMenu($event)">
+            <img src="icons/minus.png" height="13px" width="13px">
+            {{ t('tabs.selection.clear') }}
+        </button>
+
+        <div class="context-menu-divider"></div>
+
+        <button type="button" class="danger" (click)="closeSelectedTabs($event)">
+            <img src="icons/close.png" height="13px" width="13px">
+            {{ t('tabs.selection.closeAll', { count: tabContextMenu.selectionCount }) }}
+        </button>
+    </ng-container>
+
+    <ng-container *ngIf="tabContextMenu.selectionCount <= 1">
+    <button type="button" (click)="createGroupForTab(tabContextMenu.tab, $event)">
+        <img src="icons/folder.png" height="13px" width="13px">
+        {{ t('tabs.group.newGroupWithTab') }}
+    </button>
+
+    <ng-container *ngIf="getGroupsForTab(tabContextMenu.tab) as availableGroups">
+        <div class="context-menu-section" *ngIf="availableGroups.length > 0">{{ t('tabs.group.addToGroup') }}</div>
+        <button type="button" *ngFor="let group of availableGroups"
+            (click)="addTabToGroup(tabContextMenu.tab, group, $event)">
+            <span class="group-color-dot" [style.background]="getGroupColorValue(group)"></span>
+            {{ group.name }}
+        </button>
+    </ng-container>
+
+    <button type="button" *ngIf="tabContextMenu.group" (click)="removeTabFromGroup(tabContextMenu.tab, $event)">
+        <img src="icons/minus.png" height="13px" width="13px">
+        {{ t('tabs.group.removeFromGroup') }}
+    </button>
+
+    <div class="context-menu-divider"></div>
+
+    <button type="button" class="danger" (click)="closeTabFromMenu(tabContextMenu.tab, $event)">
+        <img src="icons/close.png" height="13px" width="13px">
+        {{ t('tabs.group.closeTab') }}
+    </button>
+    </ng-container>
+</div>
+
+<div class="tabs-context-menu" *ngIf="groupContextMenu" [style.left.px]="groupContextMenu.x"
+    [style.top.px]="groupContextMenu.y" (click)="$event.stopPropagation()"
+    (contextmenu)="$event.preventDefault()">
+    <div class="context-menu-header">
+        <span>{{ t('tabs.group.groupSection') }}</span>
+        <strong>{{ groupContextMenu.group.name }}</strong>
+    </div>
+
+    <button type="button" (click)="openGroupEditor(groupContextMenu.group, $event)">
+        <img src="icons/edit.png" height="13px" width="13px">
+        {{ t('tabs.group.renameAndColor') }}
+    </button>
+
+    <button type="button" (click)="newTabInGroup(groupContextMenu.group, $event)">
+        <img src="icons/code.png" height="13px" width="13px">
+        {{ t('tabs.group.newTabInGroup') }}
+    </button>
+
+    <button type="button" (click)="toggleGroupCollapse(groupContextMenu.group, $event)">
+        <img src="icons/menu.png" height="13px" width="13px">
+        {{ groupContextMenu.group.collapsed ? t('tabs.group.expand') : t('tabs.group.collapse') }}
+    </button>
+
+    <div class="context-menu-divider"></div>
+
+    <button type="button" (click)="ungroupGroup(groupContextMenu.group, $event)">
+        <img src="icons/minus.png" height="13px" width="13px">
+        {{ t('tabs.group.ungroup') }}
+    </button>
+
+    <button type="button" class="danger" (click)="closeGroupTabs(groupContextMenu.group, $event)">
+        <img src="icons/close.png" height="13px" width="13px">
+        {{ t('tabs.group.closeGroupTabs') }}
+    </button>
+</div>
+
+<div class="tab-group-editor" *ngIf="groupEditor" [style.left.px]="groupEditor.x" [style.top.px]="groupEditor.y"
+    (click)="$event.stopPropagation()" (contextmenu)="$event.preventDefault()">
+    <div class="context-menu-header">
+        <span>{{ t('tabs.group.groupSection') }}</span>
+        <strong>{{ groupEditor.group.name }}</strong>
+    </div>
+
+    <input #groupNameInput type="text" class="tab-group-name-input" [value]="groupEditor.name"
+        [placeholder]="t('tabs.group.namePlaceholder')" (input)="onGroupEditorName($event)"
+        (keydown.enter)="applyGroupEditor()" (keydown.escape)="closeTabMenus()">
+
+    <div class="tab-group-colors">
+        <button type="button" *ngFor="let color of groupColors" class="tab-group-color"
+            [class.selected]="color.id === groupEditor.group.colorId" [style.background]="color.value"
+            [attr.aria-label]="color.id" (click)="setGroupEditorColor(color.id, $event)"></button>
+    </div>
+
+    <button type="button" class="tab-group-editor-done" (click)="applyGroupEditor()">
+        <img src="icons/check.png" height="13px" width="13px">
+        {{ t('tabs.group.done') }}
+    </button>
 </div>
 
 <app-load-query *ngIf="showLoadQuery" (open)="onOpenLoadQuery($event)" (compare)="openQueryVersionCompareTab($event)"
     (close)="onCloseLoadQuery($event)"></app-load-query>
 <app-yes-no-modal *ngIf="showYNModal" [title]="t('tabs.unsavedChangesTitle')"
-    [message]="t('tabs.unsavedChangesMessage')" (closeAction)="showYNModal = false"
+    [message]="getUnsavedChangesMessage()" (closeAction)="showYNModal = false"
     (continueAction)="confirmTabClose()"></app-yes-no-modal>

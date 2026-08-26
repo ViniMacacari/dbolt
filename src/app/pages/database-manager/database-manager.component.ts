@@ -23,6 +23,11 @@ import { AiAssistantPanelComponent } from '../../components/ai-assistant/ai-assi
 import { DatabaseDiagramComponent } from '../../components/elements/database-diagram/database-diagram.component'
 import { DbExportComponent } from '../../components/elements/db-export/db-export.component'
 import { ToolsNavigationService } from '../../services/tools/tools-navigation.service'
+import { WorkspaceSessionService } from '../../services/workspace-session/workspace-session.service'
+import { WorkspaceSessionRestoreService, WorkspaceTabOpener } from '../../services/workspace-session/workspace-session-restore.service'
+import { PersistedWorkspaceTab, WORKSPACE_SESSION_VERSION } from '../../services/workspace-session/workspace-session.model'
+import { ClosedTabsHistoryService } from '../../services/closed-tabs/closed-tabs-history.service'
+import { KeyboardShortcutService } from '../../services/keyboard-shortcuts/keyboard-shortcut.service'
 import { Subscription } from 'rxjs'
 
 @Component({
@@ -79,6 +84,8 @@ export class DatabaseManagerComponent implements OnDestroy {
   widthTable: number = 300
   private aiAssistantAnimationFrame: number | null = null
   private toolsSubscription: Subscription | null = null
+  private unregisterWorkspaceSession: (() => void) | null = null
+  private shortcutDisposers: Array<() => void> = []
 
   constructor(
     private IAPI: InternalApiService,
@@ -88,7 +95,11 @@ export class DatabaseManagerComponent implements OnDestroy {
     private connectionContext: ConnectionContextService,
     private querySave: QuerySaveService,
     private language: AppLanguageService,
-    private toolsNavigation: ToolsNavigationService
+    private toolsNavigation: ToolsNavigationService,
+    private workspaceSession: WorkspaceSessionService,
+    private workspaceRestore: WorkspaceSessionRestoreService,
+    private closedTabs: ClosedTabsHistoryService,
+    private keyboardShortcuts: KeyboardShortcutService
   ) {
     this.toolsSubscription = this.toolsNavigation.requests$.subscribe((destination) => {
       if (destination === 'database-export') {
@@ -100,12 +111,20 @@ export class DatabaseManagerComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.cancelAiAssistantAnimationFrame()
     this.toolsSubscription?.unsubscribe()
+    this.workspaceSession.persistNow()
+    this.unregisterWorkspaceSession?.()
+    this.unregisterWorkspaceSession = null
+    this.shortcutDisposers.forEach((dispose) => dispose())
+    this.shortcutDisposers = []
   }
 
   async ngAfterViewInit(): Promise<void> {
     LoadingComponent.show()
     await this.firstConnectionConfig()
     await this.pageConnectionConfig()
+    await this.restoreWorkspaceSession()
+    this.registerWorkspaceSession()
+    this.registerWorkspaceShortcuts()
     LoadingComponent.hide()
     void this.loadRecentQueries()
   }
@@ -285,6 +304,7 @@ export class DatabaseManagerComponent implements OnDestroy {
     this.firstMessage = false
     this.tabInfo = tab
     this.sqlContent = tab.info?.sql || ''
+    this.workspaceSession.scheduleSave()
 
     this.editorOpen = tab.type === 'sql'
     this.dbInfoOpen = tab.type === 'schema'
@@ -327,6 +347,8 @@ export class DatabaseManagerComponent implements OnDestroy {
 
   onTabClosed(event: any): void {
     const tab = event?.tab || event
+    this.rememberClosedTab(tab)
+    this.workspaceSession.scheduleSave()
 
     if (tab?.type === 'settings') {
       this.settingsInitialized = false
@@ -555,6 +577,8 @@ export class DatabaseManagerComponent implements OnDestroy {
         tab.icon = 'CODE'
       }
     }
+
+    this.workspaceSession.scheduleSave()
   }
 
   onSidebarStatusChange(event: SidebarLayoutChange): void {
@@ -756,6 +780,145 @@ export class DatabaseManagerComponent implements OnDestroy {
       }
       this.toast.showToast(error?.error || error?.message || this.t('workspace.loadDatabaseObjectsError'), 'red')
     }
+  }
+
+  private get workspaceSessionId(): string {
+    const pageId = this.getPageId()
+
+    return Number.isFinite(pageId) && pageId ? `connection-${pageId}` : 'connection-unknown'
+  }
+
+  private registerWorkspaceShortcuts(): void {
+    this.shortcutDisposers.push(
+      this.keyboardShortcuts.register({
+        key: 't',
+        ctrlOrMeta: true,
+        priority: 70,
+        isEnabled: () => this.closedTabs.hasClosedTabs(this.workspaceSessionId),
+        handler: () => {
+          void this.reopenLastClosedTab()
+          return true
+        }
+      })
+    )
+  }
+
+  private rememberClosedTab(tab: any): void {
+    if (!this.workspaceSession.isRestorable(tab)) return
+
+    this.closedTabs.push(this.workspaceSessionId, {
+      ...this.workspaceSession.describeTab(tab),
+      context: tab.dbInfo || tab.info?.context
+    })
+  }
+
+  private async reopenLastClosedTab(): Promise<void> {
+    const closedTab = this.closedTabs.pop(this.workspaceSessionId)
+    if (!closedTab || !this.tabsComponent) return
+
+    await this.workspaceRestore.restore({
+      version: WORKSPACE_SESSION_VERSION,
+      savedAt: Date.now(),
+      activeTabIndex: null,
+      tabs: [closedTab],
+      groups: this.tabsComponent.groups
+    }, {
+      openers: this.buildWorkspaceTabOpeners(),
+      getTabs: () => this.tabsComponent?.tabs || [],
+      applyGroups: (groups, assignments) => this.tabsComponent?.applyRestoredGroups(groups, assignments),
+      selectTab: (index) => this.tabsComponent?.selectTab(index)
+    })
+  }
+
+  private registerWorkspaceSession(): void {
+    this.unregisterWorkspaceSession?.()
+    this.unregisterWorkspaceSession = this.workspaceSession.registerSnapshotProvider(
+      this.workspaceSessionId,
+      () => this.tabsComponent
+        ? this.workspaceSession.buildSnapshot(
+          this.tabsComponent.tabs,
+          this.tabsComponent.groups,
+          this.tabsComponent.activeTab
+        )
+        : null
+    )
+  }
+
+  private async restoreWorkspaceSession(): Promise<void> {
+    if (!this.tabsComponent || this.tabsComponent.tabs.length > 0) return
+
+    const session = this.workspaceSession.load(this.workspaceSessionId)
+    if (!session) return
+
+    await this.workspaceRestore.restore(session, {
+      openers: this.buildWorkspaceTabOpeners(),
+      getTabs: () => this.tabsComponent?.tabs || [],
+      applyGroups: (groups, assignments) => this.tabsComponent?.applyRestoredGroups(groups, assignments),
+      selectTab: (index) => this.tabsComponent?.selectTab(index)
+    })
+  }
+
+  private buildWorkspaceTabOpeners(): Record<string, WorkspaceTabOpener> {
+    return {
+      sql: (persistedTab) => this.restoreSqlTab(persistedTab),
+      schema: (persistedTab) => {
+        void this.onDbInfoRequested(persistedTab.context)
+      },
+      table: (persistedTab) => {
+        this.onSqlObjectInfoRequested({
+          name: persistedTab.objectName || persistedTab.name,
+          info: persistedTab.context,
+          context: persistedTab.context,
+          type: persistedTab.objectType || 'table',
+          initialView: persistedTab.activeView
+        })
+      },
+      procedure: (persistedTab) => {
+        this.openMoreInfo({
+          name: persistedTab.objectName || persistedTab.name,
+          type: persistedTab.objectType || 'procedure',
+          context: persistedTab.context
+        })
+      },
+      diagram: (persistedTab) => {
+        this.onDiagramRequested({
+          scope: persistedTab.diagramScope || 'schema',
+          objectName: persistedTab.objectName,
+          objectType: persistedTab.objectType,
+          context: persistedTab.context
+        })
+      },
+      'query-compare': (persistedTab) => {
+        if (!persistedTab.compareLeft || !persistedTab.compareRight) return
+        this.tabsComponent.openQueryVersionCompareTab({
+          left: persistedTab.compareLeft,
+          right: persistedTab.compareRight
+        })
+      },
+      'query-assistant': () => this.tabsComponent.openQueryAssistantTab(),
+      'select-builder': (persistedTab) => this.tabsComponent.openSelectBuilderTab(persistedTab.context),
+      'database-export': () => this.tabsComponent.openDatabaseExportTab(),
+      settings: (persistedTab) => this.tabsComponent.openSettingsTab(persistedTab.settingsTab || null)
+    }
+  }
+
+  private restoreSqlTab(persistedTab: PersistedWorkspaceTab): any {
+    const tab = this.tabsComponent.newTab('sql', {
+      sql: persistedTab.sql || '',
+      context: persistedTab.context
+    }, persistedTab.name)
+
+    tab.originalContent = persistedTab.originalContent || ''
+    tab.folderPath = persistedTab.folderPath || ''
+    tab.persisted = Boolean(persistedTab.persisted)
+    tab.versioningEnabled = Boolean(persistedTab.versioningEnabled)
+    tab.icon = persistedTab.dirty ? 'CHANGE' : 'CODE'
+
+    if (persistedTab.persisted && persistedTab.id) {
+      tab.id = persistedTab.id
+    }
+
+    return tab
   }
 
   private normalizeContextInput(context: any): any {

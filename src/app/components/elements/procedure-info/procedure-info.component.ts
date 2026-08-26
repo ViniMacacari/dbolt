@@ -1,8 +1,8 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, ViewEncapsulation } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { ToastComponent } from '../../toast/toast.component'
-import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
+import { DatabaseMetadataService } from '../../../services/db-metadata/database-metadata.service'
 
 @Component({
   selector: 'app-procedure-info',
@@ -22,8 +22,10 @@ export class ProcedureInfoComponent implements OnInit, OnChanges {
   isLoadingMetadata: boolean = false
   metadataError: string = ''
 
+  private ddlRequestId = 0
+
   constructor(
-    private IAPI: InternalApiService,
+    private databaseMetadata: DatabaseMetadataService,
     private language: AppLanguageService
   ) { }
 
@@ -58,27 +60,26 @@ export class ProcedureInfoComponent implements OnInit, OnChanges {
       return
     }
 
+    const requestId = ++this.ddlRequestId
     this.isLoadingMetadata = true
     this.metadataError = ''
     this.ddl = ''
 
     try {
-      const procedureName = encodeURIComponent(this.elementName)
-      const queryString = context.connectionKey
-        ? `?connectionKey=${encodeURIComponent(context.connectionKey)}`
-        : ''
-      const response: any = await this.IAPI.get(`/api/${context.sgbd}/${context.version}/procedure-ddl/${procedureName}${queryString}`)
+      const ddl = await this.databaseMetadata.loadProcedureDDL(context, this.elementName)
 
-      if (response?.success === false) {
-        throw new Error(response.error || response.message || this.t('procedureInfo.loadDdlFailed'))
-      }
+      if (requestId !== this.ddlRequestId) return
 
-      this.ddl = response?.ddl || ''
+      this.ddl = ddl
     } catch (error: any) {
+      if (requestId !== this.ddlRequestId) return
+
       console.error(error)
       this.metadataError = error?.error || error?.message || this.t('procedureInfo.loadDdlFailed')
     } finally {
-      this.isLoadingMetadata = false
+      if (requestId === this.ddlRequestId) {
+        this.isLoadingMetadata = false
+      }
     }
   }
 

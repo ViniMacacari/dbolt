@@ -17,22 +17,10 @@ import { KeyboardShortcutService } from '../../../services/keyboard-shortcuts/ke
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { AppPlatformService } from '../../../services/platform/app-platform.service'
 import { AppThemeService } from '../../../services/theme/app-theme.service'
+import { AppThemePaletteService } from '../../../services/theme/app-theme-palette.service'
 import { selectSqlStatementAtCursor } from '../../../utils/sql-statement-selection'
 
 let sqlTokenizerConfigured = false
-
-const LIGHT_SQL_HIGHLIGHT_COLORS: SqlHighlightColors = {
-  keyword: '#005a9c',
-  function: '#795e26',
-  identifier: '#1f2933',
-  string: '#267f3a',
-  number: '#7a3e9d',
-  comment: '#5f6b76',
-  operator: '#374151',
-  type: '#6b46c1',
-  variable: '#8b3a62',
-  delimiter: '#4b5563'
-}
 
 interface SqlNavigationToken {
   value: string
@@ -154,7 +142,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     private keyboardShortcuts: KeyboardShortcutService,
     private language: AppLanguageService,
     private platform: AppPlatformService,
-    private appTheme: AppThemeService
+    private appTheme: AppThemeService,
+    private themePalette: AppThemePaletteService
   ) {
     this.settingsSubscription = this.appSettings.settingsChanges$.subscribe((settings) => {
       this.applySqlHighlightTheme(settings.sqlHighlightColors)
@@ -444,79 +433,22 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private defineSqlHighlightTheme(colors: SqlHighlightColors): void {
     const normalizedColors = this.appSettings.normalizeSqlHighlightColors(colors)
-    const themeColors = this.resolveThemeHighlightColors(normalizedColors)
-    const isLightTheme = this.appTheme.getTheme() === 'light'
-
-    const editorSurfaceColors: monaco.editor.IColors = isLightTheme
-      ? {
-        'editor.background': '#ffffff',
-        'editorGutter.background': '#f6f8fa',
-        'editor.lineHighlightBorder': '#00000000',
-        'editor.lineHighlightBackground': '#00000008',
-        'editorWidget.background': '#ffffff',
-        'editorWidget.border': '#b8c5d1',
-        'editorSuggestWidget.background': '#ffffff',
-        'editorSuggestWidget.border': '#b8c5d1',
-        'editorSuggestWidget.foreground': '#263442',
-        'editorSuggestWidget.selectedBackground': '#d8eafb',
-        'editorSuggestWidget.selectedForeground': '#17324d',
-        'editorSuggestWidget.highlightForeground': '#005a9c',
-        'editorHoverWidget.background': '#ffffff',
-        'editorHoverWidget.border': '#b8c5d1',
-        'focusBorder': '#00000000'
-      }
-      : {
-        'editor.background': '#00000000',
-        'editorGutter.background': '#00000000',
-        'editor.lineHighlightBorder': '#00000000',
-        'editor.lineHighlightBackground': '#ffffff08',
-        'editorWidget.border': '#00000000',
-        'focusBorder': '#00000000'
-      }
+    const theme = this.appTheme.getTheme()
+    const themeColors = this.themePalette.resolveHighlightColors(theme, normalizedColors)
+    const palette = this.themePalette.getEditorPalette(theme)
 
     monaco.editor.defineTheme('dbolt-sql-configurable', {
-      base: isLightTheme ? 'vs' : 'vs-dark',
+      base: palette.monacoBase,
       inherit: false,
       rules: this.buildSqlTokenRules(themeColors, this.appSettings.getSqlHighlightMode()),
       colors: {
-        ...editorSurfaceColors,
+        ...palette.surfaceColors,
+        ...this.themePalette.getEditorChromeColors(theme),
         'editor.foreground': themeColors.identifier,
-        'editorLineNumber.foreground': isLightTheme ? '#7a8793' : '#858585',
-        'editorLineNumber.activeForeground': isLightTheme ? '#263442' : '#c6c6c6',
-        'editorCursor.foreground': isLightTheme ? '#111827' : '#ffffff',
-        'editor.selectionBackground': isLightTheme ? '#add6ff' : '#264f78',
-        'editor.inactiveSelectionBackground': isLightTheme ? '#dbeafe' : '#3a3d41',
         'editorError.foreground': '#f14c4c',
         'editorError.border': '#00000000'
       }
     })
-  }
-
-  private resolveThemeHighlightColors(colors: SqlHighlightColors): SqlHighlightColors {
-    if (this.appTheme.getTheme() !== 'light') {
-      return colors
-    }
-
-    return (Object.keys(colors) as Array<keyof SqlHighlightColors>).reduce((resolved, key) => ({
-      ...resolved,
-      [key]: this.hasLightBackgroundContrast(colors[key])
-        ? colors[key]
-        : LIGHT_SQL_HIGHLIGHT_COLORS[key]
-    }), {} as SqlHighlightColors)
-  }
-
-  private hasLightBackgroundContrast(color: string): boolean {
-    const normalized = color.replace('#', '')
-    if (!/^[0-9a-f]{6}$/i.test(normalized)) return false
-
-    const channels = [0, 2, 4].map(index => parseInt(normalized.slice(index, index + 2), 16) / 255)
-    const linearChannels = channels.map(channel => channel <= 0.04045
-      ? channel / 12.92
-      : Math.pow((channel + 0.055) / 1.055, 2.4)
-    )
-    const luminance = 0.2126 * linearChannels[0] + 0.7152 * linearChannels[1] + 0.0722 * linearChannels[2]
-
-    return luminance <= 0.3
   }
 
   private buildSqlTokenRules(
@@ -615,6 +547,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       label: this.t('editor.indentCode'),
       contextMenuGroupId: '1_modification',
       contextMenuOrder: 1.5,
+      keybindings: [monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyF],
       run: () => {
         this.formatCode()
       }
@@ -1110,6 +1043,31 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
           void this.saveQuery()
           return true
         }
+      }),
+      this.keyboardShortcuts.register({
+        key: 'f',
+        altKey: true,
+        shiftKey: true,
+        priority: 90,
+        stopPropagation: true,
+        isEnabled: () => this.active && !!this.editor,
+        isInContext: (event) => this.isEditorShortcutContext(event),
+        handler: () => {
+          this.formatCode()
+          return true
+        }
+      }),
+      this.keyboardShortcuts.register({
+        key: 'Escape',
+        priority: 60,
+        stopPropagation: true,
+        isEnabled: () => this.active && this.queryResultOpen,
+        handler: () => {
+          if (this.hasOpenEditorWidget()) return false
+
+          this.closeQueryResult()
+          return true
+        }
       })
     )
   }
@@ -1117,6 +1075,19 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private unregisterKeyboardShortcuts(): void {
     this.shortcutDisposers.forEach((dispose) => dispose())
     this.shortcutDisposers = []
+  }
+
+  private hasOpenEditorWidget(): boolean {
+    const container = this.editorContainer?.nativeElement as HTMLElement | undefined
+    if (!container) return false
+
+    return Boolean(container.querySelector([
+      '.suggest-widget.visible',
+      '.parameter-hints-widget.visible',
+      '.find-widget.visible',
+      '.monaco-hover:not(.hidden)',
+      '.rename-box'
+    ].join(', ')))
   }
 
   private isEditorShortcutContext(event: KeyboardEvent): boolean {

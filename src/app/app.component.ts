@@ -11,6 +11,7 @@ import { AppLanguageService } from './services/language/app-language.service'
 import { YesNoModalComponent } from './components/modal/yes-no-modal/yes-no-modal.component'
 import { ApplicationCloseGuardService } from './services/application-close/application-close-guard.service'
 import { AppThemeService } from './services/theme/app-theme.service'
+import { WorkspaceSessionService } from './services/workspace-session/workspace-session.service'
 
 @Component({
   selector: 'app-root',
@@ -36,6 +37,7 @@ export class AppComponent implements OnInit, OnDestroy {
     private language: AppLanguageService,
     private applicationCloseGuard: ApplicationCloseGuardService,
     private appTheme: AppThemeService,
+    private workspaceSession: WorkspaceSessionService,
     private ngZone: NgZone
   ) { }
 
@@ -59,6 +61,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   confirmApplicationClose(): void {
     this.isCloseConfirmationOpen = false
+    this.workspaceSession.persistNow()
     void window.dboltWindow?.respondToCloseRequest(true)
   }
 
@@ -122,6 +125,8 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private handleApplicationCloseRequest(): void {
+    this.workspaceSession.persistNow()
+
     if (this.applicationCloseGuard.hasUnsavedSqlQueries()) {
       this.isCloseConfirmationOpen = true
       return

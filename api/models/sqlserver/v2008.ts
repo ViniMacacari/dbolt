@@ -4,6 +4,8 @@ import sql, {
   type IResult
 } from 'mssql';
 
+import { makeUniqueColumnNames } from '../../utils/query-columns.js';
+
 import type {
   ConnectionStatus,
   QueryRows,
@@ -148,7 +150,7 @@ class SQLServerV1 {
         const name = String(column?.name ?? '');
         return name || `Column ${index + 1}`;
       });
-      const uniqueColumnNames = this.makeUniqueColumnNames(columnNames);
+      const uniqueColumnNames = makeUniqueColumnNames(columnNames);
       const rows = (result.recordset ?? []).map((values) =>
         Object.fromEntries(
           uniqueColumnNames.map((column, index) => [column, values[index]])
@@ -182,32 +184,6 @@ class SQLServerV1 {
     return connectionKey || this.defaultConnectionKey;
   }
 
-  private makeUniqueColumnNames(columnNames: readonly string[]): string[] {
-    const reservedNames = new Set(columnNames);
-    const usedNames = new Set<string>();
-    const occurrences = new Map<string, number>();
-
-    return columnNames.map((columnName) => {
-      const occurrence = (occurrences.get(columnName) ?? 0) + 1;
-      occurrences.set(columnName, occurrence);
-
-      if (!usedNames.has(columnName)) {
-        usedNames.add(columnName);
-        return columnName;
-      }
-
-      let suffix = occurrence;
-      let uniqueName = `${columnName} (${suffix})`;
-
-      while (usedNames.has(uniqueName) || reservedNames.has(uniqueName)) {
-        suffix += 1;
-        uniqueName = `${columnName} (${suffix})`;
-      }
-
-      usedNames.add(uniqueName);
-      return uniqueName;
-    });
-  }
 }
 
 export default SQLServerV1;

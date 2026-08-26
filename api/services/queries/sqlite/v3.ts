@@ -46,7 +46,7 @@ class SQuerySQLiteV3 {
       executableSql = this.limitQueryResult(executableSql, rowLimit);
     }
 
-    const result = await this.db.executeQuery(executableSql, [], connectionKey);
+    const { rows: result, columns } = await this.db.executeQueryWithColumns(executableSql, [], connectionKey);
 
     if (!isSelectQuery && result.length === 0) {
       return {
@@ -56,25 +56,10 @@ class SQuerySQLiteV3 {
       };
     }
 
-    if (result.length === 0 && isSelectQuery) {
-      const columnsResult = await this.db.executeQuery(
-        this.getEmptyColumnsQuery(executableSql),
-        [],
-        connectionKey
-      );
-      const columns = Object.keys(columnsResult[0] ?? {});
-
-      return {
-        success: true,
-        result: [],
-        columns,
-        totalRows
-      };
-    }
-
     return {
       success: true,
       result,
+      columns,
       totalRows
     };
   }
@@ -109,11 +94,6 @@ class SQuerySQLiteV3 {
     return `${prefix} SELECT COUNT(*) AS TOTAL_ROWS FROM (\n${mainSql}\n) AS count_query`;
   }
 
-  getEmptyColumnsQuery(sql: string): string {
-    const { prefix, mainSql } = splitCtePrefix(sql);
-
-    return `${prefix} SELECT * FROM (\n${trimStatementTerminator(mainSql)}\n) AS empty_columns WHERE 1 = 0`;
-  }
 }
 
 export default new SQuerySQLiteV3();
