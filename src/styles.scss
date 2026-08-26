@@ -116,6 +116,24 @@
     --dbolt-9be0aa: #9be0aa;
     --dbolt-9fe6b8: #9fe6b8;
     --dbolt-b58cff: #b58cff;
+
+    /* tab groups */
+    --dbolt-tab-group-blue: #6ba0ff;
+    --dbolt-tab-group-blue-soft: rgba(107, 160, 255, .16);
+    --dbolt-tab-group-purple: #c08cff;
+    --dbolt-tab-group-purple-soft: rgba(192, 140, 255, .16);
+    --dbolt-tab-group-green: #56d364;
+    --dbolt-tab-group-green-soft: rgba(86, 211, 100, .16);
+    --dbolt-tab-group-yellow: #e3b341;
+    --dbolt-tab-group-yellow-soft: rgba(227, 179, 65, .16);
+    --dbolt-tab-group-red: #ff7b72;
+    --dbolt-tab-group-red-soft: rgba(255, 123, 114, .16);
+    --dbolt-tab-group-pink: #ff8fc7;
+    --dbolt-tab-group-pink-soft: rgba(255, 143, 199, .16);
+    --dbolt-tab-group-cyan: #59c2d6;
+    --dbolt-tab-group-cyan-soft: rgba(89, 194, 214, .16);
+    --dbolt-tab-group-grey: #9aa0a6;
+    --dbolt-tab-group-grey-soft: rgba(154, 160, 166, .16);
 }
 
 :root[data-app-theme='light'] {
@@ -232,6 +250,158 @@
     --dbolt-9be0aa: #287541;
     --dbolt-9fe6b8: #177245;
     --dbolt-b58cff: #6f3ac8;
+
+    /* tab groups */
+    --dbolt-tab-group-blue: #1b5fc4;
+    --dbolt-tab-group-blue-soft: rgba(27, 95, 196, .13);
+    --dbolt-tab-group-purple: #7238c9;
+    --dbolt-tab-group-purple-soft: rgba(114, 56, 201, .13);
+    --dbolt-tab-group-green: #1c7a36;
+    --dbolt-tab-group-green-soft: rgba(28, 122, 54, .13);
+    --dbolt-tab-group-yellow: #8a6100;
+    --dbolt-tab-group-yellow-soft: rgba(138, 97, 0, .13);
+    --dbolt-tab-group-red: #c0322b;
+    --dbolt-tab-group-red-soft: rgba(192, 50, 43, .13);
+    --dbolt-tab-group-pink: #ad2f6d;
+    --dbolt-tab-group-pink-soft: rgba(173, 47, 109, .13);
+    --dbolt-tab-group-cyan: #136d85;
+    --dbolt-tab-group-cyan-soft: rgba(19, 109, 133, .13);
+    --dbolt-tab-group-grey: #57616d;
+    --dbolt-tab-group-grey-soft: rgba(87, 97, 109, .13);
+}
+
+:root[data-app-theme='dracula'] {
+    --dbolt-query-table-text: #f8f8f2;
+    --dbolt-query-table-selected-text: #f8f8f2;
+    --dbolt-menu-hover-text: #f8f8f2;
+    --dbolt-editor-caret: #f8f8f2;
+    --dbolt-grid-separator: #383a4a;
+    --dbolt-modal-copy: #c6cae0;
+    --dbolt-query-status-bg: rgba(33, 34, 44, .92);
+    --dbolt-db-info-status-bg: rgba(33, 34, 44, .9);
+    --dbolt-workspace-surface: #2f313d;
+    --dbolt-sidebar-surface: #21222c;
+    --dbolt-sidebar-control-surface: #343746;
+    --dbolt-sidebar-action-hover: #44475a;
+    --dbolt-sidebar-control-hover: #3c3f52;
+    --dbolt-editor-toolbar-surface: #282a36;
+    --dbolt-000: #191a21;
+    --dbolt-050505: #1b1c24;
+    --dbolt-080808: #1c1d25;
+    --dbolt-0b0b0b: #1e1f29;
+    --dbolt-0f0f0f: #1f202a;
+    --dbolt-101010: #20212b;
+    --dbolt-111: #21222c;
+    --dbolt-121212: #21222c;
+    --dbolt-131313: #21222c;
+    --dbolt-141414: #23242f;
+    --dbolt-151515: #242531;
+    --dbolt-181818: #262734;
+    --dbolt-1b1b1b: #282a36;
+    --dbolt-1f1f1f: #2b2d3a;
+    --dbolt-202020: #2c2e3b;
+    --dbolt-232020: #2e303e;
+    --dbolt-232323: #2e303e;
+    --dbolt-242424: #2f313d;
+    --dbolt-262626: #313340;
+    --dbolt-292727: #323444;
+    --dbolt-2b2b2b: #343746;
+    --dbolt-2d2c2c: #363949;
+    --dbolt-2d2d2d: #363949;
+    --dbolt-2f2f2f: #383b4c;
+    --dbolt-303030: #3a3d4e;
+    --dbolt-302d2d: #393c4d;
+    --dbolt-343434: #3d4052;
+    --dbolt-353535: #3f4254;
+    --dbolt-363535: #404356;
+    --dbolt-3b3b3b: #44475a;
+    --dbolt-3d3a3a: #46495c;
+    --dbolt-444: #4c4f63;
+    --dbolt-4a4a4a: #52556b;
+    --dbolt-555: #5b5e76;
+    --dbolt-565656: #5c5f78;
+    --dbolt-575757: #5d6079;
+    --dbolt-5a5a5a: #606380;
+    --dbolt-5e5e60: #646787;
+    --dbolt-5f5f5f: #65688a;
+    --dbolt-686868: #7b81a6;
+    --dbolt-6f6f6f: #8086ab;
+    --dbolt-747474: #8288ac;
+    --dbolt-777: #868cb0;
+    --dbolt-8aaed2: #8be9fd;
+    --dbolt-8d8d8d: #9096b9;
+    --dbolt-8d929b: #9298bb;
+    --dbolt-8f8f8f: #9298bb;
+    --dbolt-969696: #989ec1;
+    --dbolt-9fbede: #8be9fd;
+    --dbolt-9fc5f0: #a7ecff;
+    --dbolt-b8b8b9: #b8bddb;
+    --dbolt-c9c9c9: #cdd2e6;
+    --dbolt-cfcfcf: #d3d7ea;
+    --dbolt-d7d7d7: #dadeee;
+    --dbolt-d8e9fb: #d6f4ff;
+    --dbolt-e8e4a4: #f1fa8c;
+    --dbolt-e8e7e6: #f8f8f2;
+    --dbolt-e8eaed: #f8f8f2;
+    --dbolt-f1f1f1: #f8f8f2;
+    --dbolt-f1f3f5: #f8f8f2;
+    --dbolt-f1f4ff: #eef0ff;
+    --dbolt-f2f2f2: #f8f8f2;
+    --dbolt-f8f8f2: #f8f8f2;
+
+    --dbolt-151932: #2a2c3d;
+    --dbolt-1c2041: #303348;
+    --dbolt-1d162e: #6272a4;
+    --dbolt-1f2775: #3d3f5e;
+    --dbolt-20252d: #2b2d3a;
+    --dbolt-283445: #303348;
+    --dbolt-2b3340: #32354a;
+    --dbolt-334052: #383b52;
+    --dbolt-34475d: #3d4058;
+    --dbolt-516986: #6272a4;
+    --dbolt-739eca: #8be9fd;
+
+    --dbolt-261111: #2e2130;
+    --dbolt-2d2020: #33232f;
+    --dbolt-332323: #382534;
+    --dbolt-343232: #3a2a37;
+    --dbolt-3a3030: #3d2b38;
+    --dbolt-3a3535: #3d2f3c;
+    --dbolt-3c2727: #40283a;
+    --dbolt-543030: #6b3a52;
+    --dbolt-5a2b2b: #73374f;
+    --dbolt-6b3030: #8a3f5c;
+    --dbolt-f0a0a0: #ff8a8a;
+    --dbolt-ff8c8c: #ff5555;
+    --dbolt-ff8d8d: #ff5555;
+    --dbolt-ff8f8f: #ff5555;
+    --dbolt-ffb4b4: #ff7f7f;
+    --dbolt-ffcdcd: #ffaaaa;
+    --dbolt-ffd1d1: #ffb3b3;
+
+    --dbolt-345c3e: #2d4a3f;
+    --dbolt-8fbc6a: #50fa7b;
+    --dbolt-9be0aa: #7dffa4;
+    --dbolt-9fe6b8: #8dffb0;
+    --dbolt-b58cff: #bd93f9;
+
+    /* tab groups */
+    --dbolt-tab-group-blue: #79b8ff;
+    --dbolt-tab-group-blue-soft: rgba(121, 184, 255, .18);
+    --dbolt-tab-group-purple: #bd93f9;
+    --dbolt-tab-group-purple-soft: rgba(189, 147, 249, .18);
+    --dbolt-tab-group-green: #50fa7b;
+    --dbolt-tab-group-green-soft: rgba(80, 250, 123, .18);
+    --dbolt-tab-group-yellow: #f1fa8c;
+    --dbolt-tab-group-yellow-soft: rgba(241, 250, 140, .18);
+    --dbolt-tab-group-red: #ff5555;
+    --dbolt-tab-group-red-soft: rgba(255, 85, 85, .18);
+    --dbolt-tab-group-pink: #ff79c6;
+    --dbolt-tab-group-pink-soft: rgba(255, 121, 198, .18);
+    --dbolt-tab-group-cyan: #8be9fd;
+    --dbolt-tab-group-cyan-soft: rgba(139, 233, 253, .18);
+    --dbolt-tab-group-grey: #9aa4c8;
+    --dbolt-tab-group-grey-soft: rgba(154, 164, 200, .18);
 }
 
 :root[data-app-theme='light'] img[src^='icons/']:not([src^='icons/dbolt-']) {
