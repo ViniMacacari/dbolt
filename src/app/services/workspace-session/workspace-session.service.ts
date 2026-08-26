@@ -88,7 +88,7 @@ export class WorkspaceSessionService {
     const restorableTabs = (tabs || []).filter((tab) => this.isRestorable(tab))
     const activeTab = activeTabIndex === null ? null : (tabs || [])[activeTabIndex]
     const activeIndex = activeTab ? restorableTabs.indexOf(activeTab) : -1
-    const persistedTabs = restorableTabs.map((tab) => this.toPersistedTab(tab))
+    const persistedTabs = restorableTabs.map((tab) => this.describeTab(tab))
     const usedGroupIds = new Set(persistedTabs.map((tab) => tab.groupId).filter(Boolean))
 
     return {
@@ -106,7 +106,7 @@ export class WorkspaceSessionService {
     return Boolean(tab) && !tab.closing && RESTORABLE_WORKSPACE_TAB_TYPES.includes(tab.type)
   }
 
-  private toPersistedTab(tab: any): PersistedWorkspaceTab {
+  describeTab(tab: any): PersistedWorkspaceTab {
     const persistedTab: PersistedWorkspaceTab = {
       type: tab.type,
       name: String(tab.name ?? ''),
