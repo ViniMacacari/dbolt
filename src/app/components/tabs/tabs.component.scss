@@ -469,6 +469,15 @@
     transition: background-color .16s ease, box-shadow .16s ease, border-color .16s ease;
 }
 
+.content .tabs .tab.multi-selected {
+    background-color: var(--dbolt-2d2c2c);
+    box-shadow: inset 0 0 0 2px var(--dbolt-739eca);
+}
+
+.content .tabs .tab.multi-selected.grouped {
+    box-shadow: inset 0 0 0 2px var(--dbolt-739eca), inset 0 -2px 0 var(--tab-group-color);
+}
+
 .content .tabs .tab.tab-collapsing {
     animation: tab-close .19s cubic-bezier(.4, 0, .2, 1) both;
     pointer-events: none;
