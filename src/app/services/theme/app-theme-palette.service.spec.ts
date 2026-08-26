@@ -8,7 +8,7 @@ describe('AppThemePaletteService', () => {
   let service: AppThemePaletteService
   let settings: AppSettingsService
 
-  const appThemes: AppTheme[] = ['dark', 'light', 'dracula']
+  const appThemes: AppTheme[] = ['dark', 'light', 'dracula', 'dark-gray']
 
   beforeEach(() => {
     localStorage.removeItem('app-settings')
@@ -70,6 +70,7 @@ describe('AppThemePaletteService', () => {
 
     expect(service.resolveHighlightColors('dark', colors)).toEqual(colors)
     expect(service.resolveHighlightColors('dracula', colors)).toEqual(colors)
+    expect(service.resolveHighlightColors('dark-gray', colors)).toEqual(colors)
   })
 
   it('darkens a low contrast color instead of discarding its hue on a light background', () => {

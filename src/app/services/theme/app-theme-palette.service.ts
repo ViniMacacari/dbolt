@@ -90,6 +90,28 @@ export class AppThemePaletteService {
       },
       fallbackHighlightColors: LIGHT_HIGHLIGHT_COLORS
     },
+    'dark-gray': {
+      monacoBase: 'vs-dark',
+      contrastBackground: '#2e2e2e',
+      surfaceColors: {
+        'editor.background': '#00000000',
+        'editorGutter.background': '#00000000',
+        'editor.lineHighlightBorder': '#00000000',
+        'editor.lineHighlightBackground': '#ffffff0b',
+        'editorWidget.background': '#383838',
+        'editorWidget.border': '#4d4d4d',
+        'editorSuggestWidget.background': '#383838',
+        'editorSuggestWidget.border': '#4d4d4d',
+        'editorSuggestWidget.foreground': '#eef0f2',
+        'editorSuggestWidget.selectedBackground': '#4a5568',
+        'editorSuggestWidget.selectedForeground': '#ffffff',
+        'editorSuggestWidget.highlightForeground': '#a9cdf5',
+        'editorHoverWidget.background': '#383838',
+        'editorHoverWidget.border': '#4d4d4d',
+        'focusBorder': '#00000000'
+      },
+      fallbackHighlightColors: DARK_HIGHLIGHT_COLORS
+    },
     dracula: {
       monacoBase: 'vs-dark',
       contrastBackground: '#282a36',
@@ -128,6 +150,13 @@ export class AppThemePaletteService {
       'editorCursor.foreground': '#111827',
       'editor.selectionBackground': '#add6ff',
       'editor.inactiveSelectionBackground': '#dbeafe'
+    },
+    'dark-gray': {
+      'editorLineNumber.foreground': '#8b8b8b',
+      'editorLineNumber.activeForeground': '#e6e6e6',
+      'editorCursor.foreground': '#f0f0f0',
+      'editor.selectionBackground': '#3d5a7a',
+      'editor.inactiveSelectionBackground': '#464646'
     },
     dracula: {
       'editorLineNumber.foreground': '#7b85a8',

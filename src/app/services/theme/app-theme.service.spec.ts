@@ -48,6 +48,12 @@ describe('AppThemeService', () => {
     expect(JSON.parse(localStorage.getItem('app-settings') || '{}').appTheme).toBe('dracula')
   })
 
+  it('applies the dark gray theme with a dark color scheme', () => {
+    expect(service.setTheme('dark-gray')).toBe('dark-gray')
+    expect(document.documentElement.dataset['appTheme']).toBe('dark-gray')
+    expect(document.documentElement.style.colorScheme).toBe('dark')
+  })
+
   it('reports a light color scheme only for the light theme', () => {
     service.setTheme('light')
     expect(document.documentElement.style.colorScheme).toBe('light')
