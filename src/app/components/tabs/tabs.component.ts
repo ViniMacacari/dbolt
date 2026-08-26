@@ -595,6 +595,37 @@ export class TabsComponent implements OnInit, OnDestroy {
     }, this.getTabAnimationDuration(this.tabCloseAnimationMs))
   }
 
+  applyRestoredGroups(
+    groups: Array<{ id: string; name: string; colorId: string; collapsed?: boolean }>,
+    assignments: Array<{ tab: any; groupId: string }>
+  ): void {
+    if (!groups?.length || !assignments?.length) return
+
+    const activeTabReference = this.getActiveTab()
+
+    this.groups = groups.map((group) => ({
+      id: String(group.id),
+      name: String(group.name || ''),
+      colorId: group.colorId as TabGroup['colorId'],
+      collapsed: false,
+      animating: false
+    }))
+
+    assignments.forEach(({ tab, groupId }) => {
+      if (this.tabs.includes(tab)) tab.groupId = groupId
+    })
+
+    this.groups = this.tabGroups.removeEmptyGroups(this.tabs, this.groups)
+    this.applyTabsOrder(this.tabGroups.normalizeOrder(this.tabs, this.groups), activeTabReference)
+
+    groups.forEach((persistedGroup) => {
+      const group = this.groups.find((item) => item.id === String(persistedGroup.id))
+      if (group) group.collapsed = Boolean(persistedGroup.collapsed)
+    })
+
+    this.rebuildLayout()
+  }
+
   createGroupForActiveTab(event: MouseEvent): void {
     event.stopPropagation()
     this.dropdownVisible = false
