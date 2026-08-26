@@ -21,6 +21,7 @@ import { InternalApiService } from '../../../services/requests/internal-api.serv
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
 import { RunQueryService } from '../../../services/db-query/run-query.service'
 import { QueryResultGridDataSourceService } from '../../../services/query-result-grid/query-result-grid-data-source.service'
+import { GridFilterSyncService } from '../../../services/query-result-grid/grid-filter-sync.service'
 import {
   QueryResultExportPayload,
   QueryResultExportService
@@ -89,6 +90,19 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   @Input() showResultClose: boolean = true
   @Input() emitFilterModelChanges: boolean = false
   @Input() filterOnApplyOnly: boolean = false
+  @Input() directRowActions: boolean = false
+
+  @Input()
+  set filterModel(value: any) {
+    const normalizedFilterModel = value || {}
+    if (this.gridFilterSync.sameFilterModel(normalizedFilterModel, this.appliedFilterModel)) return
+
+    this.appliedFilterModel = normalizedFilterModel
+    this.queueFilterModelSync()
+  }
+  get filterModel(): any {
+    return this.appliedFilterModel
+  }
 
   @Output() newValuesQuery = new EventEmitter<void>()
   @Output() closeResult = new EventEmitter<void>()
@@ -140,6 +154,11 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   private pendingDeletes = new Set<number>()
   private pendingInserts = new Map<number, Map<string, any>>()
   private selectedRows = new Set<number>()
+  private appliedFilterModel: any = {}
+  private isApplyingFilterModel = false
+  private filterModelSyncFrame: number | null = null
+  private isRebuildingColumns = false
+  private columnRebuildFrame: number | null = null
   private editableTable: EditableTableTarget | null = null
   private nextInsertRowId = -1
   private selectedCellKeys = new Set<string>()
@@ -198,7 +217,8 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     private gridDataSourceService: QueryResultGridDataSourceService,
     private resultExport: QueryResultExportService,
     private keyboardShortcuts: KeyboardShortcutService,
-    private language: AppLanguageService
+    private language: AppLanguageService,
+    private gridFilterSync: GridFilterSyncService
   ) { }
 
   @Input()
@@ -247,6 +267,8 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.filterModelSyncFrame !== null) window.cancelAnimationFrame(this.filterModelSyncFrame)
+    if (this.columnRebuildFrame !== null) window.cancelAnimationFrame(this.columnRebuildFrame)
     this.unregisterKeyboardShortcuts()
     this.unbindGridContextMenuListener()
     this.releaseData()
@@ -369,9 +391,42 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     this.rowLimitChange.emit(Math.max(1, Math.floor(value)))
   }
 
-  onGridFilterChanged(): void {
+  onGridFilterChanged(event?: any): void {
     if (!this.emitFilterModelChanges) return
-    this.filterModelChange.emit(this.agGrid?.api?.getFilterModel() || {})
+    if (!this.gridFilterSync.isUserFilterChange(event, {
+      isApplyingFilterModel: this.isApplyingFilterModel,
+      isRebuildingColumns: this.isRebuildingColumns
+    })) return
+
+    const filterModel = this.agGrid?.api?.getFilterModel() || {}
+    this.appliedFilterModel = filterModel
+    this.filterModelChange.emit(filterModel)
+  }
+
+  private queueFilterModelSync(): void {
+    if (!this.emitFilterModelChanges || this.filterModelSyncFrame !== null) return
+
+    this.filterModelSyncFrame = window.requestAnimationFrame(() => {
+      this.filterModelSyncFrame = null
+      this.applyFilterModelToGrid()
+    })
+  }
+
+  private applyFilterModelToGrid(): void {
+    const gridApi = this.agGrid?.api
+    if (!gridApi) return
+
+    const currentFilterModel = gridApi.getFilterModel() || {}
+    if (this.gridFilterSync.sameFilterModel(currentFilterModel, this.appliedFilterModel)) return
+
+    this.isApplyingFilterModel = true
+    try {
+      gridApi.setFilterModel(this.appliedFilterModel)
+    } finally {
+      window.requestAnimationFrame(() => {
+        this.isApplyingFilterModel = false
+      })
+    }
   }
 
   onColumnHeaderClicked(event: any): void {
@@ -638,6 +693,37 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     })
     this.selectedRows.clear()
     this.refreshVisibleGrid(true)
+  }
+
+  canUseDirectRowActions(): boolean {
+    return this.directRowActions && this.canStartEditing()
+  }
+
+  getDirectDeleteCount(): number {
+    return this.editingEnabled ? this.selectedRows.size : this.selectedFullRowIds.length
+  }
+
+  addRowDirect(): void {
+    if (!this.canUseDirectRowActions()) return
+
+    if (!this.editingEnabled) this.startEditing()
+    this.addRow()
+  }
+
+  deleteSelectedRowsDirect(): void {
+    if (!this.canUseDirectRowActions()) return
+
+    const rowIds = this.editingEnabled
+      ? Array.from(this.selectedRows)
+      : [...this.selectedFullRowIds]
+    if (rowIds.length === 0) return
+
+    if (!this.editingEnabled) {
+      this.startEditing()
+      rowIds.forEach((rowId) => this.selectedRows.add(rowId))
+    }
+
+    this.markSelectedRowsForDelete()
   }
 
   addRow(): void {
@@ -1250,7 +1336,12 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
       if (signature === this.columnSignature) return
 
       this.columnSignature = signature
-      this.columnDefs = this.decorateColumnDefs(this.buildEmptyResultColumnDefs(normalizedColumns))
+
+      if (!this.keepsColumnDefsForEmptyResult(normalizedColumns)) {
+        this.setColumnDefs(this.decorateColumnDefs(this.buildEmptyResultColumnDefs(normalizedColumns)))
+      }
+
+      this.queueFilterModelSync()
       return
     }
 
@@ -1263,7 +1354,26 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
     if (signature === this.columnSignature) return
 
     this.columnSignature = signature
-    this.columnDefs = this.decorateColumnDefs(buildTypedColumnDefs(this.query, 90))
+    this.setColumnDefs(this.decorateColumnDefs(buildTypedColumnDefs(this.query, 90)))
+  }
+
+  private setColumnDefs(columnDefs: ColDef[]): void {
+    this.columnDefs = columnDefs
+    this.isRebuildingColumns = true
+
+    if (this.columnRebuildFrame !== null) window.cancelAnimationFrame(this.columnRebuildFrame)
+    this.columnRebuildFrame = window.requestAnimationFrame(() => {
+      this.columnRebuildFrame = null
+      this.isRebuildingColumns = false
+    })
+  }
+
+  private keepsColumnDefsForEmptyResult(columns: string[]): boolean {
+    const currentFields = this.columnDefs
+      .map((columnDef) => columnDef.field)
+      .filter((field): field is string => Boolean(field))
+
+    return this.gridFilterSync.keepsColumnDefs(currentFields, columns)
   }
 
   private buildEmptyResultColumnDefs(columns: string[]): ColDef[] {
