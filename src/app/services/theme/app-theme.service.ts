@@ -41,6 +41,6 @@ export class AppThemeService {
     if (typeof document === 'undefined') return
 
     document.documentElement.dataset['appTheme'] = theme
-    document.documentElement.style.colorScheme = theme
+    document.documentElement.style.colorScheme = theme === 'light' ? 'light' : 'dark'
   }
 }

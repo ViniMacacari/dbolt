@@ -38,14 +38,14 @@ export interface TabLayoutDescriptor {
 })
 export class TabGroupsService {
   readonly colors: TabGroupColor[] = [
-    { id: 'blue', value: '#6ba0ff', soft: 'rgba(107, 160, 255, 0.16)' },
-    { id: 'purple', value: '#c08cff', soft: 'rgba(192, 140, 255, 0.16)' },
-    { id: 'green', value: '#56d364', soft: 'rgba(86, 211, 100, 0.16)' },
-    { id: 'yellow', value: '#e3b341', soft: 'rgba(227, 179, 65, 0.16)' },
-    { id: 'red', value: '#ff7b72', soft: 'rgba(255, 123, 114, 0.16)' },
-    { id: 'pink', value: '#ff8fc7', soft: 'rgba(255, 143, 199, 0.16)' },
-    { id: 'cyan', value: '#59c2d6', soft: 'rgba(89, 194, 214, 0.16)' },
-    { id: 'grey', value: '#9aa0a6', soft: 'rgba(154, 160, 166, 0.16)' }
+    { id: 'blue', value: 'var(--dbolt-tab-group-blue)', soft: 'var(--dbolt-tab-group-blue-soft)' },
+    { id: 'purple', value: 'var(--dbolt-tab-group-purple)', soft: 'var(--dbolt-tab-group-purple-soft)' },
+    { id: 'green', value: 'var(--dbolt-tab-group-green)', soft: 'var(--dbolt-tab-group-green-soft)' },
+    { id: 'yellow', value: 'var(--dbolt-tab-group-yellow)', soft: 'var(--dbolt-tab-group-yellow-soft)' },
+    { id: 'red', value: 'var(--dbolt-tab-group-red)', soft: 'var(--dbolt-tab-group-red-soft)' },
+    { id: 'pink', value: 'var(--dbolt-tab-group-pink)', soft: 'var(--dbolt-tab-group-pink-soft)' },
+    { id: 'cyan', value: 'var(--dbolt-tab-group-cyan)', soft: 'var(--dbolt-tab-group-cyan-soft)' },
+    { id: 'grey', value: 'var(--dbolt-tab-group-grey)', soft: 'var(--dbolt-tab-group-grey-soft)' }
   ]
 
   private groupSequence = 0
