@@ -868,7 +868,8 @@ export class SettingsComponent implements OnInit, OnChanges {
   private buildAppThemeOptions(): { value: AppTheme, label: string }[] {
     return [
       { value: 'dark', label: this.t('settings.appearance.theme.dark') },
-      { value: 'light', label: this.t('settings.appearance.theme.light') }
+      { value: 'light', label: this.t('settings.appearance.theme.light') },
+      { value: 'dracula', label: this.t('settings.appearance.theme.dracula') }
     ]
   }
 
