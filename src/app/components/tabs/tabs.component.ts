@@ -9,6 +9,7 @@ import { QueryCompareTargetService } from '../../services/query-compare-target/q
 import { AppLanguageService } from '../../services/language/app-language.service'
 import { ApplicationCloseGuardService } from '../../services/application-close/application-close-guard.service'
 import { TabGroup, TabGroupsService, TabLayoutDescriptor, TabLayoutItem } from '../../services/tab-groups/tab-groups.service'
+import { KeyboardShortcutService } from '../../services/keyboard-shortcuts/keyboard-shortcut.service'
 
 @Component({
   selector: 'app-tabs',
@@ -35,6 +36,7 @@ export class TabsComponent implements OnInit, OnDestroy {
   groups: TabGroup[] = []
   layout: TabLayoutItem[] = []
   isDraggingTab: boolean = false
+  selectedTabs = new Set<any>()
   tabContextMenu: any = null
   groupContextMenu: any = null
   groupEditor: any = null
@@ -47,6 +49,7 @@ export class TabsComponent implements OnInit, OnDestroy {
   private readonly tabGroupFlashMs = 520
   private readonly tabAnimationTimers = new Set<ReturnType<typeof setTimeout>>()
   private unregisterUnsavedSqlQueryCheck: (() => void) | null = null
+  private unregisterEscapeShortcut: (() => void) | null = null
   private layoutKeySequence = 0
 
   @ViewChild('tabsContainer') tabsContainer!: ElementRef
@@ -58,19 +61,34 @@ export class TabsComponent implements OnInit, OnDestroy {
     private compareTarget: QueryCompareTargetService,
     private language: AppLanguageService,
     private applicationCloseGuard: ApplicationCloseGuardService,
-    private tabGroups: TabGroupsService
+    private tabGroups: TabGroupsService,
+    private keyboardShortcuts: KeyboardShortcutService
   ) { }
 
   ngOnInit(): void {
     this.unregisterUnsavedSqlQueryCheck = this.applicationCloseGuard.registerUnsavedSqlQueryCheck(
       () => this.tabs.some(tab => tab?.type === 'sql' && tab?.icon === 'CHANGE')
     )
+
+    this.unregisterEscapeShortcut = this.keyboardShortcuts.register({
+      key: 'Escape',
+      priority: 95,
+      isEnabled: () => Boolean(this.tabContextMenu || this.groupContextMenu || this.groupEditor) ||
+        this.selectedTabs.size > 0,
+      handler: () => {
+        if (this.groupEditor) this.applyGroupEditor()
+        this.closeTabMenus()
+        this.clearTabSelection()
+        return true
+      }
+    })
   }
 
   ngOnDestroy(): void {
     this.tabAnimationTimers.forEach(timer => clearTimeout(timer))
     this.tabAnimationTimers.clear()
     this.unregisterUnsavedSqlQueryCheck?.()
+    this.unregisterEscapeShortcut?.()
   }
 
   async ngAfterViewInit(): Promise<void> {
@@ -331,14 +349,22 @@ export class TabsComponent implements OnInit, OnDestroy {
       return
     }
 
+    if (this.confirmToClose?.tabs) {
+      this.performTabsClose(this.confirmToClose.tabs)
+      return
+    }
+
     const index = this.tabs.indexOf(this.confirmToClose?.tab)
     if (index >= 0) this.closeTabAt(index, this.confirmToClose?.width)
   }
 
   getUnsavedChangesMessage(): string {
-    return this.confirmToClose?.group
-      ? this.t('tabs.group.unsavedChangesMessage')
-      : this.t('tabs.unsavedChangesMessage')
+    if (this.confirmToClose?.group) return this.t('tabs.group.unsavedChangesMessage')
+    if (this.confirmToClose?.tabs) {
+      return this.t('tabs.selection.unsavedChangesMessage', { count: this.confirmToClose.tabs.length })
+    }
+
+    return this.t('tabs.unsavedChangesMessage')
   }
 
   private closeTabAt(index: number, measuredWidth: number = 0): void {
@@ -358,6 +384,7 @@ export class TabsComponent implements OnInit, OnDestroy {
 
     const wasActive = this.activeTab === index
     this.releaseTabResources(tab)
+    this.selectedTabs.delete(tab)
     this.tabs.splice(index, 1)
     this.tabClosed.emit({
       tab,
@@ -493,10 +520,13 @@ export class TabsComponent implements OnInit, OnDestroy {
   }
 
   openTabContextMenu(tab: any, event: MouseEvent): void {
+    const selectionCount = this.selectedTabs.has(tab) ? this.getSelectedTabsCount() : 0
+
     this.closeTabMenus()
     this.tabContextMenu = {
       tab,
       group: this.tabGroups.resolveGroup(this.groups, tab?.groupId),
+      selectionCount,
       ...this.getMenuPosition(event)
     }
   }
@@ -593,6 +623,116 @@ export class TabsComponent implements OnInit, OnDestroy {
       })
       this.rebuildLayout()
     }, this.getTabAnimationDuration(this.tabCloseAnimationMs))
+  }
+
+  onTabMouseDown(tab: any, event: MouseEvent): void {
+    if (event.button === 1) event.preventDefault()
+  }
+
+  onTabAuxClick(tab: any, event: MouseEvent): void {
+    if (event.button !== 1) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    this.closeTabRef(tab, event)
+  }
+
+  onTabClick(tab: any, event: MouseEvent): void {
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault()
+      this.toggleTabSelection(tab)
+      return
+    }
+
+    this.clearTabSelection()
+    this.selectTabRef(tab)
+  }
+
+  toggleTabSelection(tab: any): void {
+    if (this.selectedTabs.has(tab)) {
+      this.selectedTabs.delete(tab)
+    } else {
+      this.selectedTabs.add(tab)
+    }
+
+    if (this.selectedTabs.size === 0) this.closeTabMenus()
+  }
+
+  clearTabSelection(): void {
+    if (this.selectedTabs.size === 0) return
+
+    this.selectedTabs.clear()
+  }
+
+  isTabSelected(tab: any): boolean {
+    return this.selectedTabs.has(tab)
+  }
+
+  getSelectedTabsCount(): number {
+    return this.getSelectedTabs().length
+  }
+
+  createGroupForSelectedTabs(event: MouseEvent): void {
+    event.stopPropagation()
+
+    const selectedTabs = this.getSelectedTabs()
+    if (selectedTabs.length === 0) return
+
+    const group = this.tabGroups.createGroup(
+      this.groups,
+      this.t('tabs.group.defaultName', { number: this.tabGroups.nextGroupNumber() })
+    )
+    this.groups = [...this.groups, group]
+    selectedTabs.forEach((tab) => this.moveTabToGroup(tab, group.id))
+
+    this.clearTabSelection()
+    this.closeTabMenus()
+    this.openGroupEditor(group, event)
+  }
+
+  closeSelectedTabs(event: MouseEvent): void {
+    event.stopPropagation()
+
+    const selectedTabs = this.getSelectedTabs()
+    if (selectedTabs.length === 0) return
+
+    this.clearTabSelection()
+    this.closeTabMenus()
+    this.requestTabsClose(selectedTabs)
+  }
+
+  clearSelectionFromMenu(event: MouseEvent): void {
+    event.stopPropagation()
+    this.clearTabSelection()
+    this.closeTabMenus()
+  }
+
+  private getSelectedTabs(): any[] {
+    return this.tabs.filter((tab) => this.selectedTabs.has(tab) && !tab.closing)
+  }
+
+  private requestTabsClose(tabsToClose: any[]): void {
+    if (tabsToClose.length === 0) return
+
+    if (tabsToClose.some((tab) => tab?.icon === 'CHANGE')) {
+      this.confirmToClose = { tabs: tabsToClose }
+      this.showYNModal = true
+      return
+    }
+
+    this.performTabsClose(tabsToClose)
+  }
+
+  private performTabsClose(tabsToClose: any[]): void {
+    tabsToClose
+      .slice()
+      .reverse()
+      .forEach((tab) => {
+        const index = this.tabs.indexOf(tab)
+        if (index >= 0) this.closeTabAt(index, this.measureTabWidth(tab))
+      })
+
+    this.confirmToClose = {}
   }
 
   applyRestoredGroups(
@@ -868,10 +1008,6 @@ export class TabsComponent implements OnInit, OnDestroy {
     }
   }
 
-  @HostListener('document:keydown.escape')
-  onEscapeKey(): void {
-    this.closeTabMenus()
-  }
 
   onOpenLoadQuery(event: any): void {
     this.showLoadQuery = false

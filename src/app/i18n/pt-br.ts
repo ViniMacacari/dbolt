@@ -349,6 +349,13 @@ export const ptBrTranslations: TranslationCatalog = {
   'tabs.unsavedChangesTitle': 'Alterações não salvas',
   'tabs.unsavedChangesMessage': 'Deseja fechar a aba mesmo sem salvar as alterações?',
 
+  'tabs.selection.section': 'Abas selecionadas',
+  'tabs.selection.count': '{count} abas selecionadas',
+  'tabs.selection.newGroup': 'Criar grupo com {count} abas',
+  'tabs.selection.closeAll': 'Fechar {count} abas',
+  'tabs.selection.clear': 'Limpar seleção',
+  'tabs.selection.unsavedChangesMessage': 'Existem abas com alterações não salvas na seleção. Deseja fechar mesmo assim?',
+
   'tabs.group.tabSection': 'Aba',
   'tabs.group.groupSection': 'Grupo de abas',
   'tabs.group.defaultName': 'Grupo {number}',

@@ -349,6 +349,13 @@ export const enTranslations: TranslationCatalog = {
   'tabs.unsavedChangesTitle': 'Unsaved changes',
   'tabs.unsavedChangesMessage': 'Do you want to close the tab even without saving the changes?',
 
+  'tabs.selection.section': 'Selected tabs',
+  'tabs.selection.count': '{count} tabs selected',
+  'tabs.selection.newGroup': 'New group with {count} tabs',
+  'tabs.selection.closeAll': 'Close {count} tabs',
+  'tabs.selection.clear': 'Clear selection',
+  'tabs.selection.unsavedChangesMessage': 'Some selected tabs have unsaved changes. Close them anyway?',
+
   'tabs.group.tabSection': 'Tab',
   'tabs.group.groupSection': 'Tab group',
   'tabs.group.defaultName': 'Group {number}',
