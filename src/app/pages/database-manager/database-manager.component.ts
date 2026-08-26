@@ -25,7 +25,9 @@ import { DbExportComponent } from '../../components/elements/db-export/db-export
 import { ToolsNavigationService } from '../../services/tools/tools-navigation.service'
 import { WorkspaceSessionService } from '../../services/workspace-session/workspace-session.service'
 import { WorkspaceSessionRestoreService, WorkspaceTabOpener } from '../../services/workspace-session/workspace-session-restore.service'
-import { PersistedWorkspaceTab } from '../../services/workspace-session/workspace-session.model'
+import { PersistedWorkspaceTab, WORKSPACE_SESSION_VERSION } from '../../services/workspace-session/workspace-session.model'
+import { ClosedTabsHistoryService } from '../../services/closed-tabs/closed-tabs-history.service'
+import { KeyboardShortcutService } from '../../services/keyboard-shortcuts/keyboard-shortcut.service'
 import { Subscription } from 'rxjs'
 
 @Component({
@@ -83,6 +85,7 @@ export class DatabaseManagerComponent implements OnDestroy {
   private aiAssistantAnimationFrame: number | null = null
   private toolsSubscription: Subscription | null = null
   private unregisterWorkspaceSession: (() => void) | null = null
+  private shortcutDisposers: Array<() => void> = []
 
   constructor(
     private IAPI: InternalApiService,
@@ -94,7 +97,9 @@ export class DatabaseManagerComponent implements OnDestroy {
     private language: AppLanguageService,
     private toolsNavigation: ToolsNavigationService,
     private workspaceSession: WorkspaceSessionService,
-    private workspaceRestore: WorkspaceSessionRestoreService
+    private workspaceRestore: WorkspaceSessionRestoreService,
+    private closedTabs: ClosedTabsHistoryService,
+    private keyboardShortcuts: KeyboardShortcutService
   ) {
     this.toolsSubscription = this.toolsNavigation.requests$.subscribe((destination) => {
       if (destination === 'database-export') {
@@ -109,6 +114,8 @@ export class DatabaseManagerComponent implements OnDestroy {
     this.workspaceSession.persistNow()
     this.unregisterWorkspaceSession?.()
     this.unregisterWorkspaceSession = null
+    this.shortcutDisposers.forEach((dispose) => dispose())
+    this.shortcutDisposers = []
   }
 
   async ngAfterViewInit(): Promise<void> {
@@ -117,6 +124,7 @@ export class DatabaseManagerComponent implements OnDestroy {
     await this.pageConnectionConfig()
     await this.restoreWorkspaceSession()
     this.registerWorkspaceSession()
+    this.registerWorkspaceShortcuts()
     LoadingComponent.hide()
     void this.loadRecentQueries()
   }
@@ -339,6 +347,7 @@ export class DatabaseManagerComponent implements OnDestroy {
 
   onTabClosed(event: any): void {
     const tab = event?.tab || event
+    this.rememberClosedTab(tab)
     this.workspaceSession.scheduleSave()
 
     if (tab?.type === 'settings') {
@@ -777,6 +786,48 @@ export class DatabaseManagerComponent implements OnDestroy {
     const pageId = this.getPageId()
 
     return Number.isFinite(pageId) && pageId ? `connection-${pageId}` : 'connection-unknown'
+  }
+
+  private registerWorkspaceShortcuts(): void {
+    this.shortcutDisposers.push(
+      this.keyboardShortcuts.register({
+        key: 't',
+        ctrlOrMeta: true,
+        priority: 70,
+        isEnabled: () => this.closedTabs.hasClosedTabs(this.workspaceSessionId),
+        handler: () => {
+          void this.reopenLastClosedTab()
+          return true
+        }
+      })
+    )
+  }
+
+  private rememberClosedTab(tab: any): void {
+    if (!this.workspaceSession.isRestorable(tab)) return
+
+    this.closedTabs.push(this.workspaceSessionId, {
+      ...this.workspaceSession.describeTab(tab),
+      context: tab.dbInfo || tab.info?.context
+    })
+  }
+
+  private async reopenLastClosedTab(): Promise<void> {
+    const closedTab = this.closedTabs.pop(this.workspaceSessionId)
+    if (!closedTab || !this.tabsComponent) return
+
+    await this.workspaceRestore.restore({
+      version: WORKSPACE_SESSION_VERSION,
+      savedAt: Date.now(),
+      activeTabIndex: null,
+      tabs: [closedTab],
+      groups: this.tabsComponent.groups
+    }, {
+      openers: this.buildWorkspaceTabOpeners(),
+      getTabs: () => this.tabsComponent?.tabs || [],
+      applyGroups: (groups, assignments) => this.tabsComponent?.applyRestoredGroups(groups, assignments),
+      selectTab: (index) => this.tabsComponent?.selectTab(index)
+    })
   }
 
   private registerWorkspaceSession(): void {
