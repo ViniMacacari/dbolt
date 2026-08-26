@@ -177,6 +177,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'settings.appearance.theme.dark': 'DBOLT Dark',
   'settings.appearance.theme.light': 'DBOLT Light',
   'settings.appearance.theme.dracula': 'DBOLT Dracula',
+  'settings.appearance.theme.darkGray': 'DBOLT Dark Gray',
   'settings.header': 'Configurações',
   'settings.query.tab': 'Query',
   'settings.query.title': 'Padrões de query',
