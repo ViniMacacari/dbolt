@@ -26,7 +26,7 @@ export type SqlHighlightColorKey = keyof SqlHighlightColors
 export type SqlHighlightMode = 'dbolt-dark' | 'dbolt-high-contrast' | 'classic-sql' | 'vibrant' | 'custom'
 export type SqlFormatterCommaStyle = 'trailing' | 'leading'
 export type TableAutocompleteMatchMode = 'contains' | 'fuzzy'
-export type AppTheme = 'dark' | 'light'
+export type AppTheme = 'dark' | 'light' | 'dracula'
 
 export interface AppSettings {
   appLanguage: AppLanguage
@@ -468,7 +468,10 @@ export class AppSettingsService {
   }
 
   normalizeAppTheme(value: unknown): AppTheme {
-    return value === 'light' ? 'light' : 'dark'
+    if (value === 'light') return 'light'
+    if (value === 'dracula') return 'dracula'
+
+    return 'dark'
   }
 
   getSqlHighlightPresetColors(mode: Exclude<SqlHighlightMode, 'custom'>): SqlHighlightColors {
