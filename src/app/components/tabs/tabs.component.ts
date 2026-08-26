@@ -8,6 +8,7 @@ import { ConnectionContextService } from '../../services/connection-context/conn
 import { QueryCompareTargetService } from '../../services/query-compare-target/query-compare-target.service'
 import { AppLanguageService } from '../../services/language/app-language.service'
 import { ApplicationCloseGuardService } from '../../services/application-close/application-close-guard.service'
+import { TabGroup, TabGroupsService, TabLayoutDescriptor, TabLayoutItem } from '../../services/tab-groups/tab-groups.service'
 
 @Component({
   selector: 'app-tabs',
@@ -31,22 +32,33 @@ export class TabsComponent implements OnInit, OnDestroy {
   idTabs: number = 0
   confirmToClose: any = {}
 
+  groups: TabGroup[] = []
+  layout: TabLayoutItem[] = []
+  isDraggingTab: boolean = false
+  tabContextMenu: any = null
+  groupContextMenu: any = null
+  groupEditor: any = null
+
   icon: string = 'CODE'
 
   private readonly tabOpenAnimationMs = 240
   private readonly tabCloseAnimationMs = 190
   private readonly tabSwitchAnimationMs = 180
+  private readonly tabGroupFlashMs = 520
   private readonly tabAnimationTimers = new Set<ReturnType<typeof setTimeout>>()
   private unregisterUnsavedSqlQueryCheck: (() => void) | null = null
+  private layoutKeySequence = 0
 
   @ViewChild('tabsContainer') tabsContainer!: ElementRef
+  @ViewChild('groupNameInput') groupNameInput?: ElementRef<HTMLInputElement>
 
   constructor(
     private dbSchema: GetDbschemaService,
     private connectionContext: ConnectionContextService,
     private compareTarget: QueryCompareTargetService,
     private language: AppLanguageService,
-    private applicationCloseGuard: ApplicationCloseGuardService
+    private applicationCloseGuard: ApplicationCloseGuardService,
+    private tabGroups: TabGroupsService
   ) { }
 
   ngOnInit(): void {
@@ -63,11 +75,21 @@ export class TabsComponent implements OnInit, OnDestroy {
 
   async ngAfterViewInit(): Promise<void> {
     Sortable.create(this.tabsContainer.nativeElement, {
-      animation: 150,
+      animation: 170,
+      easing: 'cubic-bezier(.2, .8, .2, 1)',
+      draggable: '.tab',
+      filter: '.tab-group-chip',
+      preventOnFilter: false,
+      ghostClass: 'tab-ghost',
+      chosenClass: 'tab-chosen',
+      dragClass: 'tab-dragging',
+      onStart: () => {
+        this.isDraggingTab = true
+        this.closeTabMenus()
+      },
       onEnd: (event) => {
-        const movedTab = this.tabs.splice(event.oldIndex!, 1)[0]
-        this.tabs.splice(event.newIndex!, 0, movedTab)
-        this.updateActiveTab(event.oldIndex!, event.newIndex!)
+        this.isDraggingTab = false
+        this.onTabDragEnd(event)
       }
     })
   }
@@ -303,8 +325,20 @@ export class TabsComponent implements OnInit, OnDestroy {
 
   confirmTabClose(): void {
     this.showYNModal = false
+
+    if (this.confirmToClose?.group) {
+      this.performGroupClose(this.confirmToClose.group)
+      return
+    }
+
     const index = this.tabs.indexOf(this.confirmToClose?.tab)
     if (index >= 0) this.closeTabAt(index, this.confirmToClose?.width)
+  }
+
+  getUnsavedChangesMessage(): string {
+    return this.confirmToClose?.group
+      ? this.t('tabs.group.unsavedChangesMessage')
+      : this.t('tabs.unsavedChangesMessage')
   }
 
   private closeTabAt(index: number, measuredWidth: number = 0): void {
@@ -331,8 +365,11 @@ export class TabsComponent implements OnInit, OnDestroy {
       hasTabs: this.tabs.length > 0
     })
 
+    this.groups = this.tabGroups.removeEmptyGroups(this.tabs, this.groups)
+
     if (this.tabs.length === 0) {
       this.activeTab = null
+      this.rebuildLayout()
       return
     }
 
@@ -345,6 +382,8 @@ export class TabsComponent implements OnInit, OnDestroy {
     if (this.activeTab !== null && index < this.activeTab) {
       this.activeTab--
     }
+
+    this.rebuildLayout()
   }
 
   private releaseTabResources(tab: any): void {
@@ -362,9 +401,13 @@ export class TabsComponent implements OnInit, OnDestroy {
   }
 
   private appendTab(tab: any): number {
+    this.layoutKeySequence += 1
+    tab.layoutKey = String(this.layoutKeySequence)
+    tab.groupId = tab.groupId || null
     tab.opening = true
     tab.closing = false
     this.tabs.push(tab)
+    this.rebuildLayout()
 
     this.scheduleTabAnimation(() => {
       if (this.tabs.includes(tab)) tab.opening = false
@@ -401,7 +444,367 @@ export class TabsComponent implements OnInit, OnDestroy {
     }
 
     this.activeTab = index
+    this.rebuildLayout()
+    this.scrollTabIntoView(nextTab)
     this.tabSelected.emit(nextTab)
+  }
+
+  private scrollTabIntoView(tab: any): void {
+    setTimeout(() => {
+      const container = this.tabsContainer?.nativeElement as HTMLElement | undefined
+      const element = container?.querySelector(`[data-tab-key="${tab?.layoutKey}"]`) as HTMLElement | null
+
+      element?.scrollIntoView({
+        behavior: this.getTabAnimationDuration(this.tabSwitchAnimationMs) ? 'smooth' : 'auto',
+        block: 'nearest',
+        inline: 'nearest'
+      })
+    }, 0)
+  }
+
+  rebuildLayout(): void {
+    this.layout = this.tabGroups.buildLayout(this.tabs, this.groups, this.activeTab)
+  }
+
+  trackLayoutItem(index: number, item: TabLayoutItem): any {
+    return item.kind === 'group' ? item.group.id : item.tab
+  }
+
+  selectTabRef(tab: any): void {
+    const index = this.tabs.indexOf(tab)
+    if (index >= 0) this.selectTab(index)
+  }
+
+  closeTabRef(tab: any, event: MouseEvent): void {
+    const index = this.tabs.indexOf(tab)
+    if (index >= 0) this.closeTab(index, event, tab)
+  }
+
+  get groupColors() {
+    return this.tabGroups.colors
+  }
+
+  getGroupColorValue(group: TabGroup): string {
+    return this.tabGroups.getColor(group.colorId).value
+  }
+
+  getGroupColorSoft(group: TabGroup): string {
+    return this.tabGroups.getColor(group.colorId).soft
+  }
+
+  openTabContextMenu(tab: any, event: MouseEvent): void {
+    this.closeTabMenus()
+    this.tabContextMenu = {
+      tab,
+      group: this.tabGroups.resolveGroup(this.groups, tab?.groupId),
+      ...this.getMenuPosition(event)
+    }
+  }
+
+  openGroupContextMenu(group: TabGroup, event: MouseEvent): void {
+    this.closeTabMenus()
+    this.groupContextMenu = {
+      group,
+      ...this.getMenuPosition(event)
+    }
+  }
+
+  closeTabMenus(): void {
+    this.tabContextMenu = null
+    this.groupContextMenu = null
+    this.groupEditor = null
+  }
+
+  getGroupsForTab(tab: any): TabGroup[] {
+    const currentGroupId = this.tabGroups.resolveGroup(this.groups, tab?.groupId)?.id || null
+
+    return this.groups.filter((group) => group.id !== currentGroupId)
+  }
+
+  createGroupForTab(tab: any, event: MouseEvent): void {
+    event.stopPropagation()
+
+    const group = this.tabGroups.createGroup(
+      this.groups,
+      this.t('tabs.group.defaultName', { number: this.tabGroups.nextGroupNumber() })
+    )
+    this.groups = [...this.groups, group]
+    this.moveTabToGroup(tab, group.id)
+    this.closeTabMenus()
+    this.openGroupEditor(group, event)
+  }
+
+  addTabToGroup(tab: any, group: TabGroup, event: MouseEvent): void {
+    event.stopPropagation()
+    if (group.collapsed) group.collapsed = false
+
+    this.moveTabToGroup(tab, group.id)
+    this.closeTabMenus()
+  }
+
+  removeTabFromGroup(tab: any, event: MouseEvent): void {
+    event.stopPropagation()
+    this.moveTabToGroup(tab, null)
+    this.closeTabMenus()
+  }
+
+  closeTabFromMenu(tab: any, event: MouseEvent): void {
+    event.stopPropagation()
+    this.closeTabMenus()
+    this.closeTabRef(tab, event)
+  }
+
+  toggleGroupCollapse(group: TabGroup, event?: MouseEvent): void {
+    event?.stopPropagation()
+    this.closeTabMenus()
+
+    const groupTabs = this.tabGroups.groupTabs(this.tabs, this.groups, group.id)
+
+    if (group.collapsed) {
+      group.collapsed = false
+      group.animating = false
+      groupTabs.forEach((tab) => {
+        tab.collapsing = false
+        tab.opening = true
+      })
+      this.rebuildLayout()
+
+      this.scheduleTabAnimation(() => {
+        groupTabs.forEach((tab) => {
+          tab.opening = false
+        })
+      }, this.getTabAnimationDuration(this.tabOpenAnimationMs))
+      return
+    }
+
+    groupTabs.forEach((tab) => {
+      tab.animationWidth = Math.max(50, this.measureTabWidth(tab))
+      tab.opening = false
+      tab.collapsing = true
+    })
+    group.collapsed = true
+    group.animating = true
+    this.rebuildLayout()
+
+    this.scheduleTabAnimation(() => {
+      group.animating = false
+      groupTabs.forEach((tab) => {
+        tab.collapsing = false
+      })
+      this.rebuildLayout()
+    }, this.getTabAnimationDuration(this.tabCloseAnimationMs))
+  }
+
+  createGroupForActiveTab(event: MouseEvent): void {
+    event.stopPropagation()
+    this.dropdownVisible = false
+
+    const activeTabReference = this.getActiveTab()
+    if (!activeTabReference) return
+
+    this.createGroupForTab(activeTabReference, event)
+  }
+
+  private measureTabWidth(tab: any): number {
+    const container = this.tabsContainer?.nativeElement as HTMLElement | undefined
+    const element = container?.querySelector(`[data-tab-key="${tab?.layoutKey}"]`) as HTMLElement | null
+
+    return Math.ceil(element?.getBoundingClientRect().width || 0)
+  }
+
+  private flashTabs(tabs: any[]): void {
+    tabs.forEach((tab) => {
+      tab.groupFlash = false
+    })
+
+    setTimeout(() => {
+      tabs.forEach((tab) => {
+        tab.groupFlash = true
+      })
+
+      this.scheduleTabAnimation(() => {
+        tabs.forEach((tab) => {
+          tab.groupFlash = false
+        })
+      }, this.getTabAnimationDuration(this.tabGroupFlashMs))
+    }, 0)
+  }
+
+  openGroupEditor(group: TabGroup, event: MouseEvent): void {
+    this.tabContextMenu = null
+    this.groupContextMenu = null
+    this.groupEditor = {
+      group,
+      name: group.name,
+      ...this.getMenuPosition(event)
+    }
+
+    setTimeout(() => {
+      this.groupNameInput?.nativeElement.focus()
+      this.groupNameInput?.nativeElement.select()
+    }, 0)
+  }
+
+  onGroupEditorName(event: Event): void {
+    if (!this.groupEditor) return
+
+    this.groupEditor.name = (event.target as HTMLInputElement).value
+  }
+
+  setGroupEditorColor(colorId: TabGroup['colorId'], event: MouseEvent): void {
+    event.stopPropagation()
+    if (!this.groupEditor) return
+
+    this.groupEditor.group.colorId = colorId
+    this.rebuildLayout()
+  }
+
+  applyGroupEditor(): void {
+    if (!this.groupEditor) return
+
+    const name = String(this.groupEditor.name || '').trim()
+    if (name) this.groupEditor.group.name = name
+
+    this.groupEditor = null
+    this.rebuildLayout()
+  }
+
+  newTabInGroup(group: TabGroup, event: MouseEvent): void {
+    event.stopPropagation()
+    this.closeTabMenus()
+
+    if (group.collapsed) group.collapsed = false
+
+    const tab = this.newTab('sql', { sql: '' }, this.t('tabs.newQuery'))
+    this.moveTabToGroup(tab, group.id)
+  }
+
+  ungroupGroup(group: TabGroup, event: MouseEvent): void {
+    event.stopPropagation()
+    this.closeTabMenus()
+
+    const activeTabReference = this.getActiveTab()
+    this.tabGroups.groupTabs(this.tabs, this.groups, group.id).forEach((tab) => {
+      tab.groupId = null
+    })
+    this.groups = this.groups.filter((item) => item.id !== group.id)
+    this.applyTabsOrder([...this.tabs], activeTabReference)
+  }
+
+  closeGroupTabs(group: TabGroup, event: MouseEvent): void {
+    event.stopPropagation()
+    this.closeTabMenus()
+
+    const groupTabs = this.tabGroups.groupTabs(this.tabs, this.groups, group.id)
+    if (groupTabs.length === 0) return
+
+    if (groupTabs.some((tab) => tab?.icon === 'CHANGE')) {
+      this.confirmToClose = { group }
+      this.showYNModal = true
+      return
+    }
+
+    this.performGroupClose(group)
+  }
+
+  private performGroupClose(group: TabGroup): void {
+    const groupTabs = this.tabGroups.groupTabs(this.tabs, this.groups, group.id)
+
+    groupTabs
+      .slice()
+      .reverse()
+      .forEach((tab) => {
+        const index = this.tabs.indexOf(tab)
+        if (index >= 0) this.closeTabAt(index)
+      })
+
+    this.confirmToClose = {}
+  }
+
+  private moveTabToGroup(tab: any, groupId: string | null): void {
+    const activeTabReference = this.getActiveTab()
+    const orderedTabs = this.tabGroups.assignTab(this.tabs, this.groups, tab, groupId)
+    this.applyTabsOrder(orderedTabs, activeTabReference)
+
+    if (groupId) this.flashTabs([tab])
+  }
+
+  private onTabDragEnd(event: any): void {
+    const container = this.tabsContainer?.nativeElement as HTMLElement | undefined
+    const draggedElement = event?.item as HTMLElement | undefined
+    const draggedTab = this.findTabByLayoutKey(draggedElement?.dataset?.['tabKey'])
+
+    if (!container || !draggedTab) {
+      this.rebuildLayout()
+      return
+    }
+
+    const activeTabReference = this.getActiveTab()
+    const previousDescriptor = this.toLayoutDescriptor(draggedElement?.previousElementSibling as HTMLElement | null)
+    const targetGroupId = this.tabGroups.resolveDropGroupId(this.tabs, this.groups, previousDescriptor)
+    const previousGroupId = this.tabGroups.resolveGroup(this.groups, draggedTab.groupId)?.id || null
+
+    draggedTab.groupId = targetGroupId
+
+    if (targetGroupId && targetGroupId !== previousGroupId) this.flashTabs([draggedTab])
+
+    const targetGroup = this.tabGroups.resolveGroup(this.groups, targetGroupId)
+    if (targetGroup?.collapsed) targetGroup.collapsed = false
+
+    const descriptors = Array.from(container.children)
+      .map((element) => this.toLayoutDescriptor(element as HTMLElement))
+      .filter((descriptor): descriptor is TabLayoutDescriptor => Boolean(descriptor))
+
+    this.applyTabsOrder(
+      this.tabGroups.buildOrderFromLayout(this.tabs, this.groups, descriptors),
+      activeTabReference
+    )
+  }
+
+  private toLayoutDescriptor(element: HTMLElement | null): TabLayoutDescriptor | null {
+    if (!element) return null
+
+    if (element.classList.contains('tab-group-chip')) {
+      const key = element.dataset?.['groupId']
+      return key ? { kind: 'group', key } : null
+    }
+
+    if (element.classList.contains('tab')) {
+      const key = element.dataset?.['tabKey']
+      return key ? { kind: 'tab', key } : null
+    }
+
+    return null
+  }
+
+  private findTabByLayoutKey(layoutKey?: string): any {
+    if (!layoutKey) return null
+
+    return this.tabs.find((tab) => String(tab?.layoutKey) === layoutKey) || null
+  }
+
+  private applyTabsOrder(orderedTabs: any[], activeTabReference: any): void {
+    this.tabs.splice(0, this.tabs.length, ...orderedTabs)
+    this.groups = this.tabGroups.removeEmptyGroups(this.tabs, this.groups)
+
+    const activeIndex = activeTabReference ? this.tabs.indexOf(activeTabReference) : -1
+    if (activeIndex >= 0) {
+      this.activeTab = activeIndex
+    } else if (this.tabs.length === 0) {
+      this.activeTab = null
+    }
+
+    this.rebuildLayout()
+  }
+
+  private getMenuPosition(event: MouseEvent): { x: number; y: number } {
+    event.preventDefault()
+    event.stopPropagation()
+
+    return {
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - 250)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - 300))
+    }
   }
 
   trackTabByIdentity(index: number, tab: any): any {
@@ -427,6 +830,16 @@ export class TabsComponent implements OnInit, OnDestroy {
     if (!targetElement.closest('.add')) {
       this.dropdownVisible = false
     }
+
+    if (!targetElement.closest('.tabs-context-menu') && !targetElement.closest('.tab-group-editor')) {
+      if (this.groupEditor) this.applyGroupEditor()
+      this.closeTabMenus()
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+    this.closeTabMenus()
   }
 
   onOpenLoadQuery(event: any): void {
@@ -441,24 +854,6 @@ export class TabsComponent implements OnInit, OnDestroy {
     }
 
     this.openSavedQueryTab(event)
-  }
-
-  private updateActiveTab(oldIndex: number, newIndex: number): void {
-    if (this.activeTab === oldIndex) {
-      this.activeTab = newIndex
-    } else if (
-      this.activeTab !== null &&
-      oldIndex < this.activeTab &&
-      newIndex >= this.activeTab
-    ) {
-      this.activeTab--
-    } else if (
-      this.activeTab !== null &&
-      oldIndex > this.activeTab &&
-      newIndex <= this.activeTab
-    ) {
-      this.activeTab++
-    }
   }
 
   updateActiveTabDbInfo(dbInfo: any): void {
