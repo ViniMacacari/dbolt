@@ -39,12 +39,25 @@ describe('TabSelectionService', () => {
     expect(selection.size).toBe(0)
   })
 
-  it('ctrl clicking the active tab alone selects and unselects it', () => {
-    let selection = service.toggle(new Set(), tabA, tabA)
-    expect(service.resolve(tabs, selection)).toEqual([tabA])
+  it('does not start a one tab selection from the active tab', () => {
+    const selection = service.toggle(new Set(), tabA, tabA)
 
-    selection = service.toggle(selection, tabA, tabA)
     expect(selection.size).toBe(0)
+  })
+
+  it('still brings the active tab in after a ctrl click on itself', () => {
+    let selection = service.toggle(new Set(), tabA, tabA)
+    selection = service.toggle(selection, tabB, tabA)
+
+    expect(service.resolve(tabs, selection)).toEqual([tabA, tabB])
+  })
+
+  it('keeps the remaining tabs selected when the active tab is unselected', () => {
+    let selection = service.toggle(new Set(), tabB, tabA)
+    selection = service.toggle(selection, tabA, tabA)
+
+    expect(service.resolve(tabs, selection)).toEqual([tabB])
+    expect(service.resolve(tabs, service.includeForContextMenu(selection, tabA))).toEqual([tabA, tabB])
   })
 
   it('adds the right clicked tab to an existing selection', () => {
