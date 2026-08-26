@@ -52,10 +52,13 @@
                     [class.tab-closing]="item.tab.closing"
                     [class.tab-collapsing]="item.tab.collapsing"
                     [class.tab-flash]="item.tab.groupFlash"
+                    [class.multi-selected]="isTabSelected(item.tab)"
                     [style.--tab-group-color]="item.group ? getGroupColorValue(item.group) : null"
                     [style.--tab-group-color-soft]="item.group ? getGroupColorSoft(item.group) : null"
                     [style.--tab-animation-width]="item.tab.animationWidth ? item.tab.animationWidth + 'px' : null"
-                    (click)="selectTabRef(item.tab)"
+                    (click)="onTabClick(item.tab, $event)"
+                    (mousedown)="onTabMouseDown(item.tab, $event)"
+                    (auxclick)="onTabAuxClick(item.tab, $event)"
                     (contextmenu)="openTabContextMenu(item.tab, $event)">
                     <img class="tab-icon" [src]="getTabIcon(item.tab)" height="15px" />
                     <div class="text" title="{{ item.tab.name }}">
@@ -73,10 +76,32 @@
     [style.top.px]="tabContextMenu.y" (click)="$event.stopPropagation()"
     (contextmenu)="$event.preventDefault()">
     <div class="context-menu-header">
-        <span>{{ t('tabs.group.tabSection') }}</span>
-        <strong>{{ tabContextMenu.tab.name }}</strong>
+        <span>{{ tabContextMenu.selectionCount > 1 ? t('tabs.selection.section') : t('tabs.group.tabSection') }}</span>
+        <strong>{{ tabContextMenu.selectionCount > 1
+            ? t('tabs.selection.count', { count: tabContextMenu.selectionCount })
+            : tabContextMenu.tab.name }}</strong>
     </div>
 
+    <ng-container *ngIf="tabContextMenu.selectionCount > 1">
+        <button type="button" (click)="createGroupForSelectedTabs($event)">
+            <img src="icons/folder.png" height="13px" width="13px">
+            {{ t('tabs.selection.newGroup', { count: tabContextMenu.selectionCount }) }}
+        </button>
+
+        <button type="button" (click)="clearSelectionFromMenu($event)">
+            <img src="icons/minus.png" height="13px" width="13px">
+            {{ t('tabs.selection.clear') }}
+        </button>
+
+        <div class="context-menu-divider"></div>
+
+        <button type="button" class="danger" (click)="closeSelectedTabs($event)">
+            <img src="icons/close.png" height="13px" width="13px">
+            {{ t('tabs.selection.closeAll', { count: tabContextMenu.selectionCount }) }}
+        </button>
+    </ng-container>
+
+    <ng-container *ngIf="tabContextMenu.selectionCount <= 1">
     <button type="button" (click)="createGroupForTab(tabContextMenu.tab, $event)">
         <img src="icons/folder.png" height="13px" width="13px">
         {{ t('tabs.group.newGroupWithTab') }}
@@ -102,6 +127,7 @@
         <img src="icons/close.png" height="13px" width="13px">
         {{ t('tabs.group.closeTab') }}
     </button>
+    </ng-container>
 </div>
 
 <div class="tabs-context-menu" *ngIf="groupContextMenu" [style.left.px]="groupContextMenu.x"
