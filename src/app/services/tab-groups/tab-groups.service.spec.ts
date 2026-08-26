@@ -140,6 +140,37 @@ describe('TabGroupsService', () => {
     expect(ordered.map((item) => item.name)).toEqual(['d', 'a', 'b', 'c']);
   });
 
+  it('moves the whole group when its collapsed chip is dragged', () => {
+    const groups = [group('g1', true)]
+    const tabs = [tab('a', 'g1'), tab('b', 'g1'), tab('c'), tab('d')]
+
+    const layout: TabLayoutDescriptor[] = [
+      { kind: 'tab', key: 'c' },
+      { kind: 'tab', key: 'd' },
+      { kind: 'group', key: 'g1' }
+    ]
+
+    const ordered = service.buildOrderFromLayout(tabs, groups, layout)
+
+    expect(ordered.map((item) => item.name)).toEqual(['c', 'd', 'a', 'b'])
+  })
+
+  it('does not interleave two groups when one is dropped inside the other', () => {
+    const groups = [group('g1', true), group('g2')]
+    const tabs = [tab('a', 'g1'), tab('b', 'g1'), tab('c', 'g2'), tab('d', 'g2')]
+
+    const layout: TabLayoutDescriptor[] = [
+      { kind: 'group', key: 'g2' },
+      { kind: 'tab', key: 'c' },
+      { kind: 'group', key: 'g1' },
+      { kind: 'tab', key: 'd' }
+    ]
+
+    const ordered = service.buildOrderFromLayout(tabs, groups, layout)
+
+    expect(ordered.map((item) => item.name)).toEqual(['c', 'd', 'a', 'b'])
+  })
+
   it('drops groups that no longer have tabs', () => {
     const groups = [group('g1'), group('g2')];
     const tabs = [tab('a', 'g1')];
