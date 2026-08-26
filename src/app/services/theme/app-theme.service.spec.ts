@@ -41,6 +41,21 @@ describe('AppThemeService', () => {
     expect(document.documentElement.dataset['appTheme']).toBe('dark')
   })
 
+  it('applies the dracula theme with a dark color scheme', () => {
+    expect(service.setTheme('dracula')).toBe('dracula')
+    expect(document.documentElement.dataset['appTheme']).toBe('dracula')
+    expect(document.documentElement.style.colorScheme).toBe('dark')
+    expect(JSON.parse(localStorage.getItem('app-settings') || '{}').appTheme).toBe('dracula')
+  })
+
+  it('reports a light color scheme only for the light theme', () => {
+    service.setTheme('light')
+    expect(document.documentElement.style.colorScheme).toBe('light')
+
+    service.setTheme('dark')
+    expect(document.documentElement.style.colorScheme).toBe('dark')
+  })
+
   it('keeps the DBolt logo unchanged in the light theme', () => {
     const logo = document.createElement('img')
     logo.src = 'icons/dbolt-square.png'
