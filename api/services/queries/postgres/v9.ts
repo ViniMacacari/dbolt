@@ -1,5 +1,4 @@
 import PgV1 from '../../../models/postgres/v9.js';
-import { getErrorMessage } from '../../../utils/errors.js';
 import {
   addLimitClause,
   hasTopLevelClause,
@@ -57,29 +56,13 @@ class SQueryPgV1 {
       executableSql = this.limitQueryResult(executableSql, rowLimit);
     }
 
-    const result = await this.db.executeQuery(executableSql, [], connectionKey);
-
-    if (result.length === 0) {
-      try {
-        const columnSql = this.getEmptyColumnsQuery(executableSql);
-        const columnsResult = await this.db.executeQuery(columnSql, [], connectionKey);
-        const columns = Object.keys(columnsResult[0] ?? {});
-
-        return {
-          success: true,
-          database: 'PostgreSQL',
-          result: [],
-          columns,
-          totalRows
-        };
-      } catch (error: unknown) {
-        throw new Error(`Error fetching columns: ${getErrorMessage(error)}`);
-      }
-    }
+    const { rows: result, columns } = await this.db.executeQueryWithColumns(executableSql, [], connectionKey);
 
     return {
       success: true,
+      database: 'PostgreSQL',
       result,
+      columns,
       totalRows
     };
   }
@@ -114,11 +97,6 @@ class SQueryPgV1 {
     return `${prefix} SELECT COUNT(*) AS total_rows FROM (\n${mainSql}\n) AS count_query_alias`;
   }
 
-  getEmptyColumnsQuery(sql: string): string {
-    const { prefix, mainSql } = splitCtePrefix(sql);
-
-    return `${prefix} SELECT * FROM (\n${trimStatementTerminator(mainSql)}\n) AS temp_table WHERE FALSE`;
-  }
 }
 
 export default new SQueryPgV1();
