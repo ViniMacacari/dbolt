@@ -81,6 +81,7 @@ export class WorkspaceSessionRestoreService {
 
   private withSharedConnectionKey(context: any, connectionKeys: Map<string, string>): any {
     if (!context) return context
+    if (context.connectionKey) return context
 
     const signature = [
       context.connId || context.connectionId || '',
