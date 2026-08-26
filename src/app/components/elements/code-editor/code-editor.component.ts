@@ -547,6 +547,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       label: this.t('editor.indentCode'),
       contextMenuGroupId: '1_modification',
       contextMenuOrder: 1.5,
+      keybindings: [monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyF],
       run: () => {
         this.formatCode()
       }
@@ -1042,6 +1043,31 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
           void this.saveQuery()
           return true
         }
+      }),
+      this.keyboardShortcuts.register({
+        key: 'f',
+        altKey: true,
+        shiftKey: true,
+        priority: 90,
+        stopPropagation: true,
+        isEnabled: () => this.active && !!this.editor,
+        isInContext: (event) => this.isEditorShortcutContext(event),
+        handler: () => {
+          this.formatCode()
+          return true
+        }
+      }),
+      this.keyboardShortcuts.register({
+        key: 'Escape',
+        priority: 60,
+        stopPropagation: true,
+        isEnabled: () => this.active && this.queryResultOpen,
+        handler: () => {
+          if (this.hasOpenEditorWidget()) return false
+
+          this.closeQueryResult()
+          return true
+        }
       })
     )
   }
@@ -1049,6 +1075,19 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private unregisterKeyboardShortcuts(): void {
     this.shortcutDisposers.forEach((dispose) => dispose())
     this.shortcutDisposers = []
+  }
+
+  private hasOpenEditorWidget(): boolean {
+    const container = this.editorContainer?.nativeElement as HTMLElement | undefined
+    if (!container) return false
+
+    return Boolean(container.querySelector([
+      '.suggest-widget.visible',
+      '.parameter-hints-widget.visible',
+      '.find-widget.visible',
+      '.monaco-hover:not(.hidden)',
+      '.rename-box'
+    ].join(', ')))
   }
 
   private isEditorShortcutContext(event: KeyboardEvent): boolean {
