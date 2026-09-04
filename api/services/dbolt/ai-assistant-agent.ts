@@ -305,9 +305,9 @@ class AiAssistantAgentService {
     }
 
     return [
-      'SAP HANA dialect rule: use double quotes around table and column identifiers using the exact case returned by metadata, especially mixed-case SAP Business One columns such as "DocEntry" and "DocDate".',
-      'SAP HANA uppercases unquoted identifiers, so DocEntry without quotes becomes DOCENTRY and can fail. Do not use brackets or backticks for HANA identifiers.',
-      'SAP HANA example shape after columns are confirmed: SELECT TOP 1 "DocEntry", "DocDate" FROM "OINV" ORDER BY "DocEntry" DESC.'
+      'SAP HANA dialect rule: use double quotes around table and column identifiers using the exact case returned by metadata, especially mixed-case identifiers such as "OrderId" and "CreatedAt".',
+      'SAP HANA uppercases unquoted identifiers, so OrderId without quotes becomes ORDERID and can fail. Do not use brackets or backticks for HANA identifiers.',
+      'SAP HANA example shape after columns are confirmed: SELECT TOP 1 "OrderId", "CreatedAt" FROM "Orders" ORDER BY "OrderId" DESC.'
     ];
   }
 
