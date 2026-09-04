@@ -264,7 +264,7 @@ class AiAssistantToolsService {
     }
 
     if (toolCall.name === 'runReadonlyQuery' && String(context.sgbd || '').toLowerCase() === 'hana') {
-      guidance.push('For SAP HANA, quote table and column identifiers with double quotes using exact metadata case, for example "DocEntry". Unquoted mixed-case identifiers are uppercased by HANA.');
+      guidance.push('For SAP HANA, quote table and column identifiers with double quotes using exact metadata case, for example "OrderId". Unquoted mixed-case identifiers are uppercased by HANA.');
     }
 
     return [
