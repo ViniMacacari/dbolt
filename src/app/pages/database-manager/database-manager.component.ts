@@ -968,16 +968,39 @@ export class DatabaseManagerComponent implements OnDestroy {
     if (!objectName) return
 
     const activeContext = event?.context || this.tabsComponent.getActiveTab()?.dbInfo || this.selectedSchemaDB
+    const objectContext = this.createSqlObjectContext(activeContext, event?.schema)
     const tableInfoState = event?.initialView
       ? { activeView: event.initialView }
       : undefined
 
     this.tabsComponent.newTab('table', {
       name: objectName,
-      info: event?.info || activeContext,
-      context: activeContext,
+      info: objectContext,
+      context: objectContext,
       objectType: event?.type || event?.objectType || 'table'
     }, objectName).tableInfoState = tableInfoState
+  }
+
+  private createSqlObjectContext(activeContext: any, schema: any): any {
+    const targetSchema = String(schema || '').trim()
+    if (!activeContext || !targetSchema || !this.supportsSchemas(activeContext)) {
+      return activeContext
+    }
+
+    if (String(activeContext.schema || '') === targetSchema) {
+      return activeContext
+    }
+
+    return this.connectionContext.createContext({
+      ...activeContext,
+      schema: targetSchema
+    }, true)
+  }
+
+  private supportsSchemas(context: any): boolean {
+    const engine = String(context?.sgbd || context?.database || '').toLowerCase()
+
+    return ['hana', 'postgres', 'postgresql', 'sqlserver'].includes(engine)
   }
 
   onDiagramRequested(event: any): void {
