@@ -19,6 +19,10 @@ import { AppPlatformService } from '../../../services/platform/app-platform.serv
 import { AppThemeService } from '../../../services/theme/app-theme.service'
 import { AppThemePaletteService } from '../../../services/theme/app-theme-palette.service'
 import { selectSqlStatementAtCursor } from '../../../utils/sql-statement-selection'
+import {
+  normalizeTableReferenceForMetadata,
+  parseMetadataTableReference
+} from '../../../services/code-autocomplete/sql-identifier-reference'
 
 let sqlTokenizerConfigured = false
 
@@ -32,6 +36,7 @@ interface SqlNavigationToken {
 interface SqlNavigationLink {
   target: {
     name: string
+    schema?: string
     initialView?: 'columns'
   }
   range: monaco.IRange
@@ -630,9 +635,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     if (aliases.has(clickedKey)) {
       return {
-        target: {
-          name: aliases.get(clickedKey) || clickedName
-        },
+        target: this.toSqlNavigationTarget(aliases.get(clickedKey) || clickedName),
         range: clickedIdentifier.range
       }
     }
@@ -651,10 +654,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
       if (tableName) {
         return {
-          target: {
-            name: tableName,
-            initialView: 'columns'
-          },
+          target: this.toSqlNavigationTarget(tableName, 'columns'),
           range: clickedIdentifier.range
         }
       }
@@ -672,10 +672,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     const uniqueTableName = this.getUniqueStatementTableName(aliases)
     if (uniqueTableName) {
       return {
-        target: {
-          name: uniqueTableName,
-          initialView: 'columns'
-        },
+        target: this.toSqlNavigationTarget(uniqueTableName, 'columns'),
         range: clickedIdentifier.range
       }
     }
@@ -769,7 +766,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       nextIndex++
     }
 
-    const tableName = this.normalizeIdentifier(this.getIdentifierLastPart(tableReference.value))
+    const tableName = normalizeTableReferenceForMetadata(tableReference.value)
     const implicitAlias = this.normalizeIdentifier(this.getIdentifierLastPart(tableReference.value))
     this.addNavigationAlias(aliases, implicitAlias, tableName)
 
@@ -788,6 +785,19 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     if (!normalizedAlias || !normalizedTableName) return
 
     aliases.set(normalizedAlias, normalizedTableName)
+  }
+
+  private toSqlNavigationTarget(
+    tableReference: string,
+    initialView?: 'columns'
+  ): SqlNavigationLink['target'] {
+    const reference = parseMetadataTableReference(tableReference)
+
+    return {
+      name: reference.tableName || this.normalizeIdentifier(tableReference),
+      schema: reference.schema,
+      initialView
+    }
   }
 
   private isTableReferenceToken(tokens: SqlNavigationToken[], statementOffset: number): boolean {
