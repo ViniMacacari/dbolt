@@ -20,4 +20,43 @@ describe('DatabaseManagerComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('opens a cross-schema SQL reference with an isolated schema context', () => {
+    const sourceContext = {
+      sgbd: 'Hana',
+      version: 'v1',
+      connectionKey: 'query-tab',
+      schema: 'public'
+    };
+    const targetContext = {
+      ...sourceContext,
+      connectionKey: 'table-tab',
+      schema: 'sales'
+    };
+    const connectionContext = (component as any).connectionContext;
+    spyOn(connectionContext, 'createContext').and.returnValue(targetContext);
+    const openedTab = {} as any;
+    const tabs = {
+      getActiveTab: jasmine.createSpy('getActiveTab'),
+      newTab: jasmine.createSpy('newTab').and.returnValue(openedTab)
+    };
+    component.tabsComponent = tabs as any;
+
+    component.onSqlObjectInfoRequested({
+      name: 'orders',
+      schema: 'sales',
+      context: sourceContext
+    });
+
+    expect(connectionContext.createContext).toHaveBeenCalledWith({
+      ...sourceContext,
+      schema: 'sales'
+    }, true);
+    expect(tabs.newTab).toHaveBeenCalledWith('table', {
+      name: 'orders',
+      info: targetContext,
+      context: targetContext,
+      objectType: 'table'
+    }, 'orders');
+  });
 });
