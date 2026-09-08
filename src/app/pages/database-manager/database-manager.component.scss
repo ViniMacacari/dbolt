@@ -450,6 +450,35 @@
     overflow: hidden;
 }
 
+.workspace-object-summary {
+    animation: object-summary-open .18s cubic-bezier(.2, .8, .2, 1) both;
+    flex: 0 0 420px;
+    height: 100%;
+    min-height: 0;
+    min-width: 340px;
+    width: 420px;
+}
+
+@keyframes object-summary-open {
+    from {
+        opacity: 0;
+        transform: translateX(18px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@media (max-width: 1200px) {
+    .workspace-object-summary {
+        flex-basis: 360px;
+        min-width: 320px;
+        width: 360px;
+    }
+}
+
 .main-area > .tabs {
     align-items: flex-start;
     background-color: transparent;

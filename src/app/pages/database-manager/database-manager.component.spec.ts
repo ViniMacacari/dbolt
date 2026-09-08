@@ -60,6 +60,41 @@ describe('DatabaseManagerComponent', () => {
     }, 'orders');
   });
 
+  it('opens a cross-schema SQL reference in the quick summary without creating a tab', () => {
+    const sourceContext = {
+      sgbd: 'Hana',
+      version: 'v1',
+      connectionKey: 'query-tab',
+      schema: 'public'
+    };
+    const targetContext = {
+      ...sourceContext,
+      connectionKey: 'summary-panel',
+      schema: 'sales'
+    };
+    const connectionContext = (component as any).connectionContext;
+    spyOn(connectionContext, 'createContext').and.returnValue(targetContext);
+    const tabs = {
+      getActiveTab: jasmine.createSpy('getActiveTab'),
+      newTab: jasmine.createSpy('newTab')
+    };
+    component.tabsComponent = tabs as any;
+
+    component.onSqlObjectSummaryRequested({
+      name: 'orders',
+      schema: 'sales',
+      context: sourceContext
+    });
+
+    expect(component.sqlObjectSummaryRequest).toEqual({
+      name: 'orders',
+      schema: 'sales',
+      context: targetContext,
+      objectType: 'table'
+    });
+    expect(tabs.newTab).not.toHaveBeenCalled();
+  });
+
   it('replaces the SQL tab used as AI context instead of opening another tab', () => {
     const targetTab = {
       id: 10,
