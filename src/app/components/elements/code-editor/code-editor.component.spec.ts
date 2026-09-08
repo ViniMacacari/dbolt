@@ -63,4 +63,44 @@ describe('CodeEditorComponent', () => {
       initialView: 'columns'
     });
   });
+
+  it('marks added and modified lines relative to the last saved SQL', () => {
+    component.tabInfo = {
+      originalContent: 'SELECT\n  column_a\nFROM table_a'
+    };
+    const editor = (component as any).editor;
+    editor.setValue('SELECT\n  column_b\nFROM table_a\nWHERE enabled = 1');
+
+    (component as any).updateSqlChangeDecorations();
+
+    const decorationClasses = editor.getModel().getAllDecorations()
+      .map((decoration: any) => decoration.options.linesDecorationsClassName)
+      .filter(Boolean);
+    expect(decorationClasses).toContain('dbolt-sql-change-modified');
+    expect(decorationClasses).toContain('dbolt-sql-change-added');
+  });
+
+  it('marks deleted lines and clears all markers after saving', () => {
+    component.tabInfo = {
+      originalContent: 'SELECT\n  column_a,\n  column_b\nFROM table_a'
+    };
+    const editor = (component as any).editor;
+    const currentSql = 'SELECT\n  column_a\nFROM table_a';
+    editor.setValue(currentSql);
+
+    (component as any).updateSqlChangeDecorations();
+
+    const changedDecorations = editor.getModel().getAllDecorations()
+      .filter((decoration: any) => decoration.options.linesDecorationsClassName?.startsWith('dbolt-sql-change-'));
+    expect(changedDecorations.some((decoration: any) =>
+      decoration.options.linesDecorationsClassName === 'dbolt-sql-change-deleted'
+    )).toBeTrue();
+
+    component.tabInfo.originalContent = currentSql;
+    (component as any).updateSqlChangeDecorations();
+
+    const savedDecorations = editor.getModel().getAllDecorations()
+      .filter((decoration: any) => decoration.options.linesDecorationsClassName?.startsWith('dbolt-sql-change-'));
+    expect(savedDecorations).toEqual([]);
+  });
 });
