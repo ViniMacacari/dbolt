@@ -8,10 +8,18 @@
         (keydown)="onTextareaKeydown($event)"></textarea>
 
     <div class="chat-actions">
-        <app-checkbox class="current-sql-context-toggle" [checked]="includeCurrentSql"
-            (checkedChange)="includeCurrentSql = $event" [disabled]="disabled || !currentSqlAvailable"
-            [label]="t('aiAssistant.includeCurrentSql')" [title]="t('aiAssistant.includeCurrentSqlHint')">
-        </app-checkbox>
+        <div class="sql-context-toggles">
+            <app-checkbox class="current-sql-context-toggle" [checked]="includeCurrentSql"
+                (checkedChange)="includeCurrentSql = $event" [disabled]="disabled || !currentSqlAvailable"
+                [label]="t('aiAssistant.includeCurrentSql')" [title]="t('aiAssistant.includeCurrentSqlHint')">
+            </app-checkbox>
+
+            <app-checkbox class="auto-apply-sql-toggle" [checked]="autoApplyCurrentSql"
+                (checkedChange)="autoApplyCurrentSql = $event"
+                [disabled]="disabled || !currentSqlAvailable || !includeCurrentSql"
+                [label]="t('aiAssistant.autoApplyCurrentSql')" [title]="t('aiAssistant.autoApplyCurrentSqlHint')">
+            </app-checkbox>
+        </div>
 
         <app-button [compact]="true" [disabled]="!canSend" (pressed)="submit()">
             {{ t('aiAssistant.send') }}

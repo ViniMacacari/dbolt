@@ -40,12 +40,12 @@ describe('AiAssistantChatService', () => {
     const currentSql = 'SELECT * FROM sample_table'
     const response = await service.sendMessage([
       { role: 'user', content: 'Pergunta' }
-    ], undefined, currentSql, progress)
+    ], undefined, currentSql, true, progress)
 
     expect(progress).toHaveBeenCalledOnceWith('reading-table-structure')
     expect(internalApi.postStream).toHaveBeenCalledWith(
       '/api/ai-assistant/chat/stream',
-      jasmine.objectContaining({ currentSql }),
+      jasmine.objectContaining({ currentSql, autoApplyCurrentSql: true }),
       jasmine.any(Function)
     )
     expect(response).toEqual({ message: 'Resposta', model: 'test-model' })

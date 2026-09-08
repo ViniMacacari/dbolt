@@ -60,6 +60,7 @@ export interface AiChatInputSubmit {
   message: string
   allowDatabaseContext: boolean
   includeCurrentSql: boolean
+  autoApplyCurrentSql?: boolean
 }
 
 export interface AiAssistantApiMessage {
@@ -70,7 +71,6 @@ export interface AiAssistantApiMessage {
 export interface AiAssistantChatResponse {
   message: string
   model: string
-  updatedSql?: string
 }
 
 export interface AiSqlEditorRequest {

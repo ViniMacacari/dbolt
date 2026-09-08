@@ -125,18 +125,18 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
       jasmine.any(Array),
       undefined,
       'SELECT * FROM sample_table',
+      false,
       jasmine.any(Function)
     )
   })
 
-  it('requests replacement of the contextual SQL when AI returns a complete revision', async () => {
+  it('offers contextual SQL for explicit replacement without changing the editor automatically', async () => {
     const conversationId = 'conversation-update'
-    const updatedSql = 'SELECT\n  column_b\nFROM table_a'
+    const replacementSql = 'SELECT\n  column_b\nFROM table_a'
     const chatService = {
       sendMessage: jasmine.createSpy().and.resolveTo({
-        message: `Updated query:\n\`\`\`sql\n${updatedSql}\n\`\`\``,
-        model: 'example-model',
-        updatedSql
+        message: `Updated query:\n\`\`\`sql\n${replacementSql}\n\`\`\``,
+        model: 'example-model'
       })
     }
     const conversationsService = {
@@ -191,8 +191,150 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
       includeCurrentSql: true
     })
 
+    expect(editorRequest).toBeUndefined()
+    const assistantMessage = component.messages[component.messages.length - 1]
+    expect(component.getSqlAction(assistantMessage)).toBe('replace-current')
+
+    component.openSqlInEditor(replacementSql, assistantMessage)
+
     expect(editorRequest).toEqual({
-      sql: updatedSql,
+      sql: replacementSql,
+      mode: 'replace-current',
+      targetTab
+    })
+  })
+
+  it('never replaces contextual SQL automatically when the AI returns only a fragment', async () => {
+    const conversationId = 'conversation-fragment'
+    const conversationsService = {
+      saveConversation: jasmine.createSpy().and.callFake(async (_id: string, messages: any[]) => ({
+        activeConversationId: conversationId,
+        conversations: [{
+          id: conversationId,
+          title: 'Example',
+          messages,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z'
+        }]
+      }))
+    }
+    const component = new AiAssistantPanelComponent(
+      {} as any,
+      {
+        sendMessage: jasmine.createSpy().and.resolveTo({
+          message: '```sql\nWHERE 1 = 1\n```',
+          model: 'example-model'
+        })
+      } as any,
+      conversationsService as any,
+      {} as any,
+      { translate: (key: string) => key } as any,
+      {} as any,
+      {} as any
+    )
+    component.settings = {
+      provider: 'gemini',
+      baseUrl: '',
+      model: 'example-model',
+      hasApiKey: true,
+      openAiOAuthConnected: false,
+      openAiOAuthRecommendationDismissed: true,
+      limits: {
+        maxApiCallsPerMessage: 4,
+        maxDatabaseRequestsPerMessage: 4,
+        maxDatabaseRequestsPerApiCall: 2,
+        maxContextMessages: 10,
+        maxToolResultChars: 9000,
+        maxToolTranscriptChars: 18000
+      }
+    }
+    component.activeConversationId = conversationId
+    component.tabInfo = {
+      type: 'sql',
+      info: { sql: 'SELECT column_a FROM table_a' }
+    }
+    const editorRequests: any[] = []
+    component.sqlRequested.subscribe((request) => editorRequests.push(request))
+
+    await component.onSend({
+      message: 'Add a filter',
+      allowDatabaseContext: false,
+      includeCurrentSql: true,
+      autoApplyCurrentSql: true
+    })
+
+    expect(editorRequests).toEqual([])
+    expect(component.messages[component.messages.length - 1].content).toContain('WHERE 1 = 1')
+  })
+
+  it('automatically replaces the contextual SQL with a complete response when enabled', async () => {
+    const conversationId = 'conversation-auto-apply'
+    const replacementSql = [
+      'SELECT',
+      '  column_a,',
+      '  column_b',
+      'FROM table_a'
+    ].join('\n')
+    const conversationsService = {
+      saveConversation: jasmine.createSpy().and.callFake(async (_id: string, messages: any[]) => ({
+        activeConversationId: conversationId,
+        conversations: [{
+          id: conversationId,
+          title: 'Example',
+          messages,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z'
+        }]
+      }))
+    }
+    const component = new AiAssistantPanelComponent(
+      {} as any,
+      {
+        sendMessage: jasmine.createSpy().and.resolveTo({
+          message: `Complete query:\n\`\`\`sql\n${replacementSql}\n\`\`\``,
+          model: 'example-model'
+        })
+      } as any,
+      conversationsService as any,
+      {} as any,
+      { translate: (key: string) => key } as any,
+      {} as any,
+      {} as any
+    )
+    component.settings = {
+      provider: 'gemini',
+      baseUrl: '',
+      model: 'example-model',
+      hasApiKey: true,
+      openAiOAuthConnected: false,
+      openAiOAuthRecommendationDismissed: true,
+      limits: {
+        maxApiCallsPerMessage: 4,
+        maxDatabaseRequestsPerMessage: 4,
+        maxDatabaseRequestsPerApiCall: 2,
+        maxContextMessages: 10,
+        maxToolResultChars: 9000,
+        maxToolTranscriptChars: 18000
+      }
+    }
+    component.activeConversationId = conversationId
+    const targetTab = {
+      type: 'sql',
+      info: { sql: 'SELECT\n  column_a\nFROM table_a' }
+    }
+    component.tabInfo = targetTab
+    let editorRequest: any
+    component.sqlRequested.subscribe((request) => editorRequest = request)
+
+    await component.onSend({
+      message: 'Add column_b without changing the existing formatting',
+      allowDatabaseContext: false,
+      includeCurrentSql: true,
+      autoApplyCurrentSql: true
+    })
+
+    expect(editorRequest).toEqual({
+      sql: replacementSql,
       mode: 'replace-current',
       targetTab
     })

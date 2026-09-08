@@ -23,6 +23,7 @@ export class AiChatInputComponent {
   message: string = ''
   allowDatabaseContext: boolean = true
   includeCurrentSql: boolean = false
+  autoApplyCurrentSql: boolean = false
 
   constructor(private language: AppLanguageService) { }
 
@@ -40,7 +41,8 @@ export class AiChatInputComponent {
     this.send.emit({
       message,
       allowDatabaseContext: this.databaseContextAvailable && this.allowDatabaseContext,
-      includeCurrentSql: this.currentSqlAvailable && this.includeCurrentSql
+      includeCurrentSql: this.currentSqlAvailable && this.includeCurrentSql,
+      autoApplyCurrentSql: this.currentSqlAvailable && this.includeCurrentSql && this.autoApplyCurrentSql
     })
 
     this.message = ''

@@ -309,6 +309,19 @@
                 stroke-width: 1.8;
                 width: 14px;
             }
+
+            &.apply-current {
+                gap: 4px;
+                padding: 0 7px;
+                width: auto;
+
+                span {
+                    font-family: 'Nunito';
+                    font-size: .72em;
+                    font-weight: 800;
+                    white-space: nowrap;
+                }
+            }
         }
 
         pre {

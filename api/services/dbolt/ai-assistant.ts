@@ -11,13 +11,13 @@ export interface AiAssistantChatRequest {
   messages: AiAssistantChatMessage[];
   readonlyContext?: AiReadonlyDatabaseContext;
   currentSql?: string;
+  autoApplyCurrentSql?: boolean;
   appLanguage?: string;
 }
 
 export interface AiAssistantChatResult {
   message: string;
   model: string;
-  updatedSql?: string;
 }
 
 class AiAssistantService {
