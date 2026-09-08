@@ -100,6 +100,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   private thinkingStartedAt: number = 0
   private thinkingElapsedTimer: number | null = null
   private modelOptionsRequestId: number = 0
+  private sqlContextTargets = new Map<string, unknown>()
 
   constructor(
     private settingsService: AiAssistantSettingsService,
@@ -121,6 +122,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   ngOnDestroy(): void {
     this.cancelConversationsModalClose()
     this.stopThinkingElapsedTimer()
+    this.sqlContextTargets.clear()
   }
 
   ngAfterViewChecked(): void {
@@ -194,14 +196,21 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     return this.thinkingSteps.slice(-5)
   }
 
-  openSqlInEditor(sql: string): void {
+  openSqlInEditor(sql: string, message?: AiChatMessage): void {
     const normalizedSql = String(sql || '').trim()
     if (!normalizedSql) return
 
+    const targetTab = message ? this.sqlContextTargets.get(message.id) : undefined
+
     this.sqlRequested.emit({
       sql: normalizedSql,
-      mode: 'new-tab'
+      mode: targetTab ? 'replace-current' : 'new-tab',
+      ...(targetTab ? { targetTab } : {})
     })
+  }
+
+  getSqlAction(message: AiChatMessage): 'new-tab' | 'replace-current' {
+    return this.sqlContextTargets.has(message.id) ? 'replace-current' : 'new-tab'
   }
 
   async loadSettings(): Promise<void> {
@@ -330,17 +339,12 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
         currentSql,
         (stage) => this.addThinkingStep(stage)
       )
-      this.messages = [...this.messages, this.createMessage('assistant', response.message)]
-      await this.saveConversationMessages(conversationId, this.messages)
-
-      const updatedSql = String(response.updatedSql || '').trim()
-      if (currentSqlTarget && updatedSql && updatedSql !== currentSql) {
-        this.sqlRequested.emit({
-          sql: updatedSql,
-          mode: 'replace-current',
-          targetTab: currentSqlTarget
-        })
+      const assistantMessage = this.createMessage('assistant', response.message)
+      if (currentSqlTarget) {
+        this.sqlContextTargets.set(assistantMessage.id, currentSqlTarget)
       }
+      this.messages = [...this.messages, assistantMessage]
+      await this.saveConversationMessages(conversationId, this.messages)
     } catch (error: unknown) {
       this.messages = [
         ...this.messages,
