@@ -337,6 +337,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
         this.toApiMessages(),
         readonlyToolContext,
         currentSql,
+        Boolean(currentSql && event.autoApplyCurrentSql),
         (stage) => this.addThinkingStep(stage)
       )
       const assistantMessage = this.createMessage('assistant', response.message)

@@ -125,6 +125,7 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
       jasmine.any(Array),
       undefined,
       'SELECT * FROM sample_table',
+      false,
       jasmine.any(Function)
     )
   })
