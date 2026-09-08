@@ -30,11 +30,12 @@ import { PersistedWorkspaceTab, WORKSPACE_SESSION_VERSION } from '../../services
 import { ClosedTabsHistoryService } from '../../services/closed-tabs/closed-tabs-history.service'
 import { KeyboardShortcutService } from '../../services/keyboard-shortcuts/keyboard-shortcut.service'
 import { Subscription } from 'rxjs'
+import { SqlObjectSummaryComponent, SqlObjectSummaryRequest } from '../../components/elements/sql-object-summary/sql-object-summary.component'
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent, DatabaseDiagramComponent, DbExportComponent],
+  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent, DatabaseDiagramComponent, DbExportComponent, SqlObjectSummaryComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
@@ -67,6 +68,7 @@ export class DatabaseManagerComponent implements OnDestroy {
   databaseExportOpen: boolean = false
   aiAssistantOpen: boolean = false
   aiAssistantMounted: boolean = false
+  sqlObjectSummaryRequest: SqlObjectSummaryRequest | null = null
   dbInfoInitialized: boolean = false
   tableInfoInitialized: boolean = false
   procedureInfoInitialized: boolean = false
@@ -990,6 +992,27 @@ export class DatabaseManagerComponent implements OnDestroy {
       context: objectContext,
       objectType: event?.type || event?.objectType || 'table'
     }, objectName).tableInfoState = tableInfoState
+  }
+
+  onSqlObjectSummaryRequested(event: any): void {
+    const objectName = event?.name || event?.NAME
+    if (!objectName) return
+
+    const activeContext = event?.context || this.tabsComponent.getActiveTab()?.dbInfo || this.selectedSchemaDB
+    const objectContext = this.createSqlObjectContext(activeContext, event?.schema)
+
+    this.sqlObjectSummaryRequest = {
+      name: objectName,
+      schema: event?.schema,
+      context: objectContext,
+      objectType: String(event?.type || event?.objectType || '').toLowerCase() === 'view'
+        ? 'view'
+        : 'table'
+    }
+  }
+
+  closeSqlObjectSummary(): void {
+    this.sqlObjectSummaryRequest = null
   }
 
   private createSqlObjectContext(activeContext: any, schema: any): any {
