@@ -17,6 +17,7 @@ export interface AiAssistantChatRequest {
 export interface AiAssistantChatResult {
   message: string;
   model: string;
+  updatedSql?: string;
 }
 
 class AiAssistantService {

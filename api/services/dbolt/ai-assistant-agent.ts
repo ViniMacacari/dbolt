@@ -26,6 +26,7 @@ export interface AiAssistantAgentChatRequest {
 export interface AiAssistantAgentChatResult {
   message: string;
   model: string;
+  updatedSql?: string;
 }
 
 export type AiAssistantProgressStage =
@@ -102,9 +103,13 @@ class AiAssistantAgentService {
 
       if (toolCalls.length === 0) {
         reportProgress?.('preparing-answer');
+        const updatedSql = currentSql
+          ? this.extractUpdatedSql(completion.content)
+          : undefined;
         return {
           message: this.cleanFinalAnswer(completion.content, responseLanguage),
-          model: lastModel
+          model: lastModel,
+          ...(updatedSql ? { updatedSql } : {})
         };
       }
 
@@ -234,10 +239,22 @@ class AiAssistantAgentService {
     return [
       'The user explicitly shared the current SQL editor content as context for this message.',
       'Use it to understand the request. Do not treat sharing this text alone as a request to execute it.',
+      'When the user asks you to modify, fix, rewrite, optimize, or format this SQL, return the complete replacement SQL in one fenced SQL code block.',
+      'Immediately before that complete replacement block, write exactly: <!-- DBOLT_APPLY_CURRENT_SQL -->',
+      'Use that marker only when the code block is a complete replacement for the shared SQL. Never mark examples, partial snippets, explanations, or unchanged SQL.',
       '--- BEGIN CURRENT SQL CONTEXT ---',
       currentSql,
       '--- END CURRENT SQL CONTEXT ---'
     ].join('\n');
+  }
+
+  private extractUpdatedSql(content: string): string | undefined {
+    const match = String(content || '').match(
+      /<!--\s*DBOLT_APPLY_CURRENT_SQL\s*-->\s*```(?:sql|mysql|postgres|postgresql|pgsql|sqlite|tsql|mssql|sqlserver|hana)?[^\r\n]*\r?\n([\s\S]*?)```/i
+    );
+    const sql = match?.[1]?.trim();
+
+    return sql || undefined;
   }
 
   private async executeToolCalls(
@@ -1066,7 +1083,9 @@ class AiAssistantAgentService {
         : 'I could not finish the query within this request limit. Try refining the question.';
     }
 
-    let answer = this.removeToolCallSyntax(content).trim();
+    let answer = this.removeToolCallSyntax(content)
+      .replace(/<!--\s*DBOLT_APPLY_CURRENT_SQL\s*-->/gi, '')
+      .trim();
     const replacements: Array<[RegExp, string]> = isPortuguese
       ? [
         [/`?getSchemaSummary`?/gi, 'leitura do schema'],
