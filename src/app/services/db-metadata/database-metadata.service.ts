@@ -9,6 +9,11 @@ export interface TableMetadataResult {
   ddl: string
 }
 
+export interface TableColumnSummaryResult {
+  columns: any[]
+  objectType: 'table' | 'view'
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -33,6 +38,22 @@ export class DatabaseMetadataService {
       schemaDb,
       (context) => this.fetchProcedureDDL(context, procedureName),
       (result) => !result
+    )
+  }
+
+  async loadTableColumnSummary(schemaDb: any, elementName: string): Promise<TableColumnSummaryResult> {
+    return this.request(
+      schemaDb,
+      (context) => this.fetchTableColumnSummary(context, elementName),
+      () => false
+    )
+  }
+
+  async loadTableDDL(schemaDb: any, elementName: string): Promise<string> {
+    return this.request(
+      schemaDb,
+      (context) => this.fetchTableDDL(context, elementName),
+      () => false
     )
   }
 
@@ -95,6 +116,28 @@ export class DatabaseMetadataService {
     const queryString = this.connectionContext.toQueryString(context)
 
     const response = await this.get(`${baseUrl}/procedure-ddl/${objectName}${queryString}`)
+
+    return response?.ddl || ''
+  }
+
+  private async fetchTableColumnSummary(context: any, elementName: string): Promise<TableColumnSummaryResult> {
+    const baseUrl = this.getBaseUrl(context)
+    const objectName = encodeURIComponent(elementName)
+    const queryString = this.connectionContext.toQueryString(context)
+    const response = await this.get(`${baseUrl}/table-columns/${objectName}${queryString}`)
+    const columns = response?.data || []
+    const objectType = String(columns[0]?.object_type || columns[0]?.OBJECT_TYPE || '').toLowerCase() === 'view'
+      ? 'view'
+      : 'table'
+
+    return { columns, objectType }
+  }
+
+  private async fetchTableDDL(context: any, elementName: string): Promise<string> {
+    const baseUrl = this.getBaseUrl(context)
+    const objectName = encodeURIComponent(elementName)
+    const queryString = this.connectionContext.toQueryString(context)
+    const response = await this.get(`${baseUrl}/table-ddl/${objectName}${queryString}`)
 
     return response?.ddl || ''
   }
