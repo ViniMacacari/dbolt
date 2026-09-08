@@ -33,6 +33,7 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
 import { OpenAiOAuthSessionService } from '../../../services/ai-assistant/openai-oauth-session.service'
 import { InputListComponent } from '../../elements/input-list/input-list.component'
+import { ButtonComponent } from '../../elements/button/button.component'
 import {
   AiAssistantModelOption,
   modelOption,
@@ -42,7 +43,14 @@ import {
 @Component({
   selector: 'app-ai-assistant-panel',
   standalone: true,
-  imports: [CommonModule, AiChatInputComponent, AiChatMessageComponent, YesNoModalComponent, InputListComponent],
+  imports: [
+    CommonModule,
+    AiChatInputComponent,
+    AiChatMessageComponent,
+    YesNoModalComponent,
+    InputListComponent,
+    ButtonComponent
+  ],
   templateUrl: './ai-assistant-panel.component.html',
   styleUrl: './ai-assistant-panel.component.scss',
   host: {

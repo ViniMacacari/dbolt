@@ -74,7 +74,9 @@
     <div class="connection ai-config-needed"
         *ngIf="!loadingSettings && !settings?.hasApiKey && messages.length > 0">
         <p>{{ t('aiAssistant.settingsRequired') }}</p>
-        <button type="button" (click)="settingsRequested.emit()">{{ t('aiAssistant.openSettings') }}</button>
+        <app-button [compact]="true" (pressed)="settingsRequested.emit()">
+            {{ t('aiAssistant.openSettings') }}
+        </app-button>
     </div>
 
     <div class="connections ai-chat" #messagesContainer>
@@ -83,7 +85,9 @@
             <img src="icons/ai.png" [alt]="t('aiAssistant.assistant')">
             <strong>{{ t('aiAssistant.setupRequiredTitle') }}</strong>
             <p>{{ t('aiAssistant.settingsRequired') }}</p>
-            <button type="button" (click)="settingsRequested.emit()">{{ t('aiAssistant.openSettings') }}</button>
+            <app-button [compact]="true" (pressed)="settingsRequested.emit()">
+                {{ t('aiAssistant.openSettings') }}
+            </app-button>
         </div>
 
         <div class="connection ai-empty" *ngIf="messages.length === 0 && (loadingSettings || canChat)">

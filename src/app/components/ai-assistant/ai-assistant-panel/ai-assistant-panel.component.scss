@@ -160,22 +160,8 @@
         margin: 0;
     }
 
-    button {
+    app-button {
         align-self: flex-start;
-        background: var(--dbolt-292727);
-        border: 1px solid var(--dbolt-3b3b3b);
-        border-radius: 8px;
-        color: var(--dbolt-e8eaed);
-        font-family: 'Nunito';
-        font-size: .74em;
-        font-weight: 800;
-        height: 30px;
-        padding: 0 10px;
-
-        &:hover {
-            background: var(--dbolt-303030);
-            border-color: var(--dbolt-4a4444);
-        }
     }
 }
 
@@ -572,8 +558,7 @@
     padding: 18px 14px;
 
     strong,
-    p,
-    button {
+    p {
         font-family: 'Nunito';
     }
 
@@ -590,21 +575,6 @@
         max-width: 240px;
     }
 
-    button {
-        background: var(--dbolt-292727);
-        border: 1px solid var(--dbolt-3b3b3b);
-        border-radius: 8px;
-        color: var(--dbolt-e8eaed);
-        font-size: .74em;
-        font-weight: 800;
-        min-height: 30px;
-        padding: 0 11px;
-
-        &:hover {
-            background: var(--dbolt-303030);
-            border-color: var(--dbolt-4a4444);
-        }
-    }
 }
 
 .thinking-message {
