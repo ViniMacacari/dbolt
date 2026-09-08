@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
 
 import { EditConnectionComponent } from './edit-connection.component';
 
@@ -8,7 +9,8 @@ describe('EditConnectionComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [EditConnectionComponent]
+      imports: [EditConnectionComponent],
+      providers: [provideHttpClient()]
     })
     .compileComponents();
 

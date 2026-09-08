@@ -48,7 +48,7 @@
                         [attr.aria-pressed]="selectedConnection?.id === connection.id"
                         (click)="selectConnection(connection)" (dblclick)="onCardClick(connection.id)">
                         <span class="item-logo">
-                            <img src="db-logo/{{ connection.database }}.png" [alt]="connection.database"
+                            <img [src]="databaseLogo.path(connection.database)" [alt]="connection.database"
                                 height="28" width="28">
                         </span>
                         <span class="item-copy">
@@ -82,7 +82,7 @@
                 <div class="stage-content">
                     <div class="stage-identity">
                         <span class="stage-logo">
-                            <img src="db-logo/{{ selectedConnection.database }}.png"
+                            <img [src]="databaseLogo.path(selectedConnection.database)"
                                 [alt]="selectedConnection.database" height="72" width="72">
                         </span>
                         <span class="stage-copy">

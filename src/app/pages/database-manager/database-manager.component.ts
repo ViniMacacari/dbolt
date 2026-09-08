@@ -20,6 +20,7 @@ import { QueryVersionCompareComponent } from '../../components/elements/query-ve
 import { QuerySaveService, SavedQuery } from '../../services/query-save/query-save.service'
 import { AppLanguageService } from '../../services/language/app-language.service'
 import { AiAssistantPanelComponent } from '../../components/ai-assistant/ai-assistant-panel/ai-assistant-panel.component'
+import { AiSqlEditorRequest } from '../../services/ai-assistant/ai-assistant.model'
 import { DatabaseDiagramComponent } from '../../components/elements/database-diagram/database-diagram.component'
 import { DbExportComponent } from '../../components/elements/db-export/db-export.component'
 import { ToolsNavigationService } from '../../services/tools/tools-navigation.service'
@@ -29,11 +30,12 @@ import { PersistedWorkspaceTab, WORKSPACE_SESSION_VERSION } from '../../services
 import { ClosedTabsHistoryService } from '../../services/closed-tabs/closed-tabs-history.service'
 import { KeyboardShortcutService } from '../../services/keyboard-shortcuts/keyboard-shortcut.service'
 import { Subscription } from 'rxjs'
+import { SqlObjectSummaryComponent, SqlObjectSummaryRequest } from '../../components/elements/sql-object-summary/sql-object-summary.component'
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent, DatabaseDiagramComponent, DbExportComponent],
+  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent, DatabaseDiagramComponent, DbExportComponent, SqlObjectSummaryComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
@@ -66,6 +68,9 @@ export class DatabaseManagerComponent implements OnDestroy {
   databaseExportOpen: boolean = false
   aiAssistantOpen: boolean = false
   aiAssistantMounted: boolean = false
+  sqlObjectSummaryRequest: SqlObjectSummaryRequest | null = null
+  sqlObjectSummaryOpen: boolean = false
+  sqlObjectSummaryMounted: boolean = false
   dbInfoInitialized: boolean = false
   tableInfoInitialized: boolean = false
   procedureInfoInitialized: boolean = false
@@ -83,6 +88,9 @@ export class DatabaseManagerComponent implements OnDestroy {
 
   widthTable: number = 300
   private aiAssistantAnimationFrame: number | null = null
+  private sqlObjectSummaryAnimationFrame: number | null = null
+  private sqlObjectSummaryCloseTimer: ReturnType<typeof setTimeout> | null = null
+  private readonly sqlObjectSummaryAnimationMs = 220
   private toolsSubscription: Subscription | null = null
   private unregisterWorkspaceSession: (() => void) | null = null
   private shortcutDisposers: Array<() => void> = []
@@ -110,6 +118,8 @@ export class DatabaseManagerComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.cancelAiAssistantAnimationFrame()
+    this.cancelSqlObjectSummaryAnimationFrame()
+    this.cancelSqlObjectSummaryCloseTimer()
     this.toolsSubscription?.unsubscribe()
     this.workspaceSession.persistNow()
     this.unregisterWorkspaceSession?.()
@@ -441,9 +451,19 @@ export class DatabaseManagerComponent implements OnDestroy {
     this.tabsComponent.openSettingsTab('ai')
   }
 
-  onAiSqlRequested(sql: string): void {
-    const normalizedSql = String(sql || '').trim()
+  onAiSqlRequested(request: AiSqlEditorRequest): void {
+    const normalizedSql = String(request?.sql || '').trim()
     if (!normalizedSql) return
+
+    const targetTab = request.mode === 'replace-current' ? request.targetTab as any : null
+    if (targetTab?.type === 'sql' && this.tabsComponent.tabs.includes(targetTab)) {
+      targetTab.info = {
+        ...targetTab.info,
+        sql: normalizedSql
+      }
+      this.onSqlContentChange(normalizedSql, targetTab)
+      return
+    }
 
     this.tabsComponent.newTab('sql', {
       sql: normalizedSql,
@@ -568,10 +588,10 @@ export class DatabaseManagerComponent implements OnDestroy {
     const tab = sourceTab || this.tabsComponent.getActiveTab()
     if (tab) {
       tab.info.sql = content
-      const currentSql = tab.info.sql || ''
-      const originalSql = tab.originalContent || ''
+      const currentSql = String(tab.info.sql || '').replace(/\r\n/g, '\n')
+      const originalSql = String(tab.originalContent || '').replace(/\r\n/g, '\n')
 
-      if (currentSql.trim() !== originalSql.trim()) {
+      if (currentSql !== originalSql) {
         tab.icon = 'CHANGE'
       } else {
         tab.icon = 'CODE'
@@ -968,16 +988,102 @@ export class DatabaseManagerComponent implements OnDestroy {
     if (!objectName) return
 
     const activeContext = event?.context || this.tabsComponent.getActiveTab()?.dbInfo || this.selectedSchemaDB
+    const objectContext = this.createSqlObjectContext(activeContext, event?.schema)
     const tableInfoState = event?.initialView
       ? { activeView: event.initialView }
       : undefined
 
     this.tabsComponent.newTab('table', {
       name: objectName,
-      info: event?.info || activeContext,
-      context: activeContext,
+      info: objectContext,
+      context: objectContext,
       objectType: event?.type || event?.objectType || 'table'
     }, objectName).tableInfoState = tableInfoState
+  }
+
+  onSqlObjectSummaryRequested(event: any): void {
+    const objectName = event?.name || event?.NAME
+    if (!objectName) return
+
+    const activeContext = event?.context || this.tabsComponent.getActiveTab()?.dbInfo || this.selectedSchemaDB
+    const objectContext = this.createSqlObjectContext(activeContext, event?.schema)
+
+    this.sqlObjectSummaryRequest = {
+      name: objectName,
+      schema: event?.schema,
+      context: objectContext,
+      objectType: String(event?.type || event?.objectType || '').toLowerCase() === 'view'
+        ? 'view'
+        : 'table'
+    }
+
+    this.openSqlObjectSummary()
+  }
+
+  closeSqlObjectSummary(): void {
+    this.cancelSqlObjectSummaryAnimationFrame()
+    this.cancelSqlObjectSummaryCloseTimer()
+    this.sqlObjectSummaryOpen = false
+
+    this.sqlObjectSummaryCloseTimer = setTimeout(() => {
+      this.sqlObjectSummaryCloseTimer = null
+      this.sqlObjectSummaryMounted = false
+      this.sqlObjectSummaryRequest = null
+    }, this.sqlObjectSummaryAnimationMs)
+  }
+
+  private openSqlObjectSummary(): void {
+    this.cancelSqlObjectSummaryCloseTimer()
+
+    if (this.sqlObjectSummaryMounted) {
+      this.sqlObjectSummaryOpen = true
+      return
+    }
+
+    this.sqlObjectSummaryMounted = true
+    this.cancelSqlObjectSummaryAnimationFrame()
+    this.sqlObjectSummaryAnimationFrame = requestAnimationFrame(() => {
+      this.sqlObjectSummaryAnimationFrame = requestAnimationFrame(() => {
+        this.sqlObjectSummaryAnimationFrame = null
+        this.sqlObjectSummaryOpen = true
+      })
+    })
+  }
+
+  private cancelSqlObjectSummaryAnimationFrame(): void {
+    if (this.sqlObjectSummaryAnimationFrame === null) return
+
+    cancelAnimationFrame(this.sqlObjectSummaryAnimationFrame)
+    this.sqlObjectSummaryAnimationFrame = null
+  }
+
+  private cancelSqlObjectSummaryCloseTimer(): void {
+    if (this.sqlObjectSummaryCloseTimer === null) return
+
+    clearTimeout(this.sqlObjectSummaryCloseTimer)
+    this.sqlObjectSummaryCloseTimer = null
+  }
+
+  private createSqlObjectContext(activeContext: any, schema: any): any {
+    const targetSchema = String(schema || '').trim()
+    if (!activeContext || !targetSchema || !this.supportsSchemas(activeContext)) {
+      return activeContext
+    }
+
+    if (String(activeContext.schema || '') === targetSchema) {
+      return activeContext
+    }
+
+    return this.connectionContext.createContext({
+      ...activeContext,
+      schema: targetSchema
+    }, true)
+  }
+
+  private supportsSchemas(context: any): boolean {
+    const engine = String(context?.sgbd || context?.database || '').toLowerCase()
+
+    return ['hana', 'postgres', 'postgresql', 'sqlserver'].includes(engine)
   }
 
   onDiagramRequested(event: any): void {

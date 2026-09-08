@@ -18,7 +18,12 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
 import { AppPlatformService } from '../../../services/platform/app-platform.service'
 import { AppThemeService } from '../../../services/theme/app-theme.service'
 import { AppThemePaletteService } from '../../../services/theme/app-theme-palette.service'
+import { QueryVersionDiffService } from '../../../services/query-version-diff/query-version-diff.service'
 import { selectSqlStatementAtCursor } from '../../../utils/sql-statement-selection'
+import {
+  normalizeTableReferenceForMetadata,
+  parseMetadataTableReference
+} from '../../../services/code-autocomplete/sql-identifier-reference'
 
 let sqlTokenizerConfigured = false
 
@@ -32,6 +37,7 @@ interface SqlNavigationToken {
 interface SqlNavigationLink {
   target: {
     name: string
+    schema?: string
     initialView?: 'columns'
   }
   range: monaco.IRange
@@ -50,6 +56,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   @Output() savedName = new EventEmitter<SavedQuery>()
   @Output() savedQuery = new EventEmitter<any>()
   @Output() objectInfoRequested = new EventEmitter<any>()
+  @Output() objectSummaryRequested = new EventEmitter<any>()
   @Input() widthTable: number = 300
   @Input() tabInfo: any
   @Input() active: boolean = false
@@ -72,7 +79,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private editorActionDisposables: monaco.IDisposable[] = []
   private editorMouseDisposables: monaco.IDisposable[] = []
   private sqlNavigationDecorationIds: string[] = []
+  private sqlChangeDecorationIds: string[] = []
+  private sqlChangeDecorationTimer: ReturnType<typeof setTimeout> | null = null
   private sqlNavigationModifierPressed = false
+  private sqlSummaryModifierPressed = false
   private lastMousePosition: monaco.Position | null = null
   private readonly sqlNavigationReservedWords = new Set([
     'as',
@@ -143,7 +153,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     private language: AppLanguageService,
     private platform: AppPlatformService,
     private appTheme: AppThemeService,
-    private themePalette: AppThemePaletteService
+    private themePalette: AppThemePaletteService,
+    private queryVersionDiff: QueryVersionDiffService
   ) {
     this.settingsSubscription = this.appSettings.settingsChanges$.subscribe((settings) => {
       this.applySqlHighlightTheme(settings.sqlHighlightColors)
@@ -179,12 +190,17 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     }
 
     if (this.editor && this.sqlContent !== this.editor.getValue()) {
-      this.editor.setValue(this.sqlContent || '')
+      this.replaceEditorSql(this.sqlContent || '')
+    }
+
+    if (this.editor && (changes['sqlContent'] || changes['tabInfo'])) {
+      this.scheduleSqlChangeDecorations()
     }
   }
 
   ngOnDestroy(): void {
     this.clearResultAnimations()
+    this.clearSqlChangeDecorationTimer()
 
     if (this.tabInfo?.closing) {
       this.releaseQueryMemory()
@@ -225,6 +241,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'CapsLock') {
+      this.sqlSummaryModifierPressed = true
+      this.sqlNavigationModifierPressed = true
+      this.updateSqlNavigationHover()
+      return
+    }
+
     if (event.key !== 'Control' && event.key !== 'Meta') return
 
     this.sqlNavigationModifierPressed = true
@@ -233,15 +256,32 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   @HostListener('window:keyup', ['$event'])
   onWindowKeyUp(event: KeyboardEvent): void {
+    if (event.key === 'CapsLock') {
+      this.sqlSummaryModifierPressed = false
+      this.sqlNavigationModifierPressed = event.ctrlKey || event.metaKey
+
+      if (this.sqlNavigationModifierPressed) {
+        this.updateSqlNavigationHover()
+      } else {
+        this.clearSqlNavigationHover()
+      }
+      return
+    }
+
     if (event.key !== 'Control' && event.key !== 'Meta') return
     if (event.ctrlKey || event.metaKey) return
 
-    this.sqlNavigationModifierPressed = false
-    this.clearSqlNavigationHover()
+    this.sqlNavigationModifierPressed = this.sqlSummaryModifierPressed
+    if (this.sqlNavigationModifierPressed) {
+      this.updateSqlNavigationHover()
+    } else {
+      this.clearSqlNavigationHover()
+    }
   }
 
   @HostListener('window:blur')
   onWindowBlur(): void {
+    this.sqlSummaryModifierPressed = false
     this.sqlNavigationModifierPressed = false
     this.clearSqlNavigationHover()
   }
@@ -296,6 +336,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     )
 
     this.initializeEditorEvents()
+    this.updateSqlChangeDecorations()
   }
 
   private configureSqlLanguage(): void {
@@ -503,6 +544,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     this.editor?.onDidChangeModelContent(() => {
       const value = this.editor?.getValue() || ''
+      this.scheduleSqlChangeDecorations(value)
       if (value !== this.sqlContent) {
         this.sqlContent = value
         this.sqlContentChange.emit(value)
@@ -514,7 +556,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     })
     const mouseMoveDisposable = this.editor?.onMouseMove((event) => {
       this.lastMousePosition = event.target.position || null
-      this.sqlNavigationModifierPressed = event.event.ctrlKey || event.event.metaKey
+      this.sqlNavigationModifierPressed = event.event.ctrlKey
+        || event.event.metaKey
+        || this.sqlSummaryModifierPressed
       this.updateSqlNavigationHover()
     })
     const mouseLeaveDisposable = this.editor?.onMouseLeave(() => {
@@ -565,7 +609,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private async handleEditorMouseDown(event: monaco.editor.IEditorMouseEvent): Promise<void> {
     if (!this.active || !this.editor || !event.target.position) return
-    if (!event.event.ctrlKey && !event.event.metaKey) return
+    const summaryRequested = this.sqlSummaryModifierPressed
+    const detailRequested = event.event.ctrlKey || event.event.metaKey
+    if (!summaryRequested && !detailRequested) return
 
     const browserEvent = event.event.browserEvent
     if (browserEvent instanceof MouseEvent && browserEvent.button !== 0) return
@@ -576,11 +622,18 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     event.event.preventDefault()
     browserEvent?.preventDefault()
 
-    this.objectInfoRequested.emit({
+    const request = {
       ...navigationLink.target,
       context: this.tabInfo?.dbInfo,
       info: this.tabInfo?.dbInfo
-    })
+    }
+
+    if (summaryRequested) {
+      this.objectSummaryRequested.emit(request)
+      return
+    }
+
+    this.objectInfoRequested.emit(request)
   }
 
   private updateSqlNavigationHover(): void {
@@ -610,6 +663,66 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.editor?.getDomNode()?.classList.remove('dbolt-sql-navigation-pointer')
   }
 
+  private scheduleSqlChangeDecorations(currentSql?: string): void {
+    this.clearSqlChangeDecorationTimer()
+    this.sqlChangeDecorationTimer = setTimeout(() => {
+      this.sqlChangeDecorationTimer = null
+      this.updateSqlChangeDecorations(currentSql)
+    }, 80)
+  }
+
+  private replaceEditorSql(sql: string): void {
+    const editor = this.editor
+    const model = editor?.getModel()
+    if (!editor || !model) return
+
+    editor.pushUndoStop()
+    editor.executeEdits('dbolt.external-sql-update', [{
+      range: model.getFullModelRange(),
+      text: sql,
+      forceMoveMarkers: true
+    }])
+    editor.pushUndoStop()
+  }
+
+  private updateSqlChangeDecorations(currentSql?: string): void {
+    this.clearSqlChangeDecorationTimer()
+
+    const editor = this.editor
+    const model = editor?.getModel()
+    if (!editor || !model) return
+
+    const savedSql = typeof this.tabInfo?.originalContent === 'string'
+      ? this.tabInfo.originalContent
+      : ''
+    const editorSql = currentSql ?? model.getValue()
+    const normalizedSavedSql = savedSql.replace(/\r\n/g, '\n')
+    const normalizedEditorSql = editorSql.replace(/\r\n/g, '\n')
+
+    if (normalizedSavedSql === normalizedEditorSql) {
+      this.sqlChangeDecorationIds = editor.deltaDecorations(this.sqlChangeDecorationIds, [])
+      return
+    }
+
+    const decorations = this.queryVersionDiff
+      .buildChangeMarkers(normalizedSavedSql, normalizedEditorSql)
+      .map((marker): monaco.editor.IModelDeltaDecoration => ({
+        range: new monaco.Range(marker.lineNumber, 1, marker.lineNumber, 1),
+        options: {
+          isWholeLine: true,
+          linesDecorationsClassName: `dbolt-sql-change-${marker.type}`
+        }
+      }))
+    this.sqlChangeDecorationIds = editor.deltaDecorations(this.sqlChangeDecorationIds, decorations)
+  }
+
+  private clearSqlChangeDecorationTimer(): void {
+    if (!this.sqlChangeDecorationTimer) return
+
+    clearTimeout(this.sqlChangeDecorationTimer)
+    this.sqlChangeDecorationTimer = null
+  }
+
   private resolveSqlNavigationLink(position: monaco.Position): SqlNavigationLink | null {
     const model = this.editor?.getModel()
     if (!model) return null
@@ -630,9 +743,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     if (aliases.has(clickedKey)) {
       return {
-        target: {
-          name: aliases.get(clickedKey) || clickedName
-        },
+        target: this.toSqlNavigationTarget(aliases.get(clickedKey) || clickedName),
         range: clickedIdentifier.range
       }
     }
@@ -651,10 +762,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
       if (tableName) {
         return {
-          target: {
-            name: tableName,
-            initialView: 'columns'
-          },
+          target: this.toSqlNavigationTarget(tableName, 'columns'),
           range: clickedIdentifier.range
         }
       }
@@ -672,10 +780,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     const uniqueTableName = this.getUniqueStatementTableName(aliases)
     if (uniqueTableName) {
       return {
-        target: {
-          name: uniqueTableName,
-          initialView: 'columns'
-        },
+        target: this.toSqlNavigationTarget(uniqueTableName, 'columns'),
         range: clickedIdentifier.range
       }
     }
@@ -769,7 +874,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       nextIndex++
     }
 
-    const tableName = this.normalizeIdentifier(this.getIdentifierLastPart(tableReference.value))
+    const tableName = normalizeTableReferenceForMetadata(tableReference.value)
     const implicitAlias = this.normalizeIdentifier(this.getIdentifierLastPart(tableReference.value))
     this.addNavigationAlias(aliases, implicitAlias, tableName)
 
@@ -788,6 +893,19 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     if (!normalizedAlias || !normalizedTableName) return
 
     aliases.set(normalizedAlias, normalizedTableName)
+  }
+
+  private toSqlNavigationTarget(
+    tableReference: string,
+    initialView?: 'columns'
+  ): SqlNavigationLink['target'] {
+    const reference = parseMetadataTableReference(tableReference)
+
+    return {
+      name: reference.tableName || this.normalizeIdentifier(tableReference),
+      schema: reference.schema,
+      initialView
+    }
   }
 
   private isTableReferenceToken(tokens: SqlNavigationToken[], statementOffset: number): boolean {
@@ -1560,6 +1678,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.tabInfo.versions = savedQuery.versions || []
     this.tabInfo.persisted = true
     this.tabInfo.icon = 'CODE'
+    this.updateSqlChangeDecorations(savedQuery.sql)
   }
 
   private async recoverLinuxPersistedQueryIdentity(): Promise<boolean> {

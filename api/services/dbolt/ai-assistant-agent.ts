@@ -19,6 +19,8 @@ export interface AiAssistantAgentChatMessage {
 export interface AiAssistantAgentChatRequest {
   messages: AiAssistantAgentChatMessage[];
   readonlyContext?: AiReadonlyDatabaseContext;
+  currentSql?: string;
+  autoApplyCurrentSql?: boolean;
   appLanguage?: string;
 }
 
@@ -46,6 +48,9 @@ class AiAssistantAgentService {
   ): Promise<AiAssistantAgentChatResult> {
     const messages = this.normalizeMessages(request.messages, settings.limits.maxContextMessages);
     const readonlyContext = this.normalizeReadonlyContext(request.readonlyContext);
+    const currentSql = this.normalizeCurrentSql(request.currentSql);
+    const autoApplyCurrentSql = Boolean(currentSql && request.autoApplyCurrentSql);
+    const expectsSqlReplacement = autoApplyCurrentSql && this.isSqlReplacementRequest(messages);
     const responseLanguage = this.getResponseLanguage(request.appLanguage);
     const budget = AiAssistantToolBudget.createState({
       ...settings.limits,
@@ -60,10 +65,26 @@ class AiAssistantAgentService {
         : settings.limits.maxDatabaseRequestsPerApiCall
     });
     const toolSections: string[] = [];
+    let automaticSqlRecovery = '';
+    let automaticSqlRecoveryAttempts = 0;
 
     let lastModel = settings.model;
 
     reportProgress?.('analyzing-request');
+
+    if (expectsSqlReplacement && readonlyContext && AiAssistantToolBudget.canRunTool(budget)) {
+      reportProgress?.('reading-schema');
+      AiAssistantToolBudget.registerToolCall(budget);
+      const schemaSummary = await AiAssistantTools.execute(
+        readonlyContext,
+        { name: 'getSchemaSummary', arguments: { limit: 80 } },
+        budget
+      );
+      toolSections.push([
+        `DBOLT read-only result. Executed action: ${schemaSummary.name}. Status: ${schemaSummary.success ? 'ok' : 'error'}.`,
+        schemaSummary.content
+      ].join('\n'));
+    }
 
     while (AiAssistantToolBudget.canCallModel(budget) && AiAssistantToolBudget.beginIteration(budget)) {
       const allowTools = Boolean(
@@ -83,7 +104,17 @@ class AiAssistantAgentService {
 
       const completion = await AiAssistantModelClient.complete(
         settings,
-        this.buildSystemPrompt(readonlyContext, budget, toolSections, forceFinalAnswer, responseLanguage, allowTools),
+        this.buildSystemPrompt(
+          readonlyContext,
+          currentSql,
+          budget,
+          toolSections,
+          forceFinalAnswer,
+          responseLanguage,
+          allowTools,
+          autoApplyCurrentSql,
+          automaticSqlRecovery
+        ),
         messages
       );
       lastModel = completion.model;
@@ -91,6 +122,23 @@ class AiAssistantAgentService {
       const toolCalls = this.parseToolCalls(completion.content);
 
       if (toolCalls.length === 0) {
+        if (
+          expectsSqlReplacement &&
+          !this.hasCompleteSqlBlock(completion.content) &&
+          automaticSqlRecoveryAttempts < 2 &&
+          AiAssistantToolBudget.canCallModel(budget)
+        ) {
+          automaticSqlRecoveryAttempts += 1;
+          automaticSqlRecovery = [
+            'DBOLT rejected the previous draft because automatic SQL replacement is enabled and it did not contain the complete replacement SQL.',
+            allowTools
+              ? 'If exact tables or columns are still needed, request the appropriate DBOLT read-only database actions now. Do not ask the user to provide metadata that DBOLT can inspect.'
+              : 'Use the current SQL context and information already available to finish the requested SQL.',
+            'Continue working. The final answer must contain the entire replacement SQL in exactly one fenced sql code block.'
+          ].join('\n');
+          continue;
+        }
+
         reportProgress?.('preparing-answer');
         return {
           message: this.cleanFinalAnswer(completion.content, responseLanguage),
@@ -118,11 +166,14 @@ class AiAssistantAgentService {
 
   private buildSystemPrompt(
     readonlyContext: AiReadonlyDatabaseContext | undefined,
+    currentSql: string | undefined,
     budget: AiAssistantToolBudgetState,
     toolSections: string[],
     forceFinalAnswer: boolean,
     responseLanguage: string,
-    allowTools: boolean
+    allowTools: boolean,
+    autoApplyCurrentSql: boolean,
+    automaticSqlRecovery: string
   ): string {
     const parts = [
       'You are the AI assistant for DBOLT Database Manager.',
@@ -138,6 +189,8 @@ class AiAssistantAgentService {
       'If you provide a write/DDL/DML script, make clear it is only a script for the user to review and run manually; do not claim it was executed.',
       'Database action and AI API call limits apply only to the current user message. They reset for every new user message and are not accumulated across the conversation.',
       'Only say the current message limit is exhausted when DBOLT explicitly stops allowing database actions in this current request.',
+      ...(currentSql ? [this.buildCurrentSqlPrompt(currentSql, autoApplyCurrentSql)] : []),
+      ...(automaticSqlRecovery ? [automaticSqlRecovery] : []),
       ...(readonlyContext && allowTools ? [
         this.buildReadonlyContextPrompt(readonlyContext),
         'Read-only database context is already authorized for this message. Read-only means DBOLT will not modify data; it does not mean you are forbidden from reading table rows.',
@@ -204,6 +257,82 @@ class AiAssistantAgentService {
       ...context,
       sgbd: inferredSgbd
     };
+  }
+
+  private normalizeCurrentSql(value: unknown): string | undefined {
+    if (typeof value !== 'string') return undefined;
+
+    const sql = value.trim();
+    if (!sql) return undefined;
+
+    const maximumLength = 40000;
+    return sql.length <= maximumLength
+      ? sql
+      : `${sql.slice(0, maximumLength)}\n-- Current SQL context truncated by DBOLT`;
+  }
+
+  private buildCurrentSqlPrompt(currentSql: string, autoApplyCurrentSql: boolean): string {
+    return [
+      'The user explicitly shared the current SQL editor content as context for this message.',
+      'Use it to understand the request. Do not treat sharing this text alone as a request to execute it.',
+      ...(autoApplyCurrentSql ? [
+        'The user enabled DBOLT automatic SQL replacement for this message.',
+        'When the user asks to create, generate, modify, fix, rewrite, optimize, or format SQL, treat the result as a replacement for the current editor even if the current editor contains only an incomplete draft.',
+        'Do not stop with a request for schema details while DBOLT read-only database actions are available. Inspect the required objects and continue until the complete SQL is ready.'
+      ] : []),
+      'When the user asks you to modify, fix, rewrite, optimize, or format this SQL, ALWAYS return the entire replacement SQL in exactly one fenced sql code block.',
+      'The fenced sql block must contain the full editor content after applying the requested change, including every unchanged statement, clause, line, and comment.',
+      'Never return a patch, diff, excerpt, isolated clause, ellipsis, placeholder for unchanged code, or only the lines that changed.',
+      'Preserve the existing formatting of all unchanged SQL exactly, including indentation, whitespace, line breaks, keyword casing, identifier quoting, aliases, and comments.',
+      'Change formatting only when the user explicitly asks for formatting or when a requested code change makes a local formatting adjustment unavoidable.',
+      'Any explanation must remain outside the single fenced sql block.',
+      '--- BEGIN CURRENT SQL CONTEXT ---',
+      currentSql,
+      '--- END CURRENT SQL CONTEXT ---'
+    ].join('\n');
+  }
+
+  private isSqlReplacementRequest(messages: AiAssistantAgentChatMessage[]): boolean {
+    const lastUserMessage = [...messages].reverse().find((message) => message.role === 'user')?.content || '';
+    const normalizedMessage = lastUserMessage
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+    return /\b(?:sql|query|consulta|select|with|insert|update|delete|merge|procedure|procedimento|view|crie|criar|create|faca|fazer|monte|montar|gere|gerar|relacione|relacionar|adicione|adicionar|add|altere|alterar|change|modify|corrija|corrigir|fix|reescreva|rewrite|otimize|otimizar|optimize|formate|formatar|format)\b/.test(normalizedMessage);
+  }
+
+  private hasCompleteSqlBlock(content: string): boolean {
+    const sqlLanguages = new Set([
+      '',
+      'sql',
+      'mysql',
+      'postgres',
+      'postgresql',
+      'pgsql',
+      'sqlite',
+      'tsql',
+      'mssql',
+      'sqlserver',
+      'hana'
+    ]);
+    const blocks = String(content || '').matchAll(/```([A-Za-z0-9_-]*)[ \t]*\r?\n([\s\S]*?)```/g);
+
+    for (const block of blocks) {
+      const language = String(block[1] || '').trim().toLowerCase();
+      const sql = String(block[2] || '').trim();
+      if (!sql || !sqlLanguages.has(language)) continue;
+
+      const statementStart = sql
+        .replace(/^\s*(?:(?:--[^\n]*(?:\n|$))|(?:\/\*[\s\S]*?\*\/\s*))*/i, '')
+        .replace(/^;+\s*/, '');
+
+      if (/^(?:SELECT|WITH|INSERT|UPDATE|DELETE|MERGE|UPSERT|REPLACE|CREATE|ALTER|DROP|TRUNCATE|EXPLAIN|SHOW|DESCRIBE|USE|SET|CALL|EXEC(?:UTE)?|GRANT|REVOKE|DO|BEGIN|DECLARE|DELIMITER)\b/i.test(statementStart)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private async executeToolCalls(
@@ -305,9 +434,9 @@ class AiAssistantAgentService {
     }
 
     return [
-      'SAP HANA dialect rule: use double quotes around table and column identifiers using the exact case returned by metadata, especially mixed-case SAP Business One columns such as "DocEntry" and "DocDate".',
-      'SAP HANA uppercases unquoted identifiers, so DocEntry without quotes becomes DOCENTRY and can fail. Do not use brackets or backticks for HANA identifiers.',
-      'SAP HANA example shape after columns are confirmed: SELECT TOP 1 "DocEntry", "DocDate" FROM "OINV" ORDER BY "DocEntry" DESC.'
+      'SAP HANA dialect rule: use double quotes around table and column identifiers using the exact case returned by metadata, especially mixed-case identifiers such as "OrderId" and "CreatedAt".',
+      'SAP HANA uppercases unquoted identifiers, so OrderId without quotes becomes ORDERID and can fail. Do not use brackets or backticks for HANA identifiers.',
+      'SAP HANA example shape after columns are confirmed: SELECT TOP 1 "OrderId", "CreatedAt" FROM "Orders" ORDER BY "OrderId" DESC.'
     ];
   }
 

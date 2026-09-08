@@ -24,7 +24,8 @@ import {
   AiAssistantSettings,
   AiChatInputSubmit,
   AiChatMessage,
-  AiReadonlyDatabaseToolContext
+  AiReadonlyDatabaseToolContext,
+  AiSqlEditorRequest
 } from '../../../services/ai-assistant/ai-assistant.model'
 import { AiDatabaseContextService } from '../../../services/ai-assistant/ai-database-context.service'
 import { AiAssistantSettingsService } from '../../../services/ai-assistant/ai-assistant-settings.service'
@@ -33,6 +34,7 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
 import { ConnectionContextService } from '../../../services/connection-context/connection-context.service'
 import { OpenAiOAuthSessionService } from '../../../services/ai-assistant/openai-oauth-session.service'
 import { InputListComponent } from '../../elements/input-list/input-list.component'
+import { ButtonComponent } from '../../elements/button/button.component'
 import {
   AiAssistantModelOption,
   modelOption,
@@ -42,7 +44,14 @@ import {
 @Component({
   selector: 'app-ai-assistant-panel',
   standalone: true,
-  imports: [CommonModule, AiChatInputComponent, AiChatMessageComponent, YesNoModalComponent, InputListComponent],
+  imports: [
+    CommonModule,
+    AiChatInputComponent,
+    AiChatMessageComponent,
+    YesNoModalComponent,
+    InputListComponent,
+    ButtonComponent
+  ],
   templateUrl: './ai-assistant-panel.component.html',
   styleUrl: './ai-assistant-panel.component.scss',
   host: {
@@ -55,7 +64,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   @Input() tabInfo: unknown
   @Output() close = new EventEmitter<void>()
   @Output() settingsRequested = new EventEmitter<void>()
-  @Output() sqlRequested = new EventEmitter<string>()
+  @Output() sqlRequested = new EventEmitter<AiSqlEditorRequest>()
 
   settings: AiAssistantSettings | null = null
   conversations: AiAssistantConversation[] = []
@@ -74,7 +83,6 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   thinkingSteps: AiAssistantProgressStage[] = []
   thinkingExpanded: boolean = false
   thinkingElapsedSeconds: number = 0
-  openAiOAuthSigningIn: boolean = false
   modelOptions: AiAssistantModelOption[] = []
   modelOptionsLoading: boolean = false
   modelSaving: boolean = false
@@ -92,6 +100,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   private thinkingStartedAt: number = 0
   private thinkingElapsedTimer: number | null = null
   private modelOptionsRequestId: number = 0
+  private sqlContextTargets = new Map<string, unknown>()
 
   constructor(
     private settingsService: AiAssistantSettingsService,
@@ -113,6 +122,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   ngOnDestroy(): void {
     this.cancelConversationsModalClose()
     this.stopThinkingElapsedTimer()
+    this.sqlContextTargets.clear()
   }
 
   ngAfterViewChecked(): void {
@@ -137,16 +147,20 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     return Boolean(this.settings?.hasApiKey) && !this.loadingSettings
   }
 
-  get showOpenAiOAuthRecommendation(): boolean {
-    return Boolean(
-      this.settings &&
-      !this.settings.openAiOAuthConnected &&
-      !this.settings.openAiOAuthRecommendationDismissed
-    )
-  }
-
   get databaseContextAvailable(): boolean {
     return this.databaseContext.hasDatabaseContext(this.selectedSchemaDB, this.dbSchemasData)
+  }
+
+  get currentSqlContext(): string {
+    const tab = this.asRecord(this.tabInfo)
+    if (tab['type'] !== 'sql') return ''
+
+    const info = this.asRecord(tab['info'])
+    return typeof info['sql'] === 'string' ? info['sql'].trim() : ''
+  }
+
+  get currentSqlContextAvailable(): boolean {
+    return this.currentSqlContext.length > 0
   }
 
   get activeConversation(): AiAssistantConversation | null {
@@ -182,11 +196,21 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     return this.thinkingSteps.slice(-5)
   }
 
-  openSqlInEditor(sql: string): void {
+  openSqlInEditor(sql: string, message?: AiChatMessage): void {
     const normalizedSql = String(sql || '').trim()
     if (!normalizedSql) return
 
-    this.sqlRequested.emit(normalizedSql)
+    const targetTab = message ? this.sqlContextTargets.get(message.id) : undefined
+
+    this.sqlRequested.emit({
+      sql: normalizedSql,
+      mode: targetTab ? 'replace-current' : 'new-tab',
+      ...(targetTab ? { targetTab } : {})
+    })
+  }
+
+  getSqlAction(message: AiChatMessage): 'new-tab' | 'replace-current' {
+    return this.sqlContextTargets.has(message.id) ? 'replace-current' : 'new-tab'
   }
 
   async loadSettings(): Promise<void> {
@@ -232,22 +256,6 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     }
   }
 
-  async connectOpenAiOAuth(): Promise<void> {
-    if (this.openAiOAuthSigningIn) return
-
-    this.openAiOAuthSigningIn = true
-    this.errorMessage = ''
-
-    try {
-      await this.openAiOAuth.signIn()
-      await this.loadSettings()
-    } catch (error: unknown) {
-      this.errorMessage = this.getErrorMessage(error, this.t('settings.ai.oauth.loginFailed'))
-    } finally {
-      this.openAiOAuthSigningIn = false
-    }
-  }
-
   private async loadModelOptions(settings: AiAssistantSettings): Promise<void> {
     const requestId = ++this.modelOptionsRequestId
     const currentModelOption = modelOption(settings.model)
@@ -282,21 +290,6 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     }
   }
 
-  async dismissOpenAiOAuthRecommendation(): Promise<void> {
-    if (!this.settings) return
-
-    this.settings = {
-      ...this.settings,
-      openAiOAuthRecommendationDismissed: true
-    }
-
-    try {
-      this.settings = await this.settingsService.dismissOpenAiOAuthRecommendation()
-    } catch (error: unknown) {
-      this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.oauth.dismissFailed'))
-    }
-  }
-
   async loadConversations(): Promise<void> {
     this.loadingConversations = true
 
@@ -315,6 +308,9 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       this.settingsRequested.emit()
       return
     }
+
+    const currentSql = event.includeCurrentSql ? this.currentSqlContext : undefined
+    const currentSqlTarget = currentSql ? this.tabInfo : undefined
 
     let conversationId = ''
     try {
@@ -340,10 +336,27 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       const response = await this.chatService.sendMessage(
         this.toApiMessages(),
         readonlyToolContext,
+        currentSql,
+        Boolean(currentSql && event.autoApplyCurrentSql),
         (stage) => this.addThinkingStep(stage)
       )
-      this.messages = [...this.messages, this.createMessage('assistant', response.message)]
+      const assistantMessage = this.createMessage('assistant', response.message)
+      if (currentSqlTarget) {
+        this.sqlContextTargets.set(assistantMessage.id, currentSqlTarget)
+      }
+      this.messages = [...this.messages, assistantMessage]
       await this.saveConversationMessages(conversationId, this.messages)
+
+      if (currentSqlTarget && event.autoApplyCurrentSql) {
+        const replacementSql = this.extractCompleteSqlBlock(response.message)
+        if (replacementSql && replacementSql !== currentSql) {
+          this.sqlRequested.emit({
+            sql: replacementSql,
+            mode: 'replace-current',
+            targetTab: currentSqlTarget
+          })
+        }
+      }
     } catch (error: unknown) {
       this.messages = [
         ...this.messages,
@@ -535,6 +548,39 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
 
   private getMessagePromptLimit(role: 'user' | 'assistant'): number {
     return role === 'assistant' ? 900 : 1400
+  }
+
+  private extractCompleteSqlBlock(content: string): string {
+    const sqlLanguages = new Set([
+      '',
+      'sql',
+      'mysql',
+      'postgres',
+      'postgresql',
+      'pgsql',
+      'sqlite',
+      'tsql',
+      'mssql',
+      'sqlserver',
+      'hana'
+    ])
+    const blocks = String(content || '').matchAll(/```([A-Za-z0-9_-]*)[ \t]*\r?\n([\s\S]*?)```/g)
+
+    for (const block of blocks) {
+      const language = String(block[1] || '').trim().toLowerCase()
+      const sql = String(block[2] || '').trim()
+      if (!sql || !sqlLanguages.has(language)) continue
+
+      const statementStart = sql
+        .replace(/^\s*(?:(?:--[^\n]*(?:\n|$))|(?:\/\*[\s\S]*?\*\/\s*))*/i, '')
+        .replace(/^;+\s*/, '')
+
+      if (/^(?:SELECT|WITH|INSERT|UPDATE|DELETE|MERGE|UPSERT|REPLACE|CREATE|ALTER|DROP|TRUNCATE|EXPLAIN|SHOW|DESCRIBE|USE|SET|CALL|EXEC(?:UTE)?|GRANT|REVOKE|DO|BEGIN|DECLARE|DELIMITER)\b/i.test(statementStart)) {
+        return sql
+      }
+    }
+
+    return ''
   }
 
   private getMaxContextMessages(): number {

@@ -450,6 +450,44 @@
     overflow: hidden;
 }
 
+.workspace-object-summary {
+    --sql-object-summary-width: clamp(520px, 34vw, 640px);
+
+    flex: 0 0 var(--sql-object-summary-width);
+    height: 100%;
+    margin-right: calc(0px - var(--sql-object-summary-width));
+    min-height: 0;
+    min-width: var(--sql-object-summary-width);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(100%);
+    transition:
+        margin-right .22s cubic-bezier(.4, 0, .2, 1),
+        opacity .16s ease,
+        transform .22s cubic-bezier(.4, 0, .2, 1);
+    will-change: margin-right, opacity, transform;
+    width: var(--sql-object-summary-width);
+
+    &.active {
+        margin-right: 0;
+        opacity: 1;
+        transform: translateX(0);
+        pointer-events: auto;
+    }
+}
+
+@media (max-width: 1200px) {
+    .workspace-object-summary {
+        --sql-object-summary-width: min(480px, 48vw);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .workspace-object-summary {
+        transition-duration: .01ms !important;
+    }
+}
+
 .main-area > .tabs {
     align-items: flex-start;
     background-color: transparent;

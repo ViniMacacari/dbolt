@@ -16,6 +16,7 @@ import {
   QueryCompareTargetService
 } from '../../../services/query-compare-target/query-compare-target.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
+import { DatabaseLogoService } from '../../../services/database-logo/database-logo.service'
 
 @Component({
   selector: 'app-load-query',
@@ -58,7 +59,8 @@ export class LoadQueryComponent {
     private querySave: QuerySaveService,
     private navigator: QueryLibraryNavigatorService,
     private compareTarget: QueryCompareTargetService,
-    private language: AppLanguageService
+    private language: AppLanguageService,
+    readonly databaseLogo: DatabaseLogoService
   ) { }
 
   async ngOnInit(): Promise<void> {

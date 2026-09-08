@@ -182,11 +182,18 @@
                     [hidden]="!isActiveSqlTab(tab)" [active]="isActiveSqlTab(tab)" [sqlContent]="tab.info?.sql || ''"
                     [widthTable]="widthTable" [tabInfo]="tab" (sqlContentChange)="onSqlContentChange($event, tab)"
                     (savedName)="onSavedQuery($event, tab)" (savedQuery)="onExistingSavedQuery($event)"
-                    (objectInfoRequested)="onSqlObjectInfoRequested($event)">
+                    (objectInfoRequested)="onSqlObjectInfoRequested($event)"
+                    (objectSummaryRequested)="onSqlObjectSummaryRequested($event)">
                 </app-code-editor>
             </div>
         </div>
     </div>
+
+    <app-sql-object-summary *ngIf="sqlObjectSummaryMounted && sqlObjectSummaryRequest"
+        class="workspace-object-summary" [class.active]="sqlObjectSummaryOpen"
+        [attr.aria-hidden]="!sqlObjectSummaryOpen" [attr.inert]="!sqlObjectSummaryOpen ? '' : null"
+        [request]="sqlObjectSummaryRequest" (closed)="closeSqlObjectSummary()">
+    </app-sql-object-summary>
 </div>
 
 <app-toast></app-toast>

@@ -20,13 +20,22 @@ textarea {
     resize: none;
 }
 
-button {
-    font-size: .8em;
-    height: 34px;
-    width: 100%;
+.chat-actions {
+    align-items: flex-end;
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    min-width: 0;
+}
 
-    &:disabled {
-        color: var(--dbolt-777);
-        cursor: default;
-    }
+.sql-context-toggles {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 0;
+}
+
+.current-sql-context-toggle,
+.auto-apply-sql-toggle {
+    min-width: 0;
 }

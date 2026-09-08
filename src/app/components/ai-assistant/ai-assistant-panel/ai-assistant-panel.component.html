@@ -71,36 +71,33 @@
         {{ errorMessage }}
     </div>
 
-    <section class="openai-oauth-recommendation" *ngIf="showOpenAiOAuthRecommendation">
-        <button type="button" class="oauth-recommendation-close" (click)="dismissOpenAiOAuthRecommendation()"
-            [title]="t('generic.close')" [attr.aria-label]="t('generic.close')">
-            <img src="icons/close.png" width="12" height="12" [alt]="t('generic.close')">
-        </button>
-        <div class="oauth-recommendation-heading">
-            <img src="icons/ai.png" width="20" height="20" [alt]="t('aiAssistant.oauth.recommendationTitle')">
-            <strong>{{ t('aiAssistant.oauth.recommendationTitle') }}</strong>
-        </div>
-        <p>{{ t('aiAssistant.oauth.recommendationDescription') }}</p>
-        <small>{{ t('settings.ai.oauth.unofficial') }}</small>
-        <button type="button" class="oauth-recommendation-action" (click)="connectOpenAiOAuth()"
-            [disabled]="openAiOAuthSigningIn">
-            {{ openAiOAuthSigningIn ? t('settings.ai.oauth.waiting') : t('settings.ai.oauth.signIn') }}
-        </button>
-    </section>
-
-    <div class="connection ai-config-needed" *ngIf="!loadingSettings && !settings?.hasApiKey">
+    <div class="connection ai-config-needed"
+        *ngIf="!loadingSettings && !settings?.hasApiKey && messages.length > 0">
         <p>{{ t('aiAssistant.settingsRequired') }}</p>
-        <button type="button" (click)="settingsRequested.emit()">{{ t('aiAssistant.openSettings') }}</button>
+        <app-button [compact]="true" (pressed)="settingsRequested.emit()">
+            {{ t('aiAssistant.openSettings') }}
+        </app-button>
     </div>
 
     <div class="connections ai-chat" #messagesContainer>
-        <div class="connection ai-empty" *ngIf="messages.length === 0">
+        <div class="connection ai-empty ai-configuration-empty"
+            *ngIf="messages.length === 0 && !loadingSettings && !canChat">
+            <img src="icons/ai.png" [alt]="t('aiAssistant.assistant')">
+            <strong>{{ t('aiAssistant.setupRequiredTitle') }}</strong>
+            <p>{{ t('aiAssistant.settingsRequired') }}</p>
+            <app-button [compact]="true" (pressed)="settingsRequested.emit()">
+                {{ t('aiAssistant.openSettings') }}
+            </app-button>
+        </div>
+
+        <div class="connection ai-empty" *ngIf="messages.length === 0 && (loadingSettings || canChat)">
             <img src="icons/ai.png" [alt]="t('aiAssistant.assistant')">
             <p class="text-min-gray">{{ t('aiAssistant.emptyState') }}</p>
         </div>
 
         <div #messageItem *ngFor="let message of messages; trackBy: trackMessage">
-            <app-ai-chat-message [message]="message" (sqlRequested)="openSqlInEditor($event)">
+            <app-ai-chat-message [message]="message" [sqlAction]="getSqlAction(message)"
+                (sqlRequested)="openSqlInEditor($event, message)">
             </app-ai-chat-message>
         </div>
 
@@ -132,7 +129,8 @@
     </div>
 
     <app-ai-chat-input [disabled]="sending || !canChat || loadingConversations"
-        [databaseContextAvailable]="databaseContextAvailable" (send)="onSend($event)">
+        [databaseContextAvailable]="databaseContextAvailable" [currentSqlAvailable]="currentSqlContextAvailable"
+        (send)="onSend($event)">
     </app-ai-chat-input>
 </aside>
 

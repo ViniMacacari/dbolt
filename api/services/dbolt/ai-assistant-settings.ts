@@ -119,7 +119,11 @@ class AiAssistantSettingsService {
       updatedAt: new Date().toISOString()
     };
 
-    if (provider === 'openai-oauth' && typeof input.model === 'string') {
+    const hasOpenAiOAuthSession = provider === 'openai-oauth'
+      ? Boolean(await OpenAiOAuth.getSession().catch(() => null))
+      : false;
+
+    if (provider === 'openai-oauth' && typeof input.model === 'string' && hasOpenAiOAuthSession) {
       await this.validateOpenAiOAuthModel(nextSettings.model);
     }
 

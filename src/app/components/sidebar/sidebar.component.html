@@ -18,7 +18,7 @@
 
     <p class="selected-title">{{ t('sidebar.currentlySelected') }}</p>
     <button type="button" class="sgbd" (click)="toggleQuickSelector('connection', $event)">
-        <img src="db-logo/{{ selectedSchemaDB?.sgbd }}.png" height="15px" width="15px">
+        <img [src]="databaseLogo.path(selectedSchemaDB?.sgbd)" height="15px" width="15px">
         <p class="text-min w-100">{{ selectedSchemaDB?.sgbd }} ({{ selectedSchemaDB?.name }})</p>
     </button>
     <button type="button" class="database" (click)="toggleQuickSelector('database', $event)"
@@ -46,7 +46,7 @@
             <button type="button" class="connection-summary" (click)="toggleConnection(connection)"
                 [attr.aria-expanded]="expandedConnections.has(connection.id)"
                 [attr.aria-busy]="loadingConnections.has(connection.id)">
-                <img class="connection-logo" src="db-logo/{{ connection.database }}.png" height="16px" width="16px">
+                <img class="connection-logo" [src]="databaseLogo.path(connection.database)" height="16px" width="16px">
                 <span class="connection-summary-copy">
                     <strong>{{ connection.name }}</strong>
                     <small>{{ connection.host }}:{{ connection.port }}</small>
@@ -145,7 +145,7 @@
                 (click)="toggleQuickSelector('connection', $event)"
                 [title]="t('sidebar.selectConnection') + ': ' + selectedSchemaDB.sgbd + ' (' + selectedSchemaDB.name + ')'"
                 [attr.aria-label]="t('sidebar.selectConnection') + ': ' + selectedSchemaDB.sgbd + ' (' + selectedSchemaDB.name + ')'">
-                <img src="db-logo/{{ selectedSchemaDB.sgbd }}.png" height="16px" width="16px" alt="">
+                <img [src]="databaseLogo.path(selectedSchemaDB.sgbd)" height="16px" width="16px" alt="">
             </button>
             <button type="button" class="collapsed-selection-button"
                 (click)="toggleQuickSelector('database', $event)"

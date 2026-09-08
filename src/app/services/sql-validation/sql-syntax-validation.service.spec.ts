@@ -9,11 +9,11 @@ describe('SqlSyntaxValidationService', () => {
 
   it('does not report T-SQL parser errors for HANA SQLScript procedures', async () => {
     const sql = `
-      CREATE PROCEDURE "_SP_NF22"(DtBase nvarchar(4000), DocEntry int, GerarNF int, ObjectType NVARCHAR(20))
+      CREATE PROCEDURE "process_orders"(run_date nvarchar(4000), order_id int, should_process int, entity_type NVARCHAR(20))
       LANGUAGE SQLSCRIPT AS
       BEGIN
-        Entidade int;
-        Sql_BP nvarchar(4000);
+        entity_id int;
+        dynamic_sql nvarchar(4000);
       END;
     `
 
@@ -22,8 +22,8 @@ describe('SqlSyntaxValidationService', () => {
 
   it('marks the exact reserved alias and explains the error', async () => {
     const sql = `SELECT
-  GROUP_CONCAT(u.DES_EMAIL SEPARATOR ', ') AS to
-FROM usuario u`
+  GROUP_CONCAT(u.email SEPARATOR ', ') AS to
+FROM users u`
     const diagnostics = await service.validate(sql, { sgbd: 'MySQL' })
     const diagnostic = diagnostics[0]
     const errorLine = sql.split('\n')[1]

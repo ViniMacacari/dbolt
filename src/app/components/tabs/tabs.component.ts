@@ -38,6 +38,8 @@ export class TabsComponent implements OnInit, OnDestroy {
   layout: TabLayoutItem[] = []
   isDraggingTab: boolean = false
   selectedTabs = new Set<any>()
+  private expandedGroupsBeforeDrag = new Set<string>()
+  private isChipClickSuppressed = false
   tabContextMenu: any = null
   groupContextMenu: any = null
   groupEditor: any = null
@@ -97,15 +99,15 @@ export class TabsComponent implements OnInit, OnDestroy {
     Sortable.create(this.tabsContainer.nativeElement, {
       animation: 170,
       easing: 'cubic-bezier(.2, .8, .2, 1)',
-      draggable: '.tab',
-      filter: '.tab-group-chip',
+      draggable: '.tab, .tab-group-chip',
       preventOnFilter: false,
       ghostClass: 'tab-ghost',
       chosenClass: 'tab-chosen',
       dragClass: 'tab-dragging',
-      onStart: () => {
+      onStart: (event) => {
         this.isDraggingTab = true
         this.closeTabMenus()
+        this.startGroupDrag(event?.item as HTMLElement | undefined)
       },
       onEnd: (event) => {
         this.isDraggingTab = false
@@ -589,6 +591,8 @@ export class TabsComponent implements OnInit, OnDestroy {
 
   toggleGroupCollapse(group: TabGroup, event?: MouseEvent): void {
     event?.stopPropagation()
+    if (event && this.isChipClickSuppressed) return
+
     this.closeTabMenus()
 
     const groupTabs = this.tabGroups.groupTabs(this.tabs, this.groups, group.id)
@@ -899,9 +903,65 @@ export class TabsComponent implements OnInit, OnDestroy {
     if (groupId) this.flashTabs([tab])
   }
 
+  private startGroupDrag(draggedElement?: HTMLElement): void {
+    const group = this.resolveGroupFromElement(draggedElement)
+    if (!group) return
+
+    if (group.collapsed) {
+      this.expandedGroupsBeforeDrag.delete(group.id)
+      return
+    }
+
+    this.expandedGroupsBeforeDrag.add(group.id)
+    group.collapsed = true
+    group.animating = false
+    this.rebuildLayout()
+  }
+
+  private finishGroupDrag(draggedElement: HTMLElement, container?: HTMLElement): void {
+    this.isChipClickSuppressed = true
+    setTimeout(() => {
+      this.isChipClickSuppressed = false
+    }, 0)
+
+    const group = this.resolveGroupFromElement(draggedElement)
+    const activeTabReference = this.getActiveTab()
+
+    if (container) {
+      const descriptors = Array.from(container.children)
+        .map((element) => this.toLayoutDescriptor(element as HTMLElement))
+        .filter((descriptor): descriptor is TabLayoutDescriptor => Boolean(descriptor))
+
+      this.applyTabsOrder(
+        this.tabGroups.buildOrderFromLayout(this.tabs, this.groups, descriptors),
+        activeTabReference
+      )
+    }
+
+    if (group && this.expandedGroupsBeforeDrag.has(group.id)) {
+      this.expandedGroupsBeforeDrag.delete(group.id)
+      this.toggleGroupCollapse(group)
+      return
+    }
+
+    this.rebuildLayout()
+  }
+
+  private resolveGroupFromElement(element?: HTMLElement | null): TabGroup | null {
+    if (!element?.classList.contains('tab-group-chip')) return null
+
+    return this.tabGroups.resolveGroup(this.groups, element.dataset?.['groupId'])
+  }
+
   private onTabDragEnd(event: any): void {
     const container = this.tabsContainer?.nativeElement as HTMLElement | undefined
     const draggedElement = event?.item as HTMLElement | undefined
+
+    if (draggedElement?.classList.contains('tab-group-chip')) {
+      this.finishGroupDrag(draggedElement, container)
+      return
+    }
+
     const draggedTab = this.findTabByLayoutKey(draggedElement?.dataset?.['tabKey'])
 
     if (!container || !draggedTab) {

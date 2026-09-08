@@ -24,9 +24,9 @@ export interface AiAssistantSettings {
 }
 
 export interface AiAssistantSettingsUpdate {
-  provider: AiAssistantProvider
+  provider?: AiAssistantProvider
   baseUrl?: string
-  model: string
+  model?: string
   apiKey?: string
   clearApiKey?: boolean
   apiKeys?: Partial<Record<AiAssistantApiKeyProvider, string>>
@@ -59,6 +59,8 @@ export interface AiAssistantConversationsState {
 export interface AiChatInputSubmit {
   message: string
   allowDatabaseContext: boolean
+  includeCurrentSql: boolean
+  autoApplyCurrentSql?: boolean
 }
 
 export interface AiAssistantApiMessage {
@@ -69,6 +71,12 @@ export interface AiAssistantApiMessage {
 export interface AiAssistantChatResponse {
   message: string
   model: string
+}
+
+export interface AiSqlEditorRequest {
+  sql: string
+  mode: 'new-tab' | 'replace-current'
+  targetTab?: unknown
 }
 
 export interface OpenAiOAuthStatus {

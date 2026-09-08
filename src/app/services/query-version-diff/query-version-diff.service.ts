@@ -16,6 +16,13 @@ export interface QueryDiffResult {
   unchanged: number
 }
 
+export type QueryChangeMarkerType = 'added' | 'modified' | 'deleted'
+
+export interface QueryChangeMarker {
+  lineNumber: number
+  type: QueryChangeMarkerType
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -32,6 +39,64 @@ export class QueryVersionDiffService {
       removed: lines.filter(line => line.type === 'removed').length,
       unchanged: lines.filter(line => line.type === 'unchanged').length
     }
+  }
+
+  buildChangeMarkers(savedSql: string, currentSql: string): QueryChangeMarker[] {
+    const normalizedSavedSql = String(savedSql || '').replace(/\r\n/g, '\n')
+    const normalizedCurrentSql = String(currentSql || '').replace(/\r\n/g, '\n')
+    if (normalizedSavedSql === normalizedCurrentSql) return []
+
+    const diffLines = this.buildDiff(normalizedSavedSql, normalizedCurrentSql).lines
+    const currentLineCount = this.toLines(normalizedCurrentSql).length
+    const markers: QueryChangeMarker[] = []
+    const seen = new Set<string>()
+    let index = 0
+    let previousCurrentLine = 1
+
+    const addMarker = (lineNumber: number, type: QueryChangeMarkerType): void => {
+      const safeLineNumber = Math.min(Math.max(1, lineNumber), Math.max(1, currentLineCount))
+      const key = `${type}:${safeLineNumber}`
+      if (seen.has(key)) return
+
+      seen.add(key)
+      markers.push({ lineNumber: safeLineNumber, type })
+    }
+
+    while (index < diffLines.length) {
+      const line = diffLines[index]
+      if (line.type === 'unchanged') {
+        previousCurrentLine = line.newLine || previousCurrentLine
+        index += 1
+        continue
+      }
+
+      const removedLines: QueryDiffLine[] = []
+      const addedLines: QueryDiffLine[] = []
+      while (index < diffLines.length && diffLines[index].type !== 'unchanged') {
+        const changedLine = diffLines[index]
+        const syntheticSavedEmptyLine = !normalizedSavedSql && changedLine.type === 'removed' && !changedLine.text
+        const syntheticCurrentEmptyLine = !normalizedCurrentSql && changedLine.type === 'added' && !changedLine.text
+        if (changedLine.type === 'removed' && !syntheticSavedEmptyLine) removedLines.push(changedLine)
+        if (changedLine.type === 'added' && !syntheticCurrentEmptyLine) addedLines.push(changedLine)
+        index += 1
+      }
+
+      const modifiedLineCount = Math.min(removedLines.length, addedLines.length)
+      addedLines.forEach((addedLine, addedIndex) => {
+        const lineNumber = addedLine.newLine || previousCurrentLine
+        addMarker(lineNumber, addedIndex < modifiedLineCount ? 'modified' : 'added')
+        previousCurrentLine = lineNumber
+      })
+
+      if (removedLines.length > modifiedLineCount) {
+        const nextCurrentLine = diffLines[index]?.newLine
+          || addedLines[addedLines.length - 1]?.newLine
+          || previousCurrentLine
+        addMarker(nextCurrentLine, 'deleted')
+      }
+    }
+
+    return markers
   }
 
   private toLines(sql: string): string[] {

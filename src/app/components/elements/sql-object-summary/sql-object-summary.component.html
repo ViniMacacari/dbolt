@@ -1,0 +1,70 @@
+<aside class="sql-object-summary-panel" [attr.aria-label]="t('sqlObjectSummary.title')">
+    <header class="summary-header">
+        <div class="summary-heading">
+            <span class="summary-icon">
+                <img [src]="isView ? 'icons/view.png' : 'icons/table.png'" alt="" height="17px">
+            </span>
+            <span class="summary-title">
+                <small>{{ t('sqlObjectSummary.title') }}</small>
+                <strong [title]="request.name">{{ request.name }}</strong>
+                <span *ngIf="contextLabel">{{ contextLabel }}</span>
+            </span>
+        </div>
+
+        <app-button [compact]="true" [title]="t('sqlObjectSummary.close')"
+            [ariaLabel]="t('sqlObjectSummary.close')" (pressed)="close()">
+            <img src="icons/close.png" alt="" height="14px">
+        </app-button>
+    </header>
+
+    <nav class="summary-tabs" [attr.aria-label]="t('sqlObjectSummary.sections')">
+        <app-button [compact]="true" [variant]="activeView === 'columns' ? 'accent' : 'primary'"
+            (pressed)="showColumns()">
+            <img src="icons/column.png" alt="" height="14px">
+            {{ t('sqlObjectSummary.columns') }}
+        </app-button>
+
+        <app-button *ngIf="isView" [compact]="true" [variant]="activeView === 'ddl' ? 'accent' : 'primary'"
+            (pressed)="showDdl()">
+            <img src="icons/code.png" alt="" height="14px">
+            {{ t('sqlObjectSummary.viewDdl') }}
+        </app-button>
+    </nav>
+
+    <section class="summary-columns" *ngIf="activeView === 'columns'">
+        <div class="summary-filter">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m20 20-4-4"></path>
+            </svg>
+            <input type="text" [value]="filterText" [placeholder]="t('sqlObjectSummary.filterColumns')"
+                (input)="onFilterInput($event)">
+            <button type="button" *ngIf="filterText" [title]="t('sqlObjectSummary.clearFilter')"
+                [attr.aria-label]="t('sqlObjectSummary.clearFilter')" (click)="clearFilter()">×</button>
+        </div>
+
+        <div class="summary-count" *ngIf="!loadingColumns && !columnsError">
+            {{ t('sqlObjectSummary.columnCount', { count: filteredRowCount }) }}
+        </div>
+
+        <p class="summary-status" *ngIf="loadingColumns">{{ t('sqlObjectSummary.loadingColumns') }}</p>
+        <p class="summary-status error" *ngIf="columnsError">{{ columnsError }}</p>
+
+        <ag-grid-angular *ngIf="!loadingColumns && !columnsError && rows.length" class="summary-grid"
+            [rowData]="rows" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef"
+            [rowHeight]="38" [headerHeight]="40" [rowBuffer]="20" [animateRows]="false"
+            [suppressRowVirtualisation]="false"
+            [suppressColumnVirtualisation]="false" (gridReady)="onGridReady($event)">
+        </ag-grid-angular>
+
+        <p class="summary-status" *ngIf="!loadingColumns && !columnsError && rows.length === 0">
+            {{ t('sqlObjectSummary.noColumns') }}
+        </p>
+    </section>
+
+    <section class="summary-ddl" *ngIf="activeView === 'ddl'">
+        <p class="summary-status" *ngIf="loadingDdl">{{ t('sqlObjectSummary.loadingDdl') }}</p>
+        <p class="summary-status error" *ngIf="ddlError">{{ ddlError }}</p>
+        <pre *ngIf="!loadingDdl && !ddlError">{{ ddl || t('sqlObjectSummary.noDdl') }}</pre>
+    </section>
+</aside>

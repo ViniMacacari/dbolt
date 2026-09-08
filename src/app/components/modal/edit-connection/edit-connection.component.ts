@@ -7,6 +7,7 @@ import { LoadingComponent } from '../loading/loading.component'
 import { ToastComponent } from "../../toast/toast.component"
 import { ConnectionsService } from '../../../services/resolve-connections/connections.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
+import { DatabaseLogoService } from '../../../services/database-logo/database-logo.service'
 
 @Component({
   selector: 'app-edit-connection',
@@ -38,7 +39,8 @@ export class EditConnectionComponent {
   constructor(
     private IAPI: InternalApiService,
     private connectionsService: ConnectionsService,
-    private language: AppLanguageService
+    private language: AppLanguageService,
+    private databaseLogo: DatabaseLogoService
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
@@ -113,7 +115,7 @@ export class EditConnectionComponent {
   }
 
   getDatabaseLogoPath(): string {
-    return this.isSQLite ? 'icons/database.png' : `db-logo/${this.sgbd}.png`
+    return this.databaseLogo.path(this.sgbd)
   }
 
   getHostPlaceholder(): string {

@@ -177,6 +177,40 @@
     cursor: pointer !important;
 }
 
+:host ::ng-deep .monaco-editor .dbolt-sql-change-added,
+:host ::ng-deep .monaco-editor .dbolt-sql-change-modified {
+    border-radius: 2px;
+    box-sizing: border-box;
+    margin-left: 3px;
+    width: 3px !important;
+}
+
+:host ::ng-deep .monaco-editor .dbolt-sql-change-added {
+    background: #2ea043;
+}
+
+:host ::ng-deep .monaco-editor .dbolt-sql-change-modified {
+    background: #3794ff;
+}
+
+:host ::ng-deep .monaco-editor .dbolt-sql-change-deleted {
+    height: 0 !important;
+    margin-left: 3px;
+    overflow: visible !important;
+    width: 0 !important;
+}
+
+:host ::ng-deep .monaco-editor .dbolt-sql-change-deleted::before {
+    border-bottom: 4px solid transparent;
+    border-left: 5px solid #f14c4c;
+    border-top: 4px solid transparent;
+    content: '';
+    display: block;
+    height: 0;
+    transform: translateY(-4px);
+    width: 0;
+}
+
 .monaco-editor .margin-view-overlays {
     background-color: transparent !important;
     border-right: none !important;
