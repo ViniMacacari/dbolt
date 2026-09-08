@@ -94,8 +94,8 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
     expect(result.connectionKey).toBe('ai-context')
   })
 
-  it('recommends ChatGPT even with another provider configured and persists dismissal', async () => {
-    const dismissedSettings = {
+  it('keeps another configured provider usable without a connected ChatGPT account', () => {
+    const configuredSettings = {
       provider: 'gemini' as const,
       baseUrl: '',
       model: 'gemini-test',
@@ -117,11 +117,8 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
         maxToolTranscriptChars: 18000
       }
     }
-    const settingsService = {
-      dismissOpenAiOAuthRecommendation: jasmine.createSpy().and.resolveTo(dismissedSettings)
-    }
     const component = new AiAssistantPanelComponent(
-      settingsService as any,
+      {} as any,
       {} as any,
       {} as any,
       {} as any,
@@ -129,17 +126,11 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
       {} as any,
       {} as any
     )
-    component.settings = {
-      ...dismissedSettings,
-      openAiOAuthRecommendationDismissed: false
-    }
+    component.settings = configuredSettings
 
-    expect(component.showOpenAiOAuthRecommendation).toBeTrue()
-
-    await component.dismissOpenAiOAuthRecommendation()
-
-    expect(settingsService.dismissOpenAiOAuthRecommendation).toHaveBeenCalledTimes(1)
-    expect(component.showOpenAiOAuthRecommendation).toBeFalse()
+    expect(component.canChat).toBeTrue()
+    expect(component.settings.provider).toBe('gemini')
+    expect(component.settings.openAiOAuthConnected).toBeFalse()
   })
 
   it('changes the active model from the conversation without clearing its messages', async () => {

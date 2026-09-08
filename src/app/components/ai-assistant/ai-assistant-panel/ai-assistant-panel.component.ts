@@ -74,7 +74,6 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   thinkingSteps: AiAssistantProgressStage[] = []
   thinkingExpanded: boolean = false
   thinkingElapsedSeconds: number = 0
-  openAiOAuthSigningIn: boolean = false
   modelOptions: AiAssistantModelOption[] = []
   modelOptionsLoading: boolean = false
   modelSaving: boolean = false
@@ -135,14 +134,6 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
 
   get canChat(): boolean {
     return Boolean(this.settings?.hasApiKey) && !this.loadingSettings
-  }
-
-  get showOpenAiOAuthRecommendation(): boolean {
-    return Boolean(
-      this.settings &&
-      !this.settings.openAiOAuthConnected &&
-      !this.settings.openAiOAuthRecommendationDismissed
-    )
   }
 
   get databaseContextAvailable(): boolean {
@@ -232,22 +223,6 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     }
   }
 
-  async connectOpenAiOAuth(): Promise<void> {
-    if (this.openAiOAuthSigningIn) return
-
-    this.openAiOAuthSigningIn = true
-    this.errorMessage = ''
-
-    try {
-      await this.openAiOAuth.signIn()
-      await this.loadSettings()
-    } catch (error: unknown) {
-      this.errorMessage = this.getErrorMessage(error, this.t('settings.ai.oauth.loginFailed'))
-    } finally {
-      this.openAiOAuthSigningIn = false
-    }
-  }
-
   private async loadModelOptions(settings: AiAssistantSettings): Promise<void> {
     const requestId = ++this.modelOptionsRequestId
     const currentModelOption = modelOption(settings.model)
@@ -279,21 +254,6 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       if (requestId === this.modelOptionsRequestId) {
         this.modelOptionsLoading = false
       }
-    }
-  }
-
-  async dismissOpenAiOAuthRecommendation(): Promise<void> {
-    if (!this.settings) return
-
-    this.settings = {
-      ...this.settings,
-      openAiOAuthRecommendationDismissed: true
-    }
-
-    try {
-      this.settings = await this.settingsService.dismissOpenAiOAuthRecommendation()
-    } catch (error: unknown) {
-      this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.oauth.dismissFailed'))
     }
   }
 
