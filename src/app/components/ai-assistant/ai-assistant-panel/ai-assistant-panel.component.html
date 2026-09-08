@@ -71,30 +71,22 @@
         {{ errorMessage }}
     </div>
 
-    <section class="openai-oauth-recommendation" *ngIf="showOpenAiOAuthRecommendation">
-        <button type="button" class="oauth-recommendation-close" (click)="dismissOpenAiOAuthRecommendation()"
-            [title]="t('generic.close')" [attr.aria-label]="t('generic.close')">
-            <img src="icons/close.png" width="12" height="12" [alt]="t('generic.close')">
-        </button>
-        <div class="oauth-recommendation-heading">
-            <img src="icons/ai.png" width="20" height="20" [alt]="t('aiAssistant.oauth.recommendationTitle')">
-            <strong>{{ t('aiAssistant.oauth.recommendationTitle') }}</strong>
-        </div>
-        <p>{{ t('aiAssistant.oauth.recommendationDescription') }}</p>
-        <small>{{ t('settings.ai.oauth.unofficial') }}</small>
-        <button type="button" class="oauth-recommendation-action" (click)="connectOpenAiOAuth()"
-            [disabled]="openAiOAuthSigningIn">
-            {{ openAiOAuthSigningIn ? t('settings.ai.oauth.waiting') : t('settings.ai.oauth.signIn') }}
-        </button>
-    </section>
-
-    <div class="connection ai-config-needed" *ngIf="!loadingSettings && !settings?.hasApiKey">
+    <div class="connection ai-config-needed"
+        *ngIf="!loadingSettings && !settings?.hasApiKey && messages.length > 0">
         <p>{{ t('aiAssistant.settingsRequired') }}</p>
         <button type="button" (click)="settingsRequested.emit()">{{ t('aiAssistant.openSettings') }}</button>
     </div>
 
     <div class="connections ai-chat" #messagesContainer>
-        <div class="connection ai-empty" *ngIf="messages.length === 0">
+        <div class="connection ai-empty ai-configuration-empty"
+            *ngIf="messages.length === 0 && !loadingSettings && !canChat">
+            <img src="icons/ai.png" [alt]="t('aiAssistant.assistant')">
+            <strong>{{ t('aiAssistant.setupRequiredTitle') }}</strong>
+            <p>{{ t('aiAssistant.settingsRequired') }}</p>
+            <button type="button" (click)="settingsRequested.emit()">{{ t('aiAssistant.openSettings') }}</button>
+        </div>
+
+        <div class="connection ai-empty" *ngIf="messages.length === 0 && (loadingSettings || canChat)">
             <img src="icons/ai.png" [alt]="t('aiAssistant.assistant')">
             <p class="text-min-gray">{{ t('aiAssistant.emptyState') }}</p>
         </div>
