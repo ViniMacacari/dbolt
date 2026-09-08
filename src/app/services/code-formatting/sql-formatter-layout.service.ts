@@ -3,7 +3,7 @@ import type { SqlCodeFormatterOptions } from './sql-code-formatter.service'
 
 type ResolvedSqlCodeFormatterOptions = Required<SqlCodeFormatterOptions>
 type SqlBlockType = 'begin' | 'case' | 'if' | 'loop'
-type SqlSection = 'select' | 'set' | 'predicate' | 'join' | null
+type SqlSection = 'select' | 'from' | 'set' | 'predicate' | 'join' | null
 
 interface SqlStatement {
   text: string
@@ -349,7 +349,7 @@ export class SqlFormatterLayoutService {
     const clauses = sql
       .replace(/\s*\b(BEGIN)\b\s*/gi, '\n$1\n')
       .replace(/\s*\b(END)\b/gi, '\n$1')
-      .replace(/(?<!\bDELETE)\s+(FROM)\b/gi, '\n$1')
+      .replace(/(?<!\bDELETE)\s+(FROM)\b\s*/gi, '\n$1\n')
       .replace(/\s+(WHERE)\b\s*/gi, '\n$1\n')
       .replace(/\s+(GROUP\s+BY)\b/gi, '\n$1')
       .replace(/\s+(ORDER\s+BY)\b/gi, '\n$1')
@@ -597,11 +597,12 @@ export class SqlFormatterLayoutService {
 
   private resolveNextSection(line: string, current: SqlSection): SqlSection {
     if (/^SELECT\b/i.test(line)) return 'select'
+    if (/^FROM$/i.test(line)) return 'from'
     if (/^SET$/i.test(line)) return 'set'
     if (/^(WHERE|HAVING)$/i.test(line)) return 'predicate'
     if (/^ON\b/i.test(line)) return 'join'
 
-    if (/^(FROM|GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET|RETURNING|VALUES|UNION|(?:INNER|LEFT(?:\s+OUTER)?|RIGHT(?:\s+OUTER)?|FULL(?:\s+OUTER)?|CROSS)?\s*JOIN)\b/i.test(line)) {
+    if (/^(GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET|RETURNING|VALUES|UNION|(?:INNER|LEFT(?:\s+OUTER)?|RIGHT(?:\s+OUTER)?|FULL(?:\s+OUTER)?|CROSS)?\s*JOIN)\b/i.test(line)) {
       return null
     }
 
