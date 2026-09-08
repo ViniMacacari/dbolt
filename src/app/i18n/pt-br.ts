@@ -537,6 +537,8 @@ export const ptBrTranslations: TranslationCatalog = {
   'aiAssistant.readonlyDb': 'Contexto readonly do banco',
   'aiAssistant.includeCurrentSql': 'Incluir SQL atual',
   'aiAssistant.includeCurrentSqlHint': 'Envia a aba SQL ativa como contexto. Você poderá aplicar nela uma consulta sugerida pela IA.',
+  'aiAssistant.autoApplyCurrentSql': 'Alterar SQL automaticamente',
+  'aiAssistant.autoApplyCurrentSqlHint': 'Substitui a query atual quando a IA devolver um SQL completo.',
   'aiAssistant.askPlaceholder': 'Pergunte algo...',
   'aiAssistant.send': 'Enviar',
   'aiAssistant.copyAnswer': 'Copiar',

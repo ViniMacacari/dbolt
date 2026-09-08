@@ -537,6 +537,8 @@ export const enTranslations: TranslationCatalog = {
   'aiAssistant.readonlyDb': 'Readonly database context',
   'aiAssistant.includeCurrentSql': 'Include current SQL',
   'aiAssistant.includeCurrentSqlHint': 'Sends the active SQL tab as context. You can apply an AI-suggested query to it.',
+  'aiAssistant.autoApplyCurrentSql': 'Apply SQL automatically',
+  'aiAssistant.autoApplyCurrentSqlHint': 'Replaces the current query when AI returns complete SQL.',
   'aiAssistant.askPlaceholder': 'Ask something...',
   'aiAssistant.send': 'Send',
   'aiAssistant.copyAnswer': 'Copy',
