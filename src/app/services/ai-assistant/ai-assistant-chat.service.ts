@@ -23,6 +23,7 @@ export class AiAssistantChatService {
     messages: AiAssistantApiMessage[],
     readonlyContext?: AiReadonlyDatabaseToolContext,
     currentSql?: string,
+    autoApplyCurrentSql: boolean = false,
     onProgress?: (stage: AiAssistantProgressStage) => void
   ): Promise<AiAssistantChatResponse> {
     let result: AiAssistantChatResponse | undefined
@@ -31,6 +32,7 @@ export class AiAssistantChatService {
       messages,
       readonlyContext,
       currentSql,
+      autoApplyCurrentSql,
       appLanguage: this.language.getCurrentLanguage()
     }, (event) => {
       if (event.type === 'progress') {
