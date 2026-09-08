@@ -24,7 +24,8 @@ import {
   AiAssistantSettings,
   AiChatInputSubmit,
   AiChatMessage,
-  AiReadonlyDatabaseToolContext
+  AiReadonlyDatabaseToolContext,
+  AiSqlEditorRequest
 } from '../../../services/ai-assistant/ai-assistant.model'
 import { AiDatabaseContextService } from '../../../services/ai-assistant/ai-database-context.service'
 import { AiAssistantSettingsService } from '../../../services/ai-assistant/ai-assistant-settings.service'
@@ -63,7 +64,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   @Input() tabInfo: unknown
   @Output() close = new EventEmitter<void>()
   @Output() settingsRequested = new EventEmitter<void>()
-  @Output() sqlRequested = new EventEmitter<string>()
+  @Output() sqlRequested = new EventEmitter<AiSqlEditorRequest>()
 
   settings: AiAssistantSettings | null = null
   conversations: AiAssistantConversation[] = []
@@ -197,7 +198,10 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     const normalizedSql = String(sql || '').trim()
     if (!normalizedSql) return
 
-    this.sqlRequested.emit(normalizedSql)
+    this.sqlRequested.emit({
+      sql: normalizedSql,
+      mode: 'new-tab'
+    })
   }
 
   async loadSettings(): Promise<void> {
@@ -297,6 +301,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     }
 
     const currentSql = event.includeCurrentSql ? this.currentSqlContext : undefined
+    const currentSqlTarget = currentSql ? this.tabInfo : undefined
 
     let conversationId = ''
     try {
@@ -327,6 +332,15 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       )
       this.messages = [...this.messages, this.createMessage('assistant', response.message)]
       await this.saveConversationMessages(conversationId, this.messages)
+
+      const updatedSql = String(response.updatedSql || '').trim()
+      if (currentSqlTarget && updatedSql && updatedSql !== currentSql) {
+        this.sqlRequested.emit({
+          sql: updatedSql,
+          mode: 'replace-current',
+          targetTab: currentSqlTarget
+        })
+      }
     } catch (error: unknown) {
       this.messages = [
         ...this.messages,
