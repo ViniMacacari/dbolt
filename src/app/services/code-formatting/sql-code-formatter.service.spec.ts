@@ -53,9 +53,8 @@ SELECT
     END AS status
 FROM
     sales.orders o
-JOIN sales.payments p
-    ON p.order_id = o.id
-    AND p.installment_id = o.installment_id
+    JOIN sales.payments p ON p.order_id = o.id
+        AND p.installment_id = o.installment_id
 WHERE
     o.type = 13
     AND o.status IN (
@@ -154,6 +153,23 @@ END;`)
     *
 FROM
     sample_table -- source used by the query`)
+  })
+
+  it('nests JOIN clauses inside FROM and keeps the first ON condition on the JOIN line', () => {
+    const sql = `
+      select *
+      from base_table b
+      join related_table_one r1 on b.id = r1.base_id and b.version = r1.base_version
+      left join related_table_two r2 on b.id = r2.base_id
+    `
+
+    expect(formatter.format(sql, { indentSize: 4 })).toBe(`SELECT
+    *
+FROM
+    base_table b
+    JOIN related_table_one r1 ON b.id = r1.base_id
+        AND b.version = r1.base_version
+    LEFT JOIN related_table_two r2 ON b.id = r2.base_id`)
   })
 
   it('keeps the formatted result stable and preserves BETWEEN as one condition', () => {
