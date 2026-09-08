@@ -128,7 +128,8 @@
     </div>
 
     <app-ai-chat-input [disabled]="sending || !canChat || loadingConversations"
-        [databaseContextAvailable]="databaseContextAvailable" (send)="onSend($event)">
+        [databaseContextAvailable]="databaseContextAvailable" [currentSqlAvailable]="currentSqlContextAvailable"
+        (send)="onSend($event)">
     </app-ai-chat-input>
 </aside>
 
