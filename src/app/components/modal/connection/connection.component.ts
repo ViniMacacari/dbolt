@@ -11,6 +11,7 @@ import type { SavedConnection } from '../../../services/resolve-connections/conn
 import { DatabaseVersionService } from '../../../services/database-version/database-version.service'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { ButtonComponent } from '../../elements/button/button.component'
+import { DatabaseLogoService } from '../../../services/database-logo/database-logo.service'
 
 @Component({
   selector: 'app-connection',
@@ -44,7 +45,8 @@ export class ConnectionComponent {
     private IAPI: InternalApiService,
     private connectionsService: ConnectionsService,
     private databaseVersion: DatabaseVersionService,
-    private language: AppLanguageService
+    private language: AppLanguageService,
+    private databaseLogo: DatabaseLogoService
   ) { }
 
   async ngAfterViewInit(): Promise<void> {
@@ -127,7 +129,7 @@ export class ConnectionComponent {
   }
 
   getDatabaseLogoPath(): string {
-    return this.isSQLite ? 'icons/database.png' : `db-logo/${this.sgbd}.png`
+    return this.databaseLogo.path(this.sgbd)
   }
 
   getHostPlaceholder(): string {
