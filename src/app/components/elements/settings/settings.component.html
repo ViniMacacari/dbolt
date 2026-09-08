@@ -210,9 +210,29 @@
                     </div>
                 </div>
 
-                <div class="ai-oauth-connection" *ngIf="aiProvider === 'openai-oauth'"
-                    [class.connected]="aiOpenAiOAuthConnected">
-                    <img src="icons/ai.png" width="22" height="22" [alt]="t('settings.ai.oauth.title')">
+                <label class="ai-toggle" for="ai-custom-endpoint" *ngIf="aiProvider === 'openai'">
+                    <span>{{ t('settings.ai.customEndpoint') }}</span>
+                    <span class="toggle-control compact-toggle">
+                        <input id="ai-custom-endpoint" type="checkbox" [checked]="aiCustomEndpointEnabled"
+                            (change)="onAiCustomEndpointChanged($event)">
+                        <span></span>
+                    </span>
+                </label>
+
+                <div class="ai-field" *ngIf="aiProvider === 'openai' && aiCustomEndpointEnabled">
+                    <label for="ai-base-url">{{ t('settings.ai.endpoint') }}</label>
+                    <input id="ai-base-url" type="text" [value]="aiBaseUrl" (input)="onAiBaseUrlInput($event)">
+                </div>
+            </div>
+
+            <div class="settings-card ai-settings-card ai-oauth-settings-card">
+                <div class="ai-settings-header">
+                    <h3>{{ t('settings.ai.oauth.sectionTitle') }}</h3>
+                    <p>{{ t('settings.ai.oauth.sectionDescription') }}</p>
+                </div>
+
+                <div class="ai-oauth-connection" [class.connected]="aiOpenAiOAuthConnected">
+                    <img src="icons/ai.png" width="22" height="22" [alt]="t('settings.ai.oauth.sectionTitle')">
                     <div class="ai-oauth-connection-copy">
                         <strong>{{ aiOpenAiOAuthConnected ? t('settings.ai.oauth.connected') : t('settings.ai.oauth.title') }}</strong>
                         <span>{{ aiOpenAiOAuthConnected ? t('settings.ai.oauth.connectedDescription') : t('settings.ai.oauth.description') }}</span>
@@ -226,20 +246,6 @@
                         (click)="disconnectOpenAiOAuth()" [disabled]="aiOpenAiOAuthSigningIn">
                         {{ t('settings.ai.oauth.disconnect') }}
                     </button>
-                </div>
-
-                <label class="ai-toggle" for="ai-custom-endpoint" *ngIf="aiProvider === 'openai'">
-                    <span>{{ t('settings.ai.customEndpoint') }}</span>
-                    <span class="toggle-control compact-toggle">
-                        <input id="ai-custom-endpoint" type="checkbox" [checked]="aiCustomEndpointEnabled"
-                            (change)="onAiCustomEndpointChanged($event)">
-                        <span></span>
-                    </span>
-                </label>
-
-                <div class="ai-field" *ngIf="aiProvider === 'openai' && aiCustomEndpointEnabled">
-                    <label for="ai-base-url">{{ t('settings.ai.endpoint') }}</label>
-                    <input id="ai-base-url" type="text" [value]="aiBaseUrl" (input)="onAiBaseUrlInput($event)">
                 </div>
             </div>
 

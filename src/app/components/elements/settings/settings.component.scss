@@ -403,16 +403,21 @@
     }
 
     > button {
-        background: var(--dbolt-2b3340);
-        border: 1px solid rgba(115, 158, 202, .4);
+        background: var(--dbolt-292727);
+        border: 1px solid var(--dbolt-3b3b3b);
         border-radius: 10px;
-        color: var(--dbolt-d8e9fb);
+        color: var(--dbolt-e8eaed);
         font-family: 'Nunito';
         font-size: .78em;
         font-weight: 800;
         min-height: 36px;
         padding: 0 13px;
         white-space: nowrap;
+
+        &:hover:not(:disabled) {
+            background: var(--dbolt-303030);
+            border-color: var(--dbolt-4a4444);
+        }
 
         &.disconnect {
             background: var(--dbolt-332323);
