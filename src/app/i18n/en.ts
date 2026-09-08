@@ -535,6 +535,8 @@ export const enTranslations: TranslationCatalog = {
   'aiAssistant.settingsRequired': 'AI must be configured before sending messages.',
   'aiAssistant.setupRequiredTitle': 'Configure AI to get started',
   'aiAssistant.readonlyDb': 'Readonly database context',
+  'aiAssistant.includeCurrentSql': 'Include current SQL',
+  'aiAssistant.includeCurrentSqlHint': 'Sends the active SQL tab content as context for this message.',
   'aiAssistant.askPlaceholder': 'Ask something...',
   'aiAssistant.send': 'Send',
   'aiAssistant.copyAnswer': 'Copy',

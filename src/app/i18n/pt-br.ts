@@ -535,6 +535,8 @@ export const ptBrTranslations: TranslationCatalog = {
   'aiAssistant.settingsRequired': 'A IA deve ser configurada antes de enviar mensagens.',
   'aiAssistant.setupRequiredTitle': 'Configure a IA para começar',
   'aiAssistant.readonlyDb': 'Contexto readonly do banco',
+  'aiAssistant.includeCurrentSql': 'Incluir SQL atual',
+  'aiAssistant.includeCurrentSqlHint': 'Envia o conteúdo da aba SQL ativa como contexto desta mensagem.',
   'aiAssistant.askPlaceholder': 'Pergunte algo...',
   'aiAssistant.send': 'Enviar',
   'aiAssistant.copyAnswer': 'Copiar',
