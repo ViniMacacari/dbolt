@@ -19,6 +19,7 @@ export interface AiAssistantAgentChatMessage {
 export interface AiAssistantAgentChatRequest {
   messages: AiAssistantAgentChatMessage[];
   readonlyContext?: AiReadonlyDatabaseContext;
+  currentSql?: string;
   appLanguage?: string;
 }
 
@@ -46,6 +47,7 @@ class AiAssistantAgentService {
   ): Promise<AiAssistantAgentChatResult> {
     const messages = this.normalizeMessages(request.messages, settings.limits.maxContextMessages);
     const readonlyContext = this.normalizeReadonlyContext(request.readonlyContext);
+    const currentSql = this.normalizeCurrentSql(request.currentSql);
     const responseLanguage = this.getResponseLanguage(request.appLanguage);
     const budget = AiAssistantToolBudget.createState({
       ...settings.limits,
@@ -83,7 +85,15 @@ class AiAssistantAgentService {
 
       const completion = await AiAssistantModelClient.complete(
         settings,
-        this.buildSystemPrompt(readonlyContext, budget, toolSections, forceFinalAnswer, responseLanguage, allowTools),
+        this.buildSystemPrompt(
+          readonlyContext,
+          currentSql,
+          budget,
+          toolSections,
+          forceFinalAnswer,
+          responseLanguage,
+          allowTools
+        ),
         messages
       );
       lastModel = completion.model;
@@ -118,6 +128,7 @@ class AiAssistantAgentService {
 
   private buildSystemPrompt(
     readonlyContext: AiReadonlyDatabaseContext | undefined,
+    currentSql: string | undefined,
     budget: AiAssistantToolBudgetState,
     toolSections: string[],
     forceFinalAnswer: boolean,
@@ -138,6 +149,7 @@ class AiAssistantAgentService {
       'If you provide a write/DDL/DML script, make clear it is only a script for the user to review and run manually; do not claim it was executed.',
       'Database action and AI API call limits apply only to the current user message. They reset for every new user message and are not accumulated across the conversation.',
       'Only say the current message limit is exhausted when DBOLT explicitly stops allowing database actions in this current request.',
+      ...(currentSql ? [this.buildCurrentSqlPrompt(currentSql)] : []),
       ...(readonlyContext && allowTools ? [
         this.buildReadonlyContextPrompt(readonlyContext),
         'Read-only database context is already authorized for this message. Read-only means DBOLT will not modify data; it does not mean you are forbidden from reading table rows.',
@@ -204,6 +216,28 @@ class AiAssistantAgentService {
       ...context,
       sgbd: inferredSgbd
     };
+  }
+
+  private normalizeCurrentSql(value: unknown): string | undefined {
+    if (typeof value !== 'string') return undefined;
+
+    const sql = value.trim();
+    if (!sql) return undefined;
+
+    const maximumLength = 40000;
+    return sql.length <= maximumLength
+      ? sql
+      : `${sql.slice(0, maximumLength)}\n-- Current SQL context truncated by DBOLT`;
+  }
+
+  private buildCurrentSqlPrompt(currentSql: string): string {
+    return [
+      'The user explicitly shared the current SQL editor content as context for this message.',
+      'Use it to understand the request. Do not treat sharing this text alone as a request to execute it.',
+      '--- BEGIN CURRENT SQL CONTEXT ---',
+      currentSql,
+      '--- END CURRENT SQL CONTEXT ---'
+    ].join('\n');
   }
 
   private async executeToolCalls(
