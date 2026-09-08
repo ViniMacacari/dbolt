@@ -4,22 +4,25 @@ import { FormsModule } from '@angular/forms'
 
 import { AiChatInputSubmit } from '../../../services/ai-assistant/ai-assistant.model'
 import { AppLanguageService } from '../../../services/language/app-language.service'
+import { ButtonComponent } from '../../elements/button/button.component'
 import { CheckboxComponent } from '../../elements/checkbox/checkbox.component'
 
 @Component({
   selector: 'app-ai-chat-input',
   standalone: true,
-  imports: [CommonModule, FormsModule, CheckboxComponent],
+  imports: [CommonModule, FormsModule, ButtonComponent, CheckboxComponent],
   templateUrl: './ai-chat-input.component.html',
   styleUrl: './ai-chat-input.component.scss'
 })
 export class AiChatInputComponent {
   @Input() disabled: boolean = false
   @Input() databaseContextAvailable: boolean = false
+  @Input() currentSqlAvailable: boolean = false
   @Output() send = new EventEmitter<AiChatInputSubmit>()
 
   message: string = ''
   allowDatabaseContext: boolean = true
+  includeCurrentSql: boolean = false
 
   constructor(private language: AppLanguageService) { }
 
@@ -36,7 +39,8 @@ export class AiChatInputComponent {
 
     this.send.emit({
       message,
-      allowDatabaseContext: this.databaseContextAvailable && this.allowDatabaseContext
+      allowDatabaseContext: this.databaseContextAvailable && this.allowDatabaseContext,
+      includeCurrentSql: this.currentSqlAvailable && this.includeCurrentSql
     })
 
     this.message = ''
