@@ -15,6 +15,8 @@ interface ProtectedSql {
   values: string[]
 }
 
+type ProtectedSqlValueType = 'value' | 'line-comment'
+
 @Injectable({
   providedIn: 'root'
 })
@@ -38,8 +40,14 @@ export class SqlCodeFormatterService {
     ['between', 'BETWEEN'],
     ['by', 'BY'],
     ['case', 'CASE'],
+    ['cast', 'CAST'],
+    ['coalesce', 'COALESCE'],
+    ['count', 'COUNT'],
     ['create', 'CREATE'],
     ['cross', 'CROSS'],
+    ['current_date', 'CURRENT_DATE'],
+    ['current_time', 'CURRENT_TIME'],
+    ['current_timestamp', 'CURRENT_TIMESTAMP'],
     ['call', 'CALL'],
     ['declare', 'DECLARE'],
     ['delete', 'DELETE'],
@@ -66,6 +74,7 @@ export class SqlCodeFormatterService {
     ['left', 'LEFT'],
     ['like', 'LIKE'],
     ['limit', 'LIMIT'],
+    ['language', 'LANGUAGE'],
     ['loop', 'LOOP'],
     ['not', 'NOT'],
     ['null', 'NULL'],
@@ -95,7 +104,8 @@ export class SqlCodeFormatterService {
     ['when', 'WHEN'],
     ['where', 'WHERE'],
     ['while', 'WHILE'],
-    ['with', 'WITH']
+    ['with', 'WITH'],
+    ['sqlscript', 'SQLSCRIPT']
   ])
 
   constructor(private layout: SqlFormatterLayoutService) { }
@@ -145,7 +155,7 @@ export class SqlCodeFormatterService {
 
       if (current === '-' && next === '-') {
         const endIndex = this.findLineEnd(sql, index + 2)
-        result += this.createPlaceholder(values, sql.slice(index, endIndex))
+        result += `${this.createPlaceholder(values, sql.slice(index, endIndex), 'line-comment')}__DBOLT_SQL_LINE_BREAK__`
         index = endIndex - 1
         continue
       }
@@ -185,10 +195,16 @@ export class SqlCodeFormatterService {
     return { sql: result, values }
   }
 
-  private createPlaceholder(values: string[], value: string): string {
+  private createPlaceholder(
+    values: string[],
+    value: string,
+    type: ProtectedSqlValueType = 'value'
+  ): string {
     const index = values.push(value) - 1
 
-    return `__DBOLT_SQL_FMT_${index}__`
+    return type === 'line-comment'
+      ? `__DBOLT_SQL_LINE_COMMENT_${index}__`
+      : `__DBOLT_SQL_FMT_${index}__`
   }
 
   private findLineEnd(sql: string, startIndex: number): number {
@@ -230,12 +246,14 @@ export class SqlCodeFormatterService {
   private normalizeWhitespace(sql: string): string {
     return sql
       .replace(/\r\n?/g, '\n')
+      .replace(/__DBOLT_SQL_LINE_BREAK__\s*/g, '__DBOLT_SQL_LINE_BREAK__')
       .replace(/\s+/g, ' ')
       .replace(/\s*([,;])\s*/g, '$1 ')
       .replace(/\s*\(\s*/g, '(')
       .replace(/\s*\)/g, ')')
       .replace(/\s*([=<>!]+)\s*/g, ' $1 ')
       .replace(/\s+/g, ' ')
+      .replace(/__DBOLT_SQL_LINE_BREAK__/g, '\n')
       .trim()
   }
 
@@ -246,6 +264,9 @@ export class SqlCodeFormatterService {
   }
 
   private restoreProtectedValues(sql: string, values: string[]): string {
-    return sql.replace(/__DBOLT_SQL_FMT_(\d+)__/g, (_, index) => values[Number(index)] || '')
+    return sql.replace(
+      /__DBOLT_SQL_(?:LINE_COMMENT_|FMT_)(\d+)__/g,
+      (_, index) => values[Number(index)] || ''
+    )
   }
 }
