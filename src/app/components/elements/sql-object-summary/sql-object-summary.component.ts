@@ -99,7 +99,6 @@ export class SqlObjectSummaryComponent implements OnChanges {
 
   showColumns(): void {
     this.activeView = 'columns'
-    requestAnimationFrame(() => this.fitColumns())
   }
 
   async showDdl(): Promise<void> {
@@ -157,7 +156,6 @@ export class SqlObjectSummaryComponent implements OnChanges {
       this.columnDefs = this.buildColumnDefs(this.rows)
       this.gridApi?.setGridOption('columnDefs', this.columnDefs)
       this.gridApi?.setGridOption('rowData', this.rows)
-      requestAnimationFrame(() => this.fitColumns())
     } catch (error: any) {
       if (requestId !== this.columnsRequestId) return
 
@@ -174,7 +172,6 @@ export class SqlObjectSummaryComponent implements OnChanges {
   onGridReady(event: GridReadyEvent): void {
     this.gridApi = event.api
     this.gridApi.setGridOption('quickFilterText', this.filterText)
-    this.fitColumns()
   }
 
   onFilterInput(event: Event): void {
@@ -221,11 +218,39 @@ export class SqlObjectSummaryComponent implements OnChanges {
     return orderedKeys.map((key) => ({
       field: key,
       headerName: this.getColumnHeader(key),
-      flex: key === 'name' || key === 'type' || key === 'comment' ? 1 : undefined,
-      minWidth: key === 'ordinal_position' ? 64 : key === 'is_nullable' ? 92 : 120,
+      width: this.getColumnWidth(key),
+      minWidth: this.getColumnMinWidth(key),
       maxWidth: key === 'ordinal_position' ? 72 : undefined,
       tooltipField: key
     }))
+  }
+
+  private getColumnWidth(key: string): number {
+    const widths: Record<string, number> = {
+      ordinal_position: 66,
+      name: 190,
+      type: 180,
+      is_nullable: 105,
+      default_value: 220,
+      column_default: 220,
+      comment: 260
+    }
+
+    return widths[key] || 170
+  }
+
+  private getColumnMinWidth(key: string): number {
+    const minimumWidths: Record<string, number> = {
+      ordinal_position: 58,
+      name: 150,
+      type: 140,
+      is_nullable: 90,
+      default_value: 160,
+      column_default: 160,
+      comment: 180
+    }
+
+    return minimumWidths[key] || 130
   }
 
   private getColumnHeader(key: string): string {
@@ -244,12 +269,6 @@ export class SqlObjectSummaryComponent implements OnChanges {
     return key
       .replaceAll('_', ' ')
       .replace(/\b\w/g, (letter) => letter.toUpperCase())
-  }
-
-  private fitColumns(): void {
-    if (!this.gridApi || this.activeView !== 'columns' || this.rows.length === 0) return
-
-    this.gridApi.sizeColumnsToFit()
   }
 
   private getObjectKey(): string {
