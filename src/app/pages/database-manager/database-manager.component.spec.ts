@@ -59,4 +59,47 @@ describe('DatabaseManagerComponent', () => {
       objectType: 'table'
     }, 'orders');
   });
+
+  it('replaces the SQL tab used as AI context instead of opening another tab', () => {
+    const targetTab = {
+      id: 10,
+      name: 'Example query',
+      type: 'sql',
+      info: { sql: 'SELECT column_a FROM table_a' },
+      originalContent: 'SELECT column_a FROM table_a',
+      icon: 'CODE'
+    };
+    const tabs = {
+      tabs: [targetTab],
+      getActiveTab: jasmine.createSpy('getActiveTab').and.returnValue(targetTab),
+      newTab: jasmine.createSpy('newTab')
+    };
+    component.tabsComponent = tabs as any;
+
+    component.onAiSqlRequested({
+      sql: 'SELECT column_b FROM table_a',
+      mode: 'replace-current',
+      targetTab
+    });
+
+    expect(targetTab.info.sql).toBe('SELECT column_b FROM table_a');
+    expect(targetTab.icon).toBe('CHANGE');
+    expect(tabs.newTab).not.toHaveBeenCalled();
+  });
+
+  it('keeps whitespace-only edits marked as unsaved changes', () => {
+    const targetTab = {
+      type: 'sql',
+      info: { sql: 'SELECT column_a FROM table_a' },
+      originalContent: 'SELECT column_a FROM table_a',
+      icon: 'CODE'
+    };
+    component.tabsComponent = {
+      getActiveTab: jasmine.createSpy('getActiveTab').and.returnValue(targetTab)
+    } as any;
+
+    component.onSqlContentChange('  SELECT column_a FROM table_a', targetTab);
+
+    expect(targetTab.icon).toBe('CHANGE');
+  });
 });

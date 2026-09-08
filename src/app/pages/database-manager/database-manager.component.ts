@@ -20,6 +20,7 @@ import { QueryVersionCompareComponent } from '../../components/elements/query-ve
 import { QuerySaveService, SavedQuery } from '../../services/query-save/query-save.service'
 import { AppLanguageService } from '../../services/language/app-language.service'
 import { AiAssistantPanelComponent } from '../../components/ai-assistant/ai-assistant-panel/ai-assistant-panel.component'
+import { AiSqlEditorRequest } from '../../services/ai-assistant/ai-assistant.model'
 import { DatabaseDiagramComponent } from '../../components/elements/database-diagram/database-diagram.component'
 import { DbExportComponent } from '../../components/elements/db-export/db-export.component'
 import { ToolsNavigationService } from '../../services/tools/tools-navigation.service'
@@ -441,9 +442,19 @@ export class DatabaseManagerComponent implements OnDestroy {
     this.tabsComponent.openSettingsTab('ai')
   }
 
-  onAiSqlRequested(sql: string): void {
-    const normalizedSql = String(sql || '').trim()
+  onAiSqlRequested(request: AiSqlEditorRequest): void {
+    const normalizedSql = String(request?.sql || '').trim()
     if (!normalizedSql) return
+
+    const targetTab = request.mode === 'replace-current' ? request.targetTab as any : null
+    if (targetTab?.type === 'sql' && this.tabsComponent.tabs.includes(targetTab)) {
+      targetTab.info = {
+        ...targetTab.info,
+        sql: normalizedSql
+      }
+      this.onSqlContentChange(normalizedSql, targetTab)
+      return
+    }
 
     this.tabsComponent.newTab('sql', {
       sql: normalizedSql,
@@ -568,10 +579,10 @@ export class DatabaseManagerComponent implements OnDestroy {
     const tab = sourceTab || this.tabsComponent.getActiveTab()
     if (tab) {
       tab.info.sql = content
-      const currentSql = tab.info.sql || ''
-      const originalSql = tab.originalContent || ''
+      const currentSql = String(tab.info.sql || '').replace(/\r\n/g, '\n')
+      const originalSql = String(tab.originalContent || '').replace(/\r\n/g, '\n')
 
-      if (currentSql.trim() !== originalSql.trim()) {
+      if (currentSql !== originalSql) {
         tab.icon = 'CHANGE'
       } else {
         tab.icon = 'CODE'
