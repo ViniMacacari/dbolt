@@ -29,29 +29,49 @@ function aiSettings(overrides: Partial<AiAssistantSettings> = {}): AiAssistantSe
   }
 }
 
-describe('SettingsComponent AI credentials', () => {
+describe('SettingsComponent', () => {
+  let appSettings: jasmine.SpyObj<any>
   let settingsService: jasmine.SpyObj<any>
   let openAiOAuth: jasmine.SpyObj<any>
   let component: SettingsComponent
 
   beforeEach(() => {
-    const appSettings = {
-      getDefaultQueryRows: () => 50,
-      getConnectionExpirationMinutes: () => 30,
-      isSqlSyntaxValidationEnabled: () => true,
-      isTableAutocompleteEnabled: () => true,
-      getTableAutocompleteMatchMode: () => 'contains',
-      isColumnAutocompleteEnabled: () => true,
-      shouldAutoQuoteCapitalizedColumns: () => false,
-      getSqlFormatterIndentSize: () => 4,
-      shouldUppercaseSqlFormatterKeywords: () => true,
-      getSqlFormatterCommaStyle: () => 'trailing',
-      shouldAddBlankLineBetweenSqlStatements: () => true,
-      shouldIndentSqlCreateBody: () => false,
-      getSqlHighlightMode: () => 'dbolt-dark',
-      getSqlHighlightColors: () => ({}),
-      getAppLanguage: () => 'pt-br'
-    }
+    appSettings = jasmine.createSpyObj('AppSettingsService', [
+      'getDefaultQueryRows',
+      'getConnectionExpirationMinutes',
+      'isSqlSyntaxValidationEnabled',
+      'isTableAutocompleteEnabled',
+      'getTableAutocompleteMatchMode',
+      'isColumnAutocompleteEnabled',
+      'shouldAutoQuoteCapitalizedColumns',
+      'getSqlFormatterIndentSize',
+      'shouldUppercaseSqlFormatterKeywords',
+      'getSqlFormatterCommaStyle',
+      'shouldAddBlankLineBetweenSqlStatements',
+      'shouldIndentSqlCreateBody',
+      'getSqlHighlightMode',
+      'getSqlHighlightColors',
+      'getAppLanguage',
+      'setDefaultQueryRows',
+      'setTableAutocompleteEnabled'
+    ])
+    appSettings.getDefaultQueryRows.and.returnValue(50)
+    appSettings.getConnectionExpirationMinutes.and.returnValue(30)
+    appSettings.isSqlSyntaxValidationEnabled.and.returnValue(true)
+    appSettings.isTableAutocompleteEnabled.and.returnValue(true)
+    appSettings.getTableAutocompleteMatchMode.and.returnValue('contains')
+    appSettings.isColumnAutocompleteEnabled.and.returnValue(true)
+    appSettings.shouldAutoQuoteCapitalizedColumns.and.returnValue(false)
+    appSettings.getSqlFormatterIndentSize.and.returnValue(4)
+    appSettings.shouldUppercaseSqlFormatterKeywords.and.returnValue(true)
+    appSettings.getSqlFormatterCommaStyle.and.returnValue('trailing')
+    appSettings.shouldAddBlankLineBetweenSqlStatements.and.returnValue(true)
+    appSettings.shouldIndentSqlCreateBody.and.returnValue(false)
+    appSettings.getSqlHighlightMode.and.returnValue('dbolt-dark')
+    appSettings.getSqlHighlightColors.and.returnValue({})
+    appSettings.getAppLanguage.and.returnValue('pt-br')
+    appSettings.setDefaultQueryRows.and.callFake((value: number) => ({ defaultQueryRows: value }))
+    appSettings.setTableAutocompleteEnabled.and.callFake((value: boolean) => ({ tableAutocompleteEnabled: value }))
     const language = {
       languageOptions: [],
       translate: (key: string) => key
@@ -110,5 +130,61 @@ describe('SettingsComponent AI credentials', () => {
     expect(component.aiSettings?.openAiOAuthConnected).toBeFalse()
     expect(component.aiSettings?.hasApiKey).toBeFalse()
     expect(component.aiSettingsError).toBe('')
+  })
+
+  it('automatically saves numeric inputs after the debounce period', () => {
+    jasmine.clock().install()
+
+    try {
+      component.onDefaultRowsInput({ target: { value: '125' } } as any)
+
+      expect(appSettings.setDefaultQueryRows).not.toHaveBeenCalled()
+      jasmine.clock().tick(399)
+      expect(appSettings.setDefaultQueryRows).not.toHaveBeenCalled()
+      jasmine.clock().tick(1)
+
+      expect(appSettings.setDefaultQueryRows).toHaveBeenCalledOnceWith(125)
+      expect(component.savedMessage).toBe('generic.saved')
+    } finally {
+      jasmine.clock().uninstall()
+    }
+  })
+
+  it('automatically saves toggles without waiting for a button click', () => {
+    component.onTableAutocompleteChange({ target: { checked: false } } as any)
+
+    expect(appSettings.setTableAutocompleteEnabled).toHaveBeenCalledOnceWith(false)
+    expect(component.tableAutocompleteEnabled).toBeFalse()
+    expect(component.tableAutocompleteSavedMessage).toBe('generic.saved')
+  })
+
+  it('automatically persists AI changes through the backend after debouncing', async () => {
+    jasmine.clock().install()
+    component.aiSettings = aiSettings({
+      provider: 'openai',
+      baseUrl: 'https://api.example.test/v1/chat/completions',
+      model: 'example-model'
+    })
+    component.aiProvider = 'openai'
+    component.aiBaseUrl = 'https://api.example.test/v1/chat/completions'
+    component.aiModel = 'example-model'
+    settingsService.saveSettings.and.resolveTo(component.aiSettings)
+
+    try {
+      component.onAiLimitInput('maxContextMessages', { target: { value: '12' } } as any)
+
+      jasmine.clock().tick(399)
+      expect(settingsService.saveSettings).not.toHaveBeenCalled()
+      jasmine.clock().tick(1)
+
+      expect(settingsService.saveSettings).toHaveBeenCalledOnceWith(jasmine.objectContaining({
+        provider: 'openai',
+        model: 'example-model',
+        limits: jasmine.objectContaining({ maxContextMessages: 12 })
+      }))
+      await Promise.resolve()
+    } finally {
+      jasmine.clock().uninstall()
+    }
   })
 })

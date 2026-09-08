@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common'
-import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core'
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core'
 import {
   AppSettingsService,
   AppTheme,
@@ -12,7 +12,6 @@ import {
 import { ConnectionsService, SavedConnection } from '../../../services/resolve-connections/connections.service'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { InputListComponent } from '../input-list/input-list.component'
-import { ButtonComponent } from '../button/button.component'
 import { LoadingComponent } from '../../modal/loading/loading.component'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { AppLanguage } from '../../../services/language/language.model'
@@ -48,11 +47,11 @@ const DEFAULT_AI_LIMITS: AiAssistantLimits = {
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, InputListComponent, ButtonComponent],
+  imports: [CommonModule, InputListComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss'
 })
-export class SettingsComponent implements OnInit, OnChanges {
+export class SettingsComponent implements OnInit, OnChanges, OnDestroy {
   @Input() initialTab: SettingsTab | null = null
   @Output() aiSettingsSaved = new EventEmitter<AiAssistantSettings>()
   activeTab: SettingsTab = 'query'
@@ -133,6 +132,15 @@ export class SettingsComponent implements OnInit, OnChanges {
   readonly openAiModelOptions = OPENAI_MODEL_OPTIONS
   readonly geminiModelOptions = GEMINI_MODEL_OPTIONS
   readonly anthropicModelOptions = ANTHROPIC_MODEL_OPTIONS
+  private readonly autoSaveTasks = new Map<string, {
+    timeout: number
+    action: () => void | Promise<void>
+  }>()
+  private aiSettingsRevision: number = 0
+  private aiSaveInProgress: boolean = false
+  private aiSavePending: boolean = false
+  private connectionSaveInProgress: boolean = false
+  private connectionSavePending: boolean = false
 
   constructor(
     private settings: AppSettingsService,
@@ -175,6 +183,16 @@ export class SettingsComponent implements OnInit, OnChanges {
     if (changes['initialTab']) {
       this.applyInitialTab()
     }
+  }
+
+  ngOnDestroy(): void {
+    const pendingTasks = Array.from(this.autoSaveTasks.values())
+    this.autoSaveTasks.clear()
+
+    pendingTasks.forEach((task) => {
+      window.clearTimeout(task.timeout)
+      void Promise.resolve(task.action())
+    })
   }
 
   selectTab(tab: SettingsTab): void {
@@ -252,6 +270,7 @@ export class SettingsComponent implements OnInit, OnChanges {
       ? item['value'] as AppLanguage
       : this.settings.getAppLanguage()
     this.languageSavedMessage = ''
+    this.saveLanguageSettings()
   }
 
   saveLanguageSettings(): void {
@@ -265,6 +284,7 @@ export class SettingsComponent implements OnInit, OnChanges {
 
     this.appTheme = this.settings.normalizeAppTheme(item['value'])
     this.themeSavedMessage = ''
+    this.saveThemeSettings()
   }
 
   saveThemeSettings(): void {
@@ -273,6 +293,8 @@ export class SettingsComponent implements OnInit, OnChanges {
   }
 
   onAiProviderSelected(item: { [key: string]: string | number } | null): void {
+    if (!item) return
+
     const provider = this.normalizeAiProvider(item?.['value'])
     if (provider === this.aiProvider) return
 
@@ -292,19 +314,26 @@ export class SettingsComponent implements OnInit, OnChanges {
     }
 
     if (provider === 'openai-oauth' && this.aiOpenAiOAuthConnected) {
-      void this.loadOpenAiOAuthModels()
+      void this.loadOpenAiOAuthModels().then(() => this.requestAiAutoSave(0))
+      return
     }
+
+    this.requestAiAutoSave(0)
   }
 
   onAiModelSelected(item: { [key: string]: string | number } | null): void {
+    if (!item) return
+
     const value = item?.['value']
     this.aiModel = typeof value === 'string' ? value : this.defaultModelForAiProvider(this.aiProvider)
     this.aiSettingsMessage = ''
+    this.requestAiAutoSave(0)
   }
 
   onAiModelInput(event: Event): void {
     this.aiModel = (event.target as HTMLInputElement).value
     this.aiSettingsMessage = ''
+    this.requestAiAutoSave()
   }
 
   onAiCustomEndpointChanged(event: Event): void {
@@ -314,11 +343,14 @@ export class SettingsComponent implements OnInit, OnChanges {
     if (!this.aiCustomEndpointEnabled) {
       this.aiBaseUrl = DEFAULT_AI_BASE_URL
     }
+
+    this.requestAiAutoSave(0)
   }
 
   onAiBaseUrlInput(event: Event): void {
     this.aiBaseUrl = (event.target as HTMLInputElement).value
     this.aiSettingsMessage = ''
+    this.requestAiAutoSave()
   }
 
   onAiApiKeyInput(provider: AiAssistantApiKeyProvider, event: Event): void {
@@ -327,6 +359,7 @@ export class SettingsComponent implements OnInit, OnChanges {
       [provider]: (event.target as HTMLInputElement).value
     }
     this.aiSettingsMessage = ''
+    this.requestAiAutoSave(700)
   }
 
   onAiLimitInput(key: keyof AiAssistantLimits, event: Event): void {
@@ -336,6 +369,7 @@ export class SettingsComponent implements OnInit, OnChanges {
       [key]: this.normalizeAiLimit(key, value)
     }
     this.aiSettingsMessage = ''
+    this.requestAiAutoSave()
   }
 
   getAiApiKeyPlaceholder(provider: AiAssistantApiKeyProvider): string {
@@ -349,11 +383,20 @@ export class SettingsComponent implements OnInit, OnChanges {
   }
 
   async saveAiSettings(): Promise<void> {
-    this.aiSettingsSaving = true
-    this.aiSettingsMessage = ''
-    this.aiSettingsError = ''
+    this.cancelAutoSave('ai')
+    if (this.aiSettingsLoading) return
+    if (this.aiSaveInProgress) {
+      this.aiSavePending = true
+      return
+    }
 
-    try {
+    do {
+      this.aiSavePending = false
+      this.aiSaveInProgress = true
+      this.aiSettingsSaving = true
+      this.aiSettingsMessage = ''
+      this.aiSettingsError = ''
+      const revision = this.aiSettingsRevision
       const apiKeys: Partial<Record<AiAssistantApiKeyProvider, string>> = {}
 
       this.aiApiKeyFields.forEach((field) => {
@@ -363,22 +406,31 @@ export class SettingsComponent implements OnInit, OnChanges {
         }
       })
 
-      const settings = await this.aiSettingsService.saveSettings({
-        provider: this.aiProvider,
-        model: this.aiModel.trim(),
-        baseUrl: this.aiProviderNeedsBaseUrl(this.aiProvider) ? this.aiBaseUrl.trim() : undefined,
-        apiKeys,
-        limits: this.sanitizeAiLimits(this.aiLimits)
-      })
+      try {
+        const settings = await this.aiSettingsService.saveSettings({
+          provider: this.aiProvider,
+          model: this.aiModel.trim(),
+          baseUrl: this.aiProviderNeedsBaseUrl(this.aiProvider) ? this.aiBaseUrl.trim() : undefined,
+          apiKeys,
+          limits: this.sanitizeAiLimits(this.aiLimits)
+        })
 
-      this.applyAiSettings(settings)
-      this.aiSettingsSaved.emit(settings)
-      this.aiSettingsMessage = this.t('generic.saved')
-    } catch (error: unknown) {
-      this.aiSettingsError = this.getErrorMessage(error, this.t('settings.ai.saveFailed'))
-    } finally {
-      this.aiSettingsSaving = false
-    }
+        if (revision === this.aiSettingsRevision) {
+          this.applyAiSettings(settings)
+          this.aiSettingsMessage = this.t('generic.saved')
+        } else {
+          this.aiSettings = settings
+        }
+        this.aiSettingsSaved.emit(settings)
+      } catch (error: unknown) {
+        if (revision === this.aiSettingsRevision) {
+          this.aiSettingsError = this.getErrorMessage(error, this.t('settings.ai.saveFailed'))
+        }
+      } finally {
+        this.aiSaveInProgress = false
+        this.aiSettingsSaving = false
+      }
+    } while (this.aiSavePending)
   }
 
   async removeAiApiKey(provider: AiAssistantApiKeyProvider): Promise<void> {
@@ -477,9 +529,11 @@ export class SettingsComponent implements OnInit, OnChanges {
 
     this.defaultQueryRows = Math.max(1, Math.floor(value))
     this.savedMessage = ''
+    this.scheduleAutoSave('default-rows', () => this.saveDefaultRows())
   }
 
   saveDefaultRows(): void {
+    this.cancelAutoSave('default-rows')
     const settings = this.settings.setDefaultQueryRows(this.defaultQueryRows)
     this.defaultQueryRows = settings.defaultQueryRows
     this.savedMessage = this.t('generic.saved')
@@ -491,9 +545,11 @@ export class SettingsComponent implements OnInit, OnChanges {
 
     this.connectionExpirationMinutes = Math.max(1, Math.floor(value))
     this.expirationSavedMessage = ''
+    this.scheduleAutoSave('connection-expiration', () => this.saveConnectionExpiration())
   }
 
   saveConnectionExpiration(): void {
+    this.cancelAutoSave('connection-expiration')
     const settings = this.settings.setConnectionExpirationMinutes(this.connectionExpirationMinutes)
     this.connectionExpirationMinutes = settings.connectionExpirationMinutes
     this.expirationSavedMessage = this.t('generic.saved')
@@ -502,6 +558,7 @@ export class SettingsComponent implements OnInit, OnChanges {
   onSqlSyntaxValidationChange(event: Event): void {
     this.sqlSyntaxValidationEnabled = (event.target as HTMLInputElement).checked
     this.syntaxValidationSavedMessage = ''
+    this.saveSqlSyntaxValidationSettings()
   }
 
   saveSqlSyntaxValidationSettings(): void {
@@ -516,11 +573,13 @@ export class SettingsComponent implements OnInit, OnChanges {
 
     this.sqlFormatterIndentSize = Math.min(Math.max(1, Math.floor(value)), 8)
     this.formatterSavedMessage = ''
+    this.scheduleAutoSave('sql-formatter', () => this.saveSqlFormatterSettings())
   }
 
   onSqlFormatterUppercaseChange(event: Event): void {
     this.sqlFormatterUppercaseKeywords = (event.target as HTMLInputElement).checked
     this.formatterSavedMessage = ''
+    this.saveSqlFormatterSettings()
   }
 
   onSqlFormatterCommaStyleSelected(item: { [key: string]: string | number } | null): void {
@@ -528,19 +587,23 @@ export class SettingsComponent implements OnInit, OnChanges {
 
     this.sqlFormatterCommaStyle = this.settings.normalizeSqlFormatterCommaStyle(item['value'])
     this.formatterSavedMessage = ''
+    this.saveSqlFormatterSettings()
   }
 
   onSqlFormatterBlankLineChange(event: Event): void {
     this.sqlFormatterBlankLineBetweenStatements = (event.target as HTMLInputElement).checked
     this.formatterSavedMessage = ''
+    this.saveSqlFormatterSettings()
   }
 
   onSqlFormatterIndentCreateBodyChange(event: Event): void {
     this.sqlFormatterIndentCreateBody = (event.target as HTMLInputElement).checked
     this.formatterSavedMessage = ''
+    this.saveSqlFormatterSettings()
   }
 
   saveSqlFormatterSettings(): void {
+    this.cancelAutoSave('sql-formatter')
     const settings = this.settings.setSqlFormatterSettings(
       this.sqlFormatterIndentSize,
       this.sqlFormatterUppercaseKeywords,
@@ -563,6 +626,7 @@ export class SettingsComponent implements OnInit, OnChanges {
     }
     this.sqlHighlightMode = 'custom'
     this.highlightSavedMessage = ''
+    this.scheduleAutoSave('sql-highlight', () => this.saveSqlHighlightSettings())
   }
 
   onSqlHighlightModeSelected(item: { [key: string]: string | number } | null): void {
@@ -575,9 +639,11 @@ export class SettingsComponent implements OnInit, OnChanges {
     }
 
     this.highlightSavedMessage = ''
+    this.saveSqlHighlightSettings()
   }
 
   saveSqlHighlightSettings(): void {
+    this.cancelAutoSave('sql-highlight')
     const settings = this.sqlHighlightMode === 'custom'
       ? this.settings.setSqlHighlightColors(this.sqlHighlightColors)
       : this.settings.setSqlHighlightMode(this.sqlHighlightMode)
@@ -590,6 +656,7 @@ export class SettingsComponent implements OnInit, OnChanges {
   onTableAutocompleteChange(event: Event): void {
     this.tableAutocompleteEnabled = (event.target as HTMLInputElement).checked
     this.tableAutocompleteSavedMessage = ''
+    this.saveTableAutocompleteSettings()
   }
 
   onTableAutocompleteMatchModeSelected(item: { [key: string]: string | number } | null): void {
@@ -597,16 +664,19 @@ export class SettingsComponent implements OnInit, OnChanges {
 
     this.tableAutocompleteMatchMode = this.settings.normalizeTableAutocompleteMatchMode(item['value'])
     this.tableMatchModeSavedMessage = ''
+    this.saveTableMatchModeSettings()
   }
 
   onColumnAutocompleteChange(event: Event): void {
     this.columnAutocompleteEnabled = (event.target as HTMLInputElement).checked
     this.columnAutocompleteSavedMessage = ''
+    this.saveColumnAutocompleteSettings()
   }
 
   onAutoQuoteCapitalizedColumnsChange(event: Event): void {
     this.autoQuoteCapitalizedColumns = (event.target as HTMLInputElement).checked
     this.autoQuoteCapitalizedColumnsSavedMessage = ''
+    this.saveAutoQuoteCapitalizedColumnsSettings()
   }
 
   saveTableAutocompleteSettings(): void {
@@ -634,6 +704,7 @@ export class SettingsComponent implements OnInit, OnChanges {
   }
 
   onConnectionSelected(item: { [key: string]: string | number } | null): void {
+    this.cancelAutoSave('connection-target')
     this.connectionMessage = ''
     this.connectionError = ''
     this.targetOptionsLoaded = false
@@ -703,37 +774,55 @@ export class SettingsComponent implements OnInit, OnChanges {
   }
 
   onDefaultDatabaseSelected(item: { [key: string]: string | number } | null): void {
-    this.selectedDefaultDatabase = item?.['name']?.toString() || ''
+    if (!item) return
+
+    this.selectedDefaultDatabase = item['name']?.toString() || ''
     this.selectedDefaultSchema = ''
     this.refreshSchemaList()
+    this.scheduleAutoSave('connection-target', () => this.saveConnectionTarget(false))
   }
 
   onDefaultSchemaSelected(item: { [key: string]: string | number } | null): void {
-    this.selectedDefaultSchema = item?.['name']?.toString() || ''
+    if (!item) return
+
+    this.selectedDefaultSchema = item['name']?.toString() || ''
+    this.scheduleAutoSave('connection-target', () => this.saveConnectionTarget(false))
   }
 
-  async saveConnectionTarget(): Promise<void> {
+  async saveConnectionTarget(showLoading: boolean = true): Promise<void> {
     if (!this.selectedConnection) return
 
-    LoadingComponent.show(this.t('settings.connections.savingDefaults'))
+    this.cancelAutoSave('connection-target')
+    if (this.connectionSaveInProgress) {
+      this.connectionSavePending = true
+      return
+    }
+
+    this.connectionSaveInProgress = true
+    const connection = this.selectedConnection
+    if (showLoading) {
+      LoadingComponent.show(this.t('settings.connections.savingDefaults'))
+    }
 
     try {
       this.validateSelectedTarget()
 
-      const updatedConnection = await this.connectionsService.updateConnection(this.selectedConnection.id, {
-        name: this.selectedConnection.name,
-        database: this.selectedConnection.database,
-        version: this.selectedConnection.version,
-        databaseVersion: this.selectedConnection.databaseVersion,
-        host: this.selectedConnection.host,
-        port: this.selectedConnection.port,
-        user: this.selectedConnection.user,
-        password: this.selectedConnection.password,
+      const updatedConnection = await this.connectionsService.updateConnection(connection.id, {
+        name: connection.name,
+        database: connection.database,
+        version: connection.version,
+        databaseVersion: connection.databaseVersion,
+        host: connection.host,
+        port: connection.port,
+        user: connection.user,
+        password: connection.password,
         defaultDatabase: this.requiresDefaultDatabase ? this.selectedDefaultDatabase || undefined : undefined,
         defaultSchema: this.requiresDefaultSchema ? this.selectedDefaultSchema || undefined : undefined
       })
 
-      this.selectedConnection = updatedConnection
+      if (this.selectedConnection?.id === connection.id) {
+        this.selectedConnection = updatedConnection
+      }
       await this.loadConnections()
       this.connectionMessage = this.t('generic.saved')
       this.connectionError = ''
@@ -742,7 +831,14 @@ export class SettingsComponent implements OnInit, OnChanges {
       this.connectionMessage = ''
       this.connectionError = error?.error || error?.message || this.t('settings.connections.saveDefaultsFailed')
     } finally {
-      LoadingComponent.hide()
+      this.connectionSaveInProgress = false
+      if (showLoading) {
+        LoadingComponent.hide()
+      }
+      if (this.connectionSavePending) {
+        this.connectionSavePending = false
+        await this.saveConnectionTarget(false)
+      }
     }
   }
 
@@ -752,6 +848,33 @@ export class SettingsComponent implements OnInit, OnChanges {
     this.selectedDefaultDatabase = ''
     this.selectedDefaultSchema = ''
     await this.saveConnectionTarget()
+  }
+
+  private requestAiAutoSave(delay: number = 400): void {
+    this.aiSettingsRevision++
+    this.scheduleAutoSave('ai', () => this.saveAiSettings(), delay)
+  }
+
+  private scheduleAutoSave(
+    key: string,
+    action: () => void | Promise<void>,
+    delay: number = 400
+  ): void {
+    this.cancelAutoSave(key)
+    const timeout = window.setTimeout(() => {
+      this.autoSaveTasks.delete(key)
+      void Promise.resolve(action())
+    }, delay)
+
+    this.autoSaveTasks.set(key, { timeout, action })
+  }
+
+  private cancelAutoSave(key: string): void {
+    const task = this.autoSaveTasks.get(key)
+    if (!task) return
+
+    window.clearTimeout(task.timeout)
+    this.autoSaveTasks.delete(key)
   }
 
   private async loadAiSettings(): Promise<void> {
