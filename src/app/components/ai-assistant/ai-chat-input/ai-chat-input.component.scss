@@ -20,13 +20,14 @@ textarea {
     resize: none;
 }
 
-button {
-    font-size: .8em;
-    height: 34px;
-    width: 100%;
+.chat-actions {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    min-width: 0;
+}
 
-    &:disabled {
-        color: var(--dbolt-777);
-        cursor: default;
-    }
+.current-sql-context-toggle {
+    min-width: 0;
 }
