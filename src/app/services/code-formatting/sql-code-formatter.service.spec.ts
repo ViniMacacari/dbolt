@@ -51,7 +51,8 @@ SELECT
             THEN 'open'
         ELSE 'late'
     END AS status
-FROM sales.orders o
+FROM
+    sales.orders o
 JOIN sales.payments p
     ON p.order_id = o.id
     AND p.installment_id = o.installment_id
@@ -118,7 +119,8 @@ BEGIN
     DECLARE total_count int;
     SELECT
         COUNT(*) INTO total_count
-    FROM orders
+    FROM
+        orders
     WHERE
         customer_id = :customer_id;
     IF total_count > 0
@@ -143,6 +145,15 @@ BEGIN
     WHERE
         customer_id = :customer_id;
 END;`)
+  })
+
+  it('places the FROM source on an indented line and preserves its trailing comment', () => {
+    const sql = 'select * from sample_table -- source used by the query'
+
+    expect(formatter.format(sql, { indentSize: 4 })).toBe(`SELECT
+    *
+FROM
+    sample_table -- source used by the query`)
   })
 
   it('keeps the formatted result stable and preserves BETWEEN as one condition', () => {
