@@ -51,6 +51,153 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
     expect(component.conversationsModalClosing).toBeFalse()
   }))
 
+  it('reads the current SQL only from the active SQL tab', () => {
+    const component = createComponent()
+    component.tabInfo = {
+      type: 'sql',
+      info: { sql: '  SELECT * FROM sample_table  ' }
+    }
+
+    expect(component.currentSqlContext).toBe('SELECT * FROM sample_table')
+    expect(component.currentSqlContextAvailable).toBeTrue()
+
+    component.tabInfo = { type: 'settings', info: { sql: 'SELECT 1' } }
+
+    expect(component.currentSqlContext).toBe('')
+    expect(component.currentSqlContextAvailable).toBeFalse()
+  })
+
+  it('forwards the active SQL as request context when explicitly enabled', async () => {
+    const conversationId = 'conversation-example'
+    const chatService = {
+      sendMessage: jasmine.createSpy().and.resolveTo({ message: 'Explanation', model: 'example-model' })
+    }
+    const conversationsService = {
+      saveConversation: jasmine.createSpy().and.callFake(async (_id: string, messages: any[]) => ({
+        activeConversationId: conversationId,
+        conversations: [{
+          id: conversationId,
+          title: 'Example',
+          messages,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z'
+        }]
+      }))
+    }
+    const component = new AiAssistantPanelComponent(
+      {} as any,
+      chatService as any,
+      conversationsService as any,
+      {} as any,
+      { translate: (key: string) => key } as any,
+      {} as any,
+      {} as any
+    )
+    component.settings = {
+      provider: 'gemini',
+      baseUrl: '',
+      model: 'example-model',
+      hasApiKey: true,
+      openAiOAuthConnected: false,
+      openAiOAuthRecommendationDismissed: true,
+      limits: {
+        maxApiCallsPerMessage: 4,
+        maxDatabaseRequestsPerMessage: 4,
+        maxDatabaseRequestsPerApiCall: 2,
+        maxContextMessages: 10,
+        maxToolResultChars: 9000,
+        maxToolTranscriptChars: 18000
+      }
+    }
+    component.activeConversationId = conversationId
+    component.tabInfo = {
+      type: 'sql',
+      info: { sql: 'SELECT * FROM sample_table' }
+    }
+
+    await component.onSend({
+      message: 'Explain this query',
+      allowDatabaseContext: false,
+      includeCurrentSql: true
+    })
+
+    expect(chatService.sendMessage).toHaveBeenCalledWith(
+      jasmine.any(Array),
+      undefined,
+      'SELECT * FROM sample_table',
+      jasmine.any(Function)
+    )
+  })
+
+  it('requests replacement of the contextual SQL when AI returns a complete revision', async () => {
+    const conversationId = 'conversation-update'
+    const updatedSql = 'SELECT\n  column_b\nFROM table_a'
+    const chatService = {
+      sendMessage: jasmine.createSpy().and.resolveTo({
+        message: `Updated query:\n\`\`\`sql\n${updatedSql}\n\`\`\``,
+        model: 'example-model',
+        updatedSql
+      })
+    }
+    const conversationsService = {
+      saveConversation: jasmine.createSpy().and.callFake(async (_id: string, messages: any[]) => ({
+        activeConversationId: conversationId,
+        conversations: [{
+          id: conversationId,
+          title: 'Example',
+          messages,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z'
+        }]
+      }))
+    }
+    const component = new AiAssistantPanelComponent(
+      {} as any,
+      chatService as any,
+      conversationsService as any,
+      {} as any,
+      { translate: (key: string) => key } as any,
+      {} as any,
+      {} as any
+    )
+    component.settings = {
+      provider: 'gemini',
+      baseUrl: '',
+      model: 'example-model',
+      hasApiKey: true,
+      openAiOAuthConnected: false,
+      openAiOAuthRecommendationDismissed: true,
+      limits: {
+        maxApiCallsPerMessage: 4,
+        maxDatabaseRequestsPerMessage: 4,
+        maxDatabaseRequestsPerApiCall: 2,
+        maxContextMessages: 10,
+        maxToolResultChars: 9000,
+        maxToolTranscriptChars: 18000
+      }
+    }
+    component.activeConversationId = conversationId
+    const targetTab = {
+      type: 'sql',
+      info: { sql: 'SELECT\n  column_a\nFROM table_a' }
+    }
+    component.tabInfo = targetTab
+    let editorRequest: any
+    component.sqlRequested.subscribe((request) => editorRequest = request)
+
+    await component.onSend({
+      message: 'Update the selected column',
+      allowDatabaseContext: false,
+      includeCurrentSql: true
+    })
+
+    expect(editorRequest).toEqual({
+      sql: updatedSql,
+      mode: 'replace-current',
+      targetTab
+    })
+  })
+
   it('ensures a live connection before building readonly AI context', async () => {
     const connectedContext = {
       connectionKey: 'ai-context',
@@ -94,8 +241,8 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
     expect(result.connectionKey).toBe('ai-context')
   })
 
-  it('recommends ChatGPT even with another provider configured and persists dismissal', async () => {
-    const dismissedSettings = {
+  it('keeps another configured provider usable without a connected ChatGPT account', () => {
+    const configuredSettings = {
       provider: 'gemini' as const,
       baseUrl: '',
       model: 'gemini-test',
@@ -117,11 +264,8 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
         maxToolTranscriptChars: 18000
       }
     }
-    const settingsService = {
-      dismissOpenAiOAuthRecommendation: jasmine.createSpy().and.resolveTo(dismissedSettings)
-    }
     const component = new AiAssistantPanelComponent(
-      settingsService as any,
+      {} as any,
       {} as any,
       {} as any,
       {} as any,
@@ -129,17 +273,11 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
       {} as any,
       {} as any
     )
-    component.settings = {
-      ...dismissedSettings,
-      openAiOAuthRecommendationDismissed: false
-    }
+    component.settings = configuredSettings
 
-    expect(component.showOpenAiOAuthRecommendation).toBeTrue()
-
-    await component.dismissOpenAiOAuthRecommendation()
-
-    expect(settingsService.dismissOpenAiOAuthRecommendation).toHaveBeenCalledTimes(1)
-    expect(component.showOpenAiOAuthRecommendation).toBeFalse()
+    expect(component.canChat).toBeTrue()
+    expect(component.settings.provider).toBe('gemini')
+    expect(component.settings.openAiOAuthConnected).toBeFalse()
   })
 
   it('changes the active model from the conversation without clearing its messages', async () => {

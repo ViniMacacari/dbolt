@@ -18,6 +18,7 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
 import { AppPlatformService } from '../../../services/platform/app-platform.service'
 import { AppThemeService } from '../../../services/theme/app-theme.service'
 import { AppThemePaletteService } from '../../../services/theme/app-theme-palette.service'
+import { QueryVersionDiffService } from '../../../services/query-version-diff/query-version-diff.service'
 import { selectSqlStatementAtCursor } from '../../../utils/sql-statement-selection'
 import {
   normalizeTableReferenceForMetadata,
@@ -77,6 +78,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private editorActionDisposables: monaco.IDisposable[] = []
   private editorMouseDisposables: monaco.IDisposable[] = []
   private sqlNavigationDecorationIds: string[] = []
+  private sqlChangeDecorationIds: string[] = []
+  private sqlChangeDecorationTimer: ReturnType<typeof setTimeout> | null = null
   private sqlNavigationModifierPressed = false
   private lastMousePosition: monaco.Position | null = null
   private readonly sqlNavigationReservedWords = new Set([
@@ -148,7 +151,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     private language: AppLanguageService,
     private platform: AppPlatformService,
     private appTheme: AppThemeService,
-    private themePalette: AppThemePaletteService
+    private themePalette: AppThemePaletteService,
+    private queryVersionDiff: QueryVersionDiffService
   ) {
     this.settingsSubscription = this.appSettings.settingsChanges$.subscribe((settings) => {
       this.applySqlHighlightTheme(settings.sqlHighlightColors)
@@ -184,12 +188,17 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     }
 
     if (this.editor && this.sqlContent !== this.editor.getValue()) {
-      this.editor.setValue(this.sqlContent || '')
+      this.replaceEditorSql(this.sqlContent || '')
+    }
+
+    if (this.editor && (changes['sqlContent'] || changes['tabInfo'])) {
+      this.scheduleSqlChangeDecorations()
     }
   }
 
   ngOnDestroy(): void {
     this.clearResultAnimations()
+    this.clearSqlChangeDecorationTimer()
 
     if (this.tabInfo?.closing) {
       this.releaseQueryMemory()
@@ -301,6 +310,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     )
 
     this.initializeEditorEvents()
+    this.updateSqlChangeDecorations()
   }
 
   private configureSqlLanguage(): void {
@@ -508,6 +518,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     this.editor?.onDidChangeModelContent(() => {
       const value = this.editor?.getValue() || ''
+      this.scheduleSqlChangeDecorations(value)
       if (value !== this.sqlContent) {
         this.sqlContent = value
         this.sqlContentChange.emit(value)
@@ -613,6 +624,66 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private clearSqlNavigationHover(): void {
     this.sqlNavigationDecorationIds = this.editor?.deltaDecorations(this.sqlNavigationDecorationIds, []) || []
     this.editor?.getDomNode()?.classList.remove('dbolt-sql-navigation-pointer')
+  }
+
+  private scheduleSqlChangeDecorations(currentSql?: string): void {
+    this.clearSqlChangeDecorationTimer()
+    this.sqlChangeDecorationTimer = setTimeout(() => {
+      this.sqlChangeDecorationTimer = null
+      this.updateSqlChangeDecorations(currentSql)
+    }, 80)
+  }
+
+  private replaceEditorSql(sql: string): void {
+    const editor = this.editor
+    const model = editor?.getModel()
+    if (!editor || !model) return
+
+    editor.pushUndoStop()
+    editor.executeEdits('dbolt.external-sql-update', [{
+      range: model.getFullModelRange(),
+      text: sql,
+      forceMoveMarkers: true
+    }])
+    editor.pushUndoStop()
+  }
+
+  private updateSqlChangeDecorations(currentSql?: string): void {
+    this.clearSqlChangeDecorationTimer()
+
+    const editor = this.editor
+    const model = editor?.getModel()
+    if (!editor || !model) return
+
+    const savedSql = typeof this.tabInfo?.originalContent === 'string'
+      ? this.tabInfo.originalContent
+      : ''
+    const editorSql = currentSql ?? model.getValue()
+    const normalizedSavedSql = savedSql.replace(/\r\n/g, '\n')
+    const normalizedEditorSql = editorSql.replace(/\r\n/g, '\n')
+
+    if (normalizedSavedSql === normalizedEditorSql) {
+      this.sqlChangeDecorationIds = editor.deltaDecorations(this.sqlChangeDecorationIds, [])
+      return
+    }
+
+    const decorations = this.queryVersionDiff
+      .buildChangeMarkers(normalizedSavedSql, normalizedEditorSql)
+      .map((marker): monaco.editor.IModelDeltaDecoration => ({
+        range: new monaco.Range(marker.lineNumber, 1, marker.lineNumber, 1),
+        options: {
+          isWholeLine: true,
+          linesDecorationsClassName: `dbolt-sql-change-${marker.type}`
+        }
+      }))
+    this.sqlChangeDecorationIds = editor.deltaDecorations(this.sqlChangeDecorationIds, decorations)
+  }
+
+  private clearSqlChangeDecorationTimer(): void {
+    if (!this.sqlChangeDecorationTimer) return
+
+    clearTimeout(this.sqlChangeDecorationTimer)
+    this.sqlChangeDecorationTimer = null
   }
 
   private resolveSqlNavigationLink(position: monaco.Position): SqlNavigationLink | null {
@@ -1570,6 +1641,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.tabInfo.versions = savedQuery.versions || []
     this.tabInfo.persisted = true
     this.tabInfo.icon = 'CODE'
+    this.updateSqlChangeDecorations(savedQuery.sql)
   }
 
   private async recoverLinuxPersistedQueryIdentity(): Promise<boolean> {

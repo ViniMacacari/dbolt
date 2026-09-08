@@ -59,6 +59,7 @@ export interface AiAssistantConversationsState {
 export interface AiChatInputSubmit {
   message: string
   allowDatabaseContext: boolean
+  includeCurrentSql: boolean
 }
 
 export interface AiAssistantApiMessage {
@@ -69,6 +70,13 @@ export interface AiAssistantApiMessage {
 export interface AiAssistantChatResponse {
   message: string
   model: string
+  updatedSql?: string
+}
+
+export interface AiSqlEditorRequest {
+  sql: string
+  mode: 'new-tab' | 'replace-current'
+  targetTab?: unknown
 }
 
 export interface OpenAiOAuthStatus {

@@ -72,17 +72,6 @@
 :host.compact {
     .dropdown-container {
         border-radius: 10px;
-
-        &::after {
-            color: var(--dbolt-969696);
-            content: '⌄';
-            font-size: 13px;
-            pointer-events: none;
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-55%);
-        }
     }
 
     .filter-input {
@@ -90,7 +79,7 @@
         font-size: .76em;
         font-weight: 700;
         min-height: 34px;
-        padding: 7px 30px 7px 10px;
+        padding: 7px 10px;
         text-overflow: ellipsis;
     }
 
