@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 
 import { DatabaseManagerComponent } from './database-manager.component';
 
@@ -59,6 +59,62 @@ describe('DatabaseManagerComponent', () => {
       objectType: 'table'
     }, 'orders');
   });
+
+  it('opens a cross-schema SQL reference in the quick summary without creating a tab', () => {
+    const sourceContext = {
+      sgbd: 'Hana',
+      version: 'v1',
+      connectionKey: 'query-tab',
+      schema: 'public'
+    };
+    const targetContext = {
+      ...sourceContext,
+      connectionKey: 'summary-panel',
+      schema: 'sales'
+    };
+    const connectionContext = (component as any).connectionContext;
+    spyOn(connectionContext, 'createContext').and.returnValue(targetContext);
+    const tabs = {
+      getActiveTab: jasmine.createSpy('getActiveTab'),
+      newTab: jasmine.createSpy('newTab')
+    };
+    component.tabsComponent = tabs as any;
+
+    component.onSqlObjectSummaryRequested({
+      name: 'orders',
+      schema: 'sales',
+      context: sourceContext
+    });
+
+    expect(component.sqlObjectSummaryRequest).toEqual({
+      name: 'orders',
+      schema: 'sales',
+      context: targetContext,
+      objectType: 'table'
+    });
+    expect(tabs.newTab).not.toHaveBeenCalled();
+  });
+
+  it('keeps the quick summary mounted until its closing animation finishes', fakeAsync(() => {
+    component.sqlObjectSummaryRequest = {
+      name: 'orders',
+      context: { sgbd: 'Postgres', schema: 'public' },
+      objectType: 'table'
+    };
+    component.sqlObjectSummaryMounted = true;
+    component.sqlObjectSummaryOpen = true;
+
+    component.closeSqlObjectSummary();
+
+    expect(component.sqlObjectSummaryOpen).toBeFalse();
+    expect(component.sqlObjectSummaryMounted).toBeTrue();
+    expect(component.sqlObjectSummaryRequest).not.toBeNull();
+
+    tick(220);
+
+    expect(component.sqlObjectSummaryMounted).toBeFalse();
+    expect(component.sqlObjectSummaryRequest).toBeNull();
+  }));
 
   it('replaces the SQL tab used as AI context instead of opening another tab', () => {
     const targetTab = {

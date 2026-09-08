@@ -160,4 +160,33 @@ describe('DatabaseMetadataService', () => {
     expect(ddl).toBe('CREATE PROCEDURE sync_users()');
     expect(ensureCalls.length).toBe(1);
   });
+
+  it('loads a quick column summary without requesting rows, keys, indexes, or DDL', async () => {
+    responses.set('/api/Postgres/v9/table-columns/users?connectionKey=tab-1', {
+      success: true,
+      data: [{ name: 'id', type: 'integer', object_type: 'view' }]
+    });
+
+    const summary = await service.loadTableColumnSummary(context, 'users');
+
+    expect(summary.objectType).toBe('view');
+    expect(summary.columns).toEqual([{ name: 'id', type: 'integer', object_type: 'view' }]);
+    expect(requestedUrls).toEqual([
+      '/api/Postgres/v9/table-columns/users?connectionKey=tab-1'
+    ]);
+  });
+
+  it('loads table DDL separately for the quick summary', async () => {
+    responses.set('/api/Postgres/v9/table-ddl/users?connectionKey=tab-1', {
+      success: true,
+      ddl: 'CREATE VIEW users AS SELECT 1;'
+    });
+
+    const ddl = await service.loadTableDDL(context, 'users');
+
+    expect(ddl).toBe('CREATE VIEW users AS SELECT 1;');
+    expect(requestedUrls).toEqual([
+      '/api/Postgres/v9/table-ddl/users?connectionKey=tab-1'
+    ]);
+  });
 });

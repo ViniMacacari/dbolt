@@ -64,6 +64,66 @@ describe('CodeEditorComponent', () => {
     });
   });
 
+  it('requests the quick object summary while Caps Lock is held without opening table details', async () => {
+    const sql = 'SELECT o.id FROM sales.orders o';
+    const editor = (component as any).editor;
+    const context = { sgbd: 'Postgres', version: 'v9', schema: 'public' };
+    editor.setValue(sql);
+    component.active = true;
+    component.tabInfo = { dbInfo: context };
+    let summaryRequest: any;
+    const detailRequests: any[] = [];
+    component.objectSummaryRequested.subscribe((request) => summaryRequest = request);
+    component.objectInfoRequested.subscribe((request) => detailRequests.push(request));
+
+    await (component as any).handleEditorMouseDown({
+      target: {
+        position: {
+          lineNumber: 1,
+          column: sql.indexOf('orders') + 1
+        }
+      },
+      event: {
+        shiftKey: true,
+        ctrlKey: false,
+        metaKey: false,
+        browserEvent: new MouseEvent('mousedown', { button: 0 }),
+        preventDefault: jasmine.createSpy('preventDefault')
+      }
+    });
+
+    expect(summaryRequest).toBeUndefined();
+    expect(detailRequests).toEqual([]);
+
+    component.onWindowKeyDown(new KeyboardEvent('keydown', { key: 'CapsLock' }));
+
+    await (component as any).handleEditorMouseDown({
+      target: {
+        position: {
+          lineNumber: 1,
+          column: sql.indexOf('orders') + 1
+        }
+      },
+      event: {
+        shiftKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        browserEvent: new MouseEvent('mousedown', { button: 0 }),
+        preventDefault: jasmine.createSpy('preventDefault')
+      }
+    });
+    component.onWindowKeyUp(new KeyboardEvent('keyup', { key: 'CapsLock' }));
+
+    expect(summaryRequest).toEqual({
+      name: 'orders',
+      schema: 'sales',
+      initialView: undefined,
+      context,
+      info: context
+    });
+    expect(detailRequests).toEqual([]);
+  });
+
   it('marks added and modified lines relative to the last saved SQL', () => {
     component.tabInfo = {
       originalContent: 'SELECT\n  column_a\nFROM table_a'

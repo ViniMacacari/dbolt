@@ -30,11 +30,12 @@ import { PersistedWorkspaceTab, WORKSPACE_SESSION_VERSION } from '../../services
 import { ClosedTabsHistoryService } from '../../services/closed-tabs/closed-tabs-history.service'
 import { KeyboardShortcutService } from '../../services/keyboard-shortcuts/keyboard-shortcut.service'
 import { Subscription } from 'rxjs'
+import { SqlObjectSummaryComponent, SqlObjectSummaryRequest } from '../../components/elements/sql-object-summary/sql-object-summary.component'
 
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent, DatabaseDiagramComponent, DbExportComponent],
+  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent, DatabaseDiagramComponent, DbExportComponent, SqlObjectSummaryComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
@@ -67,6 +68,9 @@ export class DatabaseManagerComponent implements OnDestroy {
   databaseExportOpen: boolean = false
   aiAssistantOpen: boolean = false
   aiAssistantMounted: boolean = false
+  sqlObjectSummaryRequest: SqlObjectSummaryRequest | null = null
+  sqlObjectSummaryOpen: boolean = false
+  sqlObjectSummaryMounted: boolean = false
   dbInfoInitialized: boolean = false
   tableInfoInitialized: boolean = false
   procedureInfoInitialized: boolean = false
@@ -84,6 +88,9 @@ export class DatabaseManagerComponent implements OnDestroy {
 
   widthTable: number = 300
   private aiAssistantAnimationFrame: number | null = null
+  private sqlObjectSummaryAnimationFrame: number | null = null
+  private sqlObjectSummaryCloseTimer: ReturnType<typeof setTimeout> | null = null
+  private readonly sqlObjectSummaryAnimationMs = 220
   private toolsSubscription: Subscription | null = null
   private unregisterWorkspaceSession: (() => void) | null = null
   private shortcutDisposers: Array<() => void> = []
@@ -111,6 +118,8 @@ export class DatabaseManagerComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.cancelAiAssistantAnimationFrame()
+    this.cancelSqlObjectSummaryAnimationFrame()
+    this.cancelSqlObjectSummaryCloseTimer()
     this.toolsSubscription?.unsubscribe()
     this.workspaceSession.persistNow()
     this.unregisterWorkspaceSession?.()
@@ -990,6 +999,69 @@ export class DatabaseManagerComponent implements OnDestroy {
       context: objectContext,
       objectType: event?.type || event?.objectType || 'table'
     }, objectName).tableInfoState = tableInfoState
+  }
+
+  onSqlObjectSummaryRequested(event: any): void {
+    const objectName = event?.name || event?.NAME
+    if (!objectName) return
+
+    const activeContext = event?.context || this.tabsComponent.getActiveTab()?.dbInfo || this.selectedSchemaDB
+    const objectContext = this.createSqlObjectContext(activeContext, event?.schema)
+
+    this.sqlObjectSummaryRequest = {
+      name: objectName,
+      schema: event?.schema,
+      context: objectContext,
+      objectType: String(event?.type || event?.objectType || '').toLowerCase() === 'view'
+        ? 'view'
+        : 'table'
+    }
+
+    this.openSqlObjectSummary()
+  }
+
+  closeSqlObjectSummary(): void {
+    this.cancelSqlObjectSummaryAnimationFrame()
+    this.cancelSqlObjectSummaryCloseTimer()
+    this.sqlObjectSummaryOpen = false
+
+    this.sqlObjectSummaryCloseTimer = setTimeout(() => {
+      this.sqlObjectSummaryCloseTimer = null
+      this.sqlObjectSummaryMounted = false
+      this.sqlObjectSummaryRequest = null
+    }, this.sqlObjectSummaryAnimationMs)
+  }
+
+  private openSqlObjectSummary(): void {
+    this.cancelSqlObjectSummaryCloseTimer()
+
+    if (this.sqlObjectSummaryMounted) {
+      this.sqlObjectSummaryOpen = true
+      return
+    }
+
+    this.sqlObjectSummaryMounted = true
+    this.cancelSqlObjectSummaryAnimationFrame()
+    this.sqlObjectSummaryAnimationFrame = requestAnimationFrame(() => {
+      this.sqlObjectSummaryAnimationFrame = requestAnimationFrame(() => {
+        this.sqlObjectSummaryAnimationFrame = null
+        this.sqlObjectSummaryOpen = true
+      })
+    })
+  }
+
+  private cancelSqlObjectSummaryAnimationFrame(): void {
+    if (this.sqlObjectSummaryAnimationFrame === null) return
+
+    cancelAnimationFrame(this.sqlObjectSummaryAnimationFrame)
+    this.sqlObjectSummaryAnimationFrame = null
+  }
+
+  private cancelSqlObjectSummaryCloseTimer(): void {
+    if (this.sqlObjectSummaryCloseTimer === null) return
+
+    clearTimeout(this.sqlObjectSummaryCloseTimer)
+    this.sqlObjectSummaryCloseTimer = null
   }
 
   private createSqlObjectContext(activeContext: any, schema: any): any {

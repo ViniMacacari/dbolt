@@ -56,6 +56,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   @Output() savedName = new EventEmitter<SavedQuery>()
   @Output() savedQuery = new EventEmitter<any>()
   @Output() objectInfoRequested = new EventEmitter<any>()
+  @Output() objectSummaryRequested = new EventEmitter<any>()
   @Input() widthTable: number = 300
   @Input() tabInfo: any
   @Input() active: boolean = false
@@ -81,6 +82,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private sqlChangeDecorationIds: string[] = []
   private sqlChangeDecorationTimer: ReturnType<typeof setTimeout> | null = null
   private sqlNavigationModifierPressed = false
+  private sqlSummaryModifierPressed = false
   private lastMousePosition: monaco.Position | null = null
   private readonly sqlNavigationReservedWords = new Set([
     'as',
@@ -239,6 +241,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'CapsLock') {
+      this.sqlSummaryModifierPressed = true
+      this.sqlNavigationModifierPressed = true
+      this.updateSqlNavigationHover()
+      return
+    }
+
     if (event.key !== 'Control' && event.key !== 'Meta') return
 
     this.sqlNavigationModifierPressed = true
@@ -247,15 +256,32 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   @HostListener('window:keyup', ['$event'])
   onWindowKeyUp(event: KeyboardEvent): void {
+    if (event.key === 'CapsLock') {
+      this.sqlSummaryModifierPressed = false
+      this.sqlNavigationModifierPressed = event.ctrlKey || event.metaKey
+
+      if (this.sqlNavigationModifierPressed) {
+        this.updateSqlNavigationHover()
+      } else {
+        this.clearSqlNavigationHover()
+      }
+      return
+    }
+
     if (event.key !== 'Control' && event.key !== 'Meta') return
     if (event.ctrlKey || event.metaKey) return
 
-    this.sqlNavigationModifierPressed = false
-    this.clearSqlNavigationHover()
+    this.sqlNavigationModifierPressed = this.sqlSummaryModifierPressed
+    if (this.sqlNavigationModifierPressed) {
+      this.updateSqlNavigationHover()
+    } else {
+      this.clearSqlNavigationHover()
+    }
   }
 
   @HostListener('window:blur')
   onWindowBlur(): void {
+    this.sqlSummaryModifierPressed = false
     this.sqlNavigationModifierPressed = false
     this.clearSqlNavigationHover()
   }
@@ -530,7 +556,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     })
     const mouseMoveDisposable = this.editor?.onMouseMove((event) => {
       this.lastMousePosition = event.target.position || null
-      this.sqlNavigationModifierPressed = event.event.ctrlKey || event.event.metaKey
+      this.sqlNavigationModifierPressed = event.event.ctrlKey
+        || event.event.metaKey
+        || this.sqlSummaryModifierPressed
       this.updateSqlNavigationHover()
     })
     const mouseLeaveDisposable = this.editor?.onMouseLeave(() => {
@@ -581,7 +609,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private async handleEditorMouseDown(event: monaco.editor.IEditorMouseEvent): Promise<void> {
     if (!this.active || !this.editor || !event.target.position) return
-    if (!event.event.ctrlKey && !event.event.metaKey) return
+    const summaryRequested = this.sqlSummaryModifierPressed
+    const detailRequested = event.event.ctrlKey || event.event.metaKey
+    if (!summaryRequested && !detailRequested) return
 
     const browserEvent = event.event.browserEvent
     if (browserEvent instanceof MouseEvent && browserEvent.button !== 0) return
@@ -592,11 +622,18 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     event.event.preventDefault()
     browserEvent?.preventDefault()
 
-    this.objectInfoRequested.emit({
+    const request = {
       ...navigationLink.target,
       context: this.tabInfo?.dbInfo,
       info: this.tabInfo?.dbInfo
-    })
+    }
+
+    if (summaryRequested) {
+      this.objectSummaryRequested.emit(request)
+      return
+    }
+
+    this.objectInfoRequested.emit(request)
   }
 
   private updateSqlNavigationHover(): void {
