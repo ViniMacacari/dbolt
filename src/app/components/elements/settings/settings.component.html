@@ -185,7 +185,7 @@
                     <small class="ai-settings-success" *ngIf="aiSettingsMessage">{{ aiSettingsMessage }}</small>
                 </div>
                 <app-button variant="accent" [compact]="true" (pressed)="saveAiSettings()"
-                    [disabled]="aiSettingsSaving || aiSettingsLoading || !aiModel.trim() || (aiProvider === 'openai-oauth' && !aiOpenAiOAuthConnected) || ((aiProvider === 'openai' || aiProvider === 'openrouter') && !aiBaseUrl.trim())">
+                    [disabled]="aiSettingsSaving || aiSettingsLoading || !aiModel.trim() || ((aiProvider === 'openai' || aiProvider === 'openrouter') && !aiBaseUrl.trim())">
                     {{ aiSettingsSaving ? t('settings.ai.saving') : t('settings.actions.save') }}
                 </app-button>
             </div>
