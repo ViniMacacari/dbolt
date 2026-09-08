@@ -8,6 +8,7 @@ import { Router } from '@angular/router'
 import { ConnectionsService } from '../../services/resolve-connections/connections.service'
 import { ConnectionComponent } from '../modal/connection/connection.component'
 import { AppLanguageService } from '../../services/language/app-language.service'
+import { DatabaseLogoService } from '../../services/database-logo/database-logo.service'
 
 export interface SidebarLayoutChange {
   visible: boolean
@@ -74,7 +75,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
     private dbSchemaService: GetDbschemaService,
     private router: Router,
     private connectionsService: ConnectionsService,
-    private language: AppLanguageService
+    private language: AppLanguageService,
+    readonly databaseLogo: DatabaseLogoService
   ) { }
 
   get layoutWidth(): number {
@@ -271,7 +273,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
         type: 'connection',
         label: connection.name,
         description: `${connection.database} - ${connection.host}:${connection.port}`,
-        icon: `db-logo/${connection.database}.png`,
+        icon: this.databaseLogo.path(connection.database),
         value: connection
       }))
     }
