@@ -512,7 +512,7 @@ export const enTranslations: TranslationCatalog = {
   'sqlObjectSummary.noDdl': 'No DDL available.',
   'sqlObjectSummary.loadDdlFailed': 'Could not load the view DDL.',
   'sqlObjectSummary.close': 'Close summary',
-  'sqlObjectSummary.position': 'Position',
+  'sqlObjectSummary.position': '#',
   'sqlObjectSummary.column': 'Column',
   'sqlObjectSummary.type': 'Type',
   'sqlObjectSummary.nullable': 'Nullable',

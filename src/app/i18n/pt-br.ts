@@ -512,10 +512,10 @@ export const ptBrTranslations: TranslationCatalog = {
   'sqlObjectSummary.noDdl': 'Nenhum DDL disponível.',
   'sqlObjectSummary.loadDdlFailed': 'Não foi possível carregar o DDL da view.',
   'sqlObjectSummary.close': 'Fechar resumo',
-  'sqlObjectSummary.position': 'Posição',
+  'sqlObjectSummary.position': '#',
   'sqlObjectSummary.column': 'Coluna',
   'sqlObjectSummary.type': 'Tipo',
-  'sqlObjectSummary.nullable': 'Aceita nulo',
+  'sqlObjectSummary.nullable': 'Nulo?',
   'sqlObjectSummary.defaultValue': 'Padrão',
   'sqlObjectSummary.comment': 'Comentário',
 
