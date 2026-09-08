@@ -52,7 +52,8 @@
 
         <ag-grid-angular *ngIf="!loadingColumns && !columnsError && rows.length" class="summary-grid"
             [rowData]="rows" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef"
-            [rowBuffer]="20" [animateRows]="false" [suppressRowVirtualisation]="false"
+            [rowHeight]="38" [headerHeight]="40" [rowBuffer]="20" [animateRows]="false"
+            [suppressRowVirtualisation]="false"
             [suppressColumnVirtualisation]="false" (gridReady)="onGridReady($event)">
         </ag-grid-angular>
 
