@@ -345,6 +345,17 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       }
       this.messages = [...this.messages, assistantMessage]
       await this.saveConversationMessages(conversationId, this.messages)
+
+      if (currentSqlTarget && event.autoApplyCurrentSql) {
+        const replacementSql = this.extractCompleteSqlBlock(response.message)
+        if (replacementSql && replacementSql !== currentSql) {
+          this.sqlRequested.emit({
+            sql: replacementSql,
+            mode: 'replace-current',
+            targetTab: currentSqlTarget
+          })
+        }
+      }
     } catch (error: unknown) {
       this.messages = [
         ...this.messages,
@@ -536,6 +547,39 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
 
   private getMessagePromptLimit(role: 'user' | 'assistant'): number {
     return role === 'assistant' ? 900 : 1400
+  }
+
+  private extractCompleteSqlBlock(content: string): string {
+    const sqlLanguages = new Set([
+      '',
+      'sql',
+      'mysql',
+      'postgres',
+      'postgresql',
+      'pgsql',
+      'sqlite',
+      'tsql',
+      'mssql',
+      'sqlserver',
+      'hana'
+    ])
+    const blocks = String(content || '').matchAll(/```([A-Za-z0-9_-]*)[ \t]*\r?\n([\s\S]*?)```/g)
+
+    for (const block of blocks) {
+      const language = String(block[1] || '').trim().toLowerCase()
+      const sql = String(block[2] || '').trim()
+      if (!sql || !sqlLanguages.has(language)) continue
+
+      const statementStart = sql
+        .replace(/^\s*(?:(?:--[^\n]*(?:\n|$))|(?:\/\*[\s\S]*?\*\/\s*))*/i, '')
+        .replace(/^;+\s*/, '')
+
+      if (/^(?:SELECT|WITH|INSERT|UPDATE|DELETE|MERGE|UPSERT|REPLACE|CREATE|ALTER|DROP|TRUNCATE|EXPLAIN|SHOW|DESCRIBE|USE|SET|CALL|EXEC(?:UTE)?|GRANT|REVOKE|DO|BEGIN|DECLARE|DELIMITER)\b/i.test(statementStart)) {
+        return sql
+      }
+    }
+
+    return ''
   }
 
   private getMaxContextMessages(): number {

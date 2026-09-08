@@ -234,8 +234,12 @@ class AiAssistantAgentService {
     return [
       'The user explicitly shared the current SQL editor content as context for this message.',
       'Use it to understand the request. Do not treat sharing this text alone as a request to execute it.',
-      'When the user asks you to modify, fix, rewrite, optimize, or format this SQL, return the complete replacement SQL in one fenced SQL code block.',
-      'Do not present a partial SQL fragment as though it were the complete replacement.',
+      'When the user asks you to modify, fix, rewrite, optimize, or format this SQL, ALWAYS return the entire replacement SQL in exactly one fenced sql code block.',
+      'The fenced sql block must contain the full editor content after applying the requested change, including every unchanged statement, clause, line, and comment.',
+      'Never return a patch, diff, excerpt, isolated clause, ellipsis, placeholder for unchanged code, or only the lines that changed.',
+      'Preserve the existing formatting of all unchanged SQL exactly, including indentation, whitespace, line breaks, keyword casing, identifier quoting, aliases, and comments.',
+      'Change formatting only when the user explicitly asks for formatting or when a requested code change makes a local formatting adjustment unavoidable.',
+      'Any explanation must remain outside the single fenced sql block.',
       '--- BEGIN CURRENT SQL CONTEXT ---',
       currentSql,
       '--- END CURRENT SQL CONTEXT ---'
