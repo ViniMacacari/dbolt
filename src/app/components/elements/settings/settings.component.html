@@ -57,8 +57,7 @@
                 <div class="setting-control">
                     <label for="default-query-rows">{{ t('settings.query.defaultRows.field') }}</label>
                     <input id="default-query-rows" type="number" min="1" step="1" [value]="defaultQueryRows"
-                        (input)="onDefaultRowsInput($event)" (keydown.enter)="saveDefaultRows()">
-                    <button type="button" (click)="saveDefaultRows()">{{ t('settings.actions.save') }}</button>
+                        (input)="onDefaultRowsInput($event)">
                     <small *ngIf="savedMessage">{{ savedMessage }}</small>
                 </div>
             </div>
@@ -72,9 +71,7 @@
                 <div class="setting-control">
                     <label for="connection-expiration-minutes">{{ t('settings.query.expiration.field') }}</label>
                     <input id="connection-expiration-minutes" type="number" min="1" step="1"
-                        [value]="connectionExpirationMinutes" (input)="onConnectionExpirationInput($event)"
-                        (keydown.enter)="saveConnectionExpiration()">
-                    <button type="button" (click)="saveConnectionExpiration()">{{ t('settings.actions.save') }}</button>
+                        [value]="connectionExpirationMinutes" (input)="onConnectionExpirationInput($event)">
                     <small *ngIf="expirationSavedMessage">{{ expirationSavedMessage }}</small>
                 </div>
             </div>
@@ -92,7 +89,6 @@
                             (change)="onSqlSyntaxValidationChange($event)">
                         <span></span>
                     </label>
-                    <button type="button" (click)="saveSqlSyntaxValidationSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="syntaxValidationSavedMessage">{{ syntaxValidationSavedMessage }}</small>
                 </div>
             </div>
@@ -111,8 +107,7 @@
                                 <span>{{ t('settings.formatter.indentSize.description') }}</span>
                             </div>
                             <input id="sql-formatter-indent-size" type="number" min="1" max="8" step="1"
-                                [value]="sqlFormatterIndentSize" (input)="onSqlFormatterIndentInput($event)"
-                                (keydown.enter)="saveSqlFormatterSettings()">
+                                [value]="sqlFormatterIndentSize" (input)="onSqlFormatterIndentInput($event)">
                         </div>
 
                         <div class="formatter-row">
@@ -168,7 +163,6 @@
                     </div>
 
                     <div class="formatter-actions">
-                        <button type="button" (click)="saveSqlFormatterSettings()">{{ t('settings.actions.save') }}</button>
                         <small *ngIf="formatterSavedMessage">{{ formatterSavedMessage }}</small>
                     </div>
                 </div>
@@ -180,14 +174,11 @@
             <div class="ai-settings-command-bar">
                 <div class="ai-settings-command-copy">
                     <strong>{{ t('settings.ai.saveBar.title') }}</strong>
-                    <span *ngIf="!aiSettingsMessage && !aiSettingsError">{{ t('settings.ai.saveBar.description') }}</span>
+                    <span *ngIf="aiSettingsSaving && !aiSettingsError">{{ t('settings.ai.saving') }}</span>
+                    <span *ngIf="!aiSettingsSaving && !aiSettingsMessage && !aiSettingsError">{{ t('settings.ai.saveBar.description') }}</span>
                     <small class="settings-error" *ngIf="aiSettingsError">{{ aiSettingsError }}</small>
                     <small class="ai-settings-success" *ngIf="aiSettingsMessage">{{ aiSettingsMessage }}</small>
                 </div>
-                <app-button variant="accent" [compact]="true" (pressed)="saveAiSettings()"
-                    [disabled]="aiSettingsSaving || aiSettingsLoading || !aiModel.trim() || ((aiProvider === 'openai' || aiProvider === 'openrouter') && !aiBaseUrl.trim())">
-                    {{ aiSettingsSaving ? t('settings.ai.saving') : t('settings.actions.save') }}
-                </app-button>
             </div>
 
             <div class="settings-card ai-settings-card">
@@ -360,7 +351,6 @@
                         [placeholder]="t('settings.highlight.theme.placeholder')"
                         (itemSelected)="onSqlHighlightModeSelected($event)">
                     </app-input-list>
-                    <button type="button" (click)="saveSqlHighlightSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="highlightSavedMessage">{{ highlightSavedMessage }}</small>
                 </div>
             </div>
@@ -381,7 +371,6 @@
                                 (input)="onSqlHighlightColorInput(field.key, $event)">
                         </label>
                     </div>
-                    <button type="button" (click)="saveSqlHighlightSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="highlightSavedMessage">{{ highlightSavedMessage }}</small>
                 </div>
             </div>
@@ -401,7 +390,6 @@
                         [placeholder]="t('settings.language.placeholder')"
                         (itemSelected)="onAppLanguageSelected($event)">
                     </app-input-list>
-                    <button type="button" (click)="saveLanguageSettings()">{{ t('settings.language.save') }}</button>
                     <small *ngIf="languageSavedMessage">{{ languageSavedMessage }}</small>
                 </div>
             </div>
@@ -421,7 +409,6 @@
                         [placeholder]="t('settings.appearance.theme.placeholder')"
                         (itemSelected)="onAppThemeSelected($event)">
                     </app-input-list>
-                    <button type="button" (click)="saveThemeSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="themeSavedMessage">{{ themeSavedMessage }}</small>
                 </div>
             </div>
@@ -440,7 +427,6 @@
                             (change)="onTableAutocompleteChange($event)">
                         <span></span>
                     </label>
-                    <button type="button" (click)="saveTableAutocompleteSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="tableAutocompleteSavedMessage">{{ tableAutocompleteSavedMessage }}</small>
                 </div>
             </div>
@@ -458,7 +444,6 @@
                         [placeholder]="t('settings.autocomplete.matchMode.placeholder')"
                         (itemSelected)="onTableAutocompleteMatchModeSelected($event)">
                     </app-input-list>
-                    <button type="button" (click)="saveTableMatchModeSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="tableMatchModeSavedMessage">{{ tableMatchModeSavedMessage }}</small>
                 </div>
             </div>
@@ -475,7 +460,6 @@
                             (change)="onColumnAutocompleteChange($event)">
                         <span></span>
                     </label>
-                    <button type="button" (click)="saveColumnAutocompleteSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="columnAutocompleteSavedMessage">{{ columnAutocompleteSavedMessage }}</small>
                 </div>
             </div>
@@ -493,7 +477,6 @@
                             (change)="onAutoQuoteCapitalizedColumnsChange($event)">
                         <span></span>
                     </label>
-                    <button type="button" (click)="saveAutoQuoteCapitalizedColumnsSettings()">{{ t('settings.actions.save') }}</button>
                     <small *ngIf="autoQuoteCapitalizedColumnsSavedMessage">
                         {{ autoQuoteCapitalizedColumnsSavedMessage }}
                     </small>
@@ -522,7 +505,6 @@
 
                 <div class="connection-target-actions" *ngIf="selectedConnection">
                     <button type="button" (click)="loadConnectionTargets()">{{ t('settings.actions.loadOptions') }}</button>
-                    <button type="button" (click)="saveConnectionTarget()">{{ t('settings.actions.save') }}</button>
                     <button type="button" class="secondary" (click)="clearConnectionTarget()">{{ t('settings.actions.clear') }}</button>
                     <small *ngIf="connectionMessage">{{ connectionMessage }}</small>
                 </div>
