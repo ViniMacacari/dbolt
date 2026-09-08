@@ -12,6 +12,7 @@ import {
 import { ConnectionsService, SavedConnection } from '../../../services/resolve-connections/connections.service'
 import { InternalApiService } from '../../../services/requests/internal-api.service'
 import { InputListComponent } from '../input-list/input-list.component'
+import { ButtonComponent } from '../button/button.component'
 import { LoadingComponent } from '../../modal/loading/loading.component'
 import { AppLanguageService } from '../../../services/language/app-language.service'
 import { AppLanguage } from '../../../services/language/language.model'
@@ -47,7 +48,7 @@ const DEFAULT_AI_LIMITS: AiAssistantLimits = {
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, InputListComponent],
+  imports: [CommonModule, InputListComponent, ButtonComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss'
 })
