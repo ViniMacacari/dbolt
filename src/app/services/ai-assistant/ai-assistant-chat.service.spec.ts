@@ -37,11 +37,17 @@ describe('AiAssistantChatService', () => {
     })
     const progress = jasmine.createSpy('progress')
 
+    const currentSql = 'SELECT * FROM sample_table'
     const response = await service.sendMessage([
       { role: 'user', content: 'Pergunta' }
-    ], undefined, progress)
+    ], undefined, currentSql, progress)
 
     expect(progress).toHaveBeenCalledOnceWith('reading-table-structure')
+    expect(internalApi.postStream).toHaveBeenCalledWith(
+      '/api/ai-assistant/chat/stream',
+      jasmine.objectContaining({ currentSql }),
+      jasmine.any(Function)
+    )
     expect(response).toEqual({ message: 'Resposta', model: 'test-model' })
   })
 })

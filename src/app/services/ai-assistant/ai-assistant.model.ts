@@ -59,6 +59,7 @@ export interface AiAssistantConversationsState {
 export interface AiChatInputSubmit {
   message: string
   allowDatabaseContext: boolean
+  includeCurrentSql: boolean
 }
 
 export interface AiAssistantApiMessage {

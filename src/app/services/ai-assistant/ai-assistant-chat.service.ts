@@ -22,6 +22,7 @@ export class AiAssistantChatService {
   async sendMessage(
     messages: AiAssistantApiMessage[],
     readonlyContext?: AiReadonlyDatabaseToolContext,
+    currentSql?: string,
     onProgress?: (stage: AiAssistantProgressStage) => void
   ): Promise<AiAssistantChatResponse> {
     let result: AiAssistantChatResponse | undefined
@@ -29,6 +30,7 @@ export class AiAssistantChatService {
     await this.internalApi.postStream<AiAssistantStreamEvent>('/api/ai-assistant/chat/stream', {
       messages,
       readonlyContext,
+      currentSql,
       appLanguage: this.language.getCurrentLanguage()
     }, (event) => {
       if (event.type === 'progress') {
