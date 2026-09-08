@@ -24,9 +24,9 @@ export interface AiAssistantSettings {
 }
 
 export interface AiAssistantSettingsUpdate {
-  provider: AiAssistantProvider
+  provider?: AiAssistantProvider
   baseUrl?: string
-  model: string
+  model?: string
   apiKey?: string
   clearApiKey?: boolean
   apiKeys?: Partial<Record<AiAssistantApiKeyProvider, string>>
