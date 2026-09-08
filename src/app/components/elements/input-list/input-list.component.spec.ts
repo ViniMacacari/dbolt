@@ -68,4 +68,33 @@ describe('InputListComponent', () => {
     const input: HTMLInputElement = fixture.nativeElement.querySelector('input');
     expect(input.value).toBe('');
   });
+
+  it('keeps hovered options stable and selectable when the list input is recreated', () => {
+    const options = [
+      { id: 1, name: 'First option' },
+      { id: 2, name: 'Second option' }
+    ];
+    fixture.componentRef.setInput('list', options);
+    fixture.detectChanges();
+
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('input');
+    input.dispatchEvent(new Event('focus'));
+    fixture.detectChanges();
+
+    const optionBefore: HTMLElement = fixture.nativeElement.querySelectorAll('.dropdown-item')[1];
+
+    fixture.componentRef.setInput('list', options.map(option => ({ ...option })));
+    fixture.detectChanges();
+
+    const optionAfter: HTMLElement = fixture.nativeElement.querySelectorAll('.dropdown-item')[1];
+    expect(optionAfter).toBe(optionBefore);
+
+    const emitted = spyOn(component.itemSelected, 'emit');
+    optionAfter.click();
+    fixture.detectChanges();
+
+    expect(emitted).toHaveBeenCalledWith(jasmine.objectContaining({ id: 2 }));
+    expect(input.value).toBe('Second option');
+    expect(fixture.nativeElement.querySelector('.dropdown-list')).toBeNull();
+  });
 });

@@ -89,6 +89,12 @@ export class InputListComponent implements OnChanges {
     this.isDropdownOpen = false
   }
 
+  trackByItem(index: number, item: { [key: string]: string | number }): string {
+    const identity = item[this.valueKey] ?? item[this.displayKey] ?? ''
+
+    return `${this.valueKey}:${typeof identity}:${String(identity)}:${index}`
+  }
+
   @HostListener('document:click', ['$event'])
   closeDropdown(event: MouseEvent): void {
     const clickedInside = this.elementRef.nativeElement.contains(event.target as Node)
