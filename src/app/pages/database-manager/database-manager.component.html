@@ -189,7 +189,9 @@
         </div>
     </div>
 
-    <app-sql-object-summary *ngIf="sqlObjectSummaryRequest" class="workspace-object-summary"
+    <app-sql-object-summary *ngIf="sqlObjectSummaryMounted && sqlObjectSummaryRequest"
+        class="workspace-object-summary" [class.active]="sqlObjectSummaryOpen"
+        [attr.aria-hidden]="!sqlObjectSummaryOpen" [attr.inert]="!sqlObjectSummaryOpen ? '' : null"
         [request]="sqlObjectSummaryRequest" (closed)="closeSqlObjectSummary()">
     </app-sql-object-summary>
 </div>

@@ -451,31 +451,40 @@
 }
 
 .workspace-object-summary {
-    animation: object-summary-open .18s cubic-bezier(.2, .8, .2, 1) both;
-    flex: 0 0 420px;
+    --sql-object-summary-width: clamp(520px, 34vw, 640px);
+
+    flex: 0 0 var(--sql-object-summary-width);
     height: 100%;
+    margin-right: calc(0px - var(--sql-object-summary-width));
     min-height: 0;
-    min-width: 340px;
-    width: 420px;
-}
+    min-width: var(--sql-object-summary-width);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(100%);
+    transition:
+        margin-right .22s cubic-bezier(.4, 0, .2, 1),
+        opacity .16s ease,
+        transform .22s cubic-bezier(.4, 0, .2, 1);
+    will-change: margin-right, opacity, transform;
+    width: var(--sql-object-summary-width);
 
-@keyframes object-summary-open {
-    from {
-        opacity: 0;
-        transform: translateX(18px);
-    }
-
-    to {
+    &.active {
+        margin-right: 0;
         opacity: 1;
         transform: translateX(0);
+        pointer-events: auto;
     }
 }
 
 @media (max-width: 1200px) {
     .workspace-object-summary {
-        flex-basis: 360px;
-        min-width: 320px;
-        width: 360px;
+        --sql-object-summary-width: min(480px, 48vw);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .workspace-object-summary {
+        transition-duration: .01ms !important;
     }
 }
 
