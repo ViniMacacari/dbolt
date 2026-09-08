@@ -204,6 +204,10 @@ app-sql-object-summary,
         border-right: 1px solid var(--dbolt-grid-separator);
     }
 
+    .ag-header-cell-text {
+        font-size: .8em;
+    }
+
     .ag-header-cell-text,
     .ag-icon,
     .ag-cell {
@@ -222,7 +226,9 @@ app-sql-object-summary,
 
     .ag-cell {
         border-right: 1px solid var(--dbolt-363535);
-        font-size: .74em;
+        font-size: .8em;
+        padding-left: 14px;
+        padding-right: 14px;
     }
 }
 

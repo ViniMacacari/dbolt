@@ -55,4 +55,22 @@ describe('SqlObjectSummaryComponent', () => {
     expect(gridApi.setGridOption).toHaveBeenCalledWith('quickFilterText', 'order')
     expect(component.filteredRowCount).toBe(1)
   })
+
+  it('keeps the main metadata columns readable instead of fitting every column into the panel', () => {
+    const component = new SqlObjectSummaryComponent({} as any, {
+      translate: (key: string) => key
+    } as any)
+
+    const columns = (component as any).buildColumnDefs([{
+      ordinal_position: 1,
+      name: 'order_id',
+      type: 'INTEGER',
+      is_nullable: false,
+      comment: 'Order identifier'
+    }])
+
+    expect(columns.find((column: any) => column.field === 'name').width).toBe(190)
+    expect(columns.find((column: any) => column.field === 'type').width).toBe(180)
+    expect(columns.every((column: any) => column.flex === undefined)).toBeTrue()
+  })
 })
