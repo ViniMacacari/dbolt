@@ -70,7 +70,6 @@ export interface AiAssistantApiMessage {
 export interface AiAssistantChatResponse {
   message: string
   model: string
-  updatedSql?: string
 }
 
 export interface AiSqlEditorRequest {
