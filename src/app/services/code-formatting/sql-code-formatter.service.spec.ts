@@ -172,6 +172,24 @@ FROM
     LEFT JOIN related_table_two r2 ON b.id = r2.base_id`)
   })
 
+  it('places each ORDER BY field on an indented line', () => {
+    const sql = `
+      select b.id
+      from base_table b
+      order by b.name, b.created_at desc; -- ordering used by the report
+    `
+    const formatted = formatter.format(sql, { indentSize: 4 })
+
+    expect(formatted).toBe(`SELECT
+    b.id
+FROM
+    base_table b
+ORDER BY
+    b.name,
+    b.created_at DESC; -- ordering used by the report`)
+    expect(formatter.format(formatted, { indentSize: 4 })).toBe(formatted)
+  })
+
   it('keeps the formatted result stable and preserves BETWEEN as one condition', () => {
     const sql = `
       select id, status

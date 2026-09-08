@@ -3,11 +3,12 @@ import type { SqlCodeFormatterOptions } from './sql-code-formatter.service'
 
 type ResolvedSqlCodeFormatterOptions = Required<SqlCodeFormatterOptions>
 type SqlBlockType = 'begin' | 'case' | 'if' | 'loop'
-type SqlSection = 'select' | 'from' | 'set' | 'predicate' | 'join' | null
+type SqlSection = 'select' | 'from' | 'order-by' | 'set' | 'predicate' | 'join' | null
 
 interface SqlStatement {
   text: string
   terminated: boolean
+  trailingComment?: string
 }
 
 interface CommaListEntry {
@@ -36,7 +37,10 @@ export class SqlFormatterLayoutService {
     const formatted = this.formatCreateOrAlterStatement(text, options) ||
       this.formatQueryStatement(text, options, 0)
 
-    return statement.terminated ? `${formatted};` : formatted
+    const terminator = statement.terminated ? ';' : ''
+    const trailingComment = statement.trailingComment ? ` ${statement.trailingComment}` : ''
+
+    return `${formatted}${terminator}${trailingComment}`
   }
 
   private formatCreateOrAlterStatement(sql: string, options: ResolvedSqlCodeFormatterOptions): string | null {
@@ -78,6 +82,7 @@ export class SqlFormatterLayoutService {
     let formatted = this.formatParenthesizedLists(sql, options)
     formatted = this.formatDmlLists(formatted, options)
     formatted = this.formatSelectLists(formatted, options)
+    formatted = this.formatOrderByLists(formatted, options)
     formatted = this.breakClauses(formatted)
 
     return this.normalizeLines(formatted, options, baseLevel)
@@ -112,6 +117,49 @@ export class SqlFormatterLayoutService {
     }
 
     return result
+  }
+
+  private formatOrderByLists(sql: string, options: ResolvedSqlCodeFormatterOptions): string {
+    let result = ''
+    let cursor = 0
+
+    while (cursor < sql.length) {
+      const clause = this.findTopLevelOrderBy(sql, cursor)
+      if (!clause) {
+        result += sql.slice(cursor)
+        break
+      }
+
+      const boundary = this.findFirstTopLevelBoundary(
+        sql,
+        ['limit', 'offset', 'fetch', 'for', 'union', 'returning'],
+        clause.contentStart
+      )
+      const semicolon = this.findTopLevelCharacter(sql, ';', clause.contentStart)
+      const contentEnd = semicolon === -1 ? boundary : Math.min(boundary, semicolon)
+      const values = this.splitTopLevel(sql.slice(clause.contentStart, contentEnd).trim(), ',')
+
+      result += sql.slice(cursor, clause.index)
+      result += `${sql.slice(clause.index, clause.contentStart).trim()}\n`
+      result += this.formatCommaList(values, options).join('\n')
+      cursor = contentEnd
+    }
+
+    return result
+  }
+
+  private findTopLevelOrderBy(
+    sql: string,
+    startIndex: number
+  ): { index: number; contentStart: number } | null {
+    for (const index of this.findTopLevelWordIndexes(sql, 'order', startIndex)) {
+      const match = sql.slice(index).match(/^ORDER\s+BY\b/i)
+      if (match) {
+        return { index, contentStart: index + match[0].length }
+      }
+    }
+
+    return null
   }
 
   private formatDmlLists(sql: string, options: ResolvedSqlCodeFormatterOptions): string {
@@ -361,7 +409,6 @@ export class SqlFormatterLayoutService {
       .replace(/\s+(SET)\b\s*/gi, '\n$1\n')
       .replace(/\s+(UNION(?:\s+ALL)?)\b/gi, '\n$1')
       .replace(/\s+((?:INNER|LEFT(?:\s+OUTER)?|RIGHT(?:\s+OUTER)?|FULL(?:\s+OUTER)?|CROSS)?\s*JOIN)\b/gi, '\n$1')
-      .replace(/\s+(ON)\b/gi, '\n$1')
       .replace(/\s+(WHEN|ELSE|ELSEIF)\b/gi, '\n$1')
       .replace(/\b(THEN)\s+(?=(?:SELECT|INSERT|UPDATE|DELETE|BEGIN|SET|CALL|RETURN)\b)/gi, '$1\n')
       .replace(/\b(ELSE)\s+(?=(?:SELECT|INSERT|UPDATE|DELETE|BEGIN|SET|CALL|RETURN)\b)/gi, '$1\n')
@@ -571,10 +618,17 @@ export class SqlFormatterLayoutService {
     inIfCondition: boolean
   ): number {
     if (closedBlock && closedBlock !== 'case') return 0
+    if (/^(?:INNER|LEFT(?:\s+OUTER)?|RIGHT(?:\s+OUTER)?|FULL(?:\s+OUTER)?|CROSS)?\s*JOIN\b/i.test(line)) {
+      return section === 'from' || section === 'join' ? 1 : 0
+    }
     if (this.isTopLevelClauseLine(line) || /^SELECT\b/i.test(line) || /^SET$/i.test(line)) return 0
 
     let level = section ? 1 : 0
     if (/^(ON)\b/i.test(line)) level = Math.max(level, 1)
+
+    if (section === 'join' && /^(AND|OR)\b/i.test(line)) {
+      level++
+    }
 
     if (
       inCaseCondition &&
@@ -598,11 +652,13 @@ export class SqlFormatterLayoutService {
   private resolveNextSection(line: string, current: SqlSection): SqlSection {
     if (/^SELECT\b/i.test(line)) return 'select'
     if (/^FROM$/i.test(line)) return 'from'
+    if (/^ORDER\s+BY$/i.test(line)) return 'order-by'
     if (/^SET$/i.test(line)) return 'set'
     if (/^(WHERE|HAVING)$/i.test(line)) return 'predicate'
     if (/^ON\b/i.test(line)) return 'join'
+    if (/^(?:INNER|LEFT(?:\s+OUTER)?|RIGHT(?:\s+OUTER)?|FULL(?:\s+OUTER)?|CROSS)?\s*JOIN\b/i.test(line)) return 'join'
 
-    if (/^(GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET|RETURNING|VALUES|UNION|(?:INNER|LEFT(?:\s+OUTER)?|RIGHT(?:\s+OUTER)?|FULL(?:\s+OUTER)?|CROSS)?\s*JOIN)\b/i.test(line)) {
+    if (/^(GROUP\s+BY|LIMIT|OFFSET|RETURNING|VALUES|UNION)\b/i.test(line)) {
       return null
     }
 
@@ -626,7 +682,8 @@ export class SqlFormatterLayoutService {
     let level = 0
     let current = ''
 
-    for (const char of sql) {
+    for (let index = 0; index < sql.length; index++) {
+      const char = sql[index]
       if (char === '(') {
         level++
       } else if (char === ')') {
@@ -635,7 +692,17 @@ export class SqlFormatterLayoutService {
 
       if (char === ';' && level === 0) {
         if (current.trim()) {
-          statements.push({ text: current.trim(), terminated: true })
+          const trailingCommentMatch = sql.slice(index + 1).match(
+            /^[ \t]*(__DBOLT_SQL_LINE_COMMENT_\d+__)(?=\n|$)/
+          )
+          statements.push({
+            text: current.trim(),
+            terminated: true,
+            trailingComment: trailingCommentMatch?.[1]
+          })
+          if (trailingCommentMatch) {
+            index += trailingCommentMatch[0].length
+          }
         }
         current = ''
         continue
@@ -649,6 +716,22 @@ export class SqlFormatterLayoutService {
     }
 
     return statements
+  }
+
+  private findTopLevelCharacter(sql: string, character: string, startIndex: number): number {
+    let level = 0
+
+    for (let index = startIndex; index < sql.length; index++) {
+      if (sql[index] === '(') {
+        level++
+      } else if (sql[index] === ')') {
+        level = Math.max(0, level - 1)
+      } else if (sql[index] === character && level === 0) {
+        return index
+      }
+    }
+
+    return -1
   }
 
   private isRoutineDefinition(sql: string): boolean {
