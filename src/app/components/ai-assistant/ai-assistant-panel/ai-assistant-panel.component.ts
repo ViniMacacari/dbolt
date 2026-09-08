@@ -148,6 +148,18 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     return this.databaseContext.hasDatabaseContext(this.selectedSchemaDB, this.dbSchemasData)
   }
 
+  get currentSqlContext(): string {
+    const tab = this.asRecord(this.tabInfo)
+    if (tab['type'] !== 'sql') return ''
+
+    const info = this.asRecord(tab['info'])
+    return typeof info['sql'] === 'string' ? info['sql'].trim() : ''
+  }
+
+  get currentSqlContextAvailable(): boolean {
+    return this.currentSqlContext.length > 0
+  }
+
   get activeConversation(): AiAssistantConversation | null {
     return this.conversations.find((conversation) => conversation.id === this.activeConversationId) || null
   }
@@ -284,6 +296,8 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       return
     }
 
+    const currentSql = event.includeCurrentSql ? this.currentSqlContext : undefined
+
     let conversationId = ''
     try {
       conversationId = await this.ensureActiveConversation()
@@ -308,6 +322,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       const response = await this.chatService.sendMessage(
         this.toApiMessages(),
         readonlyToolContext,
+        currentSql,
         (stage) => this.addThinkingStep(stage)
       )
       this.messages = [...this.messages, this.createMessage('assistant', response.message)]

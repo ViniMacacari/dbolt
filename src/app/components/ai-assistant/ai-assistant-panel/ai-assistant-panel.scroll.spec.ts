@@ -51,6 +51,84 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
     expect(component.conversationsModalClosing).toBeFalse()
   }))
 
+  it('reads the current SQL only from the active SQL tab', () => {
+    const component = createComponent()
+    component.tabInfo = {
+      type: 'sql',
+      info: { sql: '  SELECT * FROM sample_table  ' }
+    }
+
+    expect(component.currentSqlContext).toBe('SELECT * FROM sample_table')
+    expect(component.currentSqlContextAvailable).toBeTrue()
+
+    component.tabInfo = { type: 'settings', info: { sql: 'SELECT 1' } }
+
+    expect(component.currentSqlContext).toBe('')
+    expect(component.currentSqlContextAvailable).toBeFalse()
+  })
+
+  it('forwards the active SQL as request context when explicitly enabled', async () => {
+    const conversationId = 'conversation-example'
+    const chatService = {
+      sendMessage: jasmine.createSpy().and.resolveTo({ message: 'Explanation', model: 'example-model' })
+    }
+    const conversationsService = {
+      saveConversation: jasmine.createSpy().and.callFake(async (_id: string, messages: any[]) => ({
+        activeConversationId: conversationId,
+        conversations: [{
+          id: conversationId,
+          title: 'Example',
+          messages,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z'
+        }]
+      }))
+    }
+    const component = new AiAssistantPanelComponent(
+      {} as any,
+      chatService as any,
+      conversationsService as any,
+      {} as any,
+      { translate: (key: string) => key } as any,
+      {} as any,
+      {} as any
+    )
+    component.settings = {
+      provider: 'gemini',
+      baseUrl: '',
+      model: 'example-model',
+      hasApiKey: true,
+      openAiOAuthConnected: false,
+      openAiOAuthRecommendationDismissed: true,
+      limits: {
+        maxApiCallsPerMessage: 4,
+        maxDatabaseRequestsPerMessage: 4,
+        maxDatabaseRequestsPerApiCall: 2,
+        maxContextMessages: 10,
+        maxToolResultChars: 9000,
+        maxToolTranscriptChars: 18000
+      }
+    }
+    component.activeConversationId = conversationId
+    component.tabInfo = {
+      type: 'sql',
+      info: { sql: 'SELECT * FROM sample_table' }
+    }
+
+    await component.onSend({
+      message: 'Explain this query',
+      allowDatabaseContext: false,
+      includeCurrentSql: true
+    })
+
+    expect(chatService.sendMessage).toHaveBeenCalledWith(
+      jasmine.any(Array),
+      undefined,
+      'SELECT * FROM sample_table',
+      jasmine.any(Function)
+    )
+  })
+
   it('ensures a live connection before building readonly AI context', async () => {
     const connectedContext = {
       connectionKey: 'ai-context',
