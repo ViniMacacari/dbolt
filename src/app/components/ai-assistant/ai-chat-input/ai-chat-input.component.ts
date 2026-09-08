@@ -54,7 +54,7 @@ export class AiChatInputComponent {
     event.stopPropagation()
     event.preventDefault()
 
-    if (event.ctrlKey || event.metaKey) {
+    if (event.shiftKey || event.ctrlKey || event.metaKey) {
       this.insertLineBreak(event.target as HTMLTextAreaElement | null)
       return
     }

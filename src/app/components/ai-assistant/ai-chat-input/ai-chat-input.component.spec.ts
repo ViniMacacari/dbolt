@@ -36,4 +36,30 @@ describe('AiChatInputComponent', () => {
 
     expect(submitted.includeCurrentSql).toBeFalse()
   })
+
+  it('inserts a line break instead of submitting when Shift+Enter is pressed', () => {
+    const component = createComponent()
+    const textarea = document.createElement('textarea')
+    textarea.value = 'First lineSecond line'
+    textarea.setSelectionRange(10, 10)
+    component.message = textarea.value
+    const submitSpy = spyOn(component, 'submit')
+    const event = {
+      key: 'Enter',
+      isComposing: false,
+      shiftKey: true,
+      ctrlKey: false,
+      metaKey: false,
+      target: textarea,
+      stopPropagation: jasmine.createSpy(),
+      preventDefault: jasmine.createSpy()
+    } as unknown as KeyboardEvent
+
+    component.onTextareaKeydown(event)
+
+    expect(component.message).toBe('First line\nSecond line')
+    expect(textarea.value).toBe('First line\nSecond line')
+    expect(submitSpy).not.toHaveBeenCalled()
+    expect(event.preventDefault).toHaveBeenCalled()
+  })
 })
