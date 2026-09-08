@@ -16,6 +16,7 @@ import { QueryResultExportService } from '../../../services/query-result-export/
 })
 export class AiChatMessageComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) message!: AiChatMessage
+  @Input() sqlAction: 'new-tab' | 'replace-current' = 'new-tab'
   @Output() sqlRequested = new EventEmitter<string>()
 
   formattedContent!: SafeHtml
@@ -147,7 +148,17 @@ export class AiChatMessageComponent implements OnChanges, OnDestroy {
       : copyState === 'error'
         ? this.language.translate('aiAssistant.copyFailed')
         : this.language.translate('aiAssistant.copySql')
-    const openLabel = this.language.translate('aiAssistant.openSqlInNewTab')
+    const replaceCurrent = this.sqlAction === 'replace-current'
+    const openLabel = this.language.translate(
+      replaceCurrent ? 'aiAssistant.applySqlToCurrent' : 'aiAssistant.openSqlInNewTab'
+    )
+    const openButtonClass = replaceCurrent ? ' apply-current' : ''
+    const openButtonContent = replaceCurrent
+      ? [
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg>',
+        `<span>${this.escapeHtml(openLabel)}</span>`
+      ].join('')
+      : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"></path><path d="m20 4-9 9"></path><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"></path></svg>'
     const stateClass = copyState ? ` ${copyState}` : ''
 
     return [
@@ -155,8 +166,8 @@ export class AiChatMessageComponent implements OnChanges, OnDestroy {
       `<button type="button" class="md-code-action${stateClass}" data-ai-code-action="copy-sql" data-ai-code-index="${codeIndex}" title="${this.escapeHtml(copyLabel)}" aria-label="${this.escapeHtml(copyLabel)}">`,
       '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path></svg>',
       '</button>',
-      `<button type="button" class="md-code-action" data-ai-code-action="open-sql" data-ai-code-index="${codeIndex}" title="${this.escapeHtml(openLabel)}" aria-label="${this.escapeHtml(openLabel)}">`,
-      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"></path><path d="m20 4-9 9"></path><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"></path></svg>',
+      `<button type="button" class="md-code-action${openButtonClass}" data-ai-code-action="open-sql" data-ai-code-index="${codeIndex}" title="${this.escapeHtml(openLabel)}" aria-label="${this.escapeHtml(openLabel)}">`,
+      openButtonContent,
       '</button>',
       '</span>'
     ].join('')

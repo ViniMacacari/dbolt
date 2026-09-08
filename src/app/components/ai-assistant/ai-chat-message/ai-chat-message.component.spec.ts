@@ -11,6 +11,7 @@ describe('AiChatMessageComponent SQL actions', () => {
         'aiAssistant.assistant': 'IA',
         'aiAssistant.copySql': 'Copiar SQL',
         'aiAssistant.openSqlInNewTab': 'Abrir em nova guia',
+        'aiAssistant.applySqlToCurrent': 'Aplicar na query atual',
         'aiAssistant.copied': 'Copiado',
         'aiAssistant.copyFailed': 'Erro ao copiar'
       }[key] || key)
@@ -92,6 +93,18 @@ describe('AiChatMessageComponent SQL actions', () => {
     await component.onFormattedContentClick(createClickEvent(button))
 
     expect(emittedSql).toEqual(['SELECT name FROM customers;'])
+    component.ngOnDestroy()
+  })
+
+  it('shows an explicit apply action for a response using the current SQL context', () => {
+    const { component } = createComponent('```sql\nSELECT column_a FROM table_a;\n```')
+    component.sqlAction = 'replace-current'
+    component.ngOnChanges({})
+    const button = getActionButton(component, 'open-sql')
+
+    expect(button.classList.contains('apply-current')).toBeTrue()
+    expect(button.textContent).toContain('Aplicar na query atual')
+    expect(button.getAttribute('aria-label')).toBe('Aplicar na query atual')
     component.ngOnDestroy()
   })
 })
