@@ -8,6 +8,7 @@ import { LoadingComponent } from '../../components/modal/loading/loading.compone
 import { ConnectionsService } from '../../services/resolve-connections/connections.service'
 import { AppLanguageService } from '../../services/language/app-language.service'
 import { AppLanguage } from '../../services/language/language.model'
+import { DatabaseLogoService } from '../../services/database-logo/database-logo.service'
 
 @Component({
   selector: 'app-open-page',
@@ -37,7 +38,8 @@ export class OpenPageComponent {
     private IAPI: InternalApiService,
     private router: Router,
     private connectionsService: ConnectionsService,
-    private language: AppLanguageService
+    private language: AppLanguageService,
+    readonly databaseLogo: DatabaseLogoService
   ) {
     this.appLanguage = this.language.getCurrentLanguage()
     this.appLanguageOptions = this.language.languageOptions
