@@ -11,6 +11,7 @@ export interface AiAssistantChatRequest {
   messages: AiAssistantChatMessage[];
   readonlyContext?: AiReadonlyDatabaseContext;
   currentSql?: string;
+  autoApplyCurrentSql?: boolean;
   appLanguage?: string;
 }
 
