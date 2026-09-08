@@ -384,22 +384,13 @@ export class SettingsComponent implements OnInit, OnChanges {
   async removeAiApiKey(provider: AiAssistantApiKeyProvider): Promise<void> {
     if (this.aiSettingsSaving || this.aiSettingsLoading || this.aiRemovingApiKey) return
 
-    const persistedSettings = this.aiSettings
-    const persistedProvider = persistedSettings?.provider || this.aiProvider
-
     this.aiRemovingApiKey = provider
     this.aiSettingsMessage = ''
     this.aiSettingsError = ''
 
     try {
       const settings = await this.aiSettingsService.saveSettings({
-        provider: persistedProvider,
-        model: persistedSettings?.model || this.defaultModelForAiProvider(persistedProvider),
-        baseUrl: this.aiProviderNeedsBaseUrl(persistedProvider)
-          ? persistedSettings?.baseUrl || this.defaultBaseUrlForAiProvider(persistedProvider)
-          : undefined,
-        clearApiKeys: { [provider]: true },
-        limits: persistedSettings?.limits || DEFAULT_AI_LIMITS
+        clearApiKeys: { [provider]: true }
       })
 
       this.applyAiSettings(settings)
