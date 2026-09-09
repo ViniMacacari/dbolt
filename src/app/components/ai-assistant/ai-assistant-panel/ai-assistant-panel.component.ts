@@ -43,6 +43,7 @@ import {
 
 interface AiTurnOptions {
   allowDatabaseContext: boolean
+  useDatabaseKnowledge: boolean
   includeCurrentSql: boolean
   autoApplyCurrentSql: boolean
 }
@@ -322,6 +323,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
     const userMessage = this.createMessage('user', event.message)
     const options: AiTurnOptions = {
       allowDatabaseContext: event.allowDatabaseContext,
+      useDatabaseKnowledge: event.useDatabaseKnowledge !== false,
       includeCurrentSql: event.includeCurrentSql,
       autoApplyCurrentSql: Boolean(event.autoApplyCurrentSql)
     }
@@ -419,7 +421,11 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
         currentSql,
         Boolean(currentSql && options.autoApplyCurrentSql),
         (stage) => this.addThinkingStep(stage),
-        request.signal
+        request.signal,
+        {
+          use: options.useDatabaseKnowledge,
+          scope: this.buildDatabaseMemoryScope()
+        }
       )
       const assistantMessage = this.createMessage('assistant', response.message)
       assistantMessage.thinkingSeconds = this.getElapsedThinkingSeconds()
@@ -472,6 +478,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   private defaultTurnOptions(): AiTurnOptions {
     return {
       allowDatabaseContext: true,
+      useDatabaseKnowledge: true,
       includeCurrentSql: false,
       autoApplyCurrentSql: false
     }
@@ -739,6 +746,27 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       ...this.thinkingSteps.filter((existingStage) => existingStage !== stage),
       stage
     ].slice(-5)
+  }
+
+  private buildDatabaseMemoryScope(): Record<string, string> {
+    const context = typeof this.databaseContext?.buildReadonlyToolContext === 'function'
+      ? this.databaseContext.buildReadonlyToolContext(
+        this.selectedSchemaDB,
+        this.dbSchemasData,
+        this.tabInfo
+      ) as Record<string, unknown>
+      : {}
+
+    return {
+      sgbd: this.readScopeValue(context['sgbd']),
+      connectionName: this.readScopeValue(context['connectionName']),
+      database: this.readScopeValue(context['database']),
+      schema: this.readScopeValue(context['schema'])
+    }
+  }
+
+  private readScopeValue(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : ''
   }
 
   private getElapsedThinkingSeconds(): number {
