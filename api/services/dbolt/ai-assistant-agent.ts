@@ -28,6 +28,7 @@ export interface AiAssistantAgentChatRequest {
   currentSql?: string;
   autoApplyCurrentSql?: boolean;
   appLanguage?: string;
+  databaseMemoryPrompt?: string;
 }
 
 export interface AiAssistantAgentChatResult {
@@ -71,7 +72,8 @@ class AiAssistantAgentService {
     const autoApplyCurrentSql = Boolean(currentSql && request.autoApplyCurrentSql);
     const expectsSqlReplacement = autoApplyCurrentSql && this.isSqlReplacementRequest(messages);
     const messagesChars = this.getMessagesChars(messages);
-    const schemaMemoryPrompt = AiAssistantSchemaMemory.buildPromptBlock(readonlyContext);
+    const schemaMemoryPrompt = AiAssistantSchemaMemory.buildPromptBlock(readonlyContext)
+    const databaseMemoryPrompt = this.normalizeMemoryPrompt(request.databaseMemoryPrompt);
     const executedToolCalls = new Set<string>();
     const toolSections: string[] = [];
     let automaticSqlRecovery = '';
@@ -130,7 +132,8 @@ class AiAssistantAgentService {
           autoApplyCurrentSql,
           automaticSqlRecovery,
           messagesChars,
-          schemaMemoryPrompt
+          schemaMemoryPrompt,
+          databaseMemoryPrompt
         ),
         messages
       );
@@ -199,7 +202,8 @@ class AiAssistantAgentService {
     autoApplyCurrentSql: boolean,
     automaticSqlRecovery: string,
     messagesChars = 0,
-    schemaMemoryPrompt = ''
+    schemaMemoryPrompt = '',
+    databaseMemoryPrompt = ''
   ): AiModelSystemPrompt {
     const baseRules = [
       'You are the AI assistant for DBOLT Database Manager.',
@@ -219,6 +223,7 @@ class AiAssistantAgentService {
     const fixedParts = [
       ...baseRules,
       ...(readonlyContext ? [this.buildReadonlyContextPrompt(readonlyContext)] : []),
+      ...(databaseMemoryPrompt ? [databaseMemoryPrompt] : []),
       ...(schemaMemoryPrompt ? [schemaMemoryPrompt] : []),
       ...this.getDialectPromptRules(readonlyContext)
     ];
@@ -306,6 +311,10 @@ class AiAssistantAgentService {
     }
 
     return '';
+  }
+
+  private normalizeMemoryPrompt(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
   }
 
   private getMessagesChars(messages: AiModelMessage[]): number {
