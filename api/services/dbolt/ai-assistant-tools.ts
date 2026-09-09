@@ -26,6 +26,7 @@ export interface AiAssistantToolExecutionResult {
   name: AiAssistantReadonlyToolName;
   success: boolean;
   content: string;
+  data?: Record<string, unknown>;
 }
 
 interface AiAssistantToolPayload {
@@ -77,10 +78,13 @@ class AiAssistantToolsService {
         DATABASE_ACTION_TIMEOUT_MS
       );
 
+      const serialized = this.serializeWithinBudget(result, budget.maxToolResultChars);
+
       return {
         name: toolCall.name,
         success: true,
-        content: this.serializeWithinBudget(result, budget.maxToolResultChars)
+        content: serialized.content,
+        data: serialized.data
       };
     } catch (error: unknown) {
       return {
@@ -207,7 +211,10 @@ class AiAssistantToolsService {
     };
   }
 
-  private serializeWithinBudget(result: AiAssistantToolPayload, maxChars: number): string {
+  private serializeWithinBudget(
+    result: AiAssistantToolPayload,
+    maxChars: number
+  ): { content: string; data: Record<string, unknown> } {
     const working: Record<string, unknown> = { ...result.payload };
     let text = JSON.stringify(working, this.jsonReplacer);
 
@@ -226,15 +233,17 @@ class AiAssistantToolsService {
     }
 
     if (text.length <= maxChars) {
-      return text;
+      return { content: text, data: working };
     }
 
-    return JSON.stringify({
+    const fallback: Record<string, unknown> = {
       action: result.payload['action'],
       truncated: true,
       omittedByBudget: true,
       note: 'The result did not fit the AI budget. Request fewer columns, fewer rows, or a narrower filter.'
-    });
+    };
+
+    return { content: JSON.stringify(fallback), data: fallback };
   }
 
   private findLargestListKey(
