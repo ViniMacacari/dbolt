@@ -5,7 +5,13 @@
         (sidebarStatusChange)="onSidebarStatusChange($event)" (dbInfoRequested)="onDbInfoRequested($event)"
         (selectedSchemaChanged)="onSelectedSchemaChanged($event)"
         (settingsRequested)="onSettingsRequested()" (sqlScriptRequested)="onSqlScriptRequested($event)"
-        (contextConnectionRequested)="onContextConnectionRequested($event)"></app-sidebar>
+        (contextConnectionRequested)="onContextConnectionRequested($event)"
+        (databaseMemoryRequested)="onDatabaseMemoryRequested($event)"></app-sidebar>
+
+    <app-database-memory-chat *ngIf="databaseMemoryScope" [scope]="databaseMemoryScope"
+        [readonlyContext]="databaseMemoryReadonlyContext"
+        [contextError]="databaseMemoryContextError"
+        (closed)="closeDatabaseMemory()"></app-database-memory-chat>
     <app-ai-assistant-panel *ngIf="aiAssistantMounted" class="workspace-ai-assistant"
         [class.active]="aiAssistantOpen" [attr.aria-hidden]="!aiAssistantOpen"
         [attr.inert]="!aiAssistantOpen ? '' : null" [selectedSchemaDB]="selectedSchemaDB"
