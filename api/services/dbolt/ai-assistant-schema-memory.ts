@@ -5,8 +5,8 @@ const ENTRY_TTL_MS = 30 * 60 * 1000;
 const MAX_CONNECTIONS = 12;
 const MAX_OBJECTS_PER_CONNECTION = 400;
 const MAX_TABLES_WITH_COLUMNS = 40;
-const MAX_COLUMNS_PER_TABLE = 120;
-const MAX_PROMPT_BLOCK_CHARS = 12000;
+const MAX_COLUMNS_PER_TABLE = 400;
+const MAX_PROMPT_BLOCK_CHARS = 24000;
 
 interface RememberedColumn {
   name: string;
