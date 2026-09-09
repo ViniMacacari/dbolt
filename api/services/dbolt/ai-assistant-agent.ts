@@ -2,6 +2,7 @@ import AiAssistantModelClient, {
   type AiModelMessage,
   type AiModelSystemPrompt
 } from './ai-assistant-model-client.js';
+import AiAssistantSchemaMemory from './ai-assistant-schema-memory.js';
 import AiAssistantToolBudget, {
   type AiAssistantToolBudgetState
 } from './ai-assistant-tool-budget.js';
@@ -70,6 +71,7 @@ class AiAssistantAgentService {
     const autoApplyCurrentSql = Boolean(currentSql && request.autoApplyCurrentSql);
     const expectsSqlReplacement = autoApplyCurrentSql && this.isSqlReplacementRequest(messages);
     const messagesChars = this.getMessagesChars(messages);
+    const schemaMemoryPrompt = AiAssistantSchemaMemory.buildPromptBlock(readonlyContext);
     const executedToolCalls = new Set<string>();
     const toolSections: string[] = [];
     let automaticSqlRecovery = '';
@@ -92,6 +94,7 @@ class AiAssistantAgentService {
         schemaSummaryCall,
         budget
       );
+      AiAssistantSchemaMemory.remember(readonlyContext, schemaSummary);
       toolSections.push([
         `DBOLT read-only result. Executed action: ${schemaSummary.name}. Status: ${schemaSummary.success ? 'ok' : 'error'}.`,
         schemaSummary.content
@@ -126,7 +129,8 @@ class AiAssistantAgentService {
           allowTools,
           autoApplyCurrentSql,
           automaticSqlRecovery,
-          messagesChars
+          messagesChars,
+          schemaMemoryPrompt
         ),
         messages
       );
@@ -194,7 +198,8 @@ class AiAssistantAgentService {
     allowTools: boolean,
     autoApplyCurrentSql: boolean,
     automaticSqlRecovery: string,
-    messagesChars = 0
+    messagesChars = 0,
+    schemaMemoryPrompt = ''
   ): AiModelSystemPrompt {
     const baseRules = [
       'You are the AI assistant for DBOLT Database Manager.',
@@ -214,6 +219,7 @@ class AiAssistantAgentService {
     const fixedParts = [
       ...baseRules,
       ...(readonlyContext ? [this.buildReadonlyContextPrompt(readonlyContext)] : []),
+      ...(schemaMemoryPrompt ? [schemaMemoryPrompt] : []),
       ...this.getDialectPromptRules(readonlyContext)
     ];
     const currentSqlBlock = currentSql
@@ -512,7 +518,9 @@ class AiAssistantAgentService {
     const contextItems = [
       ['Connection name', readonlyContext.connectionName],
       ['Database engine/type', readonlyContext.sgbd],
-      ['Database version', readonlyContext.version]
+      ['Database version', readonlyContext.version],
+      ['Database', readonlyContext.database],
+      ['Schema', readonlyContext.schema]
     ]
       .filter((item): item is [string, string] => typeof item[1] === 'string' && item[1].trim().length > 0)
       .map(([label, value]) => `- ${label}: ${value}`);
@@ -520,6 +528,7 @@ class AiAssistantAgentService {
     return [
       'Current DBOLT read-only database context visible to you:',
       ...(contextItems.length ? contextItems : ['- No public connection metadata was provided.']),
+      'Every database action runs against this database and schema. Do not assume objects from any other database or schema.',
       'The internal connectionKey is intentionally not shown to you.'
     ].join('\n');
   }
