@@ -294,6 +294,7 @@ textarea {
 }
 
 .memory-bubble-proposals {
+    --memory-slot-gap: 10px;
     background: var(--dbolt-111);
     box-shadow: inset 3px 0 0 var(--dbolt-516986);
     display: flex;
@@ -337,7 +338,7 @@ textarea {
 
 .memory-proposal.removing,
 .memory-note.removing {
-    animation: memory-card-out .2s ease forwards;
+    animation: none;
     pointer-events: none;
 }
 
@@ -749,4 +750,94 @@ textarea {
 .memory-action:disabled {
     cursor: default;
     opacity: .45;
+}
+
+.memory-slot {
+    display: grid;
+    grid-template-rows: 1fr;
+    min-height: 0;
+    opacity: 1;
+    padding-bottom: var(--memory-slot-gap, 9px);
+    transition:
+        grid-template-rows .24s cubic-bezier(.4, 0, .2, 1),
+        padding-bottom .24s cubic-bezier(.4, 0, .2, 1),
+        opacity .16s ease;
+}
+
+.memory-slot > * {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.memory-slot:last-child {
+    padding-bottom: 0;
+}
+
+.memory-slot.removing {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    padding-bottom: 0;
+    pointer-events: none;
+}
+
+.memory-question.selected {
+    background: var(--dbolt-1c2041);
+    box-shadow: inset 3px 0 0 var(--dbolt-739eca);
+}
+
+.memory-selected-question {
+    align-items: flex-start;
+    animation: memory-card-in .18s ease both;
+    border-top: 1px solid var(--dbolt-202020);
+    display: flex;
+    gap: 9px;
+    padding: 11px 26px 0;
+
+    p {
+        color: var(--dbolt-c9c9c9);
+        flex: 1 1 auto;
+        font-size: .78em;
+        line-height: 1.45;
+        margin: 0;
+    }
+}
+
+.memory-qr-tag {
+    background: var(--dbolt-1c2041);
+    border-radius: 7px;
+    color: var(--dbolt-9fbede);
+    flex: 0 0 auto;
+    font-size: .7em;
+    font-weight: 900;
+    letter-spacing: .04em;
+    padding: 3px 7px;
+}
+
+.memory-qr-tag-answer {
+    align-self: flex-start;
+    margin-top: 12px;
+}
+
+.memory-bubble-proposals {
+    gap: 0;
+}
+
+.memory-proposals-head {
+    margin-bottom: 10px;
+}
+
+.memory-bubble-proposals > .memory-investigation {
+    margin-top: 2px;
+}
+
+.memory-popup-body {
+    gap: 0;
+}
+
+.memory-popup-body.memory-add-form {
+    gap: 9px;
+}
+
+.memory-popup-body > .memory-muted {
+    margin-bottom: 9px;
 }
