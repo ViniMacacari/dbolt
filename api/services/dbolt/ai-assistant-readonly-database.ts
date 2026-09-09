@@ -472,7 +472,9 @@ class AiAssistantReadonlyDatabaseService {
     return {
       connectionName: context.connectionName,
       sgbd: context.sgbd,
-      version: context.version
+      version: context.version,
+      database: context.database,
+      schema: context.schema
     };
   }
 
