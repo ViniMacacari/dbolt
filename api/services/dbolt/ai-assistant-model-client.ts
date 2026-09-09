@@ -4,6 +4,8 @@ import type {
 } from './ai-assistant-settings.js';
 import OpenAiOAuth from './ai-assistant-openai-oauth.js';
 
+const MAX_OUTPUT_TOKENS = 4096;
+
 export interface AiModelMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -182,6 +184,7 @@ class AiAssistantModelClient {
           role: message.role,
           content: message.content
         })),
+        max_output_tokens: MAX_OUTPUT_TOKENS,
         store: false
       })
     });
@@ -255,6 +258,53 @@ class AiAssistantModelClient {
     additionalHeaders: Record<string, string>,
     temperature: number | undefined
   ): Promise<AiModelCompletion> {
+    try {
+      return await this.requestOpenAiCompatible(
+        baseUrl,
+        model,
+        apiKey,
+        systemPrompt,
+        messages,
+        additionalHeaders,
+        temperature,
+        'max_tokens'
+      );
+    } catch (error: unknown) {
+      if (!this.isUnsupportedTokenLimitError(error)) {
+        throw error;
+      }
+
+      return await this.requestOpenAiCompatible(
+        baseUrl,
+        model,
+        apiKey,
+        systemPrompt,
+        messages,
+        additionalHeaders,
+        temperature,
+        'max_completion_tokens'
+      );
+    }
+  }
+
+  private isUnsupportedTokenLimitError(error: unknown): boolean {
+    const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+    return message.includes('max_tokens') &&
+      (message.includes('max_completion_tokens') ||
+        message.includes('unsupported') ||
+        message.includes('not supported'));
+  }
+
+  private async requestOpenAiCompatible(
+    baseUrl: string,
+    model: string,
+    apiKey: string,
+    systemPrompt: string,
+    messages: AiModelMessage[],
+    additionalHeaders: Record<string, string>,
+    temperature: number | undefined,
+    tokenLimitField: 'max_tokens' | 'max_completion_tokens'
+  ): Promise<AiModelCompletion> {
     const body: Record<string, unknown> = {
       model,
       messages: [
@@ -263,7 +313,8 @@ class AiAssistantModelClient {
           content: systemPrompt
         },
         ...this.normalizeChatMessages(messages)
-      ]
+      ],
+      [tokenLimitField]: MAX_OUTPUT_TOKENS
     };
 
     if (typeof temperature === 'number') {
@@ -329,7 +380,8 @@ class AiAssistantModelClient {
             }
           },
           generationConfig: {
-            temperature: 0.2
+            temperature: 0.2,
+            maxOutputTokens: MAX_OUTPUT_TOKENS
           }
         })
       }
@@ -373,7 +425,7 @@ class AiAssistantModelClient {
         model,
         system: systemPrompt,
         messages: this.normalizeChatMessages(messages),
-        max_tokens: 4096,
+        max_tokens: MAX_OUTPUT_TOKENS,
         temperature: 0.2
       })
     });
