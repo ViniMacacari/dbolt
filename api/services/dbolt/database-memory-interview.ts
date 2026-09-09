@@ -1,0 +1,397 @@
+import AiAssistantModelClient, {
+  type AiModelMessage,
+  type AiModelSystemPrompt
+} from './ai-assistant-model-client.js';
+import AiAssistantSchemaMemory from './ai-assistant-schema-memory.js';
+import AiAssistantSettings from './ai-assistant-settings.js';
+import AiAssistantToolBudget from './ai-assistant-tool-budget.js';
+import AiAssistantTools from './ai-assistant-tools.js';
+import DatabaseMemory from './database-memory.js';
+import DatabaseMemoryStorage, {
+  MAX_NOTE_TEXT_CHARS,
+  MAX_NOTE_TOPIC_CHARS,
+  type DatabaseMemoryScope
+} from '../../utils/database-memory-storage.js';
+
+import type { AiReadonlyDatabaseContext } from './ai-assistant-readonly-database.js';
+
+const MAX_MODEL_CALLS_PER_TURN = 4;
+const MAX_TABLES_PER_TURN = 4;
+const MAX_QUERIES_PER_TURN = 2;
+const MAX_PROPOSED_NOTES = 3;
+const MAX_CONTEXT_MESSAGES = 8;
+const MAX_MESSAGE_CHARS = 2000;
+const MAX_INVESTIGATION_CHARS = 14000;
+const SCHEMA_SUMMARY_LIMIT = 120;
+
+export interface DatabaseMemoryInterviewMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface DatabaseMemoryInterviewRequest {
+  scope: DatabaseMemoryScope;
+  readonlyContext?: AiReadonlyDatabaseContext;
+  messages?: DatabaseMemoryInterviewMessage[];
+  appLanguage?: string;
+}
+
+export interface DatabaseMemoryProposedNote {
+  topic: string;
+  text: string;
+}
+
+export interface DatabaseMemoryInterviewResult {
+  message: string;
+  question: string;
+  proposedNotes: DatabaseMemoryProposedNote[];
+  inspectedTables: string[];
+  executedQueries: string[];
+  model: string;
+}
+
+class DatabaseMemoryInterviewService {
+  async run(request: DatabaseMemoryInterviewRequest): Promise<DatabaseMemoryInterviewResult> {
+    const settings = await AiAssistantSettings.getResolvedSettings();
+    const scope = request.scope || {};
+    const messages = this.normalizeMessages(request.messages);
+    const responseLanguage = request.appLanguage === 'pt-BR'
+      ? 'Brazilian Portuguese (pt-BR)'
+      : 'English (en)';
+    const savedNotes = await DatabaseMemory.get(scope).catch(() => null);
+    const investigation: string[] = [];
+    const inspectedTables: string[] = [];
+    const executedQueries: string[] = [];
+
+    if (request.readonlyContext) {
+      investigation.push(await this.readSchemaSummary(request.readonlyContext));
+    }
+
+    let lastModel = settings.model;
+    let result: DatabaseMemoryInterviewResult | null = null;
+
+    for (let call = 0; call < MAX_MODEL_CALLS_PER_TURN; call++) {
+      const canInvestigateAgain = Boolean(request.readonlyContext)
+        && call + 1 < MAX_MODEL_CALLS_PER_TURN
+        && (inspectedTables.length < MAX_TABLES_PER_TURN || executedQueries.length < MAX_QUERIES_PER_TURN);
+      const completion = await AiAssistantModelClient.complete(
+        settings,
+        this.buildPrompt(
+          scope,
+          responseLanguage,
+          savedNotes ? this.renderSavedNotes(savedNotes.notes) : '',
+          investigation,
+          canInvestigateAgain,
+          MAX_TABLES_PER_TURN - inspectedTables.length,
+          MAX_QUERIES_PER_TURN - executedQueries.length
+        ),
+        messages
+      );
+      lastModel = completion.model;
+      const parsed = this.parseCompletion(completion.content);
+      const requested = canInvestigateAgain
+        ? this.readInvestigationRequest(parsed, inspectedTables, executedQueries)
+        : { tables: [], queries: [] };
+
+      if (requested.tables.length > 0 || requested.queries.length > 0) {
+        for (const tableName of requested.tables) {
+          inspectedTables.push(tableName);
+          investigation.push(await this.readTableColumns(request.readonlyContext as AiReadonlyDatabaseContext, tableName));
+        }
+
+        for (const sql of requested.queries) {
+          executedQueries.push(sql);
+          investigation.push(await this.runReadonlyQuery(request.readonlyContext as AiReadonlyDatabaseContext, sql));
+        }
+
+        continue;
+      }
+
+      result = {
+        message: this.normalizeText(parsed['message'], 4000),
+        question: this.normalizeText(parsed['question'], 600),
+        proposedNotes: this.normalizeProposedNotes(parsed['notes']),
+        inspectedTables,
+        executedQueries,
+        model: lastModel
+      };
+      break;
+    }
+
+    if (!result) {
+      return {
+        message: '',
+        question: '',
+        proposedNotes: [],
+        inspectedTables,
+        executedQueries,
+        model: lastModel
+      };
+    }
+
+    return result;
+  }
+
+  private readInvestigationRequest(
+    parsed: Record<string, unknown>,
+    inspectedTables: string[],
+    executedQueries: string[]
+  ): { tables: string[]; queries: string[] } {
+    const raw = parsed['investigate'];
+    const record = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
+    const legacyTable = this.normalizeText(parsed['inspectTable'], 128);
+    const tableCandidates = [
+      ...(Array.isArray(record['tables']) ? record['tables'] : []),
+      ...(legacyTable ? [legacyTable] : [])
+    ];
+    const tables: string[] = [];
+    const queries: string[] = [];
+
+    for (const candidate of tableCandidates) {
+      const tableName = this.normalizeText(candidate, 128);
+
+      if (
+        tableName &&
+        !inspectedTables.includes(tableName) &&
+        !tables.includes(tableName) &&
+        inspectedTables.length + tables.length < MAX_TABLES_PER_TURN
+      ) {
+        tables.push(tableName);
+      }
+    }
+
+    for (const candidate of (Array.isArray(record['queries']) ? record['queries'] : [])) {
+      const sql = this.normalizeText(candidate, 600);
+
+      if (
+        sql &&
+        !executedQueries.includes(sql) &&
+        !queries.includes(sql) &&
+        executedQueries.length + queries.length < MAX_QUERIES_PER_TURN
+      ) {
+        queries.push(sql);
+      }
+    }
+
+    return { tables, queries };
+  }
+
+  private async runReadonlyQuery(
+    context: AiReadonlyDatabaseContext,
+    sql: string
+  ): Promise<string> {
+    const budget = AiAssistantToolBudget.createState({});
+    const result = await AiAssistantTools.execute(
+      context,
+      { name: 'runReadonlyQuery', arguments: { sql, maxRows: 20 } },
+      budget
+    );
+
+    return `Read-only query (status ${result.success ? 'ok' : 'error'}):
+${sql}
+${result.content}`;
+  }
+
+  private buildPrompt(
+    scope: DatabaseMemoryScope,
+    responseLanguage: string,
+    savedNotes: string,
+    investigation: string[],
+    canInvestigateAgain: boolean,
+    remainingTables: number,
+    remainingQueries: number
+  ): AiModelSystemPrompt {
+    const fixedRules = [
+      'You are the DBOLT database knowledge interviewer. Your job is to build a small, durable set of notes about how this specific database is used, so the DBOLT AI assistant answers better in future conversations.',
+      `Write every user-facing string in ${responseLanguage}. Keep table, column and schema identifiers exactly as the database returned them.`,
+      this.buildScopeLine(scope),
+      'Investigate before you ask. Do not ask the user anything the database can answer: read the columns of the tables that matter, and run read-only SELECTs to see which type, status and code values actually exist and how they are distributed.',
+      'Two kinds of fact exist, and you treat them differently. A STRUCTURAL fact is verifiable from what the database just returned: which table holds an entity, which columns are the keys, how two tables join, which distinct codes exist in a column. Propose those as notes directly, saying in the message which query or metadata proves it, so the user only has to confirm.',
+      'A BUSINESS fact is what the codes and tables mean in this company process. Never assert it from a table or column name. Ask about it.',
+      'What must never become a note: row values that change, credentials, generated SQL, plain column listings that DBOLT metadata already provides, anything you are guessing, and anything the user has not confirmed.',
+      `Each note must be one atomic fact, at most ${MAX_NOTE_TEXT_CHARS} characters, written so it is still understandable months from now without this conversation. The topic is a short label of at most ${MAX_NOTE_TOPIC_CHARS} characters.`,
+      `Propose at most ${MAX_PROPOSED_NOTES} notes per turn. Fewer good notes are better than many weak ones.`,
+      'Only propose nothing when you have neither a structural fact nor an answer from the user. Having read the schema is already enough to propose structural facts about the tables that matter, so an empty first turn means you did not investigate enough.',
+      'Never repeat a note that is already saved and never propose two notes that say the same thing.',
+      'Always ask exactly one pertinent question that would produce the most useful next note. Prefer questions only this user can answer over questions the metadata already answers.',
+      'Reply with a single JSON object and nothing else, in this exact shape:',
+      '{"message":"what you concluded and what proves it","question":"one question","notes":[{"topic":"short label","text":"one atomic fact"}]}',
+      ...(canInvestigateAgain ? [
+        'Before answering you may investigate the database. To do that, reply instead with only this JSON object:',
+        '{"investigate":{"tables":["TABLE_NAME"],"queries":["SELECT DISTINCT ..."]}}',
+        `This turn you may still read ${remainingTables} table(s) and run ${remainingQueries} read-only query(ies). Queries must be a single SELECT or WITH; anything else is rejected.`,
+        'Use that budget. Reading the columns of the two or three tables the user cares about, and looking at the distinct values of their type and status columns, is what makes your notes worth saving.'
+      ] : [])
+    ].join('\n\n');
+
+    return {
+      fixedRules,
+      collectedData: [
+        savedNotes ? `Notes already saved for this database:\n${savedNotes}` : 'No notes are saved for this database yet.',
+        investigation.length
+          ? `DBOLT read-only investigation for this interview:\n${AiAssistantToolBudget.limitText(investigation.join('\n\n'), MAX_INVESTIGATION_CHARS)}`
+          : 'No read-only database context was authorized for this interview, so rely on what the user tells you.'
+      ].join('\n\n'),
+      turnState: canInvestigateAgain
+        ? ''
+        : 'You cannot investigate any further this turn. Answer with the message, question and notes JSON object now.'
+    };
+  }
+
+  private async readSchemaSummary(context: AiReadonlyDatabaseContext): Promise<string> {
+    const budget = AiAssistantToolBudget.createState({});
+    const result = await AiAssistantTools.execute(
+      context,
+      { name: 'getSchemaSummary', arguments: { limit: SCHEMA_SUMMARY_LIMIT } },
+      budget
+    );
+    AiAssistantSchemaMemory.remember(context, result);
+
+    return `Schema overview (status ${result.success ? 'ok' : 'error'}):\n${result.content}`;
+  }
+
+  private async readTableColumns(
+    context: AiReadonlyDatabaseContext,
+    tableName: string
+  ): Promise<string> {
+    const budget = AiAssistantToolBudget.createState({});
+    const result = await AiAssistantTools.execute(
+      context,
+      { name: 'getTableColumns', arguments: { tableName } },
+      budget
+    );
+    AiAssistantSchemaMemory.remember(context, result);
+
+    return `Columns of ${tableName} (status ${result.success ? 'ok' : 'error'}):\n${result.content}`;
+  }
+
+  private renderSavedNotes(notes: Array<{ topic: string; text: string; source: string }>): string {
+    return notes
+      .map((note) => `- [${note.topic}] (${note.source}) ${note.text}`)
+      .join('\n');
+  }
+
+  private normalizeMessages(messages: DatabaseMemoryInterviewMessage[] | undefined): AiModelMessage[] {
+    const normalized = (messages || [])
+      .filter((message) => message && (message.role === 'user' || message.role === 'assistant'))
+      .map((message) => ({
+        role: message.role,
+        content: this.normalizeText(message.content, MAX_MESSAGE_CHARS)
+      }))
+      .filter((message) => message.content.length > 0)
+      .slice(-MAX_CONTEXT_MESSAGES);
+
+    if (normalized.length === 0) {
+      return [{
+        role: 'user',
+        content: 'Start the interview about this database.'
+      }];
+    }
+
+    return normalized;
+  }
+
+  private parseCompletion(content: string): Record<string, unknown> {
+    const direct = this.parseJsonObject(content.trim());
+    if (direct) {
+      return direct;
+    }
+
+    const start = content.indexOf('{');
+    const end = content.lastIndexOf('}');
+
+    if (start >= 0 && end > start) {
+      const embedded = this.parseJsonObject(content.slice(start, end + 1));
+      if (embedded) {
+        return embedded;
+      }
+    }
+
+    return { message: content };
+  }
+
+  private parseJsonObject(value: string): Record<string, unknown> | null {
+    const unfenced = value
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/, '')
+      .trim();
+
+    if (!unfenced.startsWith('{')) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(unfenced);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : null;
+    } catch (_error: unknown) {
+      return null;
+    }
+  }
+
+  private normalizeProposedNotes(value: unknown): DatabaseMemoryProposedNote[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    const seen = new Set<string>();
+    const notes: DatabaseMemoryProposedNote[] = [];
+
+    for (const item of value) {
+      if (!item || typeof item !== 'object') {
+        continue;
+      }
+
+      const record = item as Record<string, unknown>;
+      const text = this.normalizeText(record['text'], MAX_NOTE_TEXT_CHARS);
+
+      if (!text) {
+        continue;
+      }
+
+      const key = DatabaseMemoryStorage.buildDedupeKey({ text });
+
+      if (!key || seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      notes.push({
+        topic: this.normalizeText(record['topic'], MAX_NOTE_TOPIC_CHARS) || 'geral',
+        text
+      });
+
+      if (notes.length >= MAX_PROPOSED_NOTES) {
+        break;
+      }
+    }
+
+    return notes;
+  }
+
+  private buildScopeLine(scope: DatabaseMemoryScope): string {
+    const parts = [
+      ['Connection', scope.connectionName],
+      ['Database engine/type', scope.sgbd],
+      ['Database', scope.database],
+      ['Schema', scope.schema]
+    ]
+      .filter((part) => Boolean(part[1]))
+      .map((part) => `${part[0]}: ${part[1]}`);
+
+    return parts.length
+      ? `Interview scope | ${parts.join(' | ')}`
+      : 'Interview scope | not identified';
+  }
+
+  private normalizeText(value: unknown, maxChars: number): string {
+    if (typeof value !== 'string') {
+      return '';
+    }
+
+    return value.trim().slice(0, maxChars);
+  }
+}
+
+export default new DatabaseMemoryInterviewService();
