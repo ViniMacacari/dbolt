@@ -6,12 +6,39 @@
     <div class="bubble">
         <div class="message-header">
             <strong class="subtitle-min">{{ authorLabel }}</strong>
+            <span class="message-thinking-time" *ngIf="thinkingTimeLabel">{{ thinkingTimeLabel }}</span>
             <button type="button" class="copy-message" *ngIf="message.role === 'assistant'" [ngClass]="copyState"
                 [title]="copyLabel" (mousedown)="$event.preventDefault()" (click)="copyMessage($event)">
                 {{ copyLabel }}
             </button>
         </div>
-        <div class="message-content text-min" [innerHTML]="formattedContent"
+
+        <div class="message-content text-min" *ngIf="!editing" [innerHTML]="formattedContent"
             (click)="onFormattedContentClick($event)"></div>
+
+        <div class="message-edit" *ngIf="editing">
+            <textarea #editInput class="input-page message-edit-input" [(ngModel)]="draft"
+                (keydown)="onEditKeydown($event)"></textarea>
+            <div class="message-edit-actions">
+                <button type="button" class="message-action" (click)="cancelEdit()">
+                    {{ t('aiAssistant.cancelEdit') }}
+                </button>
+                <button type="button" class="message-action message-action-primary" [disabled]="!canConfirmEdit"
+                    (click)="confirmEdit()">
+                    {{ t('aiAssistant.saveAndResend') }}
+                </button>
+            </div>
+        </div>
+
+        <div class="message-actions" *ngIf="!editing && showActions">
+            <button type="button" class="message-action" *ngIf="message.role === 'user'" [disabled]="actionsDisabled"
+                [title]="t('aiAssistant.editMessageHint')" (click)="startEdit()">
+                {{ t('aiAssistant.editMessage') }}
+            </button>
+            <button type="button" class="message-action message-action-icon" *ngIf="message.role === 'assistant'"
+                [disabled]="actionsDisabled" [title]="t('aiAssistant.retryAnswerHint')" (click)="retry.emit()">
+                <img src="icons/refresh.png" height="13px" width="13px" [alt]="t('aiAssistant.retryAnswer')">
+            </button>
+        </div>
     </div>
 </article>
