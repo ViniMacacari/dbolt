@@ -113,6 +113,7 @@ router.post('/interview', async (req, res) => {
       scope,
       readonlyContext: req.body?.readonlyContext,
       messages: req.body?.messages,
+      mode: req.body?.mode,
       appLanguage: req.body?.appLanguage
     });
     res.status(200).json({ success: true, data: result });
