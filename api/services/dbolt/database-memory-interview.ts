@@ -219,22 +219,27 @@ ${result.content}`;
       ] : [
         'This turn you are exploring on your own. Investigate first, propose every structural fact you verified, and ask about the business meaning you could not verify.'
       ]),
-      'Investigate before you ask. Do not ask the user anything the database can answer: read the columns of the tables that matter, and run read-only SELECTs to see which type, status and code values actually exist and how they are distributed.',
-      'Two kinds of fact exist, and you treat them differently. A STRUCTURAL fact is verifiable from what the database just returned: which table holds an entity, which columns are the keys, how two tables join, which distinct codes exist in a column. Propose those as notes directly, saying in the message which query or metadata proves it, so the user only has to confirm.',
-      'A BUSINESS fact is what the codes and tables mean in this company process. Never assert it from a table or column name. Ask about it.',
-      'What must never become a note: row values that change, credentials, generated SQL, plain column listings that DBOLT metadata already provides, anything you are guessing, and anything the user has not confirmed.',
+      'Your subject is the DATABASE AS A WHOLE, not one table. In every turn cover several tables and how they connect, unless the user explicitly pointed you at one. Exhaustively documenting a single table is a failure, even if that table is important.',
+      'What you are trying to learn, in this order: which tables hold the main business entities; how those tables join to each other; which table is the source of truth when more than one could be; what the values of type, status and code columns mean; what custom or user-defined fields are for; and which tables are dead or unused.',
+      'Investigate before you ask. Do not ask the user anything the database can answer: read the columns of the tables that matter, and run read-only SELECTs to see which type, status and code values actually exist.',
+      'Two kinds of fact exist, and you treat them differently. A STRUCTURAL fact is verifiable from what the database just returned: which table holds an entity, how two tables join and through which columns, and which distinct code values exist in a column. Propose those as notes directly, saying in the message what proves it, so the user only has to confirm.',
+      'A BUSINESS fact is what the tables, codes and custom fields mean in this company process. Never assert it from a name. Ask about it.',
+      'A note about a data type, a length, or whether a column accepts null is WORTHLESS and must never be proposed. DBOLT returns that metadata on every request, so writing it down teaches nothing. Only propose a structural note when it captures a relationship, a source of truth, or the inventory of code values in a column.',
+      'Never ask the user how they want results presented. Sort order, which date to display, whether to use gross or net values, how cancelled rows should appear in a report, column order and formatting are report specifications, not database knowledge, and they are forbidden as questions. Asking about the MEANING of a status or of a date column is allowed; asking which one a report should use is not.',
+      'What must never become a note: row values that change, credentials, generated SQL, data types and nullability, report or formatting preferences, anything you are guessing, and anything the user has not confirmed.',
       `Each note must be one atomic fact, at most ${MAX_NOTE_TEXT_CHARS} characters, written so it is still understandable months from now without this conversation. The topic is a short label of at most ${MAX_NOTE_TOPIC_CHARS} characters.`,
       `Propose up to ${MAX_PROPOSED_NOTES} notes per turn and aim for several, not one. Every structural fact you actually verified is worth proposing, because the user only has to click to accept or discard it.`,
       'Only propose nothing when you have neither a structural fact nor an answer from the user. Having read the schema is already enough to propose structural facts about the tables that matter, so an empty turn means you did not investigate enough.',
       'Never repeat a note that is already saved and never propose two notes that say the same thing.',
       `Ask between 2 and ${MAX_QUESTIONS} pertinent questions per turn, ordered from most to least useful. Each question must be answerable on its own, so the user can reply to whichever they want. Only ask what the database cannot answer: never ask something you could have discovered by reading a column or running a SELECT.`,
+      'Good questions sound like: what is this table for, what does this code value mean, which of these two tables is the one your process trusts, how do these two tables relate when the metadata does not show it, and what is this custom field used for. Spread your questions across different tables instead of asking several about the same one.',
       'Reply with a single JSON object and nothing else, in this exact shape:',
       '{"message":"what you concluded and what proves it","questions":["first question","second question"],"notes":[{"topic":"short label","text":"one atomic fact"}]}',
       ...(canInvestigateAgain ? [
         'Before answering you may investigate the database. To do that, reply instead with only this JSON object:',
         '{"investigate":{"tables":["TABLE_A","TABLE_B"],"queries":["SELECT DISTINCT ..."]}}',
         `This turn you may still read ${remainingTables} table(s) and run ${remainingQueries} read-only query(ies). Queries must be a single SELECT or WITH; anything else is rejected.`,
-        'Spend that budget before you talk. Ask for several tables at once instead of one at a time, and use the queries to look at the distinct values of the type, status and code columns you just found. A turn where you investigated nothing is a wasted turn.'
+        'Spend that budget before you talk. Ask for several DIFFERENT tables at once instead of drilling one, and use the queries to look at the distinct values of the type, status and code columns you just found. A turn where you investigated nothing, or where you only looked at one table, is a wasted turn.'
       ] : [])
     ].join('\n\n');
 
