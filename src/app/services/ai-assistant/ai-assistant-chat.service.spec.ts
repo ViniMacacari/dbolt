@@ -46,7 +46,8 @@ describe('AiAssistantChatService', () => {
     expect(internalApi.postStream).toHaveBeenCalledWith(
       '/api/ai-assistant/chat/stream',
       jasmine.objectContaining({ currentSql, autoApplyCurrentSql: true }),
-      jasmine.any(Function)
+      jasmine.any(Function),
+      undefined
     )
     expect(response).toEqual({ message: 'Resposta', model: 'test-model' })
   })
