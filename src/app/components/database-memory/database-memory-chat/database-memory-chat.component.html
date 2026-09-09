@@ -35,10 +35,16 @@
             <div class="memory-intro" *ngIf="!hasStarted && !running">
                 <img src="icons/ai.png" height="26px" width="26px" alt="">
                 <p>{{ t('databaseMemory.startHint') }}</p>
-                <app-button variant="accent" [compact]="true" [disabled]="!canRunInterview"
-                    (pressed)="startInterview()">
-                    {{ t('databaseMemory.start') }}
-                </app-button>
+                <div class="memory-intro-actions">
+                    <app-button variant="accent" [compact]="true" [disabled]="!canRunInterview"
+                        (pressed)="startInterview()">
+                        {{ t('databaseMemory.joint') }}
+                    </app-button>
+                    <button type="button" class="memory-action" [disabled]="!canRunInterview"
+                        (click)="openInstructionPopup()">
+                        {{ t('databaseMemory.newInstruction') }}
+                    </button>
+                </div>
             </div>
 
             <article class="memory-message" *ngFor="let turn of turns; trackBy: trackTurn" [ngClass]="turn.role">
@@ -83,6 +89,19 @@
                 </div>
             </article>
 
+            <article class="memory-message assistant" *ngIf="questions.length && !running">
+                <div class="memory-avatar" aria-hidden="true">
+                    <img src="icons/chat.png" height="14px" width="14px" alt="">
+                </div>
+                <div class="memory-bubble memory-bubble-questions">
+                    <strong>{{ t('databaseMemory.questions') }}</strong>
+                    <button type="button" class="memory-question" *ngFor="let question of questions"
+                        (click)="answerQuestion(question)" [title]="t('databaseMemory.answerThis')">
+                        {{ question }}
+                    </button>
+                </div>
+            </article>
+
             <div class="memory-thinking" *ngIf="running">
                 <span class="memory-dots" aria-hidden="true"><i></i><i></i><i></i></span>
                 <span>{{ t('databaseMemory.running') }}</span>
@@ -90,6 +109,10 @@
         </div>
 
         <div class="memory-composer" *ngIf="hasStarted || running">
+            <button type="button" class="memory-chip memory-composer-chip" [disabled]="!canRunInterview"
+                (click)="openInstructionPopup()" [title]="t('databaseMemory.newInstruction')">
+                <img src="icons/add_row.png" height="13px" width="13px" alt="">
+            </button>
             <textarea #answerInput class="input-page" [(ngModel)]="answer" [disabled]="running"
                 [placeholder]="t('databaseMemory.chatPlaceholder')" (input)="onAnswerInput()"
                 (keydown)="onAnswerKeydown($event)"></textarea>
@@ -149,6 +172,30 @@
                         </button>
                     </div>
                 </article>
+            </div>
+        </div>
+    </div>
+
+    <div class="memory-popup-backdrop" *ngIf="instructionPopupOpen" [class.closing]="instructionPopupClosing"
+        (click)="closeInstructionPopup()">
+        <div class="memory-popup memory-popup-narrow" role="dialog" aria-modal="true"
+            (click)="$event.stopPropagation()">
+            <div class="memory-popup-header">
+                <strong>{{ t('databaseMemory.newInstruction') }}</strong>
+                <small>{{ t('databaseMemory.newInstructionHint') }}</small>
+                <button type="button" class="memory-chip memory-chip-close" (click)="closeInstructionPopup()"
+                    [title]="t('generic.close')">
+                    <img src="icons/close.png" height="14px" width="14px" [alt]="t('generic.close')">
+                </button>
+            </div>
+
+            <div class="memory-popup-body memory-add-form">
+                <textarea class="input-page" [(ngModel)]="instruction" rows="5"
+                    [placeholder]="t('databaseMemory.instructionPlaceholder')"></textarea>
+                <app-button variant="accent" [compact]="true" [disabled]="!canSubmitInstruction"
+                    (pressed)="submitInstruction()">
+                    {{ t('databaseMemory.sendInstruction') }}
+                </app-button>
             </div>
         </div>
     </div>
