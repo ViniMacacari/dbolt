@@ -3,7 +3,9 @@ import AiAssistantAgent, {
   type AiAssistantProgressReporter
 } from './ai-assistant-agent.js';
 import AiAssistantSettings from './ai-assistant-settings.js';
+import DatabaseMemory from './database-memory.js';
 import type { AiReadonlyDatabaseContext } from './ai-assistant-readonly-database.js';
+import type { DatabaseMemoryScope } from '../../utils/database-memory-storage.js';
 
 export interface AiAssistantChatMessage extends AiAssistantAgentChatMessage { }
 
@@ -13,6 +15,8 @@ export interface AiAssistantChatRequest {
   currentSql?: string;
   autoApplyCurrentSql?: boolean;
   appLanguage?: string;
+  useDatabaseMemory?: boolean;
+  databaseMemoryScope?: DatabaseMemoryScope;
 }
 
 export interface AiAssistantChatResult {
@@ -26,7 +30,15 @@ class AiAssistantService {
     reportProgress?: AiAssistantProgressReporter
   ): Promise<AiAssistantChatResult> {
     const settings = await AiAssistantSettings.getResolvedSettings();
-    return await AiAssistantAgent.chat(request, settings, reportProgress);
+    const databaseMemoryPrompt = request.useDatabaseMemory === false
+      ? ''
+      : await DatabaseMemory.buildPromptBlock(request.databaseMemoryScope).catch(() => '');
+
+    return await AiAssistantAgent.chat(
+      { ...request, databaseMemoryPrompt },
+      settings,
+      reportProgress
+    );
   }
 }
 
