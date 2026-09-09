@@ -4,11 +4,24 @@ import type {
 } from './ai-assistant-settings.js';
 import OpenAiOAuth from './ai-assistant-openai-oauth.js';
 
-const MAX_OUTPUT_TOKENS = 4096;
+const MAX_OUTPUT_TOKENS = 16384;
+const PROMPT_SEGMENT_SEPARATOR = '\n\n';
 
 export interface AiModelMessage {
   role: 'user' | 'assistant';
   content: string;
+}
+
+export interface AiModelSystemPrompt {
+  fixedRules: string;
+  collectedData: string;
+  turnState: string;
+}
+
+interface AnthropicSystemBlock {
+  type: 'text';
+  text: string;
+  cache_control?: { type: 'ephemeral' };
 }
 
 export interface AiModelCompletion {
@@ -113,19 +126,21 @@ interface NativeDatabaseActionCall {
 class AiAssistantModelClient {
   async complete(
     settings: AiAssistantResolvedSettings,
-    systemPrompt: string,
+    systemPrompt: AiModelSystemPrompt,
     messages: AiModelMessage[]
   ): Promise<AiModelCompletion> {
+    if (settings.provider === 'anthropic') {
+      return await this.completeWithAnthropic(settings.model, settings.apiKey, systemPrompt, messages);
+    }
+
+    const plainPrompt = this.toPlainSystemPrompt(systemPrompt);
+
     if (settings.provider === 'openai-oauth') {
-      return await this.completeWithOpenAiOAuth(settings.model, systemPrompt, messages);
+      return await this.completeWithOpenAiOAuth(settings.model, plainPrompt, messages);
     }
 
     if (settings.provider === 'gemini') {
-      return await this.completeWithGemini(settings.model, settings.apiKey, systemPrompt, messages);
-    }
-
-    if (settings.provider === 'anthropic') {
-      return await this.completeWithAnthropic(settings.model, settings.apiKey, systemPrompt, messages);
+      return await this.completeWithGemini(settings.model, settings.apiKey, plainPrompt, messages);
     }
 
     if (settings.provider === 'openrouter') {
@@ -133,7 +148,7 @@ class AiAssistantModelClient {
         settings.baseUrl,
         settings.model,
         settings.apiKey,
-        systemPrompt,
+        plainPrompt,
         messages
       );
     }
@@ -142,11 +157,46 @@ class AiAssistantModelClient {
       settings.baseUrl,
       settings.model,
       settings.apiKey,
-      systemPrompt,
+      plainPrompt,
       messages,
       {},
       0.2
     );
+  }
+
+  private toPlainSystemPrompt(systemPrompt: AiModelSystemPrompt): string {
+    return [systemPrompt.fixedRules, systemPrompt.collectedData, systemPrompt.turnState]
+      .filter((segment) => segment.trim().length > 0)
+      .join(PROMPT_SEGMENT_SEPARATOR);
+  }
+
+  private buildAnthropicSystemBlocks(systemPrompt: AiModelSystemPrompt): AnthropicSystemBlock[] {
+    const blocks: AnthropicSystemBlock[] = [];
+
+    if (systemPrompt.fixedRules.trim()) {
+      blocks.push({
+        type: 'text',
+        text: systemPrompt.fixedRules,
+        cache_control: { type: 'ephemeral' }
+      });
+    }
+
+    if (systemPrompt.collectedData.trim()) {
+      blocks.push({
+        type: 'text',
+        text: systemPrompt.collectedData,
+        cache_control: { type: 'ephemeral' }
+      });
+    }
+
+    if (systemPrompt.turnState.trim()) {
+      blocks.push({
+        type: 'text',
+        text: systemPrompt.turnState
+      });
+    }
+
+    return blocks;
   }
 
   getProviderLabel(provider: AiAssistantProvider): string {
@@ -411,7 +461,7 @@ class AiAssistantModelClient {
   private async completeWithAnthropic(
     model: string,
     apiKey: string,
-    systemPrompt: string,
+    systemPrompt: AiModelSystemPrompt,
     messages: AiModelMessage[]
   ): Promise<AiModelCompletion> {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -423,7 +473,7 @@ class AiAssistantModelClient {
       },
       body: JSON.stringify({
         model,
-        system: systemPrompt,
+        system: this.buildAnthropicSystemBlocks(systemPrompt),
         messages: this.normalizeChatMessages(messages),
         max_tokens: MAX_OUTPUT_TOKENS,
         temperature: 0.2
