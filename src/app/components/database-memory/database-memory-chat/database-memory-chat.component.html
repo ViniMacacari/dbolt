@@ -1,0 +1,153 @@
+<div class="memory-backdrop" [class.closing]="closing" (click)="close()">
+    <div class="memory-modal" role="dialog" aria-modal="true" [attr.aria-label]="t('databaseMemory.title')"
+        (click)="$event.stopPropagation()">
+
+        <div class="memory-header">
+            <div>
+                <p>{{ t('databaseMemory.kicker') }}</p>
+                <h2>{{ t('databaseMemory.title') }}</h2>
+                <small *ngIf="scopeLabel">{{ scopeLabel }}</small>
+            </div>
+            <button type="button" class="memory-close" (click)="close()" [title]="t('generic.close')">
+                <img src="icons/close.png" height="16px" width="16px" [alt]="t('generic.close')">
+            </button>
+        </div>
+
+        <p class="memory-error" *ngIf="errorMessage">{{ errorMessage }}</p>
+        <p class="memory-warning" *ngIf="!hasDatabaseAccess">
+            {{ contextError || t('databaseMemory.noAccess') }}
+        </p>
+
+        <div class="memory-body">
+            <section class="memory-interview">
+                <header class="memory-section-header">
+                    <strong>{{ t('databaseMemory.interview') }}</strong>
+                    <button type="button" class="memory-link" *ngIf="history.length" (click)="toggleHistory()">
+                        {{ historyExpanded ? t('databaseMemory.hideHistory') : t('databaseMemory.showHistory', { count: history.length }) }}
+                    </button>
+                </header>
+
+                <div class="memory-history" [class.open]="historyExpanded">
+                    <div class="memory-history-inner">
+                        <div class="memory-turn" *ngFor="let turn of history; trackBy: trackTurn" [ngClass]="turn.role">
+                            <span class="memory-turn-author">
+                                {{ turn.role === 'assistant' ? t('databaseMemory.ai') : t('databaseMemory.you') }}
+                            </span>
+                            <p>{{ turn.content }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="memory-empty" *ngIf="!hasStarted && !running">
+                    <p>{{ t('databaseMemory.startHint') }}</p>
+                    <app-button [compact]="true" [disabled]="!canRunInterview" (pressed)="startInterview()">
+                        {{ t('databaseMemory.start') }}
+                    </app-button>
+                </div>
+
+                <div class="memory-thinking" *ngIf="running">
+                    <span class="memory-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                    <span>{{ t('databaseMemory.running') }}</span>
+                </div>
+
+                <div class="memory-current" *ngIf="latestMessage && !running">
+                    <p class="memory-current-message">{{ latestMessage }}</p>
+                    <p class="memory-investigation" *ngIf="investigationLabel">{{ investigationLabel }}</p>
+                </div>
+
+                <div class="memory-proposals" *ngIf="proposedNotes.length && !running">
+                    <header class="memory-section-header">
+                        <strong>{{ t('databaseMemory.proposals') }}</strong>
+                        <button type="button" class="memory-link" (click)="acceptAllProposedNotes()">
+                            {{ t('databaseMemory.acceptAll') }}
+                        </button>
+                    </header>
+                    <article class="memory-proposal" *ngFor="let note of proposedNotes; let index = index"
+                        [class.removing]="isProposalRemoving(note)" [style.animation-delay]="(index * 60) + 'ms'">
+                        <span class="memory-topic">{{ note.topic }}</span>
+                        <p>{{ note.text }}</p>
+                        <div class="memory-proposal-actions">
+                            <button type="button" class="memory-action" (click)="discardProposedNote(note)">
+                                {{ t('databaseMemory.discard') }}
+                            </button>
+                            <button type="button" class="memory-action memory-action-primary"
+                                (click)="acceptProposedNote(note)">
+                                {{ t('databaseMemory.accept') }}
+                            </button>
+                        </div>
+                    </article>
+                </div>
+
+                <div class="memory-answer" *ngIf="hasStarted && !running">
+                    <label>{{ question || t('databaseMemory.answerLabel') }}</label>
+                    <textarea class="input-page" [(ngModel)]="answer" rows="3"
+                        [placeholder]="t('databaseMemory.answerPlaceholder')"></textarea>
+                    <app-button [compact]="true" [disabled]="!canSubmitAnswer" (pressed)="submitAnswer()">
+                        {{ t('databaseMemory.answer') }}
+                    </app-button>
+                </div>
+            </section>
+
+            <section class="memory-knowledge">
+                <header class="memory-section-header">
+                    <strong>{{ t('databaseMemory.saved', { count: notes.length }) }}</strong>
+                    <small *ngIf="storageFolder" [title]="storageFolder">{{ t('databaseMemory.storedIn') }}</small>
+                </header>
+
+                <p class="memory-loading" *ngIf="loading">{{ t('databaseMemory.loading') }}</p>
+
+                <p class="memory-none" *ngIf="!loading && notes.length === 0">
+                    {{ t('databaseMemory.none') }}
+                </p>
+
+                <article class="memory-note" *ngFor="let note of notes; trackBy: trackNote" [ngClass]="note.source"
+                    [class.removing]="isNoteRemoving(note)" [class.arriving]="isNoteNew(note)">
+                    <div class="memory-note-head">
+                        <span class="memory-topic">{{ note.topic }}</span>
+                        <span class="memory-source">
+                            {{ note.source === 'user' ? t('databaseMemory.sourceUser') : t('databaseMemory.sourceAi') }}
+                        </span>
+                    </div>
+
+                    <p *ngIf="editingNoteId !== note.id">{{ note.text }}</p>
+
+                    <div class="memory-note-edit" *ngIf="editingNoteId === note.id">
+                        <textarea class="input-page" [(ngModel)]="editingDraft" rows="3"></textarea>
+                        <div class="memory-proposal-actions">
+                            <button type="button" class="memory-action" (click)="cancelEditNote()">
+                                {{ t('databaseMemory.cancel') }}
+                            </button>
+                            <button type="button" class="memory-action memory-action-primary"
+                                (click)="confirmEditNote(note)">
+                                {{ t('databaseMemory.save') }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="memory-note-actions" *ngIf="editingNoteId !== note.id">
+                        <button type="button" class="memory-action" (click)="startEditNote(note)">
+                            {{ t('databaseMemory.edit') }}
+                        </button>
+                        <button type="button" class="memory-action" (click)="deleteNote(note)">
+                            {{ t('databaseMemory.delete') }}
+                        </button>
+                    </div>
+                </article>
+
+                <div class="memory-own-note">
+                    <header class="memory-section-header">
+                        <strong>{{ t('databaseMemory.addOwn') }}</strong>
+                        <small>{{ t('databaseMemory.addOwnHint') }}</small>
+                    </header>
+                    <input type="text" class="input-page" [(ngModel)]="ownNoteTopic" maxlength="60"
+                        [placeholder]="t('databaseMemory.topicPlaceholder')">
+                    <textarea class="input-page" [(ngModel)]="ownNoteText" rows="3" maxlength="400"
+                        [placeholder]="t('databaseMemory.ownNotePlaceholder')"></textarea>
+                    <app-button [compact]="true" [disabled]="!canSaveOwnNote" (pressed)="saveOwnNote()">
+                        {{ t('databaseMemory.saveOwn') }}
+                    </app-button>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
