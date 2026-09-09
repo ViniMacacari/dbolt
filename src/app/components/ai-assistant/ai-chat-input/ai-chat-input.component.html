@@ -35,8 +35,12 @@
             <span class="chat-advanced-toggle-label">{{ t('aiAssistant.options') }}</span>
         </button>
 
-        <app-button [compact]="true" [disabled]="!canSend" (pressed)="submit()">
+        <app-button *ngIf="!sending" [compact]="true" [disabled]="!canSend" (pressed)="submit()">
             {{ t('aiAssistant.send') }}
+        </app-button>
+
+        <app-button *ngIf="sending" class="chat-stop-button" [compact]="true" (pressed)="stop.emit()">
+            {{ t('aiAssistant.stop') }}
         </app-button>
     </div>
 </div>
