@@ -446,12 +446,10 @@ ${question}
 
     try {
       const result = await this.databaseMemory.runInterview(this.scope, turns, this.readonlyContext, mode)
-      const reply = [result.message, result.question]
-        .map((part) => (part || '').trim())
-        .filter((part) => part.length > 0)
-        .join('\n\n')
+      const reply = (result.message || '').trim()
 
-      this.proposedNotes = result.proposedNotes
+      this.proposedNotes = this.mergeProposals(result.proposedNotes)
+      this.questions = result.questions || []
       this.inspectedTables = result.inspectedTables || []
       this.executedQueries = result.executedQueries || []
 
