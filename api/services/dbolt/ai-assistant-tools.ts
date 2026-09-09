@@ -134,7 +134,7 @@ class AiAssistantToolsService {
       return this.formatTableColumns(await AiAssistantReadonlyDatabase.getTableColumns(
         context,
         this.readString(toolCall.arguments, 'tableName'),
-        this.readLimit(toolCall.arguments, 'limit', 60, 120)
+        this.readLimit(toolCall.arguments, 'limit', 400, 2000)
       ));
     }
 
