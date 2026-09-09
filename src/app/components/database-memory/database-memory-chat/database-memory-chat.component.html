@@ -35,7 +35,8 @@
             <div class="memory-intro" *ngIf="!hasStarted && !running">
                 <img src="icons/ai.png" height="26px" width="26px" alt="">
                 <p>{{ t('databaseMemory.startHint') }}</p>
-                <app-button [compact]="true" [disabled]="!canRunInterview" (pressed)="startInterview()">
+                <app-button variant="accent" [compact]="true" [disabled]="!canRunInterview"
+                    (pressed)="startInterview()">
                     {{ t('databaseMemory.start') }}
                 </app-button>
             </div>
@@ -92,7 +93,8 @@
             <textarea #answerInput class="input-page" [(ngModel)]="answer" [disabled]="running"
                 [placeholder]="t('databaseMemory.chatPlaceholder')" (input)="onAnswerInput()"
                 (keydown)="onAnswerKeydown($event)"></textarea>
-            <app-button [compact]="true" [disabled]="!canSubmitAnswer" (pressed)="submitAnswer()">
+            <app-button variant="accent" [compact]="true" [disabled]="!canSubmitAnswer"
+                (pressed)="submitAnswer()">
                 {{ t('databaseMemory.answer') }}
             </app-button>
         </div>
@@ -142,7 +144,7 @@
                         <button type="button" class="memory-action" (click)="startEditNote(note)">
                             {{ t('databaseMemory.edit') }}
                         </button>
-                        <button type="button" class="memory-action" (click)="deleteNote(note)">
+                        <button type="button" class="memory-action memory-action-danger" (click)="deleteNote(note)">
                             {{ t('databaseMemory.delete') }}
                         </button>
                     </div>
@@ -168,7 +170,8 @@
                     [placeholder]="t('databaseMemory.topicPlaceholder')">
                 <textarea class="input-page" [(ngModel)]="ownNoteText" rows="4" maxlength="400"
                     [placeholder]="t('databaseMemory.ownNotePlaceholder')"></textarea>
-                <app-button [compact]="true" [disabled]="!canSaveOwnNote" (pressed)="saveOwnNote()">
+                <app-button variant="accent" [compact]="true" [disabled]="!canSaveOwnNote"
+                    (pressed)="saveOwnNote()">
                     {{ t('databaseMemory.saveOwn') }}
                 </app-button>
             </div>
