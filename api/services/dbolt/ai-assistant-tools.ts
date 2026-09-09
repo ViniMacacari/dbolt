@@ -28,6 +28,11 @@ export interface AiAssistantToolExecutionResult {
   content: string;
 }
 
+interface AiAssistantToolPayload {
+  payload: Record<string, unknown>;
+  listKeys: string[];
+}
+
 const VALID_TOOL_NAMES = new Set<AiAssistantReadonlyToolName>([
   'searchObjects',
   'getTableColumns',
@@ -67,7 +72,7 @@ class AiAssistantToolsService {
     budget: AiAssistantToolBudgetState
   ): Promise<AiAssistantToolExecutionResult> {
     try {
-      const content = await this.withTimeout(
+      const result = await this.withTimeout(
         this.executeTool(context, toolCall),
         DATABASE_ACTION_TIMEOUT_MS
       );
@@ -75,13 +80,16 @@ class AiAssistantToolsService {
       return {
         name: toolCall.name,
         success: true,
-        content: AiAssistantToolBudget.limitText(content, budget.maxToolResultChars)
+        content: this.serializeWithinBudget(result, budget.maxToolResultChars)
       };
     } catch (error: unknown) {
       return {
         name: toolCall.name,
         success: false,
-        content: this.buildToolErrorContent(context, toolCall, error)
+        content: AiAssistantToolBudget.limitText(
+          this.buildToolErrorContent(context, toolCall, error),
+          budget.maxToolResultChars
+        )
       };
     }
   }
@@ -108,7 +116,7 @@ class AiAssistantToolsService {
   private async executeTool(
     context: AiReadonlyDatabaseContext,
     toolCall: AiAssistantToolCall
-  ): Promise<string> {
+  ): Promise<AiAssistantToolPayload> {
     if (toolCall.name === 'searchObjects') {
       return this.formatObjectSearch(await AiAssistantReadonlyDatabase.searchObjects(
         context,
@@ -141,50 +149,111 @@ class AiAssistantToolsService {
     ));
   }
 
-  private formatObjectSearch(result: AiReadonlyObjectSearch): string {
+  private formatObjectSearch(result: AiReadonlyObjectSearch): AiAssistantToolPayload {
+    return {
+      payload: {
+        action: 'searchObjects',
+        search: result.query,
+        searchedTypes: result.types,
+        totalTablesInSchema: result.counts.tables,
+        totalViewsInSchema: result.counts.views,
+        totalMatches: result.totalMatches,
+        matches: result.matches,
+        truncated: result.truncated
+      },
+      listKeys: ['matches']
+    };
+  }
+
+  private formatTableColumns(result: AiReadonlyTableColumns): AiAssistantToolPayload {
+    return {
+      payload: {
+        action: 'getTableColumns',
+        tableName: result.tableName,
+        totalColumns: result.totalColumns,
+        columns: result.columns.map((column) => this.compactColumn(column)),
+        truncated: result.truncated
+      },
+      listKeys: ['columns']
+    };
+  }
+
+  private formatSchemaSummary(result: AiReadonlySchemaSummary): AiAssistantToolPayload {
+    return {
+      payload: {
+        action: 'getSchemaSummary',
+        connection: result.connection,
+        counts: result.counts,
+        tables: result.tables,
+        views: result.views,
+        truncated: result.truncated
+      },
+      listKeys: ['tables', 'views']
+    };
+  }
+
+  private formatQueryExecution(result: AiReadonlyQueryExecution): AiAssistantToolPayload {
+    return {
+      payload: {
+        action: 'runReadonlyQuery',
+        sql: result.sql,
+        columns: result.columns,
+        returnedRows: result.returnedRows,
+        totalRows: result.totalRows,
+        rows: result.rows,
+        truncated: result.truncated
+      },
+      listKeys: ['rows']
+    };
+  }
+
+  private serializeWithinBudget(result: AiAssistantToolPayload, maxChars: number): string {
+    const working: Record<string, unknown> = { ...result.payload };
+    let text = JSON.stringify(working, this.jsonReplacer);
+
+    while (text.length > maxChars) {
+      const largestKey = this.findLargestListKey(working, result.listKeys);
+
+      if (!largestKey) {
+        break;
+      }
+
+      const list = working[largestKey] as unknown[];
+      working[largestKey] = list.slice(0, Math.floor(list.length / 2));
+      working['truncated'] = true;
+      working['omittedByBudget'] = true;
+      text = JSON.stringify(working, this.jsonReplacer);
+    }
+
+    if (text.length <= maxChars) {
+      return text;
+    }
+
     return JSON.stringify({
-      action: 'searchObjects',
-      search: result.query,
-      searchedTypes: result.types,
-      totalTablesInSchema: result.counts.tables,
-      totalViewsInSchema: result.counts.views,
-      totalMatches: result.totalMatches,
-      matches: result.matches,
-      truncated: result.truncated
+      action: result.payload['action'],
+      truncated: true,
+      omittedByBudget: true,
+      note: 'The result did not fit the AI budget. Request fewer columns, fewer rows, or a narrower filter.'
     });
   }
 
-  private formatTableColumns(result: AiReadonlyTableColumns): string {
-    return JSON.stringify({
-      action: 'getTableColumns',
-      tableName: result.tableName,
-      totalColumns: result.totalColumns,
-      columns: result.columns.map((column) => this.compactColumn(column)),
-      truncated: result.truncated
-    }, this.jsonReplacer);
-  }
+  private findLargestListKey(
+    payload: Record<string, unknown>,
+    listKeys: string[]
+  ): string | null {
+    let largestKey: string | null = null;
+    let largestLength = 0;
 
-  private formatSchemaSummary(result: AiReadonlySchemaSummary): string {
-    return JSON.stringify({
-      action: 'getSchemaSummary',
-      connection: result.connection,
-      counts: result.counts,
-      tables: result.tables,
-      views: result.views,
-      truncated: result.truncated
-    });
-  }
+    for (const key of listKeys) {
+      const value = payload[key];
 
-  private formatQueryExecution(result: AiReadonlyQueryExecution): string {
-    return JSON.stringify({
-      action: 'runReadonlyQuery',
-      sql: result.sql,
-      columns: result.columns,
-      returnedRows: result.returnedRows,
-      totalRows: result.totalRows,
-      rows: result.rows,
-      truncated: result.truncated
-    }, this.jsonReplacer);
+      if (Array.isArray(value) && value.length > largestLength) {
+        largestKey = key;
+        largestLength = value.length;
+      }
+    }
+
+    return largestKey;
   }
 
   private compactColumn(column: QueryRow): QueryRow {
