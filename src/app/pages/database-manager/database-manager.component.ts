@@ -32,10 +32,15 @@ import { KeyboardShortcutService } from '../../services/keyboard-shortcuts/keybo
 import { Subscription } from 'rxjs'
 import { SqlObjectSummaryComponent, SqlObjectSummaryRequest } from '../../components/elements/sql-object-summary/sql-object-summary.component'
 
+import { AiDatabaseContextService } from '../../services/ai-assistant/ai-database-context.service'
+import { DatabaseMemoryChatComponent } from '../../components/database-memory/database-memory-chat/database-memory-chat.component'
+import { DatabaseMemoryService } from '../../services/database-memory/database-memory.service'
+import { DatabaseMemoryScope } from '../../services/database-memory/database-memory.model'
+
 @Component({
   selector: 'app-database-manager',
   standalone: true,
-  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent, DatabaseDiagramComponent, DbExportComponent, SqlObjectSummaryComponent],
+  imports: [SidebarComponent, TabsComponent, ProcedureInfoComponent, CodeEditorComponent, QueryVersionCompareComponent, CommonModule, DbInfoComponent, ToastComponent, TableInfoComponent, SettingsComponent, QueryAssistantComponent, SelectBuilderComponent, AiAssistantPanelComponent, DatabaseDiagramComponent, DbExportComponent, SqlObjectSummaryComponent, DatabaseMemoryChatComponent],
   templateUrl: './database-manager.component.html',
   styleUrl: './database-manager.component.scss'
 })
@@ -51,6 +56,9 @@ export class DatabaseManagerComponent implements OnDestroy {
   selectedSchemaDB: any
 
   dbSchemasData: any
+  databaseMemoryScope: DatabaseMemoryScope | null = null
+  databaseMemoryReadonlyContext: unknown = undefined
+  databaseMemoryContextError: string = ''
   tableInfoData: any
   procedureInfoData: any
 
@@ -107,7 +115,9 @@ export class DatabaseManagerComponent implements OnDestroy {
     private workspaceSession: WorkspaceSessionService,
     private workspaceRestore: WorkspaceSessionRestoreService,
     private closedTabs: ClosedTabsHistoryService,
-    private keyboardShortcuts: KeyboardShortcutService
+    private keyboardShortcuts: KeyboardShortcutService,
+    private databaseContext: AiDatabaseContextService,
+    private databaseMemory: DatabaseMemoryService
   ) {
     this.toolsSubscription = this.toolsNavigation.requests$.subscribe((destination) => {
       if (destination === 'database-export') {
@@ -733,6 +743,31 @@ export class DatabaseManagerComponent implements OnDestroy {
     tab.versions = savedQuery.versions || []
     tab.persisted = Boolean(savedQuery.id)
     tab.icon = 'CODE'
+  }
+
+  async onDatabaseMemoryRequested(event: any): Promise<void> {
+    const requestedContext = this.normalizeContextInput(event)
+    const initialContext = this.connectionContext.createContext(this.withReusableSchemaConnectionKey(requestedContext))
+
+    try {
+      const context = await this.connectionContext.ensureContext(initialContext)
+      this.databaseMemoryReadonlyContext = this.databaseContext.buildReadonlyToolContext(context, this.dbSchemasData)
+    } catch (_error: unknown) {
+      this.databaseMemoryReadonlyContext = undefined
+      this.databaseMemoryContextError = _error instanceof Error && _error.message.trim()
+        ? _error.message
+        : ''
+    }
+
+    this.databaseMemoryScope = this.databaseMemory.buildScope(
+      this.databaseMemoryReadonlyContext || this.databaseContext.buildReadonlyToolContext(initialContext, this.dbSchemasData)
+    )
+  }
+
+  closeDatabaseMemory(): void {
+    this.databaseMemoryScope = null
+    this.databaseMemoryReadonlyContext = undefined
+    this.databaseMemoryContextError = ''
   }
 
   async onDbInfoRequested(event: any): Promise<void> {
