@@ -25,7 +25,8 @@ export class AiAssistantChatService {
     currentSql?: string,
     autoApplyCurrentSql: boolean = false,
     onProgress?: (stage: AiAssistantProgressStage) => void,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    databaseMemory?: { use: boolean, scope: unknown }
   ): Promise<AiAssistantChatResponse> {
     let result: AiAssistantChatResponse | undefined
 
@@ -34,6 +35,8 @@ export class AiAssistantChatService {
       readonlyContext,
       currentSql,
       autoApplyCurrentSql,
+      useDatabaseMemory: databaseMemory ? databaseMemory.use : true,
+      databaseMemoryScope: databaseMemory?.scope,
       appLanguage: this.language.getCurrentLanguage()
     }, (event) => {
       if (event.type === 'progress') {
