@@ -13,7 +13,7 @@ import {
   DatabaseMemoryTurn
 } from '../../../services/database-memory/database-memory.model'
 
-const EXIT_ANIMATION_MS = 200
+const EXIT_ANIMATION_MS = 270
 const CLOSE_ANIMATION_MS = 200
 const POPUP_ANIMATION_MS = 190
 const COMPOSER_MAX_HEIGHT = 180
@@ -37,6 +37,11 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
   inspectedTables: string[] = []
   executedQueries: string[] = []
   questions: string[] = []
+  selectedQuestion: string = ''
+  editingProposal: DatabaseMemoryProposedNote | null = null
+  editProposalTopic: string = ''
+  editProposalText: string = ''
+  proposalPopupClosing: boolean = false
   instruction: string = ''
   instructionPopupOpen: boolean = false
   instructionPopupClosing: boolean = false
@@ -176,19 +181,68 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
   }
 
   answerQuestion(question: string): void {
-    const current = this.answer.trim()
-    this.answer = current ? [current, '', question, ''].join('\n') : `${question}\n`
-
+    this.selectedQuestion = question
     this.schedule(() => {
       const textarea = this.answerInput?.nativeElement
 
       if (textarea) {
         textarea.focus()
-        textarea.selectionStart = textarea.value.length
-        textarea.selectionEnd = textarea.value.length
         this.resizeComposer()
       }
     }, 0)
+  }
+
+  clearSelectedQuestion(): void {
+    this.selectedQuestion = ''
+  }
+
+  isQuestionSelected(question: string): boolean {
+    return this.selectedQuestion === question
+  }
+
+  startEditProposal(note: DatabaseMemoryProposedNote): void {
+    if (this.running) return
+
+    this.editingProposal = note
+    this.editProposalTopic = note.topic
+    this.editProposalText = note.text
+    this.proposalPopupClosing = false
+  }
+
+  cancelEditProposal(): void {
+    if (!this.editingProposal || this.proposalPopupClosing) return
+
+    this.proposalPopupClosing = true
+    this.schedule(() => {
+      this.editingProposal = null
+      this.editProposalTopic = ''
+      this.editProposalText = ''
+      this.proposalPopupClosing = false
+    }, POPUP_ANIMATION_MS)
+  }
+
+  get canConfirmEditProposal(): boolean {
+    return !this.running && this.editProposalText.trim().length > 0
+  }
+
+  async confirmEditProposal(): Promise<void> {
+    const original = this.editingProposal
+
+    if (!original || !this.canConfirmEditProposal) return
+
+    const edited = {
+      topic: this.editProposalTopic.trim() || original.topic,
+      text: this.editProposalText.trim()
+    }
+
+    try {
+      const record = await this.databaseMemory.addNotes(this.scope, [edited], 'user')
+      this.applyRecordNotes(record.notes)
+      this.cancelEditProposal()
+      this.animateProposalOut(original)
+    } catch (error: unknown) {
+      this.errorMessage = this.getErrorMessage(error)
+    }
   }
 
   openAddPopup(): void {
@@ -241,9 +295,16 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
     if (!this.canSubmitAnswer) return
 
     const answer = this.answer.trim()
+    const question = this.selectedQuestion.trim()
+    const content = question
+      ? `${this.t('databaseMemory.questionPrefix')} ${question}
+${this.t('databaseMemory.answerPrefix')} ${answer}`
+      : answer
+
     this.answer = ''
+    this.selectedQuestion = ''
     this.resetComposer()
-    await this.runInterview([{ role: 'user', content: answer }], 'investigate')
+    await this.runInterview([{ role: 'user', content }], 'investigate')
   }
 
   async acceptProposedNote(note: DatabaseMemoryProposedNote): Promise<void> {
