@@ -29,6 +29,8 @@ export interface DatabaseMemoryRecord {
   updatedAt: string
 }
 
+export type DatabaseMemoryInterviewMode = 'investigate' | 'instruct'
+
 export interface DatabaseMemoryTurn {
   role: 'user' | 'assistant'
   content: string
@@ -41,7 +43,7 @@ export interface DatabaseMemoryProposedNote {
 
 export interface DatabaseMemoryInterviewResult {
   message: string
-  question: string
+  questions: string[]
   proposedNotes: DatabaseMemoryProposedNote[]
   inspectedTables: string[]
   executedQueries: string[]

@@ -4,6 +4,7 @@ import { InternalApiService } from '../requests/internal-api.service'
 import { AppLanguageService } from '../language/app-language.service'
 import {
   ApiResponse,
+  DatabaseMemoryInterviewMode,
   DatabaseMemoryInterviewResult,
   DatabaseMemoryNoteInput,
   DatabaseMemoryRecord,
@@ -102,7 +103,8 @@ export class DatabaseMemoryService {
   async runInterview(
     scope: DatabaseMemoryScope,
     messages: DatabaseMemoryTurn[],
-    readonlyContext?: unknown
+    readonlyContext?: unknown,
+    mode: DatabaseMemoryInterviewMode = 'investigate'
   ): Promise<DatabaseMemoryInterviewResult> {
     return this.unwrap(await this.internalApi.post<ApiResponse<DatabaseMemoryInterviewResult>>(
       '/api/database-memory/interview',
@@ -110,6 +112,7 @@ export class DatabaseMemoryService {
         scope,
         messages,
         readonlyContext,
+        mode,
         appLanguage: this.language.getCurrentLanguage()
       }
     ))
