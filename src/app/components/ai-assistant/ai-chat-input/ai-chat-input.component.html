@@ -3,23 +3,37 @@
         [disabled]="disabled || !databaseContextAvailable" [label]="t('aiAssistant.readonlyDb')">
     </app-checkbox>
 
-    <textarea class="input-page chat-textarea" [(ngModel)]="message" rows="3" [disabled]="disabled"
-        [placeholder]="t('aiAssistant.askPlaceholder')"
+    <div class="chat-advanced" id="ai-chat-advanced" [class.open]="advancedOpen"
+        [class.animating]="advancedAnimating" [attr.aria-hidden]="!advancedOpen">
+        <div class="chat-advanced-inner">
+            <ng-content></ng-content>
+
+            <div class="sql-context-toggles">
+                <app-checkbox class="current-sql-context-toggle" [checked]="includeCurrentSql"
+                    (checkedChange)="includeCurrentSql = $event" [disabled]="disabled || !currentSqlAvailable"
+                    [label]="t('aiAssistant.includeCurrentSql')" [title]="t('aiAssistant.includeCurrentSqlHint')">
+                </app-checkbox>
+
+                <app-checkbox class="auto-apply-sql-toggle" [checked]="autoApplyCurrentSql"
+                    (checkedChange)="autoApplyCurrentSql = $event"
+                    [disabled]="disabled || !currentSqlAvailable || !includeCurrentSql"
+                    [label]="t('aiAssistant.autoApplyCurrentSql')" [title]="t('aiAssistant.autoApplyCurrentSqlHint')">
+                </app-checkbox>
+            </div>
+        </div>
+    </div>
+
+    <textarea #messageInput class="input-page chat-textarea" [(ngModel)]="message" [disabled]="disabled"
+        [placeholder]="t('aiAssistant.askPlaceholder')" (input)="onTextareaInput()"
         (keydown)="onTextareaKeydown($event)"></textarea>
 
     <div class="chat-actions">
-        <div class="sql-context-toggles">
-            <app-checkbox class="current-sql-context-toggle" [checked]="includeCurrentSql"
-                (checkedChange)="includeCurrentSql = $event" [disabled]="disabled || !currentSqlAvailable"
-                [label]="t('aiAssistant.includeCurrentSql')" [title]="t('aiAssistant.includeCurrentSqlHint')">
-            </app-checkbox>
-
-            <app-checkbox class="auto-apply-sql-toggle" [checked]="autoApplyCurrentSql"
-                (checkedChange)="autoApplyCurrentSql = $event"
-                [disabled]="disabled || !currentSqlAvailable || !includeCurrentSql"
-                [label]="t('aiAssistant.autoApplyCurrentSql')" [title]="t('aiAssistant.autoApplyCurrentSqlHint')">
-            </app-checkbox>
-        </div>
+        <button type="button" class="chat-advanced-toggle" [class.open]="advancedOpen" (click)="toggleAdvanced()"
+            [attr.aria-expanded]="advancedOpen" aria-controls="ai-chat-advanced"
+            [title]="advancedOpen ? t('aiAssistant.hideOptions') : t('aiAssistant.showOptions')">
+            <span class="chat-advanced-toggle-icon" aria-hidden="true">›</span>
+            <span class="chat-advanced-toggle-label">{{ t('aiAssistant.options') }}</span>
+        </button>
 
         <app-button [compact]="true" [disabled]="!canSend" (pressed)="submit()">
             {{ t('aiAssistant.send') }}
