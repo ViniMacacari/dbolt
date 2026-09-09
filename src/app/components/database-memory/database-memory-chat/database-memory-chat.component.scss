@@ -753,20 +753,12 @@ textarea {
 }
 
 .memory-slot {
-    display: grid;
-    grid-template-rows: 1fr;
-    min-height: 0;
     opacity: 1;
     padding-bottom: var(--memory-slot-gap, 9px);
     transition:
-        grid-template-rows .24s cubic-bezier(.4, 0, .2, 1),
+        height .24s cubic-bezier(.4, 0, .2, 1),
         padding-bottom .24s cubic-bezier(.4, 0, .2, 1),
-        opacity .16s ease;
-}
-
-.memory-slot > * {
-    min-height: 0;
-    overflow: hidden;
+        opacity .18s ease;
 }
 
 .memory-slot:last-child {
@@ -774,7 +766,6 @@ textarea {
 }
 
 .memory-slot.removing {
-    grid-template-rows: 0fr;
     opacity: 0;
     padding-bottom: 0;
     pointer-events: none;
@@ -785,13 +776,24 @@ textarea {
     box-shadow: inset 3px 0 0 var(--dbolt-739eca);
 }
 
+.memory-composer {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0;
+}
+
+.memory-composer-row {
+    align-items: flex-end;
+    display: flex;
+    gap: 10px;
+}
+
 .memory-selected-question {
-    align-items: flex-start;
+    align-items: center;
     animation: memory-card-in .18s ease both;
-    border-top: 1px solid var(--dbolt-202020);
     display: flex;
     gap: 9px;
-    padding: 11px 26px 0;
+    margin-bottom: 10px;
 
     p {
         color: var(--dbolt-c9c9c9);
@@ -814,8 +816,8 @@ textarea {
 }
 
 .memory-qr-tag-answer {
-    align-self: flex-start;
-    margin-top: 12px;
+    align-self: flex-end;
+    margin-bottom: 13px;
 }
 
 .memory-bubble-proposals {
