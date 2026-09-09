@@ -266,15 +266,19 @@ class AiAssistantToolsService {
   }
 
   private compactColumn(column: QueryRow): QueryRow {
+    const type = column['type'] || column['data_type'] || column['DATA_TYPE_NAME'];
+    const typeCarriesSize = typeof type === 'string' && type.includes('(');
+
     return {
       name: column['name'] || column['column_name'] || column['COLUMN_NAME'],
-      type: column['type'] || column['data_type'] || column['DATA_TYPE_NAME'],
-      length: column['length'] || column['character_maximum_length'],
-      precision: column['numeric_precision'],
-      scale: column['scale'] || column['numeric_scale'],
-      nullable: column['is_nullable'],
-      default: column['default_value'] || column['column_default'],
-      ordinal: column['ordinal_position']
+      type,
+      length: typeCarriesSize
+        ? undefined
+        : column['length'] || column['character_maximum_length'],
+      scale: typeCarriesSize
+        ? undefined
+        : column['scale'] || column['numeric_scale'],
+      nullable: column['is_nullable']
     };
   }
 
