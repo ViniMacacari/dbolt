@@ -15,10 +15,11 @@ import DatabaseMemoryStorage, {
 
 import type { AiReadonlyDatabaseContext } from './ai-assistant-readonly-database.js';
 
-const MAX_MODEL_CALLS_PER_TURN = 4;
-const MAX_TABLES_PER_TURN = 4;
-const MAX_QUERIES_PER_TURN = 2;
-const MAX_PROPOSED_NOTES = 3;
+const MAX_MODEL_CALLS_PER_TURN = 6;
+const MAX_TABLES_PER_TURN = 8;
+const MAX_QUERIES_PER_TURN = 4;
+const MAX_PROPOSED_NOTES = 8;
+const MAX_QUESTIONS = 5;
 const MAX_CONTEXT_MESSAGES = 8;
 const MAX_MESSAGE_CHARS = 2000;
 const MAX_INVESTIGATION_CHARS = 14000;
@@ -29,10 +30,13 @@ export interface DatabaseMemoryInterviewMessage {
   content: string;
 }
 
+export type DatabaseMemoryInterviewMode = 'investigate' | 'instruct';
+
 export interface DatabaseMemoryInterviewRequest {
   scope: DatabaseMemoryScope;
   readonlyContext?: AiReadonlyDatabaseContext;
   messages?: DatabaseMemoryInterviewMessage[];
+  mode?: DatabaseMemoryInterviewMode;
   appLanguage?: string;
 }
 
@@ -43,7 +47,7 @@ export interface DatabaseMemoryProposedNote {
 
 export interface DatabaseMemoryInterviewResult {
   message: string;
-  question: string;
+  questions: string[];
   proposedNotes: DatabaseMemoryProposedNote[];
   inspectedTables: string[];
   executedQueries: string[];
@@ -54,6 +58,7 @@ class DatabaseMemoryInterviewService {
   async run(request: DatabaseMemoryInterviewRequest): Promise<DatabaseMemoryInterviewResult> {
     const settings = await AiAssistantSettings.getResolvedSettings();
     const scope = request.scope || {};
+    const mode: DatabaseMemoryInterviewMode = request.mode === 'instruct' ? 'instruct' : 'investigate';
     const messages = this.normalizeMessages(request.messages);
     const responseLanguage = request.appLanguage === 'pt-BR'
       ? 'Brazilian Portuguese (pt-BR)'
@@ -63,7 +68,7 @@ class DatabaseMemoryInterviewService {
     const inspectedTables: string[] = [];
     const executedQueries: string[] = [];
 
-    if (request.readonlyContext) {
+    if (request.readonlyContext && mode === 'investigate') {
       investigation.push(await this.readSchemaSummary(request.readonlyContext));
     }
 
@@ -83,7 +88,8 @@ class DatabaseMemoryInterviewService {
           investigation,
           canInvestigateAgain,
           MAX_TABLES_PER_TURN - inspectedTables.length,
-          MAX_QUERIES_PER_TURN - executedQueries.length
+          MAX_QUERIES_PER_TURN - executedQueries.length,
+          mode
         ),
         messages
       );
@@ -109,7 +115,7 @@ class DatabaseMemoryInterviewService {
 
       result = {
         message: this.normalizeText(parsed['message'], 4000),
-        question: this.normalizeText(parsed['question'], 600),
+        questions: this.normalizeQuestions(parsed),
         proposedNotes: this.normalizeProposedNotes(parsed['notes']),
         inspectedTables,
         executedQueries,
@@ -121,7 +127,7 @@ class DatabaseMemoryInterviewService {
     if (!result) {
       return {
         message: '',
-        question: '',
+        questions: [],
         proposedNotes: [],
         inspectedTables,
         executedQueries,
@@ -199,28 +205,36 @@ ${result.content}`;
     investigation: string[],
     canInvestigateAgain: boolean,
     remainingTables: number,
-    remainingQueries: number
+    remainingQueries: number,
+    mode: DatabaseMemoryInterviewMode
   ): AiModelSystemPrompt {
     const fixedRules = [
       'You are the DBOLT database knowledge interviewer. Your job is to build a small, durable set of notes about how this specific database is used, so the DBOLT AI assistant answers better in future conversations.',
       `Write every user-facing string in ${responseLanguage}. Keep table, column and schema identifiers exactly as the database returned them.`,
       this.buildScopeLine(scope),
+      ...(mode === 'instruct' ? [
+        'This turn the user is teaching you something directly, not asking you to explore. Read what they wrote, split it into atomic notes, and propose those notes. Keep their wording and their terms; do not soften or generalise what they said.',
+        'You may still check the database to confirm the identifiers they mentioned exist and are spelled the way they wrote them, and you should say in the message when a name they used does not match the metadata.',
+        'Then ask what is still missing around what they just taught you.'
+      ] : [
+        'This turn you are exploring on your own. Investigate first, propose every structural fact you verified, and ask about the business meaning you could not verify.'
+      ]),
       'Investigate before you ask. Do not ask the user anything the database can answer: read the columns of the tables that matter, and run read-only SELECTs to see which type, status and code values actually exist and how they are distributed.',
       'Two kinds of fact exist, and you treat them differently. A STRUCTURAL fact is verifiable from what the database just returned: which table holds an entity, which columns are the keys, how two tables join, which distinct codes exist in a column. Propose those as notes directly, saying in the message which query or metadata proves it, so the user only has to confirm.',
       'A BUSINESS fact is what the codes and tables mean in this company process. Never assert it from a table or column name. Ask about it.',
       'What must never become a note: row values that change, credentials, generated SQL, plain column listings that DBOLT metadata already provides, anything you are guessing, and anything the user has not confirmed.',
       `Each note must be one atomic fact, at most ${MAX_NOTE_TEXT_CHARS} characters, written so it is still understandable months from now without this conversation. The topic is a short label of at most ${MAX_NOTE_TOPIC_CHARS} characters.`,
-      `Propose at most ${MAX_PROPOSED_NOTES} notes per turn. Fewer good notes are better than many weak ones.`,
-      'Only propose nothing when you have neither a structural fact nor an answer from the user. Having read the schema is already enough to propose structural facts about the tables that matter, so an empty first turn means you did not investigate enough.',
+      `Propose up to ${MAX_PROPOSED_NOTES} notes per turn and aim for several, not one. Every structural fact you actually verified is worth proposing, because the user only has to click to accept or discard it.`,
+      'Only propose nothing when you have neither a structural fact nor an answer from the user. Having read the schema is already enough to propose structural facts about the tables that matter, so an empty turn means you did not investigate enough.',
       'Never repeat a note that is already saved and never propose two notes that say the same thing.',
-      'Always ask exactly one pertinent question that would produce the most useful next note. Prefer questions only this user can answer over questions the metadata already answers.',
+      `Ask between 2 and ${MAX_QUESTIONS} pertinent questions per turn, ordered from most to least useful. Each question must be answerable on its own, so the user can reply to whichever they want. Only ask what the database cannot answer: never ask something you could have discovered by reading a column or running a SELECT.`,
       'Reply with a single JSON object and nothing else, in this exact shape:',
-      '{"message":"what you concluded and what proves it","question":"one question","notes":[{"topic":"short label","text":"one atomic fact"}]}',
+      '{"message":"what you concluded and what proves it","questions":["first question","second question"],"notes":[{"topic":"short label","text":"one atomic fact"}]}',
       ...(canInvestigateAgain ? [
         'Before answering you may investigate the database. To do that, reply instead with only this JSON object:',
-        '{"investigate":{"tables":["TABLE_NAME"],"queries":["SELECT DISTINCT ..."]}}',
+        '{"investigate":{"tables":["TABLE_A","TABLE_B"],"queries":["SELECT DISTINCT ..."]}}',
         `This turn you may still read ${remainingTables} table(s) and run ${remainingQueries} read-only query(ies). Queries must be a single SELECT or WITH; anything else is rejected.`,
-        'Use that budget. Reading the columns of the two or three tables the user cares about, and looking at the distinct values of their type and status columns, is what makes your notes worth saving.'
+        'Spend that budget before you talk. Ask for several tables at once instead of one at a time, and use the queries to look at the distinct values of the type, status and code columns you just found. A turn where you investigated nothing is a wasted turn.'
       ] : [])
     ].join('\n\n');
 
@@ -328,6 +342,27 @@ ${result.content}`;
     } catch (_error: unknown) {
       return null;
     }
+  }
+
+  private normalizeQuestions(parsed: Record<string, unknown>): string[] {
+    const raw = Array.isArray(parsed['questions'])
+      ? parsed['questions']
+      : [parsed['question']];
+    const questions: string[] = [];
+
+    for (const candidate of raw) {
+      const question = this.normalizeText(candidate, 400);
+
+      if (question && !questions.includes(question)) {
+        questions.push(question);
+      }
+
+      if (questions.length >= MAX_QUESTIONS) {
+        break;
+      }
+    }
+
+    return questions;
   }
 
   private normalizeProposedNotes(value: unknown): DatabaseMemoryProposedNote[] {
