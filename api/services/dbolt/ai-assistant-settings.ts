@@ -33,7 +33,7 @@ const DEFAULT_LIMITS: AiAssistantLimits = {
   maxDatabaseRequestsPerApiCall: 2,
   maxContextMessages: 10,
   maxToolResultChars: 9000,
-  maxToolTranscriptChars: 18000
+  maxToolTranscriptChars: 48000
 };
 
 export interface AiAssistantPublicSettings {
