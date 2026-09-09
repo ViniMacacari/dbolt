@@ -70,20 +70,19 @@
                         </button>
                     </div>
 
-                    <div class="memory-slot" *ngFor="let note of proposedNotes; let index = index"
-                        [class.removing]="isProposalRemoving(note)">
+                    <div class="memory-slot" *ngFor="let note of proposedNotes; let index = index">
                         <div class="memory-proposal" [style.animation-delay]="(index * 60) + 'ms'">
                             <span class="memory-topic">{{ note.topic }}</span>
                             <p>{{ note.text }}</p>
                             <div class="memory-inline-actions">
-                                <button type="button" class="memory-action" (click)="discardProposedNote(note)">
+                                <button type="button" class="memory-action" (click)="discardProposedNote(note, $event)">
                                     {{ t('databaseMemory.discard') }}
                                 </button>
                                 <button type="button" class="memory-action" (click)="startEditProposal(note)">
                                     {{ t('databaseMemory.change') }}
                                 </button>
                                 <button type="button" class="memory-action memory-action-primary"
-                                    (click)="acceptProposedNote(note)">
+                                    (click)="acceptProposedNote(note, $event)">
                                     {{ t('databaseMemory.accept') }}
                                 </button>
                             </div>
@@ -114,30 +113,31 @@
             </div>
         </div>
 
-        <div class="memory-selected-question" *ngIf="selectedQuestion && !running">
-            <span class="memory-qr-tag">{{ t('databaseMemory.questionPrefix') }}</span>
-            <p>{{ selectedQuestion }}</p>
-            <button type="button" class="memory-chip memory-chip-close" (click)="clearSelectedQuestion()"
-                [title]="t('databaseMemory.clearQuestion')">
-                <img src="icons/close.png" height="12px" width="12px" [alt]="t('databaseMemory.clearQuestion')">
-            </button>
-        </div>
-
         <div class="memory-composer" *ngIf="hasStarted || running">
-            <button type="button" class="memory-chip memory-composer-chip" [disabled]="!canRunInterview"
-                (click)="openInstructionPopup()" [title]="t('databaseMemory.newInstruction')">
-                <img src="icons/add_row.png" height="13px" width="13px" alt="">
-            </button>
-            <span class="memory-qr-tag memory-qr-tag-answer" *ngIf="selectedQuestion">
-                {{ t('databaseMemory.answerPrefix') }}
-            </span>
-            <textarea #answerInput class="input-page" [(ngModel)]="answer" [disabled]="running"
-                [placeholder]="t('databaseMemory.chatPlaceholder')" (input)="onAnswerInput()"
-                (keydown)="onAnswerKeydown($event)"></textarea>
-            <app-button variant="accent" [compact]="true" [disabled]="!canSubmitAnswer"
-                (pressed)="submitAnswer()">
-                {{ t('databaseMemory.answer') }}
-            </app-button>
+            <div class="memory-selected-question" *ngIf="selectedQuestion && !running">
+                <span class="memory-qr-tag">{{ t('databaseMemory.questionPrefix') }}</span>
+                <p>{{ selectedQuestion }}</p>
+                <button type="button" class="memory-chip memory-chip-close" (click)="clearSelectedQuestion()"
+                    [title]="t('databaseMemory.clearQuestion')">
+                    <img src="icons/close.png" height="12px" width="12px" [alt]="t('databaseMemory.clearQuestion')">
+                </button>
+            </div>
+            <div class="memory-composer-row">
+                <button type="button" class="memory-chip memory-composer-chip" [disabled]="!canRunInterview"
+                    (click)="openInstructionPopup()" [title]="t('databaseMemory.newInstruction')">
+                    <img src="icons/add_row.png" height="13px" width="13px" alt="">
+                </button>
+                <span class="memory-qr-tag memory-qr-tag-answer" *ngIf="selectedQuestion">
+                    {{ t('databaseMemory.answerPrefix') }}
+                </span>
+                <textarea #answerInput class="input-page" [(ngModel)]="answer" [disabled]="running"
+                    [placeholder]="t('databaseMemory.chatPlaceholder')" (input)="onAnswerInput()"
+                    (keydown)="onAnswerKeydown($event)"></textarea>
+                <app-button variant="accent" [compact]="true" [disabled]="!canSubmitAnswer"
+                    (pressed)="submitAnswer()">
+                    {{ t('databaseMemory.answer') }}
+                </app-button>
+            </div>
         </div>
     </div>
 
@@ -157,8 +157,7 @@
                 <p class="memory-muted" *ngIf="loading">{{ t('databaseMemory.loading') }}</p>
                 <p class="memory-muted" *ngIf="!loading && notes.length === 0">{{ t('databaseMemory.none') }}</p>
 
-                <div class="memory-slot" [class.removing]="isNoteRemoving(note)"
-                    *ngFor="let note of notes; trackBy: trackNote">
+                <div class="memory-slot" *ngFor="let note of notes; trackBy: trackNote">
                     <article class="memory-note" [ngClass]="note.source" [class.arriving]="isNoteNew(note)">
                         <div class="memory-note-head">
                             <span class="memory-topic">{{ note.topic }}</span>
@@ -186,7 +185,7 @@
                             <button type="button" class="memory-action" (click)="startEditNote(note)">
                                 {{ t('databaseMemory.edit') }}
                             </button>
-                            <button type="button" class="memory-action memory-action-danger" (click)="deleteNote(note)">
+                            <button type="button" class="memory-action memory-action-danger" (click)="deleteNote(note, $event)">
                                 {{ t('databaseMemory.delete') }}
                             </button>
                         </div>
