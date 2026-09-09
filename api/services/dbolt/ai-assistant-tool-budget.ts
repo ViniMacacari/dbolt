@@ -21,21 +21,23 @@ export interface AiAssistantToolBudgetInput {
   maxPromptChars?: number;
 }
 
-export interface AiAssistantPromptAllocation {
-  currentSqlChars: number;
-  transcriptChars: number;
-}
-
 const SECTION_SEPARATOR = '\n\n';
 const TRANSCRIPT_OMISSION_MARKER = '...earlier read-only results omitted by the AI budget...';
 const TEXT_TRUNCATION_MARKER = '\n...content truncated by the AI budget...';
-const CURRENT_SQL_CHARS_CEILING = 18000;
-const PROMPT_CHARS_FLOOR = 32000;
-const PROMPT_CHARS_TRANSCRIPT_FACTOR = 3;
+const DEFAULT_TRANSCRIPT_CHARS = 48000;
+const DEFAULT_CURRENT_SQL_CHARS = 200000;
+const DEFAULT_PROMPT_CHARS = 200000;
+const TRANSCRIPT_RESERVE_CHARS = 12000;
+const TURN_STATE_RESERVE_CHARS = 6000;
 
 class AiAssistantToolBudgetService {
   createState(input: AiAssistantToolBudgetInput = {}): AiAssistantToolBudgetState {
-    const maxToolTranscriptChars = this.normalizeInteger(input.maxToolTranscriptChars, 18000, 4000, 100000);
+    const maxToolTranscriptChars = this.normalizeInteger(
+      input.maxToolTranscriptChars,
+      DEFAULT_TRANSCRIPT_CHARS,
+      4000,
+      100000
+    );
 
     return {
       maxApiCallsPerMessage: this.normalizeInteger(input.maxApiCallsPerMessage, 4, 1, 10),
@@ -45,15 +47,15 @@ class AiAssistantToolBudgetService {
       maxToolTranscriptChars,
       maxCurrentSqlChars: this.normalizeInteger(
         input.maxCurrentSqlChars,
-        Math.min(CURRENT_SQL_CHARS_CEILING, maxToolTranscriptChars),
+        DEFAULT_CURRENT_SQL_CHARS,
         1000,
-        40000
+        400000
       ),
       maxPromptChars: this.normalizeInteger(
         input.maxPromptChars,
-        Math.max(PROMPT_CHARS_FLOOR, maxToolTranscriptChars * PROMPT_CHARS_TRANSCRIPT_FACTOR),
+        DEFAULT_PROMPT_CHARS,
         16000,
-        400000
+        2000000
       ),
       apiCallsUsed: 0,
       iterationsUsed: 0,
@@ -110,37 +112,22 @@ class AiAssistantToolBudgetService {
     return `${value.slice(0, maxChars - TEXT_TRUNCATION_MARKER.length)}${TEXT_TRUNCATION_MARKER}`;
   }
 
-  allocatePromptSpace(
-    availableChars: number,
-    currentSqlChars: number,
-    transcriptChars: number
-  ): AiAssistantPromptAllocation {
-    const available = Math.max(0, availableChars);
+  getCurrentSqlAllowance(
+    state: AiAssistantToolBudgetState,
+    fixedChars: number,
+    messagesChars: number
+  ): number {
+    const allowance = state.maxPromptChars
+      - fixedChars
+      - messagesChars
+      - TURN_STATE_RESERVE_CHARS
+      - TRANSCRIPT_RESERVE_CHARS;
 
-    if (currentSqlChars + transcriptChars <= available) {
-      return { currentSqlChars, transcriptChars };
-    }
+    return Math.max(0, Math.min(state.maxCurrentSqlChars, allowance));
+  }
 
-    const half = Math.floor(available / 2);
-
-    if (currentSqlChars <= half) {
-      return {
-        currentSqlChars,
-        transcriptChars: Math.max(0, available - currentSqlChars)
-      };
-    }
-
-    if (transcriptChars <= half) {
-      return {
-        currentSqlChars: Math.max(0, available - transcriptChars),
-        transcriptChars
-      };
-    }
-
-    return {
-      currentSqlChars: half,
-      transcriptChars: available - half
-    };
+  getTranscriptAllowance(state: AiAssistantToolBudgetState, usedChars: number): number {
+    return Math.max(0, Math.min(state.maxToolTranscriptChars, state.maxPromptChars - usedChars));
   }
 
   compactTranscript(
