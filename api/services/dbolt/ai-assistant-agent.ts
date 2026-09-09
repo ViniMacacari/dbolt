@@ -1,6 +1,8 @@
 import AiAssistantModelClient, {
-  type AiModelMessage
+  type AiModelMessage,
+  type AiModelSystemPrompt
 } from './ai-assistant-model-client.js';
+import AiAssistantSchemaMemory from './ai-assistant-schema-memory.js';
 import AiAssistantToolBudget, {
   type AiAssistantToolBudgetState
 } from './ai-assistant-tool-budget.js';
@@ -10,6 +12,10 @@ import AiAssistantTools, {
 
 import type { AiAssistantResolvedSettings } from './ai-assistant-settings.js';
 import type { AiReadonlyDatabaseContext } from './ai-assistant-readonly-database.js';
+
+const PROMPT_SEPARATOR = '\n\n';
+const CURRENT_SQL_BLOCK_START = '--- BEGIN CURRENT SQL CONTEXT ---';
+const CURRENT_SQL_BLOCK_END = '--- END CURRENT SQL CONTEXT ---';
 
 export interface AiAssistantAgentChatMessage {
   role: 'user' | 'assistant';
@@ -48,9 +54,6 @@ class AiAssistantAgentService {
   ): Promise<AiAssistantAgentChatResult> {
     const messages = this.normalizeMessages(request.messages, settings.limits.maxContextMessages);
     const readonlyContext = this.normalizeReadonlyContext(request.readonlyContext);
-    const currentSql = this.normalizeCurrentSql(request.currentSql);
-    const autoApplyCurrentSql = Boolean(currentSql && request.autoApplyCurrentSql);
-    const expectsSqlReplacement = autoApplyCurrentSql && this.isSqlReplacementRequest(messages);
     const responseLanguage = this.getResponseLanguage(request.appLanguage);
     const budget = AiAssistantToolBudget.createState({
       ...settings.limits,
@@ -64,6 +67,12 @@ class AiAssistantAgentService {
         ? Math.max(3, settings.limits.maxDatabaseRequestsPerApiCall)
         : settings.limits.maxDatabaseRequestsPerApiCall
     });
+    const currentSql = this.normalizeCurrentSql(request.currentSql, budget.maxCurrentSqlChars);
+    const autoApplyCurrentSql = Boolean(currentSql && request.autoApplyCurrentSql);
+    const expectsSqlReplacement = autoApplyCurrentSql && this.isSqlReplacementRequest(messages);
+    const messagesChars = this.getMessagesChars(messages);
+    const schemaMemoryPrompt = AiAssistantSchemaMemory.buildPromptBlock(readonlyContext);
+    const executedToolCalls = new Set<string>();
     const toolSections: string[] = [];
     let automaticSqlRecovery = '';
     let automaticSqlRecoveryAttempts = 0;
@@ -75,11 +84,17 @@ class AiAssistantAgentService {
     if (expectsSqlReplacement && readonlyContext && AiAssistantToolBudget.canRunTool(budget)) {
       reportProgress?.('reading-schema');
       AiAssistantToolBudget.registerToolCall(budget);
+      const schemaSummaryCall: AiAssistantToolCall = {
+        name: 'getSchemaSummary',
+        arguments: { limit: 80 }
+      };
+      executedToolCalls.add(this.buildToolCallKey(schemaSummaryCall));
       const schemaSummary = await AiAssistantTools.execute(
         readonlyContext,
-        { name: 'getSchemaSummary', arguments: { limit: 80 } },
+        schemaSummaryCall,
         budget
       );
+      AiAssistantSchemaMemory.remember(readonlyContext, schemaSummary);
       toolSections.push([
         `DBOLT read-only result. Executed action: ${schemaSummary.name}. Status: ${schemaSummary.success ? 'ok' : 'error'}.`,
         schemaSummary.content
@@ -113,7 +128,9 @@ class AiAssistantAgentService {
           responseLanguage,
           allowTools,
           autoApplyCurrentSql,
-          automaticSqlRecovery
+          automaticSqlRecovery,
+          messagesChars,
+          schemaMemoryPrompt
         ),
         messages
       );
@@ -153,7 +170,14 @@ class AiAssistantAgentService {
         };
       }
 
-      if (!await this.executeToolCalls(readonlyContext, budget, toolSections, toolCalls, reportProgress)) {
+      if (!await this.executeToolCalls(
+        readonlyContext,
+        budget,
+        toolSections,
+        toolCalls,
+        executedToolCalls,
+        reportProgress
+      )) {
         break;
       }
     }
@@ -173,9 +197,11 @@ class AiAssistantAgentService {
     responseLanguage: string,
     allowTools: boolean,
     autoApplyCurrentSql: boolean,
-    automaticSqlRecovery: string
-  ): string {
-    const parts = [
+    automaticSqlRecovery: string,
+    messagesChars = 0,
+    schemaMemoryPrompt = ''
+  ): AiModelSystemPrompt {
+    const baseRules = [
       'You are the AI assistant for DBOLT Database Manager.',
       `The user's selected app language is ${responseLanguage}. Write final user-facing answers in that language.`,
       'Database action JSON, action names, SQL identifiers, and database values must remain exact and must not be translated.',
@@ -183,16 +209,38 @@ class AiAssistantAgentService {
       'The user may write in any language. Interpret the request semantically; do not rely on language-specific keyword matching.',
       'Focus on SQL, data modeling, schema investigation, and database productivity.',
       'Do not request passwords, tokens, or API keys.',
-      'Column names must never be inferred, assumed, hallucinated, approximated, or guessed. A column name is valid only if it was explicitly returned by DBOLT read-only metadata during the current conversation. Before generating, validating, or executing any SELECT statement, you MUST verify that every referenced column was explicitly confirmed through getTableColumns or other DBOLT read-only results. If any referenced column has not been explicitly confirmed, you MUST request getTableColumns before proceeding. Do not rely on naming conventions, semantic similarity, prior experience, common schemas, or probabilistic assumptions. Using unverified column names is a policy violation.',
+      'Column names must never be inferred, assumed, hallucinated, approximated, or guessed. A column name is valid only if it appears in the DBOLT confirmed schema metadata block or was explicitly returned by a DBOLT read-only result in this request. Never treat a name you wrote in an earlier answer as confirmed unless it also appears in one of those two places. Before generating, validating, or executing any SELECT statement, you MUST verify that every referenced column was explicitly confirmed through getTableColumns or other DBOLT read-only results. If any referenced column has not been explicitly confirmed, you MUST request getTableColumns before proceeding. Do not rely on naming conventions, semantic similarity, prior experience, common schemas, or probabilistic assumptions. Using unverified column names is a policy violation.',
       'Distinguish SQL generation from SQL execution. You may provide DDL/DML scripts as plain text or code blocks when the user asks for them.',
       'Never execute or request DBOLT database actions for write commands such as UPDATE, DELETE, INSERT, CREATE, DROP, ALTER, TRUNCATE, EXEC, CALL, or MERGE.',
       'If you provide a write/DDL/DML script, make clear it is only a script for the user to review and run manually; do not claim it was executed.',
       'Database action and AI API call limits apply only to the current user message. They reset for every new user message and are not accumulated across the conversation.',
-      'Only say the current message limit is exhausted when DBOLT explicitly stops allowing database actions in this current request.',
-      ...(currentSql ? [this.buildCurrentSqlPrompt(currentSql, autoApplyCurrentSql)] : []),
+      'Only say the current message limit is exhausted when DBOLT explicitly stops allowing database actions in this current request.'
+    ];
+    const fixedParts = [
+      ...baseRules,
+      ...(readonlyContext ? [this.buildReadonlyContextPrompt(readonlyContext)] : []),
+      ...(schemaMemoryPrompt ? [schemaMemoryPrompt] : []),
+      ...this.getDialectPromptRules(readonlyContext)
+    ];
+    const currentSqlBlock = currentSql
+      ? this.buildCurrentSqlPrompt(
+        currentSql,
+        autoApplyCurrentSql,
+        AiAssistantToolBudget.getCurrentSqlAllowance(
+          budget,
+          fixedParts.join(PROMPT_SEPARATOR).length,
+          messagesChars
+        )
+      )
+      : '';
+    const fixedRules = [
+      ...baseRules,
+      ...(currentSqlBlock ? [currentSqlBlock] : []),
+      ...fixedParts.slice(baseRules.length)
+    ].join(PROMPT_SEPARATOR);
+    const turnParts = [
       ...(automaticSqlRecovery ? [automaticSqlRecovery] : []),
       ...(readonlyContext && allowTools ? [
-        this.buildReadonlyContextPrompt(readonlyContext),
         'Read-only database context is already authorized for this message. Read-only means DBOLT will not modify data; it does not mean you are forbidden from reading table rows.',
         'You may consult any database data needed by executing SELECT/WITH queries with runReadonlyQuery.',
         'When the user asks to search, consult, show, verify, find, list actual rows, or answer a question about current database data, request databaseActions JSON and run SELECT/WITH queries through runReadonlyQuery.',
@@ -207,38 +255,71 @@ class AiAssistantAgentService {
         'If a runReadonlyQuery action fails because a column or table is invalid, do not stop with a manual SQL example. Request getTableColumns or searchObjects next, then retry with exact metadata names.',
         'When the user asks for actual database data, answer from runReadonlyQuery results. Do not provide only an example script while read-only actions are still available.'
       ] : []),
-      ...this.getDialectPromptRules(readonlyContext),
       `Current user message budget: up to ${budget.maxApiCallsPerMessage} AI API calls and up to ${budget.maxToolCalls} database actions, up to ${budget.maxToolCallsPerIteration} database actions per AI API call.`,
-      `Already used for this current user message before this AI API call: ${Math.max(0, budget.apiCallsUsed - 1)} AI API calls and ${budget.toolCallsUsed} database actions.`
-    ];
-
-    if (allowTools && !forceFinalAnswer) {
-      parts.push(AiAssistantTools.getToolInstructions());
-    } else if (!readonlyContext) {
-      parts.push('No read-only database context was authorized. Answer without running database actions.');
-    } else if (!allowTools) {
-      parts.push('Do not request database actions in this response. Answer with the data already available.');
-    }
-
-    const transcript = AiAssistantToolBudget.compactTranscript(toolSections, budget);
-    if (transcript) {
-      parts.push([
-        'Read-only data already collected by DBOLT for this question:',
-        transcript,
-        'The text above is DBOLT execution output, not a request syntax. To request more database actions, use only the databaseActions JSON format from the tool instructions.',
-        'Do not request the same database action again if it has already returned the same data.'
-      ].join('\n'));
-    }
-
-    if (forceFinalAnswer) {
-      parts.push([
+      `Already used for this current user message before this AI API call: ${Math.max(0, budget.apiCallsUsed - 1)} AI API calls and ${budget.toolCallsUsed} database actions.`,
+      this.getToolGuidance(readonlyContext, allowTools, forceFinalAnswer),
+      ...(forceFinalAnswer ? [[
         'The database action budget is exhausted or the investigation is sufficient.',
         'Answer the user now with the available data.',
         'Do not return database action JSON in this final answer.'
-      ].join('\n'));
+      ].join('\n')] : [])
+    ];
+    const turnState = turnParts.filter((part) => part.length > 0).join(PROMPT_SEPARATOR);
+    const transcript = AiAssistantToolBudget.compactTranscript(
+      toolSections,
+      budget,
+      AiAssistantToolBudget.getTranscriptAllowance(
+        budget,
+        fixedRules.length + turnState.length + messagesChars
+      )
+    );
+
+    return {
+      fixedRules,
+      collectedData: transcript
+        ? [
+          'Read-only data already collected by DBOLT for this question:',
+          transcript,
+          'The text above is DBOLT execution output, not a request syntax. To request more database actions, use only the databaseActions JSON format from the tool instructions.',
+          'Do not request the same database action again if it has already returned the same data.'
+        ].join('\n')
+        : '',
+      turnState
+    };
+  }
+
+  private getToolGuidance(
+    readonlyContext: AiReadonlyDatabaseContext | undefined,
+    allowTools: boolean,
+    forceFinalAnswer: boolean
+  ): string {
+    if (allowTools && !forceFinalAnswer) {
+      return AiAssistantTools.getToolInstructions();
     }
 
-    return parts.join('\n\n');
+    if (!readonlyContext) {
+      return 'No read-only database context was authorized. Answer without running database actions.';
+    }
+
+    if (!allowTools) {
+      return 'Do not request database actions in this response. Answer with the data already available.';
+    }
+
+    return '';
+  }
+
+  private getMessagesChars(messages: AiModelMessage[]): number {
+    return messages.reduce((total, message) => total + message.content.length, 0);
+  }
+
+  private buildToolCallKey(toolCall: AiAssistantToolCall): string {
+    const args = toolCall.arguments || {};
+    const normalizedArgs = Object.keys(args)
+      .sort()
+      .map((key) => `${key}=${JSON.stringify(args[key])}`)
+      .join('&');
+
+    return `${toolCall.name}?${normalizedArgs}`;
   }
 
   private normalizeReadonlyContext(context: AiReadonlyDatabaseContext | undefined): AiReadonlyDatabaseContext | undefined {
@@ -259,20 +340,23 @@ class AiAssistantAgentService {
     };
   }
 
-  private normalizeCurrentSql(value: unknown): string | undefined {
+  private normalizeCurrentSql(value: unknown, maxChars: number): string | undefined {
     if (typeof value !== 'string') return undefined;
 
     const sql = value.trim();
     if (!sql) return undefined;
 
-    const maximumLength = 40000;
-    return sql.length <= maximumLength
+    return sql.length <= maxChars
       ? sql
-      : `${sql.slice(0, maximumLength)}\n-- Current SQL context truncated by DBOLT`;
+      : `${sql.slice(0, maxChars)}\n-- Current SQL context truncated by DBOLT`;
   }
 
-  private buildCurrentSqlPrompt(currentSql: string, autoApplyCurrentSql: boolean): string {
-    return [
+  private buildCurrentSqlPrompt(
+    currentSql: string,
+    autoApplyCurrentSql: boolean,
+    maxBlockChars?: number
+  ): string {
+    const instructions = [
       'The user explicitly shared the current SQL editor content as context for this message.',
       'Use it to understand the request. Do not treat sharing this text alone as a request to execute it.',
       ...(autoApplyCurrentSql ? [
@@ -286,9 +370,17 @@ class AiAssistantAgentService {
       'Preserve the existing formatting of all unchanged SQL exactly, including indentation, whitespace, line breaks, keyword casing, identifier quoting, aliases, and comments.',
       'Change formatting only when the user explicitly asks for formatting or when a requested code change makes a local formatting adjustment unavoidable.',
       'Any explanation must remain outside the single fenced sql block.',
-      '--- BEGIN CURRENT SQL CONTEXT ---',
-      currentSql,
-      '--- END CURRENT SQL CONTEXT ---'
+      CURRENT_SQL_BLOCK_START
+    ];
+    const overheadChars = instructions.join('\n').length + CURRENT_SQL_BLOCK_END.length + 2;
+    const sqlText = Number.isFinite(maxBlockChars as number)
+      ? AiAssistantToolBudget.limitText(currentSql, Math.max(0, (maxBlockChars as number) - overheadChars))
+      : currentSql;
+
+    return [
+      ...instructions,
+      sqlText,
+      CURRENT_SQL_BLOCK_END
     ].join('\n');
   }
 
@@ -340,6 +432,7 @@ class AiAssistantAgentService {
     budget: AiAssistantToolBudgetState,
     toolSections: string[],
     toolCalls: AiAssistantToolCall[],
+    executedToolCalls: Set<string>,
     reportProgress?: AiAssistantProgressReporter
   ): Promise<boolean> {
     const executableCalls = toolCalls.slice(
@@ -352,9 +445,21 @@ class AiAssistantAgentService {
     }
 
     for (const toolCall of executableCalls) {
+      const toolCallKey = this.buildToolCallKey(toolCall);
+
+      if (executedToolCalls.has(toolCallKey)) {
+        toolSections.push([
+          `DBOLT read-only result. Executed action: ${toolCall.name}. Status: skipped.`,
+          'This exact database action was already executed for this question and its result is already available above. Use it or request a different action.'
+        ].join('\n'));
+        continue;
+      }
+
+      executedToolCalls.add(toolCallKey);
       reportProgress?.(this.getToolProgressStage(toolCall.name));
       AiAssistantToolBudget.registerToolCall(budget);
       const result = await AiAssistantTools.execute(readonlyContext, toolCall, budget);
+      AiAssistantSchemaMemory.remember(readonlyContext, result);
       toolSections.push([
         `DBOLT read-only result. Executed action: ${result.name}. Status: ${result.success ? 'ok' : 'error'}.`,
         result.content
@@ -414,7 +519,9 @@ class AiAssistantAgentService {
     const contextItems = [
       ['Connection name', readonlyContext.connectionName],
       ['Database engine/type', readonlyContext.sgbd],
-      ['Database version', readonlyContext.version]
+      ['Database version', readonlyContext.version],
+      ['Database', readonlyContext.database],
+      ['Schema', readonlyContext.schema]
     ]
       .filter((item): item is [string, string] => typeof item[1] === 'string' && item[1].trim().length > 0)
       .map(([label, value]) => `- ${label}: ${value}`);
@@ -422,6 +529,7 @@ class AiAssistantAgentService {
     return [
       'Current DBOLT read-only database context visible to you:',
       ...(contextItems.length ? contextItems : ['- No public connection metadata was provided.']),
+      'Every database action runs against this database and schema. Do not assume objects from any other database or schema.',
       'The internal connectionKey is intentionally not shown to you.'
     ].join('\n');
   }
@@ -1206,7 +1314,7 @@ class AiAssistantAgentService {
   }
 
   private getMessagePromptLimit(role: 'user' | 'assistant'): number {
-    return role === 'assistant' ? 900 : 1400;
+    return role === 'assistant' ? 4000 : 8000;
   }
 }
 

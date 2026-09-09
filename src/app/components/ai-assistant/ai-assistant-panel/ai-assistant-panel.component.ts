@@ -41,6 +41,12 @@ import {
   staticModelOptionsForProvider
 } from '../../../services/ai-assistant/ai-assistant-model-catalog'
 
+interface AiTurnOptions {
+  allowDatabaseContext: boolean
+  includeCurrentSql: boolean
+  autoApplyCurrentSql: boolean
+}
+
 @Component({
   selector: 'app-ai-assistant-panel',
   standalone: true,
@@ -101,6 +107,9 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   private thinkingElapsedTimer: number | null = null
   private modelOptionsRequestId: number = 0
   private sqlContextTargets = new Map<string, unknown>()
+  private turnOptions = new Map<string, AiTurnOptions>()
+  private pendingRequest: AbortController | null = null
+  private stopRequested: boolean = false
 
   constructor(
     private settingsService: AiAssistantSettingsService,
@@ -122,7 +131,9 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   ngOnDestroy(): void {
     this.cancelConversationsModalClose()
     this.stopThinkingElapsedTimer()
+    this.stopSending()
     this.sqlContextTargets.clear()
+    this.turnOptions.clear()
   }
 
   ngAfterViewChecked(): void {
@@ -303,51 +314,122 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   }
 
   async onSend(event: AiChatInputSubmit): Promise<void> {
+    if (this.sending) return
+
+    const conversationId = await this.startTurn()
+    if (!conversationId) return
+
+    const userMessage = this.createMessage('user', event.message)
+    const options: AiTurnOptions = {
+      allowDatabaseContext: event.allowDatabaseContext,
+      includeCurrentSql: event.includeCurrentSql,
+      autoApplyCurrentSql: Boolean(event.autoApplyCurrentSql)
+    }
+
+    this.turnOptions.set(userMessage.id, options)
+    this.messages = [...this.messages, userMessage]
+    await this.saveConversationMessages(conversationId, this.messages)
+    await this.requestAssistantReply(conversationId, options)
+  }
+
+  async onRetryMessage(message: AiChatMessage): Promise<void> {
+    if (this.sending) return
+
+    const index = this.messages.findIndex((item) => item.id === message.id)
+    if (index < 0 || message.role !== 'assistant') return
+
+    const conversationId = await this.startTurn()
+    if (!conversationId) return
+
+    this.forgetMessagesFrom(index)
+    this.messages = this.messages.slice(0, index)
+    await this.saveConversationMessages(conversationId, this.messages)
+    await this.requestAssistantReply(conversationId, this.resolveTurnOptions())
+  }
+
+  async onEditMessage(message: AiChatMessage, content: string): Promise<void> {
+    if (this.sending) return
+
+    const index = this.messages.findIndex((item) => item.id === message.id)
+    if (index < 0 || message.role !== 'user') return
+
+    const conversationId = await this.startTurn()
+    if (!conversationId) return
+
+    const options = this.turnOptions.get(message.id) || this.defaultTurnOptions()
+    const editedMessage = this.createMessage('user', content)
+
+    this.forgetMessagesFrom(index)
+    this.turnOptions.set(editedMessage.id, options)
+    this.messages = [...this.messages.slice(0, index), editedMessage]
+    await this.saveConversationMessages(conversationId, this.messages)
+    await this.requestAssistantReply(conversationId, options)
+  }
+
+  stopSending(): void {
+    if (!this.sending || !this.pendingRequest) return
+
+    this.stopRequested = true
+    this.pendingRequest.abort()
+  }
+
+  canRetryMessage(message: AiChatMessage): boolean {
+    return message.role === 'assistant'
+  }
+
+  canEditMessage(message: AiChatMessage): boolean {
+    return message.role === 'user'
+  }
+
+  private async startTurn(): Promise<string> {
     if (!this.settings?.hasApiKey) {
       this.errorMessage = this.t('aiAssistant.apiKeyRequired')
       this.settingsRequested.emit()
-      return
+      return ''
     }
 
-    const currentSql = event.includeCurrentSql ? this.currentSqlContext : undefined
-    const currentSqlTarget = currentSql ? this.tabInfo : undefined
-
-    let conversationId = ''
     try {
-      conversationId = await this.ensureActiveConversation()
+      return await this.ensureActiveConversation()
     } catch (error: unknown) {
       this.errorMessage = this.getErrorMessage(error, this.t('aiAssistant.saveConversationError'))
-      return
+      return ''
     }
+  }
 
-    const userMessage = this.createMessage('user', event.message)
-    this.messages = [...this.messages, userMessage]
+  private async requestAssistantReply(conversationId: string, options: AiTurnOptions): Promise<void> {
+    const currentSql = options.includeCurrentSql ? this.currentSqlContext : undefined
+    const currentSqlTarget = currentSql ? this.tabInfo : undefined
+    const request = new AbortController()
+
+    this.pendingRequest = request
+    this.stopRequested = false
     this.sending = true
     this.thinkingSteps = ['analyzing-request']
     this.thinkingExpanded = false
     this.startThinkingElapsedTimer()
     this.errorMessage = ''
-    await this.saveConversationMessages(conversationId, this.messages)
 
     try {
-      const readonlyToolContext = event.allowDatabaseContext && this.databaseContextAvailable
+      const readonlyToolContext = options.allowDatabaseContext && this.databaseContextAvailable
         ? await this.prepareReadonlyToolContext()
         : undefined
       const response = await this.chatService.sendMessage(
         this.toApiMessages(),
         readonlyToolContext,
         currentSql,
-        Boolean(currentSql && event.autoApplyCurrentSql),
-        (stage) => this.addThinkingStep(stage)
+        Boolean(currentSql && options.autoApplyCurrentSql),
+        (stage) => this.addThinkingStep(stage),
+        request.signal
       )
       const assistantMessage = this.createMessage('assistant', response.message)
+      assistantMessage.thinkingSeconds = this.getElapsedThinkingSeconds()
       if (currentSqlTarget) {
         this.sqlContextTargets.set(assistantMessage.id, currentSqlTarget)
       }
       this.messages = [...this.messages, assistantMessage]
       await this.saveConversationMessages(conversationId, this.messages)
 
-      if (currentSqlTarget && event.autoApplyCurrentSql) {
+      if (currentSqlTarget && options.autoApplyCurrentSql) {
         const replacementSql = this.extractCompleteSqlBlock(response.message)
         if (replacementSql && replacementSql !== currentSql) {
           this.sqlRequested.emit({
@@ -358,16 +440,47 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
         }
       }
     } catch (error: unknown) {
-      this.messages = [
-        ...this.messages,
-        this.createMessage('assistant', this.getErrorMessage(error, this.t('aiAssistant.responseError')), true)
-      ]
-      await this.saveConversationMessages(conversationId, this.messages)
+      if (!this.stopRequested) {
+        this.messages = [
+          ...this.messages,
+          this.createMessage('assistant', this.getErrorMessage(error, this.t('aiAssistant.responseError')), true)
+        ]
+        await this.saveConversationMessages(conversationId, this.messages)
+      }
     } finally {
+      this.pendingRequest = null
+      this.stopRequested = false
       this.sending = false
       this.stopThinkingElapsedTimer()
       this.thinkingSteps = []
       this.lastScrolledProgressStepCount = 0
+    }
+  }
+
+  private resolveTurnOptions(): AiTurnOptions {
+    for (let index = this.messages.length - 1; index >= 0; index--) {
+      const message = this.messages[index]
+
+      if (message.role === 'user') {
+        return this.turnOptions.get(message.id) || this.defaultTurnOptions()
+      }
+    }
+
+    return this.defaultTurnOptions()
+  }
+
+  private defaultTurnOptions(): AiTurnOptions {
+    return {
+      allowDatabaseContext: true,
+      includeCurrentSql: false,
+      autoApplyCurrentSql: false
+    }
+  }
+
+  private forgetMessagesFrom(index: number): void {
+    for (const message of this.messages.slice(index)) {
+      this.sqlContextTargets.delete(message.id)
+      this.turnOptions.delete(message.id)
     }
   }
 
@@ -547,7 +660,7 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
   }
 
   private getMessagePromptLimit(role: 'user' | 'assistant'): number {
-    return role === 'assistant' ? 900 : 1400
+    return role === 'assistant' ? 4000 : 8000
   }
 
   private extractCompleteSqlBlock(content: string): string {
@@ -626,6 +739,14 @@ export class AiAssistantPanelComponent implements OnInit, AfterViewChecked, OnDe
       ...this.thinkingSteps.filter((existingStage) => existingStage !== stage),
       stage
     ].slice(-5)
+  }
+
+  private getElapsedThinkingSeconds(): number {
+    if (!this.thinkingStartedAt) {
+      return 0
+    }
+
+    return Math.max(0, Math.round((Date.now() - this.thinkingStartedAt) / 1000))
   }
 
   private startThinkingElapsedTimer(): void {

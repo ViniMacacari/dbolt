@@ -24,7 +24,8 @@ export class AiAssistantChatService {
     readonlyContext?: AiReadonlyDatabaseToolContext,
     currentSql?: string,
     autoApplyCurrentSql: boolean = false,
-    onProgress?: (stage: AiAssistantProgressStage) => void
+    onProgress?: (stage: AiAssistantProgressStage) => void,
+    signal?: AbortSignal
   ): Promise<AiAssistantChatResponse> {
     let result: AiAssistantChatResponse | undefined
 
@@ -45,7 +46,7 @@ export class AiAssistantChatService {
       }
 
       result = event.data
-    })
+    }, signal)
 
     if (!result) {
       throw new Error('The AI response ended before returning a result.')

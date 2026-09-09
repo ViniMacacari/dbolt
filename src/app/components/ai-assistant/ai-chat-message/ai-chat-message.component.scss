@@ -341,3 +341,94 @@
         }
     }
 }
+
+.message-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.message-action {
+    background: var(--dbolt-292727);
+    border: 1px solid var(--dbolt-3b3b3b);
+    border-radius: 8px;
+    color: var(--dbolt-c9c9c9);
+    cursor: pointer;
+    flex: 0 0 auto;
+    font-family: 'Nunito';
+    font-size: .68em;
+    font-weight: 800;
+    line-height: 1;
+    min-height: 24px;
+    padding: 0 9px;
+    transition:
+        background-color .16s ease,
+        border-color .16s ease,
+        color .16s ease,
+        opacity .16s ease;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.message-action:hover:not(:disabled) {
+    background: var(--dbolt-303030);
+    color: var(--dbolt-f2f2f2);
+}
+
+.message-action:disabled {
+    cursor: default;
+    opacity: .45;
+}
+
+.message-action-primary {
+    border-color: var(--dbolt-3f5a7a);
+    color: var(--dbolt-d8e9fb);
+}
+
+.message-edit {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.message-edit-input {
+    font-size: .82em;
+    max-height: 220px;
+    min-height: 72px;
+    resize: vertical;
+    width: 100%;
+}
+
+.message-edit-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.message-thinking-time {
+    color: var(--dbolt-8f8f8f);
+    flex: 0 1 auto;
+    font-family: 'Nunito';
+    font-size: .68em;
+    font-weight: 700;
+    margin-right: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.message-action-icon {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    min-width: 30px;
+    padding: 0;
+}
+
+.message-action-icon img {
+    opacity: .82;
+}
+
+.message-action-icon:hover:not(:disabled) img {
+    opacity: 1;
+}

@@ -41,6 +41,7 @@ export interface AiChatMessage {
   content: string
   createdAt: string
   error?: boolean
+  thinkingSeconds?: number
 }
 
 export interface AiAssistantConversation {

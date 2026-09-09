@@ -1,5 +1,16 @@
 import { CommonModule } from '@angular/common'
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core'
+import {
+  Component,
+  ElementRef,
+  EventEmitter,
+  Input,
+  OnChanges,
+  OnDestroy,
+  Output,
+  SimpleChanges,
+  ViewChild
+} from '@angular/core'
+import { FormsModule } from '@angular/forms'
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser'
 
 import { AiChatMessage } from '../../../services/ai-assistant/ai-assistant.model'
@@ -10,14 +21,23 @@ import { QueryResultExportService } from '../../../services/query-result-export/
 @Component({
   selector: 'app-ai-chat-message',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './ai-chat-message.component.html',
   styleUrl: './ai-chat-message.component.scss'
 })
 export class AiChatMessageComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) message!: AiChatMessage
   @Input() sqlAction: 'new-tab' | 'replace-current' = 'new-tab'
+  @Input() actionsDisabled: boolean = false
+  @Input() canRetry: boolean = false
+  @Input() canEdit: boolean = false
   @Output() sqlRequested = new EventEmitter<string>()
+  @Output() retry = new EventEmitter<void>()
+  @Output() edited = new EventEmitter<string>()
+  @ViewChild('editInput') editInput?: ElementRef<HTMLTextAreaElement>
+
+  editing: boolean = false
+  draft: string = ''
 
   formattedContent!: SafeHtml
   private displayContent: string = ''
@@ -34,13 +54,90 @@ export class AiChatMessageComponent implements OnChanges, OnDestroy {
     private clipboard: QueryResultExportService
   ) { }
 
-  ngOnChanges(_changes: SimpleChanges): void {
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['message'] && this.editing) {
+      const previousId = (changes['message'].previousValue as AiChatMessage | undefined)?.id
+      if (previousId && previousId !== this.message.id) {
+        this.cancelEdit()
+      }
+    }
+
     this.clearSqlCopyResetTimers()
     this.sqlCopyStates.clear()
     this.displayContent = this.message.role === 'assistant'
       ? sanitizeAiAssistantContent(this.message.content || '', this.language.getCurrentLanguage())
       : this.message.content || ''
     this.renderFormattedContent()
+  }
+
+  get thinkingTimeLabel(): string {
+    const seconds = this.message.thinkingSeconds
+
+    if (this.message.role !== 'assistant' || !seconds || seconds <= 0) {
+      return ''
+    }
+
+    return this.t('aiAssistant.thoughtFor', { seconds })
+  }
+
+  get showActions(): boolean {
+    return this.message.role === 'assistant' ? this.canRetry : this.canEdit
+  }
+
+  get canConfirmEdit(): boolean {
+    const draft = this.draft.trim()
+    return !this.actionsDisabled && draft.length > 0 && draft !== this.message.content.trim()
+  }
+
+  startEdit(): void {
+    if (this.actionsDisabled) {
+      return
+    }
+
+    this.draft = this.message.content
+    this.editing = true
+  }
+
+  cancelEdit(): void {
+    this.editing = false
+    this.draft = ''
+  }
+
+  confirmEdit(): void {
+    if (!this.canConfirmEdit) {
+      return
+    }
+
+    const draft = this.draft.trim()
+    this.editing = false
+    this.draft = ''
+    this.edited.emit(draft)
+  }
+
+  onEditKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.stopPropagation()
+      event.preventDefault()
+      this.cancelEdit()
+      return
+    }
+
+    if (event.key !== 'Enter' || event.isComposing) {
+      return
+    }
+
+    event.stopPropagation()
+
+    if (event.shiftKey || event.ctrlKey || event.metaKey) {
+      return
+    }
+
+    event.preventDefault()
+    this.confirmEdit()
+  }
+
+  t(key: string, params: Record<string, string | number> = {}): string {
+    return this.language.translate(key, params)
   }
 
   get authorLabel(): string {

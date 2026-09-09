@@ -8,6 +8,7 @@ const MAX_CONVERSATIONS = 50;
 const MAX_MESSAGES_PER_CONVERSATION = 120;
 const MAX_TITLE_LENGTH = 60;
 const MAX_MESSAGE_LENGTH = 20000;
+const MAX_THINKING_SECONDS = 86400;
 
 export type AiAssistantConversationRole = 'user' | 'assistant';
 
@@ -17,6 +18,7 @@ export interface AiAssistantConversationMessage {
   content: string;
   createdAt: string;
   error?: boolean;
+  thinkingSeconds?: number;
 }
 
 export interface AiAssistantConversation {
@@ -229,8 +231,19 @@ class AiAssistantConversationsService {
       role,
       content,
       createdAt: this.normalizeDate(record['createdAt']),
-      error: record['error'] === true ? true : undefined
+      error: record['error'] === true ? true : undefined,
+      thinkingSeconds: this.normalizeThinkingSeconds(record['thinkingSeconds'])
     };
+  }
+
+  private normalizeThinkingSeconds(value: unknown): number | undefined {
+    const seconds = Number(value);
+
+    if (!Number.isFinite(seconds) || seconds < 0) {
+      return undefined;
+    }
+
+    return Math.min(Math.floor(seconds), MAX_THINKING_SECONDS);
   }
 
   private createConversationRecord(title?: string): AiAssistantConversation {
