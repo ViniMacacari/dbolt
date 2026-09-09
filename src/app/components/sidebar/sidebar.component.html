@@ -200,6 +200,10 @@
         <img src="icons/database.png" height="13px" width="13px">
         {{ t('sidebar.context.openInformation') }}
     </button>
+    <button type="button" (click)="requestDatabaseMemory($event)">
+        <img src="icons/ai.png" height="13px" width="13px">
+        {{ t('sidebar.context.databaseMemory') }}
+    </button>
 </div>
 
 <div class="quick-selector-backdrop" *ngIf="quickSelectorType"
