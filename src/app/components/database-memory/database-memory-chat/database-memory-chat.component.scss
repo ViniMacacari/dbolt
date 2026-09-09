@@ -681,3 +681,57 @@ textarea {
         scroll-behavior: auto;
     }
 }
+
+.memory-intro-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+    justify-content: center;
+}
+
+.memory-bubble-questions {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    max-width: min(92%, 620px);
+    width: 100%;
+}
+
+.memory-question {
+    background: var(--dbolt-131313);
+    border: 1px solid transparent;
+    border-radius: 11px;
+    color: var(--dbolt-e8eaed);
+    cursor: pointer;
+    font-size: .8em;
+    line-height: 1.45;
+    padding: 9px 11px;
+    text-align: left;
+    transition: background-color .16s ease, border-color .16s ease;
+
+    &:hover {
+        background: var(--dbolt-1c2041);
+        border-color: var(--dbolt-516986);
+    }
+
+    &:focus-visible {
+        border-color: var(--dbolt-739eca);
+        outline: none;
+    }
+}
+
+.memory-composer-chip {
+    flex: 0 0 auto;
+    margin-bottom: 2px;
+
+    &:disabled {
+        cursor: default;
+        opacity: .45;
+    }
+}
+
+.memory-action:disabled {
+    cursor: default;
+    opacity: .45;
+}

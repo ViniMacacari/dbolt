@@ -6,6 +6,7 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
 import { ButtonComponent } from '../../elements/button/button.component'
 import { DatabaseMemoryService } from '../../../services/database-memory/database-memory.service'
 import {
+  DatabaseMemoryInterviewMode,
   DatabaseMemoryNote,
   DatabaseMemoryProposedNote,
   DatabaseMemoryScope,
@@ -35,6 +36,10 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
   proposedNotes: DatabaseMemoryProposedNote[] = []
   inspectedTables: string[] = []
   executedQueries: string[] = []
+  questions: string[] = []
+  instruction: string = ''
+  instructionPopupOpen: boolean = false
+  instructionPopupClosing: boolean = false
   answer: string = ''
   ownNoteTopic: string = ''
   ownNoteText: string = ''
@@ -104,6 +109,10 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
     return this.canRunInterview && this.answer.trim().length > 0
   }
 
+  get canSubmitInstruction(): boolean {
+    return this.canRunInterview && this.instruction.trim().length > 0
+  }
+
   get canSaveOwnNote(): boolean {
     return !this.running && this.ownNoteText.trim().length > 0
   }
@@ -140,6 +149,50 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
       this.notesPopupClosing = false
       this.cancelEditNote()
     }, POPUP_ANIMATION_MS)
+  }
+
+  openInstructionPopup(): void {
+    this.instructionPopupClosing = false
+    this.instructionPopupOpen = true
+  }
+
+  closeInstructionPopup(): void {
+    if (!this.instructionPopupOpen || this.instructionPopupClosing) return
+
+    this.instructionPopupClosing = true
+    this.schedule(() => {
+      this.instructionPopupOpen = false
+      this.instructionPopupClosing = false
+    }, POPUP_ANIMATION_MS)
+  }
+
+  async submitInstruction(): Promise<void> {
+    if (!this.canSubmitInstruction) return
+
+    const instruction = this.instruction.trim()
+    this.instruction = ''
+    this.closeInstructionPopup()
+    await this.runInterview([{ role: 'user', content: instruction }], 'instruct')
+  }
+
+  answerQuestion(question: string): void {
+    this.answer = this.answer.trim()
+      ? `${this.answer.trim()}
+
+${question}
+`
+      : `${question}
+`
+    this.schedule(() => {
+      const textarea = this.answerInput?.nativeElement
+
+      if (textarea) {
+        textarea.focus()
+        textarea.selectionStart = textarea.value.length
+        textarea.selectionEnd = textarea.value.length
+        this.resizeComposer()
+      }
+    }, 0)
   }
 
   openAddPopup(): void {
@@ -185,7 +238,7 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
 
   async startInterview(): Promise<void> {
     if (!this.canRunInterview) return
-    await this.runInterview([])
+    await this.runInterview([], 'investigate')
   }
 
   async submitAnswer(): Promise<void> {
@@ -194,7 +247,7 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
     const answer = this.answer.trim()
     this.answer = ''
     this.resetComposer()
-    await this.runInterview([{ role: 'user', content: answer }])
+    await this.runInterview([{ role: 'user', content: answer }], 'investigate')
   }
 
   async acceptProposedNote(note: DatabaseMemoryProposedNote): Promise<void> {
@@ -342,6 +395,36 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
     }, 1200)
   }
 
+  private mergeProposals(incoming: DatabaseMemoryProposedNote[]): DatabaseMemoryProposedNote[] {
+    const known = new Set([
+      ...this.proposedNotes.map((note) => this.dedupeKey(note.text)),
+      ...this.notes.map((note) => this.dedupeKey(note.text))
+    ])
+    const merged = [...this.proposedNotes]
+
+    for (const note of incoming || []) {
+      const key = this.dedupeKey(note.text)
+
+      if (!key || known.has(key)) {
+        continue
+      }
+
+      known.add(key)
+      merged.push(note)
+    }
+
+    return merged
+  }
+
+  private dedupeKey(text: string): string {
+    return (text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+  }
+
   private animateProposalOut(note: DatabaseMemoryProposedNote): void {
     this.removingProposals.add(note)
     this.schedule(() => {
@@ -350,17 +433,19 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
     }, EXIT_ANIMATION_MS)
   }
 
-  private async runInterview(newTurns: DatabaseMemoryTurn[]): Promise<void> {
+  private async runInterview(
+    newTurns: DatabaseMemoryTurn[],
+    mode: DatabaseMemoryInterviewMode
+  ): Promise<void> {
     this.running = true
     this.errorMessage = ''
-    this.proposedNotes = []
-    this.removingProposals.clear()
+    this.questions = []
     const turns = [...this.turns, ...newTurns]
     this.turns = turns
     this.scrollToLatest()
 
     try {
-      const result = await this.databaseMemory.runInterview(this.scope, turns, this.readonlyContext)
+      const result = await this.databaseMemory.runInterview(this.scope, turns, this.readonlyContext, mode)
       const reply = [result.message, result.question]
         .map((part) => (part || '').trim())
         .filter((part) => part.length > 0)
