@@ -35,8 +35,6 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
   proposedNotes: DatabaseMemoryProposedNote[] = []
   inspectedTables: string[] = []
   executedQueries: string[] = []
-  latestMessage: string = ''
-  question: string = ''
   answer: string = ''
   ownNoteTopic: string = ''
   ownNoteText: string = ''
@@ -369,8 +367,6 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
         .join('\n\n')
 
       this.proposedNotes = result.proposedNotes
-      this.latestMessage = (result.message || '').trim()
-      this.question = (result.question || '').trim()
       this.inspectedTables = result.inspectedTables || []
       this.executedQueries = result.executedQueries || []
 
