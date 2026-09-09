@@ -21,7 +21,9 @@ export class AiChatInputComponent implements OnDestroy {
   @Input() disabled: boolean = false
   @Input() databaseContextAvailable: boolean = false
   @Input() currentSqlAvailable: boolean = false
+  @Input() sending: boolean = false
   @Output() send = new EventEmitter<AiChatInputSubmit>()
+  @Output() stop = new EventEmitter<void>()
   @ViewChild('messageInput') messageInput?: ElementRef<HTMLTextAreaElement>
 
   message: string = ''
