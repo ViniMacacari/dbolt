@@ -209,7 +209,7 @@ class AiAssistantAgentService {
       'The user may write in any language. Interpret the request semantically; do not rely on language-specific keyword matching.',
       'Focus on SQL, data modeling, schema investigation, and database productivity.',
       'Do not request passwords, tokens, or API keys.',
-      'Column names must never be inferred, assumed, hallucinated, approximated, or guessed. A column name is valid only if it was explicitly returned by DBOLT read-only metadata during the current conversation. Before generating, validating, or executing any SELECT statement, you MUST verify that every referenced column was explicitly confirmed through getTableColumns or other DBOLT read-only results. If any referenced column has not been explicitly confirmed, you MUST request getTableColumns before proceeding. Do not rely on naming conventions, semantic similarity, prior experience, common schemas, or probabilistic assumptions. Using unverified column names is a policy violation.',
+      'Column names must never be inferred, assumed, hallucinated, approximated, or guessed. A column name is valid only if it appears in the DBOLT confirmed schema metadata block or was explicitly returned by a DBOLT read-only result in this request. Never treat a name you wrote in an earlier answer as confirmed unless it also appears in one of those two places. Before generating, validating, or executing any SELECT statement, you MUST verify that every referenced column was explicitly confirmed through getTableColumns or other DBOLT read-only results. If any referenced column has not been explicitly confirmed, you MUST request getTableColumns before proceeding. Do not rely on naming conventions, semantic similarity, prior experience, common schemas, or probabilistic assumptions. Using unverified column names is a policy violation.',
       'Distinguish SQL generation from SQL execution. You may provide DDL/DML scripts as plain text or code blocks when the user asks for them.',
       'Never execute or request DBOLT database actions for write commands such as UPDATE, DELETE, INSERT, CREATE, DROP, ALTER, TRUNCATE, EXEC, CALL, or MERGE.',
       'If you provide a write/DDL/DML script, make clear it is only a script for the user to review and run manually; do not claim it was executed.',
@@ -459,6 +459,7 @@ class AiAssistantAgentService {
       reportProgress?.(this.getToolProgressStage(toolCall.name));
       AiAssistantToolBudget.registerToolCall(budget);
       const result = await AiAssistantTools.execute(readonlyContext, toolCall, budget);
+      AiAssistantSchemaMemory.remember(readonlyContext, result);
       toolSections.push([
         `DBOLT read-only result. Executed action: ${result.name}. Status: ${result.success ? 'ok' : 'error'}.`,
         result.content
