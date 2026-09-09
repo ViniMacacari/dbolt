@@ -22,8 +22,9 @@ const MAX_PROPOSED_NOTES = 8;
 const MAX_QUESTIONS = 5;
 const MAX_CONTEXT_MESSAGES = 8;
 const MAX_MESSAGE_CHARS = 2000;
-const MAX_INVESTIGATION_CHARS = 14000;
-const SCHEMA_SUMMARY_LIMIT = 120;
+const MAX_INVESTIGATION_CHARS = 45000;
+const SCHEMA_SUMMARY_LIMIT = 1500;
+const INTERVIEW_TOOL_RESULT_CHARS = 50000;
 
 export interface DatabaseMemoryInterviewMessage {
   role: 'user' | 'assistant';
@@ -64,6 +65,8 @@ class DatabaseMemoryInterviewService {
       ? 'Brazilian Portuguese (pt-BR)'
       : 'English (en)';
     const savedNotes = await DatabaseMemory.get(scope).catch(() => null);
+    const firstTurn = (savedNotes?.notes.length || 0) === 0
+      && !(request.messages || []).some((message) => message?.role === 'user' && String(message.content || '').trim());
     const investigation: string[] = [];
     const inspectedTables: string[] = [];
     const executedQueries: string[] = [];
@@ -89,7 +92,8 @@ class DatabaseMemoryInterviewService {
           canInvestigateAgain,
           MAX_TABLES_PER_TURN - inspectedTables.length,
           MAX_QUERIES_PER_TURN - executedQueries.length,
-          mode
+          mode,
+          firstTurn
         ),
         messages
       );
@@ -206,7 +210,8 @@ ${result.content}`;
     canInvestigateAgain: boolean,
     remainingTables: number,
     remainingQueries: number,
-    mode: DatabaseMemoryInterviewMode
+    mode: DatabaseMemoryInterviewMode,
+    firstTurn: boolean
   ): AiModelSystemPrompt {
     const fixedRules = [
       'You are the DBOLT database knowledge interviewer. Your job is to build a small, durable set of notes about how this specific database is used, so the DBOLT AI assistant answers better in future conversations.',
@@ -219,6 +224,11 @@ ${result.content}`;
       ] : [
         'This turn you are exploring on your own. Investigate first, propose every structural fact you verified, and ask about the business meaning you could not verify.'
       ]),
+      ...(firstTurn ? [
+        'This is the first turn and nothing is saved yet, so start from the top. Before any table detail, establish WHAT THIS DATABASE IS: which product or system owns it, what the company does with it, and which parts of it are actually used.',
+        'Look at the naming pattern of the objects you just listed and say whether it matches a product you already know, naming it explicitly. Schemas from known ERPs and off-the-shelf systems follow documented conventions, and if the user confirms which product this is, you can rely on everything you already know about that schema instead of rediscovering it table by table.',
+        'Propose the product identification as a note so the user can confirm or correct it, and make your first questions the broad ones: which system this is, which modules or processes the company really uses, whether there are customisations or custom tables, and which handful of tables the team touches every day. Do not drill into columns on this first turn.'
+      ] : []),
       'Your subject is the DATABASE AS A WHOLE, not one table. In every turn cover several tables and how they connect, unless the user explicitly pointed you at one. Exhaustively documenting a single table is a failure, even if that table is important.',
       'What you are trying to learn, in this order: which tables hold the main business entities; how those tables join to each other; which table is the source of truth when more than one could be; what the values of type, status and code columns mean; what custom or user-defined fields are for; and which tables are dead or unused.',
       'Investigate before you ask. Do not ask the user anything the database can answer: read the columns of the tables that matter, and run read-only SELECTs to see which type, status and code values actually exist.',
@@ -258,7 +268,7 @@ ${result.content}`;
   }
 
   private async readSchemaSummary(context: AiReadonlyDatabaseContext): Promise<string> {
-    const budget = AiAssistantToolBudget.createState({});
+    const budget = AiAssistantToolBudget.createState({ maxToolResultChars: INTERVIEW_TOOL_RESULT_CHARS });
     const result = await AiAssistantTools.execute(
       context,
       { name: 'getSchemaSummary', arguments: { limit: SCHEMA_SUMMARY_LIMIT } },
@@ -273,7 +283,7 @@ ${result.content}`;
     context: AiReadonlyDatabaseContext,
     tableName: string
   ): Promise<string> {
-    const budget = AiAssistantToolBudget.createState({});
+    const budget = AiAssistantToolBudget.createState({ maxToolResultChars: INTERVIEW_TOOL_RESULT_CHARS });
     const result = await AiAssistantTools.execute(
       context,
       { name: 'getTableColumns', arguments: { tableName } },
