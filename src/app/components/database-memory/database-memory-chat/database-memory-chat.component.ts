@@ -14,8 +14,8 @@ import {
 } from '../../../services/database-memory/database-memory.model'
 
 const EXIT_ANIMATION_MS = 200
-const CLOSE_ANIMATION_MS = 180
-const POPUP_ANIMATION_MS = 170
+const CLOSE_ANIMATION_MS = 200
+const POPUP_ANIMATION_MS = 190
 const COMPOSER_MAX_HEIGHT = 180
 
 @Component({
@@ -176,13 +176,9 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
   }
 
   answerQuestion(question: string): void {
-    this.answer = this.answer.trim()
-      ? `${this.answer.trim()}
+    const current = this.answer.trim()
+    this.answer = current ? [current, '', question, ''].join('\n') : `${question}\n`
 
-${question}
-`
-      : `${question}
-`
     this.schedule(() => {
       const textarea = this.answerInput?.nativeElement
 

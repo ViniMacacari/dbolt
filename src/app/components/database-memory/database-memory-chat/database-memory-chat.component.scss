@@ -8,6 +8,21 @@
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes memory-backdrop-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes memory-modal-out {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(8px) scale(.99); }
+}
+
+@keyframes memory-card-out {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-4px); }
+}
+
 @keyframes memory-card-in {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
@@ -46,12 +61,12 @@ textarea {
 }
 
 .memory-backdrop.closing {
-    animation: memory-backdrop-in .18s ease reverse forwards;
+    animation: memory-backdrop-out .18s ease forwards;
     pointer-events: none;
 }
 
 .memory-backdrop.closing .memory-modal {
-    animation: memory-modal-in .18s cubic-bezier(.4, 0, .2, 1) reverse forwards;
+    animation: memory-modal-out .18s cubic-bezier(.4, 0, .2, 1) forwards;
 }
 
 .memory-modal {
@@ -322,7 +337,7 @@ textarea {
 
 .memory-proposal.removing,
 .memory-note.removing {
-    animation: memory-card-in .2s ease reverse forwards;
+    animation: memory-card-out .2s ease forwards;
     pointer-events: none;
 }
 
@@ -498,12 +513,12 @@ textarea {
 }
 
 .memory-popup-backdrop.closing {
-    animation: memory-backdrop-in .16s ease reverse forwards;
+    animation: memory-backdrop-out .16s ease forwards;
     pointer-events: none;
 }
 
 .memory-popup-backdrop.closing .memory-popup {
-    animation: memory-modal-in .16s ease reverse forwards;
+    animation: memory-modal-out .16s ease forwards;
 }
 
 .memory-popup {
