@@ -85,7 +85,9 @@
 
         <div #messageItem *ngFor="let message of messages; trackBy: trackMessage">
             <app-ai-chat-message [message]="message" [sqlAction]="getSqlAction(message)"
-                (sqlRequested)="openSqlInEditor($event, message)">
+                [actionsDisabled]="sending || loadingConversations" [canRetry]="canRetryMessage(message)"
+                [canEdit]="canEditMessage(message)" (sqlRequested)="openSqlInEditor($event, message)"
+                (retry)="onRetryMessage(message)" (edited)="onEditMessage(message, $event)">
             </app-ai-chat-message>
         </div>
 
@@ -118,7 +120,7 @@
 
     <app-ai-chat-input [disabled]="sending || !canChat || loadingConversations"
         [databaseContextAvailable]="databaseContextAvailable" [currentSqlAvailable]="currentSqlContextAvailable"
-        (send)="onSend($event)">
+        [sending]="sending" (send)="onSend($event)" (stop)="stopSending()">
         <div class="ai-model-picker">
             <div class="ai-model-picker-heading">
                 <span>{{ t('aiAssistant.model') }}</span>
