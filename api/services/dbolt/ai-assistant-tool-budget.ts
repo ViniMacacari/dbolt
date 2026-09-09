@@ -24,6 +24,7 @@ export interface AiAssistantToolBudgetInput {
 const SECTION_SEPARATOR = '\n\n';
 const TRANSCRIPT_OMISSION_MARKER = '...earlier read-only results omitted by the AI budget...';
 const TEXT_TRUNCATION_MARKER = '\n...content truncated by the AI budget...';
+const DEFAULT_TOOL_RESULT_CHARS = 24000;
 const DEFAULT_TRANSCRIPT_CHARS = 48000;
 const DEFAULT_CURRENT_SQL_CHARS = 200000;
 const DEFAULT_PROMPT_CHARS = 200000;
@@ -43,7 +44,7 @@ class AiAssistantToolBudgetService {
       maxApiCallsPerMessage: this.normalizeInteger(input.maxApiCallsPerMessage, 4, 1, 10),
       maxToolCalls: this.normalizeInteger(input.maxDatabaseRequestsPerMessage, 4, 0, 20),
       maxToolCallsPerIteration: this.normalizeInteger(input.maxDatabaseRequestsPerApiCall, 2, 1, 5),
-      maxToolResultChars: this.normalizeInteger(input.maxToolResultChars, 9000, 1000, 50000),
+      maxToolResultChars: this.normalizeInteger(input.maxToolResultChars, DEFAULT_TOOL_RESULT_CHARS, 1000, 50000),
       maxToolTranscriptChars,
       maxCurrentSqlChars: this.normalizeInteger(
         input.maxCurrentSqlChars,
