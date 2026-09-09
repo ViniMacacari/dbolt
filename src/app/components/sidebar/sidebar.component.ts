@@ -41,6 +41,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   @Output() settingsRequested = new EventEmitter<void>()
   @Output() sqlScriptRequested = new EventEmitter<any>()
   @Output() contextConnectionRequested = new EventEmitter<{ context: any, forceReconnect: boolean }>()
+  @Output() databaseMemoryRequested = new EventEmitter<any>()
 
   @ViewChild('toast') toast!: ToastComponent
 
@@ -482,6 +483,14 @@ export class SidebarComponent implements OnInit, OnDestroy {
     if (!this.contextMenu?.context) return
 
     this.dbInfoRequested.emit(this.contextMenu.context)
+    this.contextMenu = null
+  }
+
+  requestDatabaseMemory(event: MouseEvent): void {
+    event.stopPropagation()
+    if (!this.contextMenu?.context) return
+
+    this.databaseMemoryRequested.emit(this.contextMenu.context)
     this.contextMenu = null
   }
 
