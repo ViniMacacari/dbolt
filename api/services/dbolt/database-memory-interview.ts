@@ -80,6 +80,7 @@ class DatabaseMemoryInterviewService {
 
     for (let call = 0; call < MAX_MODEL_CALLS_PER_TURN; call++) {
       const canInvestigateAgain = Boolean(request.readonlyContext)
+        && !firstTurn
         && call + 1 < MAX_MODEL_CALLS_PER_TURN
         && (inspectedTables.length < MAX_TABLES_PER_TURN || executedQueries.length < MAX_QUERIES_PER_TURN);
       const completion = await AiAssistantModelClient.complete(
@@ -117,10 +118,16 @@ class DatabaseMemoryInterviewService {
         continue;
       }
 
+      const message = this.normalizeText(parsed['message'], 4000);
+      const questions = this.normalizeQuestions(parsed);
+      const proposedNotes = this.normalizeProposedNotes(parsed['notes']);
+
       result = {
-        message: this.normalizeText(parsed['message'], 4000),
-        questions: this.normalizeQuestions(parsed),
-        proposedNotes: this.normalizeProposedNotes(parsed['notes']),
+        message: message || (questions.length || proposedNotes.length
+          ? ''
+          : this.buildEmptyTurnMessage(responseLanguage)),
+        questions,
+        proposedNotes,
         inspectedTables,
         executedQueries,
         model: lastModel
@@ -227,7 +234,8 @@ ${result.content}`;
       ...(firstTurn ? [
         'This is the first turn and nothing is saved yet, so start from the top. Before any table detail, establish WHAT THIS DATABASE IS: which product or system owns it, what the company does with it, and which parts of it are actually used.',
         'Look at the naming pattern of the objects you just listed and say whether it matches a product you already know, naming it explicitly. Schemas from known ERPs and off-the-shelf systems follow documented conventions, and if the user confirms which product this is, you can rely on everything you already know about that schema instead of rediscovering it table by table.',
-        'Propose the product identification as a note so the user can confirm or correct it, and make your first questions the broad ones: which system this is, which modules or processes the company really uses, whether there are customisations or custom tables, and which handful of tables the team touches every day. Do not drill into columns on this first turn.'
+        'Propose the product identification as a note so the user can confirm or correct it, and make your first questions the broad ones: which system this is, which modules or processes the company really uses, whether there are customisations or custom tables, and which handful of tables the team touches every day.',
+        'Reading tables and running queries is DISABLED this turn on purpose. You have the object list and nothing else, and you must answer with the message, questions and notes JSON object. Trying to investigate now is not possible, so do not attempt it.'
       ] : []),
       'Your subject is the DATABASE AS A WHOLE, not one table. In every turn cover several tables and how they connect, unless the user explicitly pointed you at one. Exhaustively documenting a single table is a failure, even if that table is important.',
       'What you are trying to learn, in this order: which tables hold the main business entities; how those tables join to each other; which table is the source of truth when more than one could be; what the values of type, status and code columns mean; what custom or user-defined fields are for; and which tables are dead or unused.',
@@ -336,7 +344,19 @@ ${result.content}`;
       }
     }
 
-    return { message: content };
+    return this.looksLikeProtocolJson(content)
+      ? {}
+      : { message: content };
+  }
+
+  private looksLikeProtocolJson(content: string): boolean {
+    const trimmed = content.trim();
+
+    if (!trimmed.startsWith('{')) {
+      return false;
+    }
+
+    return /"(?:investigate|inspectTable|notes|questions|message)"\s*:/.test(trimmed);
   }
 
   private parseJsonObject(value: string): Record<string, unknown> | null {
@@ -349,14 +369,68 @@ ${result.content}`;
       return null;
     }
 
-    try {
-      const parsed = JSON.parse(unfenced);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-        ? parsed as Record<string, unknown>
-        : null;
-    } catch (_error: unknown) {
-      return null;
+    for (const candidate of [unfenced, this.escapeControlCharactersInStrings(unfenced)]) {
+      try {
+        const parsed = JSON.parse(candidate);
+
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return parsed as Record<string, unknown>;
+        }
+      } catch (_error: unknown) {
+        continue;
+      }
     }
+
+    return null;
+  }
+
+  private escapeControlCharactersInStrings(value: string): string {
+    const backslash = 92;
+    const quote = 34;
+    let result = '';
+    let insideString = false;
+    let escaped = false;
+
+    for (const char of value) {
+      const code = char.charCodeAt(0);
+
+      if (escaped) {
+        result += char;
+        escaped = false;
+        continue;
+      }
+
+      if (insideString && code === backslash) {
+        result += char;
+        escaped = true;
+        continue;
+      }
+
+      if (code === quote) {
+        insideString = !insideString;
+        result += char;
+        continue;
+      }
+
+      if (insideString && code < 32) {
+        result += this.escapeControlCode(code);
+        continue;
+      }
+
+      result += char;
+    }
+
+    return result;
+  }
+
+  private escapeControlCode(code: number): string {
+    const prefix = String.fromCharCode(92);
+
+    if (code === 10) return prefix + 'n';
+    if (code === 13) return prefix + 'r';
+    if (code === 9) return prefix + 't';
+
+    return prefix + 'u' + code.toString(16).padStart(4, '0');
   }
 
   private normalizeQuestions(parsed: Record<string, unknown>): string[] {
@@ -418,6 +492,12 @@ ${result.content}`;
     }
 
     return notes;
+  }
+
+  private buildEmptyTurnMessage(responseLanguage: string): string {
+    return responseLanguage.includes('Portuguese')
+      ? 'Não consegui organizar uma resposta útil nesta rodada. Tente responder novamente ou me diga por onde começar.'
+      : 'I could not put together a useful answer this round. Answer again or tell me where to start.';
   }
 
   private buildScopeLine(scope: DatabaseMemoryScope): string {

@@ -586,6 +586,15 @@ ${this.t('databaseMemory.answerPrefix')} ${answer}`
       return error.message
     }
 
+    if (error && typeof error === 'object') {
+      const record = error as Record<string, unknown>
+      const detail = record['error']
+      const message = record['message']
+
+      if (typeof detail === 'string' && detail.trim()) return detail
+      if (typeof message === 'string' && message.trim()) return message
+    }
+
     return this.t('databaseMemory.error')
   }
 }
