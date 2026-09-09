@@ -13,9 +13,9 @@ import {
   DatabaseMemoryTurn
 } from '../../../services/database-memory/database-memory.model'
 
-const EXIT_ANIMATION_MS = 270
-const CLOSE_ANIMATION_MS = 200
-const POPUP_ANIMATION_MS = 190
+const EXIT_ANIMATION_MS = 300
+const CLOSE_ANIMATION_MS = 280
+const POPUP_ANIMATION_MS = 250
 const COMPOSER_MAX_HEIGHT = 180
 
 @Component({
@@ -239,7 +239,6 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
       const record = await this.databaseMemory.addNotes(this.scope, [edited], 'user')
       this.applyRecordNotes(record.notes)
       this.cancelEditProposal()
-      this.animateProposalOut(original)
       this.proposedNotes = this.proposedNotes.filter((item) => item !== original)
       this.removingProposals.delete(original)
     } catch (error: unknown) {
@@ -312,10 +311,12 @@ ${this.t('databaseMemory.answerPrefix')} ${answer}`
   async acceptProposedNote(note: DatabaseMemoryProposedNote, event?: Event): Promise<void> {
     if (this.running || this.removingProposals.has(note)) return
 
+    const slot = this.readSlot(event)
+
     try {
       const record = await this.databaseMemory.addNotes(this.scope, [note], 'ai')
       this.applyRecordNotes(record.notes)
-      this.animateProposalOut(note, event)
+      this.animateProposalOut(note, slot)
     } catch (error: unknown) {
       this.errorMessage = this.getErrorMessage(error)
     }
@@ -345,7 +346,7 @@ ${this.t('databaseMemory.answerPrefix')} ${answer}`
 
   discardProposedNote(note: DatabaseMemoryProposedNote, event?: Event): void {
     if (this.removingProposals.has(note)) return
-    this.animateProposalOut(note, event)
+    this.animateProposalOut(note, this.readSlot(event))
   }
 
   async saveOwnNote(): Promise<void> {
@@ -395,11 +396,12 @@ ${this.t('databaseMemory.answerPrefix')} ${answer}`
   async deleteNote(note: DatabaseMemoryNote, event?: Event): Promise<void> {
     if (this.running || this.removingNotes.has(note.id)) return
 
+    const slot = this.readSlot(event)
     this.removingNotes.add(note.id)
 
     try {
       const record = await this.databaseMemory.deleteNote(this.scope, note.id)
-      this.collapseSlot(event, () => {
+      this.collapseSlot(slot, () => {
         this.notes = record.notes
         this.removingNotes.delete(note.id)
       })
@@ -484,18 +486,20 @@ ${this.t('databaseMemory.answerPrefix')} ${answer}`
       .trim()
   }
 
-  private animateProposalOut(note: DatabaseMemoryProposedNote, event?: Event): void {
+  private animateProposalOut(note: DatabaseMemoryProposedNote, slot?: HTMLElement | null): void {
     this.removingProposals.add(note)
-    this.collapseSlot(event, () => {
+    this.collapseSlot(slot, () => {
       this.proposedNotes = this.proposedNotes.filter((item) => item !== note)
       this.removingProposals.delete(note)
     })
   }
 
-  private collapseSlot(event: Event | undefined, done: () => void): void {
-    const target = event?.currentTarget as HTMLElement | null
-    const slot = target?.closest('.memory-slot') as HTMLElement | null
+  private readSlot(event?: Event): HTMLElement | null {
+    const target = (event?.currentTarget || event?.target) as HTMLElement | null
+    return (target?.closest('.memory-slot') as HTMLElement | null) || null
+  }
 
+  private collapseSlot(slot: HTMLElement | null | undefined, done: () => void): void {
     if (!slot) {
       done()
       return
