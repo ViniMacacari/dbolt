@@ -11,6 +11,10 @@ import AiAssistantTools, {
 import type { AiAssistantResolvedSettings } from './ai-assistant-settings.js';
 import type { AiReadonlyDatabaseContext } from './ai-assistant-readonly-database.js';
 
+const PROMPT_SEPARATOR = '\n\n';
+const CURRENT_SQL_BLOCK_START = '--- BEGIN CURRENT SQL CONTEXT ---';
+const CURRENT_SQL_BLOCK_END = '--- END CURRENT SQL CONTEXT ---';
+
 export interface AiAssistantAgentChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -48,9 +52,6 @@ class AiAssistantAgentService {
   ): Promise<AiAssistantAgentChatResult> {
     const messages = this.normalizeMessages(request.messages, settings.limits.maxContextMessages);
     const readonlyContext = this.normalizeReadonlyContext(request.readonlyContext);
-    const currentSql = this.normalizeCurrentSql(request.currentSql);
-    const autoApplyCurrentSql = Boolean(currentSql && request.autoApplyCurrentSql);
-    const expectsSqlReplacement = autoApplyCurrentSql && this.isSqlReplacementRequest(messages);
     const responseLanguage = this.getResponseLanguage(request.appLanguage);
     const budget = AiAssistantToolBudget.createState({
       ...settings.limits,
@@ -64,6 +65,11 @@ class AiAssistantAgentService {
         ? Math.max(3, settings.limits.maxDatabaseRequestsPerApiCall)
         : settings.limits.maxDatabaseRequestsPerApiCall
     });
+    const currentSql = this.normalizeCurrentSql(request.currentSql, budget.maxCurrentSqlChars);
+    const autoApplyCurrentSql = Boolean(currentSql && request.autoApplyCurrentSql);
+    const expectsSqlReplacement = autoApplyCurrentSql && this.isSqlReplacementRequest(messages);
+    const messagesChars = this.getMessagesChars(messages);
+    const executedToolCalls = new Set<string>();
     const toolSections: string[] = [];
     let automaticSqlRecovery = '';
     let automaticSqlRecoveryAttempts = 0;
@@ -75,9 +81,14 @@ class AiAssistantAgentService {
     if (expectsSqlReplacement && readonlyContext && AiAssistantToolBudget.canRunTool(budget)) {
       reportProgress?.('reading-schema');
       AiAssistantToolBudget.registerToolCall(budget);
+      const schemaSummaryCall: AiAssistantToolCall = {
+        name: 'getSchemaSummary',
+        arguments: { limit: 80 }
+      };
+      executedToolCalls.add(this.buildToolCallKey(schemaSummaryCall));
       const schemaSummary = await AiAssistantTools.execute(
         readonlyContext,
-        { name: 'getSchemaSummary', arguments: { limit: 80 } },
+        schemaSummaryCall,
         budget
       );
       toolSections.push([
@@ -113,7 +124,8 @@ class AiAssistantAgentService {
           responseLanguage,
           allowTools,
           autoApplyCurrentSql,
-          automaticSqlRecovery
+          automaticSqlRecovery,
+          messagesChars
         ),
         messages
       );
@@ -153,7 +165,14 @@ class AiAssistantAgentService {
         };
       }
 
-      if (!await this.executeToolCalls(readonlyContext, budget, toolSections, toolCalls, reportProgress)) {
+      if (!await this.executeToolCalls(
+        readonlyContext,
+        budget,
+        toolSections,
+        toolCalls,
+        executedToolCalls,
+        reportProgress
+      )) {
         break;
       }
     }
@@ -173,9 +192,10 @@ class AiAssistantAgentService {
     responseLanguage: string,
     allowTools: boolean,
     autoApplyCurrentSql: boolean,
-    automaticSqlRecovery: string
+    automaticSqlRecovery: string,
+    messagesChars = 0
   ): string {
-    const parts = [
+    const baseRules = [
       'You are the AI assistant for DBOLT Database Manager.',
       `The user's selected app language is ${responseLanguage}. Write final user-facing answers in that language.`,
       'Database action JSON, action names, SQL identifiers, and database values must remain exact and must not be translated.',
@@ -188,8 +208,10 @@ class AiAssistantAgentService {
       'Never execute or request DBOLT database actions for write commands such as UPDATE, DELETE, INSERT, CREATE, DROP, ALTER, TRUNCATE, EXEC, CALL, or MERGE.',
       'If you provide a write/DDL/DML script, make clear it is only a script for the user to review and run manually; do not claim it was executed.',
       'Database action and AI API call limits apply only to the current user message. They reset for every new user message and are not accumulated across the conversation.',
-      'Only say the current message limit is exhausted when DBOLT explicitly stops allowing database actions in this current request.',
-      ...(currentSql ? [this.buildCurrentSqlPrompt(currentSql, autoApplyCurrentSql)] : []),
+      'Only say the current message limit is exhausted when DBOLT explicitly stops allowing database actions in this current request.'
+    ];
+    const parts = [
+      ...baseRules,
       ...(automaticSqlRecovery ? [automaticSqlRecovery] : []),
       ...(readonlyContext && allowTools ? [
         this.buildReadonlyContextPrompt(readonlyContext),
@@ -220,7 +242,35 @@ class AiAssistantAgentService {
       parts.push('Do not request database actions in this response. Answer with the data already available.');
     }
 
-    const transcript = AiAssistantToolBudget.compactTranscript(toolSections, budget);
+    if (forceFinalAnswer) {
+      parts.push([
+        'The database action budget is exhausted or the investigation is sufficient.',
+        'Answer the user now with the available data.',
+        'Do not return database action JSON in this final answer.'
+      ].join('\n'));
+    }
+
+    const currentSqlBlock = currentSql
+      ? this.buildCurrentSqlPrompt(currentSql, autoApplyCurrentSql)
+      : '';
+    const allocation = AiAssistantToolBudget.allocatePromptSpace(
+      budget.maxPromptChars - parts.join(PROMPT_SEPARATOR).length - messagesChars,
+      currentSqlBlock.length,
+      toolSections.join(PROMPT_SEPARATOR).length
+    );
+    const transcript = AiAssistantToolBudget.compactTranscript(
+      toolSections,
+      budget,
+      allocation.transcriptChars
+    );
+    const boundedCurrentSqlBlock = currentSqlBlock && allocation.currentSqlChars < currentSqlBlock.length
+      ? this.buildCurrentSqlPrompt(currentSql as string, autoApplyCurrentSql, allocation.currentSqlChars)
+      : currentSqlBlock;
+
+    if (boundedCurrentSqlBlock) {
+      parts.splice(baseRules.length, 0, boundedCurrentSqlBlock);
+    }
+
     if (transcript) {
       parts.push([
         'Read-only data already collected by DBOLT for this question:',
@@ -230,15 +280,21 @@ class AiAssistantAgentService {
       ].join('\n'));
     }
 
-    if (forceFinalAnswer) {
-      parts.push([
-        'The database action budget is exhausted or the investigation is sufficient.',
-        'Answer the user now with the available data.',
-        'Do not return database action JSON in this final answer.'
-      ].join('\n'));
-    }
+    return parts.join(PROMPT_SEPARATOR);
+  }
 
-    return parts.join('\n\n');
+  private getMessagesChars(messages: AiModelMessage[]): number {
+    return messages.reduce((total, message) => total + message.content.length, 0);
+  }
+
+  private buildToolCallKey(toolCall: AiAssistantToolCall): string {
+    const args = toolCall.arguments || {};
+    const normalizedArgs = Object.keys(args)
+      .sort()
+      .map((key) => `${key}=${JSON.stringify(args[key])}`)
+      .join('&');
+
+    return `${toolCall.name}?${normalizedArgs}`;
   }
 
   private normalizeReadonlyContext(context: AiReadonlyDatabaseContext | undefined): AiReadonlyDatabaseContext | undefined {
@@ -259,20 +315,23 @@ class AiAssistantAgentService {
     };
   }
 
-  private normalizeCurrentSql(value: unknown): string | undefined {
+  private normalizeCurrentSql(value: unknown, maxChars: number): string | undefined {
     if (typeof value !== 'string') return undefined;
 
     const sql = value.trim();
     if (!sql) return undefined;
 
-    const maximumLength = 40000;
-    return sql.length <= maximumLength
+    return sql.length <= maxChars
       ? sql
-      : `${sql.slice(0, maximumLength)}\n-- Current SQL context truncated by DBOLT`;
+      : `${sql.slice(0, maxChars)}\n-- Current SQL context truncated by DBOLT`;
   }
 
-  private buildCurrentSqlPrompt(currentSql: string, autoApplyCurrentSql: boolean): string {
-    return [
+  private buildCurrentSqlPrompt(
+    currentSql: string,
+    autoApplyCurrentSql: boolean,
+    maxBlockChars?: number
+  ): string {
+    const instructions = [
       'The user explicitly shared the current SQL editor content as context for this message.',
       'Use it to understand the request. Do not treat sharing this text alone as a request to execute it.',
       ...(autoApplyCurrentSql ? [
@@ -286,9 +345,17 @@ class AiAssistantAgentService {
       'Preserve the existing formatting of all unchanged SQL exactly, including indentation, whitespace, line breaks, keyword casing, identifier quoting, aliases, and comments.',
       'Change formatting only when the user explicitly asks for formatting or when a requested code change makes a local formatting adjustment unavoidable.',
       'Any explanation must remain outside the single fenced sql block.',
-      '--- BEGIN CURRENT SQL CONTEXT ---',
-      currentSql,
-      '--- END CURRENT SQL CONTEXT ---'
+      CURRENT_SQL_BLOCK_START
+    ];
+    const overheadChars = instructions.join('\n').length + CURRENT_SQL_BLOCK_END.length + 2;
+    const sqlText = Number.isFinite(maxBlockChars as number)
+      ? AiAssistantToolBudget.limitText(currentSql, Math.max(0, (maxBlockChars as number) - overheadChars))
+      : currentSql;
+
+    return [
+      ...instructions,
+      sqlText,
+      CURRENT_SQL_BLOCK_END
     ].join('\n');
   }
 
@@ -340,6 +407,7 @@ class AiAssistantAgentService {
     budget: AiAssistantToolBudgetState,
     toolSections: string[],
     toolCalls: AiAssistantToolCall[],
+    executedToolCalls: Set<string>,
     reportProgress?: AiAssistantProgressReporter
   ): Promise<boolean> {
     const executableCalls = toolCalls.slice(
@@ -352,6 +420,17 @@ class AiAssistantAgentService {
     }
 
     for (const toolCall of executableCalls) {
+      const toolCallKey = this.buildToolCallKey(toolCall);
+
+      if (executedToolCalls.has(toolCallKey)) {
+        toolSections.push([
+          `DBOLT read-only result. Executed action: ${toolCall.name}. Status: skipped.`,
+          'This exact database action was already executed for this question and its result is already available above. Use it or request a different action.'
+        ].join('\n'));
+        continue;
+      }
+
+      executedToolCalls.add(toolCallKey);
       reportProgress?.(this.getToolProgressStage(toolCall.name));
       AiAssistantToolBudget.registerToolCall(budget);
       const result = await AiAssistantTools.execute(readonlyContext, toolCall, budget);
