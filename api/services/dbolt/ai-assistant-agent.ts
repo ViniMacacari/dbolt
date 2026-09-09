@@ -1,5 +1,6 @@
 import AiAssistantModelClient, {
-  type AiModelMessage
+  type AiModelMessage,
+  type AiModelSystemPrompt
 } from './ai-assistant-model-client.js';
 import AiAssistantToolBudget, {
   type AiAssistantToolBudgetState
@@ -194,7 +195,7 @@ class AiAssistantAgentService {
     autoApplyCurrentSql: boolean,
     automaticSqlRecovery: string,
     messagesChars = 0
-  ): string {
+  ): AiModelSystemPrompt {
     const baseRules = [
       'You are the AI assistant for DBOLT Database Manager.',
       `The user's selected app language is ${responseLanguage}. Write final user-facing answers in that language.`,
@@ -210,11 +211,30 @@ class AiAssistantAgentService {
       'Database action and AI API call limits apply only to the current user message. They reset for every new user message and are not accumulated across the conversation.',
       'Only say the current message limit is exhausted when DBOLT explicitly stops allowing database actions in this current request.'
     ];
-    const parts = [
+    const fixedParts = [
       ...baseRules,
+      ...(readonlyContext ? [this.buildReadonlyContextPrompt(readonlyContext)] : []),
+      ...this.getDialectPromptRules(readonlyContext)
+    ];
+    const currentSqlBlock = currentSql
+      ? this.buildCurrentSqlPrompt(
+        currentSql,
+        autoApplyCurrentSql,
+        AiAssistantToolBudget.getCurrentSqlAllowance(
+          budget,
+          fixedParts.join(PROMPT_SEPARATOR).length,
+          messagesChars
+        )
+      )
+      : '';
+    const fixedRules = [
+      ...baseRules,
+      ...(currentSqlBlock ? [currentSqlBlock] : []),
+      ...fixedParts.slice(baseRules.length)
+    ].join(PROMPT_SEPARATOR);
+    const turnParts = [
       ...(automaticSqlRecovery ? [automaticSqlRecovery] : []),
       ...(readonlyContext && allowTools ? [
-        this.buildReadonlyContextPrompt(readonlyContext),
         'Read-only database context is already authorized for this message. Read-only means DBOLT will not modify data; it does not mean you are forbidden from reading table rows.',
         'You may consult any database data needed by executing SELECT/WITH queries with runReadonlyQuery.',
         'When the user asks to search, consult, show, verify, find, list actual rows, or answer a question about current database data, request databaseActions JSON and run SELECT/WITH queries through runReadonlyQuery.',
@@ -229,58 +249,57 @@ class AiAssistantAgentService {
         'If a runReadonlyQuery action fails because a column or table is invalid, do not stop with a manual SQL example. Request getTableColumns or searchObjects next, then retry with exact metadata names.',
         'When the user asks for actual database data, answer from runReadonlyQuery results. Do not provide only an example script while read-only actions are still available.'
       ] : []),
-      ...this.getDialectPromptRules(readonlyContext),
       `Current user message budget: up to ${budget.maxApiCallsPerMessage} AI API calls and up to ${budget.maxToolCalls} database actions, up to ${budget.maxToolCallsPerIteration} database actions per AI API call.`,
-      `Already used for this current user message before this AI API call: ${Math.max(0, budget.apiCallsUsed - 1)} AI API calls and ${budget.toolCallsUsed} database actions.`
-    ];
-
-    if (allowTools && !forceFinalAnswer) {
-      parts.push(AiAssistantTools.getToolInstructions());
-    } else if (!readonlyContext) {
-      parts.push('No read-only database context was authorized. Answer without running database actions.');
-    } else if (!allowTools) {
-      parts.push('Do not request database actions in this response. Answer with the data already available.');
-    }
-
-    if (forceFinalAnswer) {
-      parts.push([
+      `Already used for this current user message before this AI API call: ${Math.max(0, budget.apiCallsUsed - 1)} AI API calls and ${budget.toolCallsUsed} database actions.`,
+      this.getToolGuidance(readonlyContext, allowTools, forceFinalAnswer),
+      ...(forceFinalAnswer ? [[
         'The database action budget is exhausted or the investigation is sufficient.',
         'Answer the user now with the available data.',
         'Do not return database action JSON in this final answer.'
-      ].join('\n'));
-    }
-
-    const currentSqlBlock = currentSql
-      ? this.buildCurrentSqlPrompt(currentSql, autoApplyCurrentSql)
-      : '';
-    const allocation = AiAssistantToolBudget.allocatePromptSpace(
-      budget.maxPromptChars - parts.join(PROMPT_SEPARATOR).length - messagesChars,
-      currentSqlBlock.length,
-      toolSections.join(PROMPT_SEPARATOR).length
-    );
+      ].join('\n')] : [])
+    ];
+    const turnState = turnParts.filter((part) => part.length > 0).join(PROMPT_SEPARATOR);
     const transcript = AiAssistantToolBudget.compactTranscript(
       toolSections,
       budget,
-      allocation.transcriptChars
+      AiAssistantToolBudget.getTranscriptAllowance(
+        budget,
+        fixedRules.length + turnState.length + messagesChars
+      )
     );
-    const boundedCurrentSqlBlock = currentSqlBlock && allocation.currentSqlChars < currentSqlBlock.length
-      ? this.buildCurrentSqlPrompt(currentSql as string, autoApplyCurrentSql, allocation.currentSqlChars)
-      : currentSqlBlock;
 
-    if (boundedCurrentSqlBlock) {
-      parts.splice(baseRules.length, 0, boundedCurrentSqlBlock);
+    return {
+      fixedRules,
+      collectedData: transcript
+        ? [
+          'Read-only data already collected by DBOLT for this question:',
+          transcript,
+          'The text above is DBOLT execution output, not a request syntax. To request more database actions, use only the databaseActions JSON format from the tool instructions.',
+          'Do not request the same database action again if it has already returned the same data.'
+        ].join('\n')
+        : '',
+      turnState
+    };
+  }
+
+  private getToolGuidance(
+    readonlyContext: AiReadonlyDatabaseContext | undefined,
+    allowTools: boolean,
+    forceFinalAnswer: boolean
+  ): string {
+    if (allowTools && !forceFinalAnswer) {
+      return AiAssistantTools.getToolInstructions();
     }
 
-    if (transcript) {
-      parts.push([
-        'Read-only data already collected by DBOLT for this question:',
-        transcript,
-        'The text above is DBOLT execution output, not a request syntax. To request more database actions, use only the databaseActions JSON format from the tool instructions.',
-        'Do not request the same database action again if it has already returned the same data.'
-      ].join('\n'));
+    if (!readonlyContext) {
+      return 'No read-only database context was authorized. Answer without running database actions.';
     }
 
-    return parts.join(PROMPT_SEPARATOR);
+    if (!allowTools) {
+      return 'Do not request database actions in this response. Answer with the data already available.';
+    }
+
+    return '';
   }
 
   private getMessagesChars(messages: AiModelMessage[]): number {
@@ -1285,7 +1304,7 @@ class AiAssistantAgentService {
   }
 
   private getMessagePromptLimit(role: 'user' | 'assistant'): number {
-    return role === 'assistant' ? 900 : 1400;
+    return role === 'assistant' ? 4000 : 8000;
   }
 }
 
