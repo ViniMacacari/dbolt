@@ -240,6 +240,8 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
       this.applyRecordNotes(record.notes)
       this.cancelEditProposal()
       this.animateProposalOut(original)
+      this.proposedNotes = this.proposedNotes.filter((item) => item !== original)
+      this.removingProposals.delete(original)
     } catch (error: unknown) {
       this.errorMessage = this.getErrorMessage(error)
     }
@@ -307,13 +309,13 @@ ${this.t('databaseMemory.answerPrefix')} ${answer}`
     await this.runInterview([{ role: 'user', content }], 'investigate')
   }
 
-  async acceptProposedNote(note: DatabaseMemoryProposedNote): Promise<void> {
+  async acceptProposedNote(note: DatabaseMemoryProposedNote, event?: Event): Promise<void> {
     if (this.running || this.removingProposals.has(note)) return
 
     try {
       const record = await this.databaseMemory.addNotes(this.scope, [note], 'ai')
       this.applyRecordNotes(record.notes)
-      this.animateProposalOut(note)
+      this.animateProposalOut(note, event)
     } catch (error: unknown) {
       this.errorMessage = this.getErrorMessage(error)
     }
@@ -341,9 +343,9 @@ ${this.t('databaseMemory.answerPrefix')} ${answer}`
     }
   }
 
-  discardProposedNote(note: DatabaseMemoryProposedNote): void {
+  discardProposedNote(note: DatabaseMemoryProposedNote, event?: Event): void {
     if (this.removingProposals.has(note)) return
-    this.animateProposalOut(note)
+    this.animateProposalOut(note, event)
   }
 
   async saveOwnNote(): Promise<void> {
@@ -390,17 +392,17 @@ ${this.t('databaseMemory.answerPrefix')} ${answer}`
     }
   }
 
-  async deleteNote(note: DatabaseMemoryNote): Promise<void> {
+  async deleteNote(note: DatabaseMemoryNote, event?: Event): Promise<void> {
     if (this.running || this.removingNotes.has(note.id)) return
 
     this.removingNotes.add(note.id)
 
     try {
       const record = await this.databaseMemory.deleteNote(this.scope, note.id)
-      this.schedule(() => {
+      this.collapseSlot(event, () => {
         this.notes = record.notes
         this.removingNotes.delete(note.id)
-      }, EXIT_ANIMATION_MS)
+      })
     } catch (error: unknown) {
       this.removingNotes.delete(note.id)
       this.errorMessage = this.getErrorMessage(error)
@@ -482,12 +484,29 @@ ${this.t('databaseMemory.answerPrefix')} ${answer}`
       .trim()
   }
 
-  private animateProposalOut(note: DatabaseMemoryProposedNote): void {
+  private animateProposalOut(note: DatabaseMemoryProposedNote, event?: Event): void {
     this.removingProposals.add(note)
-    this.schedule(() => {
+    this.collapseSlot(event, () => {
       this.proposedNotes = this.proposedNotes.filter((item) => item !== note)
       this.removingProposals.delete(note)
-    }, EXIT_ANIMATION_MS)
+    })
+  }
+
+  private collapseSlot(event: Event | undefined, done: () => void): void {
+    const target = event?.currentTarget as HTMLElement | null
+    const slot = target?.closest('.memory-slot') as HTMLElement | null
+
+    if (!slot) {
+      done()
+      return
+    }
+
+    slot.style.height = `${slot.offsetHeight}px`
+    slot.style.overflow = 'hidden'
+    void slot.offsetHeight
+    slot.classList.add('removing')
+    slot.style.height = '0px'
+    this.schedule(done, EXIT_ANIMATION_MS)
   }
 
   private async runInterview(
