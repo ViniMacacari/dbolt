@@ -51,7 +51,8 @@ class AiAssistantToolsService {
     return [
       'Read-only database actions available when the user authorized database context:',
       '- searchObjects: searches tables/views by partial name. Args: {"search":"text","types":["table","view"],"limit":160}. Use before getTableColumns when you do not know the exact name.',
-      '- getTableColumns: lists column metadata for a table/view. Args: {"tableName":"TABLE_NAME","limit":60}.',
+      '- getTableColumns: lists column metadata for a table/view. Args: {"tableName":"TABLE_NAME"}. It returns up to 400 columns by default, which covers wide ERP tables, so omit limit unless you deliberately want fewer.',
+      '  The result carries totalColumns and truncated. If truncated is true, request the same table again with a higher limit before saying the metadata is incomplete.',
       '- getSchemaSummary: small summary of tables/views. Args: {"search":"optional","limit":30}. Use only when a specific search is not enough.',
       '- runReadonlyQuery: runs only SELECT/WITH with a row limit. Args: {"sql":"SELECT ...","maxRows":50}. Never use it for INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, EXEC, or multiple statements.',
       'For object discovery, choose concise search terms from the user intent and database naming context. If the first search has no useful match, try a broader or alternative term within the database action budget.',
@@ -274,10 +275,10 @@ class AiAssistantToolsService {
       type,
       length: typeCarriesSize
         ? undefined
-        : column['length'] || column['character_maximum_length'],
+        : column['length'] ?? column['character_maximum_length'],
       scale: typeCarriesSize
         ? undefined
-        : column['scale'] || column['numeric_scale'],
+        : column['scale'] ?? column['numeric_scale'],
       nullable: column['is_nullable']
     };
   }
