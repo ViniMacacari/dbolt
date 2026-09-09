@@ -15,7 +15,7 @@
 
 @keyframes memory-modal-out {
     from { opacity: 1; transform: translateY(0) scale(1); }
-    to { opacity: 0; transform: translateY(8px) scale(.99); }
+    to { opacity: 0; transform: translateY(22px) scale(.955); }
 }
 
 @keyframes memory-card-out {
@@ -61,12 +61,12 @@ textarea {
 }
 
 .memory-backdrop.closing {
-    animation: memory-backdrop-out .18s ease forwards;
+    animation: memory-backdrop-out .26s ease forwards;
     pointer-events: none;
 }
 
 .memory-backdrop.closing .memory-modal {
-    animation: memory-modal-out .18s cubic-bezier(.4, 0, .2, 1) forwards;
+    animation: memory-modal-out .24s cubic-bezier(.4, 0, .2, 1) forwards;
 }
 
 .memory-modal {
@@ -514,12 +514,12 @@ textarea {
 }
 
 .memory-popup-backdrop.closing {
-    animation: memory-backdrop-out .16s ease forwards;
+    animation: memory-backdrop-out .23s ease forwards;
     pointer-events: none;
 }
 
 .memory-popup-backdrop.closing .memory-popup {
-    animation: memory-modal-out .16s ease forwards;
+    animation: memory-modal-out .21s cubic-bezier(.4, 0, .2, 1) forwards;
 }
 
 .memory-popup {
@@ -756,9 +756,9 @@ textarea {
     opacity: 1;
     padding-bottom: var(--memory-slot-gap, 9px);
     transition:
-        height .24s cubic-bezier(.4, 0, .2, 1),
-        padding-bottom .24s cubic-bezier(.4, 0, .2, 1),
-        opacity .18s ease;
+        height .27s cubic-bezier(.4, 0, .2, 1),
+        padding-bottom .27s cubic-bezier(.4, 0, .2, 1),
+        opacity .2s ease;
 }
 
 .memory-slot:last-child {
