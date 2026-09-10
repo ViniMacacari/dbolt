@@ -569,6 +569,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     const mouseDownDisposable = this.editor?.onMouseDown((event) => {
       void this.handleEditorMouseDown(event)
     })
+    const peekLayoutDisposable = this.editor?.onDidLayoutChange(() => this.layoutChangePeek())
+    const peekScrollDisposable = this.editor?.onDidScrollChange(() => this.layoutChangePeek())
+    if (peekLayoutDisposable) this.editorMouseDisposables.push(peekLayoutDisposable)
+    if (peekScrollDisposable) this.editorMouseDisposables.push(peekScrollDisposable)
     const mouseMoveDisposable = this.editor?.onMouseMove((event) => {
       this.lastMousePosition = event.target.position || null
       this.sqlNavigationModifierPressed = event.event.ctrlKey
@@ -757,12 +761,16 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     const fontInfo = editor.getOption(monaco.editor.EditorOption.fontInfo)
     const bodyLineCount = Math.max(1, hunk.originalLines.length + hunk.currentLines.length)
     const headerHeight = Math.max(30, Math.round(lineHeight * 1.25))
-    const totalHeight = headerHeight + (bodyLineCount * lineHeight) + CHANGE_PEEK_PADDING
+    const totalHeight = headerHeight + (bodyLineCount * lineHeight) + CHANGE_PEEK_PADDING + 2
 
+    // Monaco overwrites width, height and display on the zone node. Keep our
+    // flex layout inside a separate child that Monaco never mutates.
+    const zoneNode = document.createElement('div')
+    zoneNode.className = 'dbolt-change-peek-zone'
     const container = document.createElement('div')
     container.className = `dbolt-change-peek dbolt-change-peek-${hunk.type}`
     container.style.height = `calc(100% - ${CHANGE_PEEK_PADDING}px)`
-    container.style.width = `${Math.max(220, editor.getLayoutInfo().contentWidth - 12)}px`
+    zoneNode.appendChild(container)
 
     const header = document.createElement('div')
     header.className = 'dbolt-change-peek-header'
@@ -870,7 +878,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         ? Math.max(0, hunk.currentStartLine - 1)
         : hunk.currentEndLine,
       heightInPx: 0,
-      domNode: container,
+      domNode: zoneNode,
       suppressMouseDown: false
     }
 
@@ -882,8 +890,16 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.changePeekNode = container
     this.changePeekLine = hunk.currentStartLine
     this.changePeekClosing = false
+    this.layoutChangePeek()
 
     this.animateChangePeekHeight(0, totalHeight, CHANGE_PEEK_OPEN_MS)
+  }
+
+  private layoutChangePeek(): void {
+    if (!this.editor || !this.changePeekNode) return
+    const layout = this.editor.getLayoutInfo()
+    this.changePeekNode.style.width = `${Math.max(0, layout.width - layout.contentLeft - layout.verticalScrollbarWidth - 12)}px`
+    this.changePeekNode.style.marginLeft = `${this.editor.getScrollLeft()}px`
   }
 
   private animateChangePeekHeight(
@@ -925,6 +941,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   private closeChangePeek(animate: boolean = true): void {
+    if (animate && this.changePeekClosing) return
     const editor = this.editor
     const zoneId = this.changePeekZoneId
     const zone = this.changePeekZone
@@ -942,8 +959,6 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       this.resetChangePeekState()
       return
     }
-
-    if (this.changePeekClosing) return
 
     this.changePeekClosing = true
     this.changePeekLine = null
