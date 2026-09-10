@@ -1,6 +1,20 @@
 import type { TranslationCatalog } from '../services/language/language.model'
 
 export const enTranslations: TranslationCatalog = {
+  'queryHistory.title': 'Change history',
+  'queryHistory.newFile': 'New empty file',
+  'queryHistory.copy': 'Copy',
+  'queryHistory.comparison': 'Version {version} → Current editor',
+  'queryHistory.comparisonHint': 'Removed from selected version / Added in current editor',
+  'queryHistory.identical': 'No changes',
+  'queryHistory.loading': 'Loading history…',
+  'queryHistory.retry': 'Try again',
+  'queryHistory.empty': 'No recorded versions',
+  'queryHistory.emptyHint': 'Versions appear after saving changes with versioning enabled.',
+  'queryHistory.unsavedHint': 'Save this file with versioning to start its history.',
+  'queryHistory.safeCopy': 'The original file will not be changed.',
+  'queryHistory.openVersion': 'Open version in new file',
+  'queryHistory.openCurrent': 'Open copy of current editor',
   'generic.saved': 'Saved',
   'generic.close': 'Close',
   'generic.cancel': 'Cancel',

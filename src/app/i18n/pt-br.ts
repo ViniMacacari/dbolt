@@ -1,6 +1,20 @@
 import type { TranslationCatalog } from '../services/language/language.model'
 
 export const ptBrTranslations: TranslationCatalog = {
+  'queryHistory.title': 'Histórico de alterações',
+  'queryHistory.newFile': 'Novo arquivo vazio',
+  'queryHistory.copy': 'Cópia',
+  'queryHistory.comparison': 'Versão {version} → Editor atual',
+  'queryHistory.comparisonHint': 'Removido da versão selecionada / Adicionado no editor atual',
+  'queryHistory.identical': 'Nenhuma alteração',
+  'queryHistory.loading': 'Carregando histórico…',
+  'queryHistory.retry': 'Tentar novamente',
+  'queryHistory.empty': 'Nenhuma versão registrada',
+  'queryHistory.emptyHint': 'As versões aparecem após salvar alterações com o versionamento ativado.',
+  'queryHistory.unsavedHint': 'Salve este arquivo com versionamento para começar seu histórico.',
+  'queryHistory.safeCopy': 'O arquivo original não será alterado.',
+  'queryHistory.openVersion': 'Abrir versão em novo arquivo',
+  'queryHistory.openCurrent': 'Abrir cópia do editor atual',
   'generic.saved': 'Salvo',
   'generic.close': 'Fechar',
   'generic.cancel': 'Cancelar',
