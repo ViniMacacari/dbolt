@@ -51,7 +51,8 @@ textarea {
 .memory-backdrop {
     align-items: center;
     animation: memory-backdrop-in .18s ease;
-    background: rgba(0, 0, 0, .66);
+    background: rgba(7, 7, 7, .76);
+    backdrop-filter: blur(2px);
     display: flex;
     inset: 0;
     justify-content: center;
@@ -70,29 +71,29 @@ textarea {
 }
 
 .memory-modal {
-    animation: memory-modal-in .2s ease-out;
+    animation: memory-modal-in .2s cubic-bezier(.2, .8, .2, 1);
     background: var(--dbolt-0b0b0b);
     border: 1px solid var(--dbolt-2d2d2d);
-    border-radius: 20px;
-    box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .55);
     color: var(--dbolt-e8eaed);
     display: flex;
     flex-direction: column;
     height: min(760px, calc(100vh - 48px));
-    max-width: 760px;
+    max-width: 780px;
     min-height: 420px;
     overflow: hidden;
-    width: min(760px, 94vw);
+    width: min(780px, 94vw);
 }
 
 .memory-header {
     align-items: flex-start;
-    border-bottom: 1px solid var(--dbolt-202020);
+    border-bottom: 1px solid var(--dbolt-353535);
     display: flex;
     flex: 0 0 auto;
     gap: 24px;
     justify-content: space-between;
-    padding: 22px 26px 18px;
+    padding: 18px 20px 16px;
 }
 
 .memory-identity {
@@ -115,7 +116,7 @@ textarea {
 
     h2 {
         color: var(--dbolt-f1f1f1);
-        font-size: 1.15em;
+        font-size: 1.08em;
         font-weight: 850;
         margin: 5px 0 3px;
     }
@@ -136,45 +137,10 @@ textarea {
     display: flex;
     flex: 0 0 auto;
     gap: 7px;
-}
 
-.memory-chip {
-    align-items: center;
-    background: var(--dbolt-1b1b1b);
-    border: 1px solid transparent;
-    border-radius: 10px;
-    color: var(--dbolt-c9c9c9);
-    cursor: pointer;
-    display: inline-flex;
-    font-size: .74em;
-    font-weight: 850;
-    gap: 6px;
-    height: 34px;
-    justify-content: center;
-    line-height: 1;
-    min-width: 34px;
-    padding: 0 10px;
-    transition: background-color .16s ease, border-color .16s ease, color .16s ease;
-
-    &:hover {
-        background: var(--dbolt-292727);
-        color: var(--dbolt-e8eaed);
-    }
-
-    &:focus-visible {
-        border-color: var(--dbolt-739eca);
-        outline: none;
-    }
-
-    img {
+    app-button img {
         opacity: .82;
     }
-}
-
-.memory-chip-close {
-    color: var(--dbolt-969696);
-    padding: 0;
-    width: 34px;
 }
 
 .memory-error,
@@ -207,33 +173,54 @@ textarea {
     gap: 14px;
     min-height: 0;
     overflow-y: auto;
-    padding: 20px 26px;
+    padding: 20px;
     scroll-behavior: smooth;
 }
 
 .memory-intro {
     align-items: center;
     animation: memory-card-in .24s cubic-bezier(.2, .8, .2, 1) both;
-    background: var(--dbolt-131313);
-    border: 1px dashed var(--dbolt-303030);
-    border-radius: 16px;
+    background: transparent;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
     margin: auto;
-    max-width: 420px;
-    padding: 28px 30px;
+    max-width: 470px;
+    padding: 32px 24px;
     text-align: center;
 
+}
+
+.memory-intro-icon {
+    align-items: center;
+    background: var(--dbolt-232020);
+    border: 1px solid var(--dbolt-353535);
+    border-radius: 14px;
+    display: flex;
+    height: 48px;
+    justify-content: center;
+    width: 48px;
+
     img {
-        opacity: .76;
+        opacity: .84;
+    }
+}
+
+.memory-intro-copy {
+    display: grid;
+    gap: 6px;
+
+    strong {
+        color: var(--dbolt-e8eaed);
+        font-size: .96em;
+        font-weight: 850;
     }
 
     p {
         color: var(--dbolt-969696);
         font-size: .82em;
         line-height: 1.45;
-        margin: 0 0 2px;
+        margin: 0;
     }
 }
 
@@ -263,6 +250,7 @@ textarea {
 
 .memory-bubble {
     background: var(--dbolt-131313);
+    border: 1px solid var(--dbolt-242424);
     border-radius: 14px;
     max-width: min(84%, 590px);
     min-width: 0;
@@ -291,11 +279,13 @@ textarea {
 
 .memory-message.user .memory-bubble {
     background: var(--dbolt-1c2041);
+    border-color: var(--dbolt-516986);
 }
 
 .memory-bubble-proposals {
     --memory-slot-gap: 10px;
     background: var(--dbolt-111);
+    border-color: var(--dbolt-353535);
     box-shadow: inset 3px 0 0 var(--dbolt-516986);
     display: flex;
     flex-direction: column;
@@ -319,6 +309,7 @@ textarea {
 .memory-note {
     animation: memory-card-in .22s cubic-bezier(.2, .8, .2, 1) both;
     background: var(--dbolt-131313);
+    border: 1px solid var(--dbolt-242424);
     border-radius: 12px;
     display: flex;
     flex-direction: column;
@@ -380,45 +371,6 @@ textarea {
     justify-content: flex-end;
 }
 
-.memory-action {
-    background: var(--dbolt-1b1b1b);
-    border: 1px solid transparent;
-    border-radius: 9px;
-    color: var(--dbolt-c9c9c9);
-    cursor: pointer;
-    font-size: .69em;
-    font-weight: 850;
-    height: 30px;
-    padding: 0 11px;
-    transition: background-color .16s ease, border-color .16s ease, color .16s ease;
-
-    &:hover {
-        background: var(--dbolt-292727);
-        color: var(--dbolt-e8eaed);
-    }
-
-    &:focus-visible {
-        border-color: var(--dbolt-739eca);
-        outline: none;
-    }
-}
-
-.memory-action-primary {
-    background: var(--dbolt-2b3340);
-    border-color: rgba(115, 158, 202, .4);
-    color: var(--dbolt-d8e9fb);
-
-    &:hover {
-        background: var(--dbolt-334052);
-        color: var(--dbolt-f1f4ff);
-    }
-}
-
-.memory-action-danger:hover {
-    background: var(--dbolt-2d2020);
-    color: var(--dbolt-ffb4b4);
-}
-
 .memory-link {
     background: transparent;
     border: none;
@@ -476,11 +428,12 @@ textarea {
 
 .memory-composer {
     align-items: flex-end;
-    border-top: 1px solid var(--dbolt-202020);
+    background: var(--dbolt-0b0b0b);
+    border-top: 1px solid var(--dbolt-353535);
     display: flex;
     flex: 0 0 auto;
     gap: 10px;
-    padding: 14px 26px 16px;
+    padding: 14px 20px 16px;
 
     textarea {
         background: var(--dbolt-131313);
@@ -504,7 +457,8 @@ textarea {
 .memory-popup-backdrop {
     align-items: center;
     animation: memory-backdrop-in .16s ease;
-    background: rgba(0, 0, 0, .62);
+    background: rgba(7, 7, 7, .76);
+    backdrop-filter: blur(2px);
     display: flex;
     inset: 0;
     justify-content: center;
@@ -526,7 +480,7 @@ textarea {
     animation: memory-modal-in .2s ease-out;
     background: var(--dbolt-0b0b0b);
     border: 1px solid var(--dbolt-2d2d2d);
-    border-radius: 20px;
+    border-radius: 18px;
     box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
     color: var(--dbolt-e8eaed);
     display: flex;
@@ -545,7 +499,7 @@ textarea {
 
 .memory-popup-header {
     align-items: center;
-    border-bottom: 1px solid var(--dbolt-202020);
+    border-bottom: 1px solid var(--dbolt-353535);
     display: grid;
     flex: 0 0 auto;
     gap: 3px 12px;
@@ -567,7 +521,7 @@ textarea {
         white-space: nowrap;
     }
 
-    .memory-chip-close {
+    app-button {
         grid-column: 2;
         grid-row: 1 / 3;
     }
@@ -745,11 +699,6 @@ textarea {
         cursor: default;
         opacity: .45;
     }
-}
-
-.memory-action:disabled {
-    cursor: default;
-    opacity: .45;
 }
 
 .memory-slot {

@@ -1,5 +1,6 @@
-<div class="memory-backdrop" [class.closing]="closing" (click)="close()">
-    <div class="memory-modal" role="dialog" aria-modal="true" [attr.aria-label]="t('databaseMemory.title')"
+<div class="memory-backdrop" [class.closing]="closing" (click)="close()" (keydown)="onKeydown($event)">
+    <div #memoryDialog class="memory-modal" role="dialog" aria-modal="true" tabindex="-1"
+        [attr.aria-label]="t('databaseMemory.title')"
         (click)="$event.stopPropagation()">
 
         <div class="memory-header">
@@ -10,19 +11,19 @@
             </div>
 
             <div class="memory-header-actions">
-                <button type="button" class="memory-chip" (click)="openNotesPopup()"
-                    [title]="t('databaseMemory.knowledgeHint')">
+                <app-button [compact]="true" [title]="t('databaseMemory.knowledgeHint')"
+                    [ariaLabel]="t('databaseMemory.knowledgeHint')" (pressed)="openNotesPopup()">
                     <img src="icons/save.png" height="13px" width="13px" alt="">
                     <span>{{ notes.length }}</span>
-                </button>
-                <button type="button" class="memory-chip" (click)="openAddPopup()"
-                    [title]="t('databaseMemory.addOwn')">
+                </app-button>
+                <app-button [iconOnly]="true" [title]="t('databaseMemory.addOwn')"
+                    [ariaLabel]="t('databaseMemory.addOwn')" (pressed)="openAddPopup()">
                     <img src="icons/add.png" height="13px" width="13px" alt="">
-                </button>
-                <button type="button" class="memory-chip memory-chip-close" (click)="close()"
-                    [title]="t('generic.close')">
-                    <img src="icons/close.png" height="14px" width="14px" [alt]="t('generic.close')">
-                </button>
+                </app-button>
+                <app-button [iconOnly]="true" [title]="t('generic.close')" [ariaLabel]="t('generic.close')"
+                    (pressed)="close()">
+                    <img src="icons/close.png" height="14px" width="14px" alt="">
+                </app-button>
             </div>
         </div>
 
@@ -33,17 +34,24 @@
 
         <div class="memory-chat" #chatScroll>
             <div class="memory-intro" *ngIf="!hasStarted && !running">
-                <img src="icons/ai.png" height="26px" width="26px" alt="">
-                <p>{{ t('databaseMemory.startHint') }}</p>
+                <span class="memory-intro-icon" aria-hidden="true">
+                    <img src="icons/ai.png" height="22px" width="22px" alt="">
+                </span>
+                <div class="memory-intro-copy">
+                    <strong>{{ t('databaseMemory.introTitle') }}</strong>
+                    <p>{{ t('databaseMemory.startHint') }}</p>
+                </div>
                 <div class="memory-intro-actions">
                     <app-button variant="accent" [compact]="true" [disabled]="!canRunInterview"
                         (pressed)="startInterview()">
+                        <img src="icons/ai.png" height="14px" width="14px" alt="">
                         {{ t('databaseMemory.joint') }}
                     </app-button>
-                    <button type="button" class="memory-action" [disabled]="!canRunInterview"
-                        (click)="openInstructionPopup()">
+                    <app-button [compact]="true" [disabled]="!canRunInterview"
+                        (pressed)="openInstructionPopup()">
+                        <img src="icons/add_row.png" height="14px" width="14px" alt="">
                         {{ t('databaseMemory.newInstruction') }}
-                    </button>
+                    </app-button>
                 </div>
             </div>
 
@@ -75,16 +83,16 @@
                             <span class="memory-topic">{{ note.topic }}</span>
                             <p>{{ note.text }}</p>
                             <div class="memory-inline-actions">
-                                <button type="button" class="memory-action" (click)="discardProposedNote(note, $event)">
+                                <app-button [compact]="true" (pressed)="discardProposedNote(note, $event)">
                                     {{ t('databaseMemory.discard') }}
-                                </button>
-                                <button type="button" class="memory-action" (click)="startEditProposal(note)">
+                                </app-button>
+                                <app-button [compact]="true" (pressed)="startEditProposal(note)">
                                     {{ t('databaseMemory.change') }}
-                                </button>
-                                <button type="button" class="memory-action memory-action-primary"
-                                    (click)="acceptProposedNote(note, $event)">
+                                </app-button>
+                                <app-button variant="accent" [compact]="true"
+                                    (pressed)="acceptProposedNote(note, $event)">
                                     {{ t('databaseMemory.accept') }}
-                                </button>
+                                </app-button>
                             </div>
                         </div>
                     </div>
@@ -117,16 +125,17 @@
             <div class="memory-selected-question" *ngIf="selectedQuestion && !running">
                 <span class="memory-qr-tag">{{ t('databaseMemory.questionPrefix') }}</span>
                 <p>{{ selectedQuestion }}</p>
-                <button type="button" class="memory-chip memory-chip-close" (click)="clearSelectedQuestion()"
-                    [title]="t('databaseMemory.clearQuestion')">
-                    <img src="icons/close.png" height="12px" width="12px" [alt]="t('databaseMemory.clearQuestion')">
-                </button>
+                <app-button [iconOnly]="true" [title]="t('databaseMemory.clearQuestion')"
+                    [ariaLabel]="t('databaseMemory.clearQuestion')" (pressed)="clearSelectedQuestion()">
+                    <img src="icons/close.png" height="12px" width="12px" alt="">
+                </app-button>
             </div>
             <div class="memory-composer-row">
-                <button type="button" class="memory-chip memory-composer-chip" [disabled]="!canRunInterview"
-                    (click)="openInstructionPopup()" [title]="t('databaseMemory.newInstruction')">
+                <app-button class="memory-composer-chip" [iconOnly]="true" [disabled]="!canRunInterview"
+                    (pressed)="openInstructionPopup()" [title]="t('databaseMemory.newInstruction')"
+                    [ariaLabel]="t('databaseMemory.newInstruction')">
                     <img src="icons/add_row.png" height="13px" width="13px" alt="">
-                </button>
+                </app-button>
                 <span class="memory-qr-tag memory-qr-tag-answer" *ngIf="selectedQuestion">
                     {{ t('databaseMemory.answerPrefix') }}
                 </span>
@@ -142,15 +151,15 @@
     </div>
 
     <div class="memory-popup-backdrop" *ngIf="notesPopupOpen" [class.closing]="notesPopupClosing"
-        (click)="closeNotesPopup()">
+        (click)="$event.stopPropagation(); closeNotesPopup()">
         <div class="memory-popup" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
             <div class="memory-popup-header">
                 <strong>{{ t('databaseMemory.saved', { count: notes.length }) }}</strong>
                 <small *ngIf="storageFolder" [title]="storageFolder">{{ t('databaseMemory.storedIn') }}</small>
-                <button type="button" class="memory-chip memory-chip-close" (click)="closeNotesPopup()"
-                    [title]="t('generic.close')">
-                    <img src="icons/close.png" height="14px" width="14px" [alt]="t('generic.close')">
-                </button>
+                <app-button [iconOnly]="true" [title]="t('generic.close')" [ariaLabel]="t('generic.close')"
+                    (pressed)="closeNotesPopup()">
+                    <img src="icons/close.png" height="14px" width="14px" alt="">
+                </app-button>
             </div>
 
             <div class="memory-popup-body">
@@ -171,23 +180,22 @@
                         <div class="memory-note-edit" *ngIf="editingNoteId === note.id">
                             <textarea class="input-page" [(ngModel)]="editingDraft" rows="3"></textarea>
                             <div class="memory-inline-actions">
-                                <button type="button" class="memory-action" (click)="cancelEditNote()">
+                                <app-button [compact]="true" (pressed)="cancelEditNote()">
                                     {{ t('databaseMemory.cancel') }}
-                                </button>
-                                <button type="button" class="memory-action memory-action-primary"
-                                    (click)="confirmEditNote(note)">
+                                </app-button>
+                                <app-button variant="accent" [compact]="true" (pressed)="confirmEditNote(note)">
                                     {{ t('databaseMemory.save') }}
-                                </button>
+                                </app-button>
                             </div>
                         </div>
 
                         <div class="memory-inline-actions" *ngIf="editingNoteId !== note.id">
-                            <button type="button" class="memory-action" (click)="startEditNote(note)">
+                            <app-button [compact]="true" (pressed)="startEditNote(note)">
                                 {{ t('databaseMemory.edit') }}
-                            </button>
-                            <button type="button" class="memory-action memory-action-danger" (click)="deleteNote(note, $event)">
+                            </app-button>
+                            <app-button variant="danger" [compact]="true" (pressed)="deleteNote(note, $event)">
                                 {{ t('databaseMemory.delete') }}
-                            </button>
+                            </app-button>
                         </div>
                     </article>
                 </div>
@@ -196,16 +204,16 @@
     </div>
 
     <div class="memory-popup-backdrop" *ngIf="editingProposal" [class.closing]="proposalPopupClosing"
-        (click)="cancelEditProposal()">
+        (click)="$event.stopPropagation(); cancelEditProposal()">
         <div class="memory-popup memory-popup-narrow" role="dialog" aria-modal="true"
             (click)="$event.stopPropagation()">
             <div class="memory-popup-header">
                 <strong>{{ t('databaseMemory.change') }}</strong>
                 <small>{{ t('databaseMemory.changeHint') }}</small>
-                <button type="button" class="memory-chip memory-chip-close" (click)="cancelEditProposal()"
-                    [title]="t('generic.close')">
-                    <img src="icons/close.png" height="14px" width="14px" [alt]="t('generic.close')">
-                </button>
+                <app-button [iconOnly]="true" [title]="t('generic.close')" [ariaLabel]="t('generic.close')"
+                    (pressed)="cancelEditProposal()">
+                    <img src="icons/close.png" height="14px" width="14px" alt="">
+                </app-button>
             </div>
 
             <div class="memory-popup-body memory-add-form">
@@ -222,16 +230,16 @@
     </div>
 
     <div class="memory-popup-backdrop" *ngIf="instructionPopupOpen" [class.closing]="instructionPopupClosing"
-        (click)="closeInstructionPopup()">
+        (click)="$event.stopPropagation(); closeInstructionPopup()">
         <div class="memory-popup memory-popup-narrow" role="dialog" aria-modal="true"
             (click)="$event.stopPropagation()">
             <div class="memory-popup-header">
                 <strong>{{ t('databaseMemory.newInstruction') }}</strong>
                 <small>{{ t('databaseMemory.newInstructionHint') }}</small>
-                <button type="button" class="memory-chip memory-chip-close" (click)="closeInstructionPopup()"
-                    [title]="t('generic.close')">
-                    <img src="icons/close.png" height="14px" width="14px" [alt]="t('generic.close')">
-                </button>
+                <app-button [iconOnly]="true" [title]="t('generic.close')" [ariaLabel]="t('generic.close')"
+                    (pressed)="closeInstructionPopup()">
+                    <img src="icons/close.png" height="14px" width="14px" alt="">
+                </app-button>
             </div>
 
             <div class="memory-popup-body memory-add-form">
@@ -245,16 +253,17 @@
         </div>
     </div>
 
-    <div class="memory-popup-backdrop" *ngIf="addPopupOpen" [class.closing]="addPopupClosing" (click)="closeAddPopup()">
+    <div class="memory-popup-backdrop" *ngIf="addPopupOpen" [class.closing]="addPopupClosing"
+        (click)="$event.stopPropagation(); closeAddPopup()">
         <div class="memory-popup memory-popup-narrow" role="dialog" aria-modal="true"
             (click)="$event.stopPropagation()">
             <div class="memory-popup-header">
                 <strong>{{ t('databaseMemory.addOwn') }}</strong>
                 <small>{{ t('databaseMemory.addOwnHint') }}</small>
-                <button type="button" class="memory-chip memory-chip-close" (click)="closeAddPopup()"
-                    [title]="t('generic.close')">
-                    <img src="icons/close.png" height="14px" width="14px" [alt]="t('generic.close')">
-                </button>
+                <app-button [iconOnly]="true" [title]="t('generic.close')" [ariaLabel]="t('generic.close')"
+                    (pressed)="closeAddPopup()">
+                    <img src="icons/close.png" height="14px" width="14px" alt="">
+                </app-button>
             </div>
 
             <div class="memory-popup-body memory-add-form">
