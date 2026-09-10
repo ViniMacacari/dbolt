@@ -45,6 +45,7 @@ interface SqlNavigationLink {
 }
 
 const CHANGE_PEEK_PADDING = 10
+const CHANGE_PEEK_GUTTER_OFFSET = 6
 
 @Component({
   selector: 'app-code-editor',
@@ -782,7 +783,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     body.className = 'dbolt-change-peek-body'
     body.style.fontFamily = fontInfo.fontFamily
     body.style.fontSize = `${fontInfo.fontSize}px`
-    body.style.paddingLeft = `${editor.getOption(monaco.editor.EditorOption.lineDecorationsWidth) || 0}px`
+    body.style.paddingLeft = `${Math.max(12, editor.getLayoutInfo().contentLeft - CHANGE_PEEK_GUTTER_OFFSET)}px`
 
     if (hasOriginal) {
       for (const original of hunk.originalLines) {
