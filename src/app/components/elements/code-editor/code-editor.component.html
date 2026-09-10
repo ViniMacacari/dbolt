@@ -16,6 +16,11 @@
         <button class="btn" (click)="saveAs()">
             <img src="icons/save_as.png" [title]="t('editor.saveCodeAs')" height="15px">
         </button>
+        <button class="btn" [class.btn-inactive]="!canUseVersionMessage" (click)="openVersionMessage()">
+            <img src="icons/book.png"
+                [title]="canUseVersionMessage ? t('editor.saveWithMessage') : t('editor.saveWithMessageDisabled')"
+                height="15px">
+        </button>
     </div>
     <div #codeEditorPanel class="code-editor py-2" [class.has-results]="queryResultOpen"
         [class.results-expanded]="queryResultExpanded"
@@ -41,3 +46,6 @@
 
 <app-toast></app-toast>
 <app-save-query [data]="dataSave" *ngIf="isSaveAsOpen" (saved)="savedSaveAs($event)" (close)="closeSaveAs()"></app-save-query>
+
+<app-save-version-message *ngIf="isVersionMessageOpen" [queryName]="tabInfo?.name || ''"
+    (confirmed)="confirmVersionMessage($event)" (closed)="closeVersionMessage()"></app-save-version-message>
