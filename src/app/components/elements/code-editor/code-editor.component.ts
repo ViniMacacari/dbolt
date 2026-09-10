@@ -171,6 +171,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   ) {
     this.settingsSubscription = this.appSettings.settingsChanges$.subscribe((settings) => {
       this.applySqlHighlightTheme(settings.sqlHighlightColors)
+      this.updateSqlChangeDecorations()
     })
     this.languageSubscription = this.language.languageChanges$.subscribe(() => {
       this.registerEditorContextMenuActions()
@@ -761,6 +762,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     const container = document.createElement('div')
     container.className = `dbolt-change-peek dbolt-change-peek-${hunk.type}`
     container.style.height = `calc(100% - ${CHANGE_PEEK_PADDING}px)`
+    container.style.width = `${Math.max(220, editor.getLayoutInfo().contentWidth - 12)}px`
 
     const header = document.createElement('div')
     header.className = 'dbolt-change-peek-header'
@@ -817,6 +819,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     body.className = 'dbolt-change-peek-body'
     body.style.fontFamily = fontInfo.fontFamily
     body.style.fontSize = `${fontInfo.fontSize}px`
+    body.style.height = `${bodyLineCount * lineHeight}px`
 
     const appendDiffLine = (
       text: string,
@@ -974,7 +977,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     const model = editor?.getModel()
     if (!editor || !model) return
 
-    if (!this.canUseVersionMessage) {
+    if (!this.canUseVersionMessage || !this.appSettings.shouldShowSqlChangeHighlights()) {
       this.sqlChangeDecorationIds = editor.deltaDecorations(this.sqlChangeDecorationIds, [])
       this.sqlChangeHunks = []
       this.closeChangePeek(false)
