@@ -21,6 +21,10 @@
                 [title]="canUseVersionMessage ? t('editor.saveWithMessage') : t('editor.saveWithMessageDisabled')"
                 height="15px">
         </button>
+        <button type="button" class="btn" (click)="openHistory()" [title]="t('queryHistory.title')"
+            [attr.aria-label]="t('queryHistory.title')">
+            <img src="icons/history.png" height="15" width="15" alt="">
+        </button>
     </div>
     <div #codeEditorPanel class="code-editor py-2" [class.has-results]="queryResultOpen"
         [class.results-expanded]="queryResultExpanded"
@@ -45,6 +49,8 @@
 </div>
 
 <app-toast></app-toast>
+<app-query-history *ngIf="isHistoryOpen && active" [tabInfo]="tabInfo" [currentSql]="historySql"
+    (closed)="isHistoryOpen = false" (newFile)="newFileRequested.emit($event)"></app-query-history>
 <app-save-query [data]="dataSave" *ngIf="isSaveAsOpen" (saved)="savedSaveAs($event)" (close)="closeSaveAs()"></app-save-query>
 
 <app-save-version-message *ngIf="isVersionMessageOpen" [queryName]="tabInfo?.name || ''"

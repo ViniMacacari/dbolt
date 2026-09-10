@@ -20,6 +20,7 @@ import { AppThemeService } from '../../../services/theme/app-theme.service'
 import { AppThemePaletteService } from '../../../services/theme/app-theme-palette.service'
 import { QueryVersionDiffService, QueryChangeHunk } from '../../../services/query-version-diff/query-version-diff.service'
 import { SaveVersionMessageComponent } from '../../modal/save-version-message/save-version-message.component'
+import { QueryHistoryComponent } from '../../modal/query-history/query-history.component'
 import { selectSqlStatementAtCursor } from '../../../utils/sql-statement-selection'
 import {
   normalizeTableReferenceForMetadata,
@@ -53,7 +54,7 @@ const CHANGE_PEEK_OPEN_MS = 190
   standalone: true,
   templateUrl: './code-editor.component.html',
   styleUrls: ['./code-editor.component.scss'],
-  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveQueryComponent, SaveVersionMessageComponent],
+  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveQueryComponent, SaveVersionMessageComponent, QueryHistoryComponent],
 })
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChanges {
   @Input() sqlContent: string = ''
@@ -62,6 +63,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   @Output() savedQuery = new EventEmitter<any>()
   @Output() objectInfoRequested = new EventEmitter<any>()
   @Output() objectSummaryRequested = new EventEmitter<any>()
+  @Output() newFileRequested = new EventEmitter<{ sql: string, name?: string, context?: any }>()
   @Input() widthTable: number = 300
   @Input() tabInfo: any
   @Input() active: boolean = false
@@ -93,6 +95,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private changePeekFrame: number | null = null
   private changePeekClosing: boolean = false
   isVersionMessageOpen: boolean = false
+  isHistoryOpen = false
+  historySql = ''
+
+  openHistory(): void {
+    this.historySql = this.editor?.getValue() ?? this.sqlContent
+    this.isHistoryOpen = true
+  }
   private sqlChangeDecorationTimer: ReturnType<typeof setTimeout> | null = null
   private sqlNavigationModifierPressed = false
   private sqlSummaryModifierPressed = false
@@ -1552,7 +1561,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   private isEditorShortcutContext(event: KeyboardEvent): boolean {
-    if (this.isSaveAsOpen) return false
+    if (this.isSaveAsOpen || this.isHistoryOpen) return false
 
     const target = event.target as HTMLElement | null
 
