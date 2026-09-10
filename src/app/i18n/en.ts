@@ -609,6 +609,7 @@ export const enTranslations: TranslationCatalog = {
   'databaseMemory.chatPlaceholder': 'Answer or tell something about this database...',
   'databaseMemory.knowledgeHint': 'See the knowledge saved for this database',
   'databaseMemory.joint': 'Joint investigation',
+  'databaseMemory.introTitle': 'Build this database context',
   'databaseMemory.newInstruction': 'New instruction',
   'databaseMemory.newInstructionHint': 'Teach something and the AI turns it into notes.',
   'databaseMemory.instructionPlaceholder': 'E.g. billing reports always ignore cancelled documents, and the branch comes from the customer record.',
