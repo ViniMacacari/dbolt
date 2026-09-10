@@ -264,7 +264,6 @@
     overflow: hidden;
     pointer-events: auto;
     position: relative;
-    width: calc(100% - 12px);
     z-index: 8;
 }
 
@@ -292,7 +291,7 @@
 }
 
 :host ::ng-deep .dbolt-change-peek-title {
-    color: var(--dbolt-c9c9c9);
+    color: var(--dbolt-e8eaed);
     font-family: 'Nunito';
     font-size: 10px;
     font-weight: 900;
@@ -363,15 +362,17 @@
 
 :host ::ng-deep .dbolt-change-peek-body {
     box-sizing: border-box;
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     min-height: 0;
-    overflow: auto;
+    overflow: hidden;
+    width: 100%;
 }
 
 :host ::ng-deep .dbolt-change-peek-line {
     display: grid;
-    grid-template-columns: 34px 34px 22px minmax(max-content, 1fr);
-    min-width: max-content;
+    grid-template-columns: 34px 34px 22px minmax(0, 1fr);
+    min-width: 0;
+    width: 100%;
 }
 
 :host ::ng-deep .dbolt-change-peek-line-removed {
@@ -417,8 +418,9 @@
 
 :host ::ng-deep .dbolt-change-peek-code {
     color: var(--dbolt-e8eaed);
-    overflow: visible;
+    overflow: hidden;
     padding: 0 10px 0 4px;
+    text-overflow: ellipsis;
     user-select: text;
     white-space: pre;
 }
