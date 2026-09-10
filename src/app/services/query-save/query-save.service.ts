@@ -17,6 +17,7 @@ export interface SavedQueryVersion {
   changedAt: string
   name: string
   sql: string
+  message?: string
   folderPath?: string
   dbSchema?: SavedQueryDbSchema
 }
@@ -29,6 +30,7 @@ export interface SavedQuery {
   dbSchema?: SavedQueryDbSchema
   folderPath?: string
   versioningEnabled?: boolean
+  versionMessage?: string
   createdAt?: string
   updatedAt?: string
   versions?: SavedQueryVersion[]

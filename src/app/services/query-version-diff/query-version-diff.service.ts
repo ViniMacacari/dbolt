@@ -23,6 +23,14 @@ export interface QueryChangeMarker {
   type: QueryChangeMarkerType
 }
 
+export interface QueryChangeHunk {
+  type: QueryChangeMarkerType
+  currentStartLine: number
+  currentEndLine: number
+  originalLines: string[]
+  currentLines: string[]
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -41,6 +49,69 @@ export class QueryVersionDiffService {
     }
   }
 
+  buildChangeHunks(savedSql: string, currentSql: string): QueryChangeHunk[] {
+    const normalizedSavedSql = String(savedSql || '').replace(/\r\n/g, '\n')
+    const normalizedCurrentSql = String(currentSql || '').replace(/\r\n/g, '\n')
+    if (normalizedSavedSql === normalizedCurrentSql) return []
+
+    const diffLines = this.buildDiff(normalizedSavedSql, normalizedCurrentSql).lines
+    const currentLineCount = this.toLines(normalizedCurrentSql).length
+    const hunks: QueryChangeHunk[] = []
+    let index = 0
+    let previousCurrentLine = 1
+
+    while (index < diffLines.length) {
+      const line = diffLines[index]
+
+      if (line.type === 'unchanged') {
+        previousCurrentLine = line.newLine || previousCurrentLine
+        index += 1
+        continue
+      }
+
+      const removedLines: QueryDiffLine[] = []
+      const addedLines: QueryDiffLine[] = []
+
+      while (index < diffLines.length && diffLines[index].type !== 'unchanged') {
+        const changedLine = diffLines[index]
+        if (changedLine.type === 'removed') removedLines.push(changedLine)
+        if (changedLine.type === 'added') addedLines.push(changedLine)
+        index += 1
+      }
+
+      const startLine = addedLines[0]?.newLine
+        || diffLines[index]?.newLine
+        || previousCurrentLine
+      const endLine = addedLines[addedLines.length - 1]?.newLine || startLine
+      const type: QueryChangeMarkerType = addedLines.length === 0
+        ? 'deleted'
+        : removedLines.length === 0
+          ? 'added'
+          : 'modified'
+
+      hunks.push({
+        type,
+        currentStartLine: this.clampLine(startLine, currentLineCount),
+        currentEndLine: this.clampLine(endLine, currentLineCount),
+        originalLines: removedLines.map((removed) => removed.text),
+        currentLines: addedLines.map((added) => added.text)
+      })
+
+      previousCurrentLine = endLine
+    }
+
+    return hunks
+  }
+
+  findHunkForLine(hunks: QueryChangeHunk[], lineNumber: number): QueryChangeHunk | null {
+    return hunks.find((hunk) =>
+      lineNumber >= hunk.currentStartLine && lineNumber <= hunk.currentEndLine
+    ) || null
+  }
+
+  private clampLine(lineNumber: number, lineCount: number): number {
+    return Math.min(Math.max(1, lineNumber), Math.max(1, lineCount))
+  }
   buildChangeMarkers(savedSql: string, currentSql: string): QueryChangeMarker[] {
     const normalizedSavedSql = String(savedSql || '').replace(/\r\n/g, '\n')
     const normalizedCurrentSql = String(currentSql || '').replace(/\r\n/g, '\n')
