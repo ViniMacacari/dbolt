@@ -185,7 +185,8 @@ class QueryStorage {
         : existingQuery.folderPath,
       versioningEnabled: typeof updatedData.versioningEnabled === 'boolean'
         ? updatedData.versioningEnabled
-        : existingQuery.versioningEnabled
+        : existingQuery.versioningEnabled,
+      versionMessage: updatedData.versionMessage
     };
 
     const updatedQuery = this.createSavedQuery(Number(id), mergedData, existingQuery);
@@ -220,7 +221,12 @@ class QueryStorage {
     }
 
     if (savedQuery.versioningEnabled) {
-      savedQuery.versions = this.appendVersion(versions, savedQuery, now);
+      savedQuery.versions = this.appendVersion(
+        versions,
+        savedQuery,
+        now,
+        this.normalizeVersionMessage(query.versionMessage)
+      );
     }
 
     return savedQuery;
@@ -235,10 +241,20 @@ class QueryStorage {
     };
   }
 
+  private normalizeVersionMessage(value: unknown): string | undefined {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const message = value.replace(/\s+/g, ' ').trim().slice(0, 300);
+    return message.length > 0 ? message : undefined;
+  }
+
   private appendVersion(
     versions: SavedQueryVersion[],
     query: SavedQuery,
-    changedAt: string
+    changedAt: string,
+    message?: string
   ): SavedQueryVersion[] {
     return [
       ...versions,
@@ -248,7 +264,8 @@ class QueryStorage {
         name: query.name,
         sql: query.sql,
         folderPath: query.folderPath,
-        dbSchema: query.dbSchema
+        dbSchema: query.dbSchema,
+        message
       }
     ];
   }
@@ -277,7 +294,8 @@ class QueryStorage {
         name: version.name,
         sql: version.sql,
         folderPath: this.normalizeStoredFolderPath(version.folderPath),
-        dbSchema: version.dbSchema
+        dbSchema: version.dbSchema,
+        message: this.normalizeVersionMessage(version.message)
       }));
   }
 
