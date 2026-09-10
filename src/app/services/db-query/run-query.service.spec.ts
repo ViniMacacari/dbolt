@@ -1,13 +1,10 @@
-import { TestBed } from '@angular/core/testing';
-
 import { RunQueryService } from './run-query.service';
 
 describe('RunQueryService', () => {
   let service: RunQueryService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
-    service = TestBed.inject(RunQueryService);
+    service = new RunQueryService({} as any, {} as any, {} as any);
   });
 
   it('should be created', () => {
