@@ -577,3 +577,13 @@
         transform: translateY(0);
     }
 }
+
+.version-item .version-message {
+    color: var(--dbolt-d8e9fb);
+    display: block;
+    font-style: italic;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
