@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core'
+import { SqlParserDatabase, SqlParserService } from '../sql-parser/sql-parser.service'
 
 export interface SqlSyntaxDiagnostic {
   message: string
@@ -30,24 +31,11 @@ interface SqlParserError {
   location?: ParserLocation
 }
 
-type ParserDatabase = 'mysql' | 'postgresql' | 'sqlite' | 'transactsql'
-
-interface SqlParser {
-  astify: (sql: string, options?: any) => unknown
-}
-
-interface SqlParserModule {
-  Parser?: new () => SqlParser
-  default?: {
-    Parser?: new () => SqlParser
-  }
-}
-
 @Injectable({
   providedIn: 'root'
 })
 export class SqlSyntaxValidationService {
-  private readonly parsers = new Map<ParserDatabase, Promise<SqlParser>>()
+  constructor(private sqlParser: SqlParserService = new SqlParserService()) { }
 
   async validate(sql: string, context?: any): Promise<SqlSyntaxDiagnostic[]> {
     if (!sql.trim()) {
@@ -58,34 +46,15 @@ export class SqlSyntaxValidationService {
       return []
     }
 
-    const database = this.resolveParserDatabase(context)
+    const database = this.sqlParser.resolveDatabase(context)
 
     try {
-      const parser = await this.getParser(database)
-
-      parser.astify(sql, {
-        database,
-        parseOptions: {
-          includeLocations: true
-        }
-      })
+      await this.sqlParser.astify(sql, context)
 
       return []
     } catch (error) {
       return [this.toDiagnostic(error as SqlParserError, sql, database)]
     }
-  }
-
-  private resolveParserDatabase(context?: any): ParserDatabase {
-    const database = String(context?.sgbd || context?.database || '').toLowerCase()
-
-    if (database === 'postgres') return 'postgresql'
-    if (database === 'sqlite') return 'sqlite'
-    if (database === 'sqlserver') return 'transactsql'
-    if (database === 'hana') return 'transactsql'
-    if (database === 'mysql') return 'mysql'
-
-    return 'transactsql'
   }
 
   private shouldSkipParser(sql: string, context?: any): boolean {
@@ -126,47 +95,10 @@ export class SqlSyntaxValidationService {
     }
   }
 
-  private getParser(database: ParserDatabase): Promise<SqlParser> {
-    const cachedParser = this.parsers.get(database)
-    if (cachedParser) return cachedParser
-
-    const parserPromise = this.loadParser(database)
-    this.parsers.set(database, parserPromise)
-
-    return parserPromise
-  }
-
-  private async loadParser(database: ParserDatabase): Promise<SqlParser> {
-    const parserModule = await this.importParserModule(database)
-    const ParserConstructor = parserModule.Parser || parserModule.default?.Parser
-
-    if (!ParserConstructor) {
-      throw new Error('Could not load SQL parser.')
-    }
-
-    return new ParserConstructor()
-  }
-
-  private async importParserModule(database: ParserDatabase): Promise<SqlParserModule> {
-    if (database === 'mysql') {
-      return import('node-sql-parser/build/mysql')
-    }
-
-    if (database === 'postgresql') {
-      return import('node-sql-parser/build/postgresql')
-    }
-
-    if (database === 'sqlite') {
-      return import('node-sql-parser/build/sqlite')
-    }
-
-    return import('node-sql-parser/build/transactsql')
-  }
-
   private toDiagnostic(
     error: SqlParserError,
     sql: string,
-    database: ParserDatabase
+    database: SqlParserDatabase
   ): SqlSyntaxDiagnostic {
     const reservedWord = this.extractReservedWord(error)
     const reportedToken = reservedWord || this.extractReportedToken(error)
@@ -298,7 +230,7 @@ export class SqlSyntaxValidationService {
     return tokenOffset
   }
 
-  private reservedWordMessage(word: string, database: ParserDatabase): string {
+  private reservedWordMessage(word: string, database: SqlParserDatabase): string {
     const databaseName = database === 'postgresql'
       ? 'PostgreSQL'
       : database === 'transactsql'
