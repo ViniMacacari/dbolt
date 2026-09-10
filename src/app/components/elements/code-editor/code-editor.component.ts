@@ -18,7 +18,8 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
 import { AppPlatformService } from '../../../services/platform/app-platform.service'
 import { AppThemeService } from '../../../services/theme/app-theme.service'
 import { AppThemePaletteService } from '../../../services/theme/app-theme-palette.service'
-import { QueryVersionDiffService } from '../../../services/query-version-diff/query-version-diff.service'
+import { QueryVersionDiffService, QueryChangeHunk } from '../../../services/query-version-diff/query-version-diff.service'
+import { SaveVersionMessageComponent } from '../../modal/save-version-message/save-version-message.component'
 import { selectSqlStatementAtCursor } from '../../../utils/sql-statement-selection'
 import {
   normalizeTableReferenceForMetadata,
@@ -48,7 +49,7 @@ interface SqlNavigationLink {
   standalone: true,
   templateUrl: './code-editor.component.html',
   styleUrls: ['./code-editor.component.scss'],
-  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveQueryComponent],
+  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveQueryComponent, SaveVersionMessageComponent],
 })
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChanges {
   @Input() sqlContent: string = ''
@@ -80,6 +81,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private editorMouseDisposables: monaco.IDisposable[] = []
   private sqlNavigationDecorationIds: string[] = []
   private sqlChangeDecorationIds: string[] = []
+  private sqlChangeHunks: QueryChangeHunk[] = []
+  private changePeekZoneId: string | null = null
+  private changePeekLine: number | null = null
+  isVersionMessageOpen: boolean = false
   private sqlChangeDecorationTimer: ReturnType<typeof setTimeout> | null = null
   private sqlNavigationModifierPressed = false
   private sqlSummaryModifierPressed = false
@@ -213,6 +218,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.settingsSubscription?.unsubscribe()
     this.themeSubscription?.unsubscribe()
     this.languageSubscription?.unsubscribe()
+    this.closeChangePeek()
     this.unregisterKeyboardShortcuts()
     this.disposeEditorContextMenuActions()
     this.disposeEditorMouseActions()
@@ -609,6 +615,16 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private async handleEditorMouseDown(event: monaco.editor.IEditorMouseEvent): Promise<void> {
     if (!this.active || !this.editor || !event.target.position) return
+
+    if (
+      this.canUseVersionMessage &&
+      event.target.type === monaco.editor.MouseTargetType.GUTTER_LINE_DECORATIONS
+    ) {
+      event.event.preventDefault()
+      this.toggleChangePeek(event.target.position.lineNumber)
+      return
+    }
+
     const summaryRequested = this.sqlSummaryModifierPressed
     const detailRequested = event.event.ctrlKey || event.event.metaKey
     if (!summaryRequested && !detailRequested) return
@@ -685,12 +701,145 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     editor.pushUndoStop()
   }
 
+  get canUseVersionMessage(): boolean {
+    return Boolean(this.tabInfo?.persisted) && Boolean(this.tabInfo?.versioningEnabled)
+  }
+
+  openVersionMessage(): void {
+    if (!this.canUseVersionMessage) {
+      void this.saveQuery()
+      return
+    }
+
+    this.isVersionMessageOpen = true
+  }
+
+  closeVersionMessage(): void {
+    this.isVersionMessageOpen = false
+  }
+
+  async confirmVersionMessage(message: string): Promise<void> {
+    this.isVersionMessageOpen = false
+    await this.saveQuery(message)
+  }
+
+  private toggleChangePeek(lineNumber: number): void {
+    const hunk = this.queryVersionDiff.findHunkForLine(this.sqlChangeHunks, lineNumber)
+
+    if (!hunk) {
+      this.closeChangePeek()
+      return
+    }
+
+    if (this.changePeekLine === hunk.currentStartLine) {
+      this.closeChangePeek()
+      return
+    }
+
+    this.closeChangePeek()
+    this.openChangePeek(hunk)
+  }
+
+  private openChangePeek(hunk: QueryChangeHunk): void {
+    const editor = this.editor
+    if (!editor) return
+
+    const lineHeight = editor.getOption(monaco.editor.EditorOption.lineHeight)
+    const fontInfo = editor.getOption(monaco.editor.EditorOption.fontInfo)
+    const hasOriginal = hunk.originalLines.length > 0
+    const bodyLineCount = hasOriginal ? hunk.originalLines.length : 1
+    const headerHeight = Math.max(22, Math.round(lineHeight * 0.9))
+    const totalHeight = headerHeight + (bodyLineCount * lineHeight) + CHANGE_PEEK_PADDING
+
+    const container = document.createElement('div')
+    container.className = `dbolt-change-peek dbolt-change-peek-${hunk.type}`
+    container.style.height = `${totalHeight}px`
+
+    const header = document.createElement('div')
+    header.className = 'dbolt-change-peek-header'
+    header.style.height = `${headerHeight}px`
+
+    const title = document.createElement('span')
+    title.className = 'dbolt-change-peek-title'
+    title.textContent = this.t(`editor.changePeek.${hunk.type}`)
+    header.appendChild(title)
+
+    const close = document.createElement('button')
+    close.type = 'button'
+    close.className = 'dbolt-change-peek-close'
+    close.setAttribute('aria-label', this.t('generic.close'))
+    close.title = this.t('editor.changePeekClose')
+    close.textContent = '×'
+    close.addEventListener('mousedown', (event) => event.stopPropagation())
+    close.addEventListener('click', () => this.closeChangePeek())
+    header.appendChild(close)
+
+    container.appendChild(header)
+
+    const body = document.createElement('div')
+    body.className = 'dbolt-change-peek-body'
+    body.style.fontFamily = fontInfo.fontFamily
+    body.style.fontSize = `${fontInfo.fontSize}px`
+    body.style.paddingLeft = `${editor.getOption(monaco.editor.EditorOption.lineDecorationsWidth) || 0}px`
+
+    if (hasOriginal) {
+      for (const original of hunk.originalLines) {
+        const row = document.createElement('div')
+        row.className = 'dbolt-change-peek-line'
+        row.style.height = `${lineHeight}px`
+        row.style.lineHeight = `${lineHeight}px`
+        row.textContent = original.length > 0 ? original : ' '
+        body.appendChild(row)
+      }
+    } else {
+      const row = document.createElement('div')
+      row.className = 'dbolt-change-peek-line dbolt-change-peek-empty'
+      row.style.height = `${lineHeight}px`
+      row.style.lineHeight = `${lineHeight}px`
+      row.textContent = this.t('editor.changePeekNothingBefore')
+      body.appendChild(row)
+    }
+
+    container.appendChild(body)
+
+    editor.changeViewZones((accessor) => {
+      this.changePeekZoneId = accessor.addZone({
+        afterLineNumber: hunk.type === 'deleted'
+          ? Math.max(0, hunk.currentStartLine - 1)
+          : hunk.currentEndLine,
+        heightInPx: totalHeight,
+        domNode: container
+      })
+    })
+
+    this.changePeekLine = hunk.currentStartLine
+  }
+
+  private closeChangePeek(): void {
+    const editor = this.editor
+    const zoneId = this.changePeekZoneId
+
+    if (editor && zoneId) {
+      editor.changeViewZones((accessor) => accessor.removeZone(zoneId))
+    }
+
+    this.changePeekZoneId = null
+    this.changePeekLine = null
+  }
+
   private updateSqlChangeDecorations(currentSql?: string): void {
     this.clearSqlChangeDecorationTimer()
 
     const editor = this.editor
     const model = editor?.getModel()
     if (!editor || !model) return
+
+    if (!this.canUseVersionMessage) {
+      this.sqlChangeDecorationIds = editor.deltaDecorations(this.sqlChangeDecorationIds, [])
+      this.sqlChangeHunks = []
+      this.closeChangePeek()
+      return
+    }
 
     const savedSql = typeof this.tabInfo?.originalContent === 'string'
       ? this.tabInfo.originalContent
@@ -701,8 +850,12 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     if (normalizedSavedSql === normalizedEditorSql) {
       this.sqlChangeDecorationIds = editor.deltaDecorations(this.sqlChangeDecorationIds, [])
+      this.sqlChangeHunks = []
+      this.closeChangePeek()
       return
     }
+
+    this.sqlChangeHunks = this.queryVersionDiff.buildChangeHunks(normalizedSavedSql, normalizedEditorSql)
 
     const decorations = this.queryVersionDiff
       .buildChangeMarkers(normalizedSavedSql, normalizedEditorSql)
@@ -1163,6 +1316,19 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         }
       }),
       this.keyboardShortcuts.register({
+        key: 's',
+        ctrlOrMeta: true,
+        shiftKey: true,
+        priority: 95,
+        stopPropagation: true,
+        isEnabled: () => this.active && !!this.editor,
+        isInContext: (event) => this.isEditorShortcutContext(event),
+        handler: () => {
+          this.openVersionMessage()
+          return true
+        }
+      }),
+      this.keyboardShortcuts.register({
         key: 'f',
         altKey: true,
         shiftKey: true,
@@ -1399,7 +1565,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.savedQuery.emit(savedQuery)
   }
 
-  async saveQuery(): Promise<void> {
+  async saveQuery(versionMessage?: string): Promise<void> {
     if (!this.tabInfo?.persisted) {
       const recoveredPersistedQuery = await this.recoverLinuxPersistedQueryIdentity()
       if (!recoveredPersistedQuery) {
@@ -1411,7 +1577,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     try {
       const dbSchemas = this.tabInfo?.dbInfo || await this.dbSchemas.getSelectedSchemaDB()
       const sql = this.editor?.getValue() || ''
-      const payload = this.buildSavedQueryPayload(sql, dbSchemas)
+      const payload = this.buildSavedQueryPayload(sql, dbSchemas, versionMessage)
 
       const updatedQuery = await this.querySave.updateQuery(Number(this.tabInfo.id), payload)
 
@@ -1649,14 +1815,15 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     return error?.error || error?.message || this.t('editor.executeError')
   }
 
-  private buildSavedQueryPayload(sql: string, dbSchemas: any): SavedQueryInput {
+  private buildSavedQueryPayload(sql: string, dbSchemas: any, versionMessage?: string): SavedQueryInput {
     return {
       name: this.tabInfo?.name || this.t('editor.untitledQuery'),
       type: 'sql',
       sql,
       dbSchema: this.connectionContext.withoutRuntimeFields(dbSchemas),
       folderPath: this.tabInfo?.folderPath || '',
-      versioningEnabled: Boolean(this.tabInfo?.versioningEnabled)
+      versioningEnabled: Boolean(this.tabInfo?.versioningEnabled),
+      versionMessage: this.canUseVersionMessage ? versionMessage : undefined
     }
   }
 
