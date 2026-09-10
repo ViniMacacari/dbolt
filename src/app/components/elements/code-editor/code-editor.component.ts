@@ -44,8 +44,7 @@ interface SqlNavigationLink {
   range: monaco.IRange
 }
 
-const CHANGE_PEEK_PADDING = 10
-const CHANGE_PEEK_GUTTER_OFFSET = 6
+const CHANGE_PEEK_PADDING = 8
 const CHANGE_PEEK_CLOSE_MS = 170
 const CHANGE_PEEK_OPEN_MS = 190
 
@@ -755,14 +754,13 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     const lineHeight = editor.getOption(monaco.editor.EditorOption.lineHeight)
     const fontInfo = editor.getOption(monaco.editor.EditorOption.fontInfo)
-    const hasOriginal = hunk.originalLines.length > 0
-    const bodyLineCount = hasOriginal ? hunk.originalLines.length : 1
-    const headerHeight = Math.max(22, Math.round(lineHeight * 0.9))
+    const bodyLineCount = Math.max(1, hunk.originalLines.length + hunk.currentLines.length)
+    const headerHeight = Math.max(30, Math.round(lineHeight * 1.25))
     const totalHeight = headerHeight + (bodyLineCount * lineHeight) + CHANGE_PEEK_PADDING
 
     const container = document.createElement('div')
     container.className = `dbolt-change-peek dbolt-change-peek-${hunk.type}`
-    container.style.height = '100%'
+    container.style.height = `calc(100% - ${CHANGE_PEEK_PADDING}px)`
 
     const header = document.createElement('div')
     header.className = 'dbolt-change-peek-header'
@@ -773,14 +771,44 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     title.textContent = this.t(`editor.changePeek.${hunk.type}`)
     header.appendChild(title)
 
+    const stats = document.createElement('div')
+    stats.className = 'dbolt-change-peek-stats'
+
+    if (hunk.originalLines.length > 0) {
+      const removed = document.createElement('span')
+      removed.className = 'removed'
+      removed.textContent = `−${hunk.originalLines.length}`
+      stats.appendChild(removed)
+    }
+
+    if (hunk.currentLines.length > 0) {
+      const added = document.createElement('span')
+      added.className = 'added'
+      added.textContent = `+${hunk.currentLines.length}`
+      stats.appendChild(added)
+    }
+
+    header.appendChild(stats)
+
     const close = document.createElement('button')
     close.type = 'button'
     close.className = 'dbolt-change-peek-close'
     close.setAttribute('aria-label', this.t('generic.close'))
     close.title = this.t('editor.changePeekClose')
     close.textContent = '×'
-    close.addEventListener('mousedown', (event) => event.stopPropagation())
-    close.addEventListener('click', () => this.closeChangePeek())
+    close.addEventListener('mousedown', (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      this.closeChangePeek()
+    })
+    close.addEventListener('click', (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+
+      if (!this.changePeekClosing) {
+        this.closeChangePeek()
+      }
+    })
     header.appendChild(close)
 
     container.appendChild(header)
@@ -789,25 +817,48 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     body.className = 'dbolt-change-peek-body'
     body.style.fontFamily = fontInfo.fontFamily
     body.style.fontSize = `${fontInfo.fontSize}px`
-    body.style.paddingLeft = `${Math.max(12, editor.getLayoutInfo().contentLeft - CHANGE_PEEK_GUTTER_OFFSET)}px`
 
-    if (hasOriginal) {
-      for (const original of hunk.originalLines) {
-        const row = document.createElement('div')
-        row.className = 'dbolt-change-peek-line'
-        row.style.height = `${lineHeight}px`
-        row.style.lineHeight = `${lineHeight}px`
-        row.textContent = original.length > 0 ? original : ' '
-        body.appendChild(row)
-      }
-    } else {
+    const appendDiffLine = (
+      text: string,
+      type: 'removed' | 'added',
+      oldLineNumber: number | null,
+      newLineNumber: number | null
+    ): void => {
       const row = document.createElement('div')
-      row.className = 'dbolt-change-peek-line dbolt-change-peek-empty'
+      row.className = `dbolt-change-peek-line dbolt-change-peek-line-${type}`
       row.style.height = `${lineHeight}px`
       row.style.lineHeight = `${lineHeight}px`
-      row.textContent = this.t('editor.changePeekNothingBefore')
+
+      const oldNumber = document.createElement('span')
+      oldNumber.className = 'dbolt-change-peek-line-number'
+      oldNumber.textContent = oldLineNumber ? String(oldLineNumber) : ''
+      row.appendChild(oldNumber)
+
+      const newNumber = document.createElement('span')
+      newNumber.className = 'dbolt-change-peek-line-number'
+      newNumber.textContent = newLineNumber ? String(newLineNumber) : ''
+      row.appendChild(newNumber)
+
+      const marker = document.createElement('span')
+      marker.className = 'dbolt-change-peek-line-marker'
+      marker.textContent = type === 'removed' ? '−' : '+'
+      row.appendChild(marker)
+
+      const code = document.createElement('span')
+      code.className = 'dbolt-change-peek-code'
+      code.textContent = text.length > 0 ? text : ' '
+      row.appendChild(code)
+
       body.appendChild(row)
     }
+
+    hunk.originalLines.forEach((line, index) => {
+      appendDiffLine(line, 'removed', (hunk.originalStartLine || 1) + index, null)
+    })
+
+    hunk.currentLines.forEach((line, index) => {
+      appendDiffLine(line, 'added', null, hunk.currentStartLine + index)
+    })
 
     container.appendChild(body)
 
@@ -816,7 +867,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         ? Math.max(0, hunk.currentStartLine - 1)
         : hunk.currentEndLine,
       heightInPx: 0,
-      domNode: container
+      domNode: container,
+      suppressMouseDown: false
     }
 
     editor.changeViewZones((accessor) => {
@@ -951,7 +1003,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         range: new monaco.Range(marker.lineNumber, 1, marker.lineNumber, 1),
         options: {
           isWholeLine: true,
-          linesDecorationsClassName: `dbolt-sql-change-${marker.type}`
+          linesDecorationsClassName: `dbolt-sql-change-${marker.type}`,
+          className: marker.type === 'deleted' ? undefined : `dbolt-sql-change-line-${marker.type}`
         }
       }))
     this.sqlChangeDecorationIds = editor.deltaDecorations(this.sqlChangeDecorationIds, decorations)
