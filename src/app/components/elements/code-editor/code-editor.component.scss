@@ -228,3 +228,60 @@
 .overflow-guard {
     width: 100% !important;
 }
+
+.editor-toolbar .btn.btn-inactive img {
+    opacity: .38;
+}
+
+:host ::ng-deep .monaco-editor .dbolt-sql-change-added,
+:host ::ng-deep .monaco-editor .dbolt-sql-change-modified,
+:host ::ng-deep .monaco-editor .dbolt-sql-change-deleted {
+    cursor: pointer;
+}
+
+:host ::ng-deep .dbolt-change-peek {
+    background: var(--dbolt-1b1b1b);
+    border-left: 3px solid var(--dbolt-3f5a7a);
+    box-sizing: border-box;
+    font-family: 'Consolas', 'Courier New', monospace;
+    height: 100%;
+    overflow: auto;
+    width: 100%;
+}
+
+:host ::ng-deep .dbolt-change-peek-header {
+    align-items: center;
+    background: var(--dbolt-222020);
+    display: flex;
+    font-family: 'Nunito';
+    font-size: 11px;
+    font-weight: 800;
+    justify-content: space-between;
+    letter-spacing: .04em;
+    padding: 3px 8px;
+    text-transform: uppercase;
+}
+
+:host ::ng-deep .dbolt-change-peek-header span {
+    color: var(--dbolt-8f8f8f);
+}
+
+:host ::ng-deep .dbolt-change-peek-close {
+    background: transparent;
+    border: none;
+    color: var(--dbolt-c9c9c9);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0 3px;
+}
+
+:host ::ng-deep .dbolt-change-peek-close:hover {
+    color: var(--dbolt-f2f2f2);
+}
+
+:host ::ng-deep .dbolt-change-peek-line {
+    color: var(--dbolt-ffb4b4);
+    padding: 0 8px 0 10px;
+    white-space: pre;
+}
