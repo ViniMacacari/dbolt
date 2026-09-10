@@ -34,6 +34,28 @@ export class RunQueryService {
     }
   }
 
+  async runReadOnlySQL(
+    sql: string,
+    maxRows: number,
+    dbContext: any = null,
+    signal?: AbortSignal
+  ): Promise<Array<Record<string, unknown>>> {
+    const selectedContext = dbContext || this.dbSchemas.getSelectedSchemaDB()
+    const db = await this.connectionContext.ensureContext(selectedContext)
+
+    try {
+      return await this.executeReadOnlySQL(db, sql, maxRows, signal)
+    } catch (error: any) {
+      if (signal?.aborted || !this.connectionContext.isConnectionError(error)) {
+        throw error
+      }
+
+      this.connectionContext.forgetContext(db.connectionKey)
+      const reconnectedDb = await this.connectionContext.ensureContext(db, true)
+      return await this.executeReadOnlySQL(reconnectedDb, sql, maxRows, signal)
+    }
+  }
+
   private async executeSQL(db: any, sql: string, lines: number | null): Promise<any> {
     const response: any = await this.IAPI.post(`/api/${db.sgbd}/${db.version}/query`, {
       sql,
@@ -54,6 +76,35 @@ export class RunQueryService {
     } else {
       throw new Error('Invalid data response.')
     }
+  }
+
+  private async executeReadOnlySQL(
+    db: any,
+    sql: string,
+    maxRows: number,
+    signal?: AbortSignal
+  ): Promise<Array<Record<string, unknown>>> {
+    const request = {
+      context: {
+        connectionName: db.name,
+        sgbd: db.sgbd,
+        version: db.version,
+        database: db.database,
+        schema: db.schema,
+        connectionKey: db.connectionKey
+      },
+      sql,
+      maxRows
+    }
+    const response: any = signal
+      ? await this.IAPI.postWithSignal('/api/dbolt/ai-assistant/readonly/query', request, signal)
+      : await this.IAPI.post('/api/dbolt/ai-assistant/readonly/query', request)
+
+    if (!response?.success || !Array.isArray(response?.data?.rows)) {
+      throw new Error(response?.error || response?.message || 'Invalid read-only query response.')
+    }
+
+    return response.data.rows
   }
 
   getQueryLines(): number | null {
