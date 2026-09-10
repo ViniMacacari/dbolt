@@ -68,6 +68,7 @@ export class SettingsComponent implements OnInit, OnChanges, OnDestroy {
   sqlFormatterCommaStyle: SqlFormatterCommaStyle
   sqlFormatterBlankLineBetweenStatements: boolean
   sqlFormatterIndentCreateBody: boolean
+  sqlChangeHighlightsEnabled: boolean
   sqlHighlightMode: SqlHighlightMode
   sqlHighlightColors: SqlHighlightColors
   appLanguage: AppLanguage
@@ -79,6 +80,7 @@ export class SettingsComponent implements OnInit, OnChanges, OnDestroy {
   syntaxValidationSavedMessage: string = ''
   formatterSavedMessage: string = ''
   highlightSavedMessage: string = ''
+  sqlChangeHighlightsSavedMessage: string = ''
   languageSavedMessage: string = ''
   themeSavedMessage: string = ''
   tableAutocompleteSavedMessage: string = ''
@@ -164,6 +166,7 @@ export class SettingsComponent implements OnInit, OnChanges, OnDestroy {
     this.sqlFormatterCommaStyle = this.settings.getSqlFormatterCommaStyle()
     this.sqlFormatterBlankLineBetweenStatements = this.settings.shouldAddBlankLineBetweenSqlStatements()
     this.sqlFormatterIndentCreateBody = this.settings.shouldIndentSqlCreateBody()
+    this.sqlChangeHighlightsEnabled = this.settings.shouldShowSqlChangeHighlights()
     this.sqlHighlightMode = this.settings.getSqlHighlightMode()
     this.sqlHighlightColors = this.settings.getSqlHighlightColors()
     this.appLanguage = this.settings.getAppLanguage()
@@ -652,6 +655,18 @@ export class SettingsComponent implements OnInit, OnChanges, OnDestroy {
     this.sqlHighlightMode = settings.sqlHighlightMode
     this.sqlHighlightColors = settings.sqlHighlightColors
     this.highlightSavedMessage = this.t('generic.saved')
+  }
+
+  onSqlChangeHighlightsChange(event: Event): void {
+    this.sqlChangeHighlightsEnabled = (event.target as HTMLInputElement).checked
+    this.sqlChangeHighlightsSavedMessage = ''
+    this.saveSqlChangeHighlightsSettings()
+  }
+
+  saveSqlChangeHighlightsSettings(): void {
+    const settings = this.settings.setSqlChangeHighlightsEnabled(this.sqlChangeHighlightsEnabled)
+    this.sqlChangeHighlightsEnabled = settings.sqlChangeHighlightsEnabled
+    this.sqlChangeHighlightsSavedMessage = this.t('generic.saved')
   }
 
   onTableAutocompleteChange(event: Event): void {

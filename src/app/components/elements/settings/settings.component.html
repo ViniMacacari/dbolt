@@ -361,6 +361,23 @@
                 </div>
             </div>
 
+            <div class="settings-card">
+                <div>
+                    <h3>{{ t('settings.highlight.changes.title') }}</h3>
+                    <p>{{ t('settings.highlight.changes.description') }}</p>
+                </div>
+
+                <div class="setting-control autocomplete-toggle">
+                    <label class="toggle-control" for="sql-change-highlights-enabled">
+                        <input id="sql-change-highlights-enabled" type="checkbox"
+                            [checked]="sqlChangeHighlightsEnabled"
+                            (change)="onSqlChangeHighlightsChange($event)">
+                        <span></span>
+                    </label>
+                    <small *ngIf="sqlChangeHighlightsSavedMessage">{{ sqlChangeHighlightsSavedMessage }}</small>
+                </div>
+            </div>
+
             <div class="settings-card" *ngIf="isCustomSqlHighlight">
                 <div>
                     <h3>{{ t('settings.highlight.custom.title') }}</h3>
