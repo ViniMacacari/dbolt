@@ -153,11 +153,11 @@
 
 .monaco-editor .margin {
     width: 30px !important;
-    background-color: transparent !important;
+    background-color: var(--dbolt-editor-gutter-surface) !important;
 }
 
 .monaco-editor {
-    background-color: transparent !important;
+    background-color: var(--dbolt-editor-canvas-surface) !important;
     border: none !important;
 }
 
@@ -220,7 +220,7 @@
 }
 
 .monaco-editor .margin-view-overlays {
-    background-color: transparent !important;
+    background-color: var(--dbolt-editor-gutter-surface) !important;
     border-right: none !important;
 }
 

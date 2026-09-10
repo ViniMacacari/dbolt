@@ -53,6 +53,7 @@ const DRACULA_HIGHLIGHT_COLORS: SqlHighlightColors = {
 })
 export class AppThemePaletteService {
   readonly minimumContrastRatio = 3.2
+  readonly lightMinimumContrastRatio = 5.5
 
   private readonly palettes: Record<AppTheme, AppThemeEditorPalette> = {
     dark: {
@@ -70,22 +71,22 @@ export class AppThemePaletteService {
     },
     light: {
       monacoBase: 'vs',
-      contrastBackground: '#ffffff',
+      contrastBackground: '#f8fafc',
       surfaceColors: {
-        'editor.background': '#ffffff',
-        'editorGutter.background': '#f6f8fa',
+        'editor.background': '#f8fafc',
+        'editorGutter.background': '#e9eff4',
         'editor.lineHighlightBorder': '#00000000',
-        'editor.lineHighlightBackground': '#00000008',
+        'editor.lineHighlightBackground': '#dfe8f1',
         'editorWidget.background': '#ffffff',
-        'editorWidget.border': '#b8c5d1',
+        'editorWidget.border': '#9eafbd',
         'editorSuggestWidget.background': '#ffffff',
-        'editorSuggestWidget.border': '#b8c5d1',
-        'editorSuggestWidget.foreground': '#263442',
-        'editorSuggestWidget.selectedBackground': '#d8eafb',
-        'editorSuggestWidget.selectedForeground': '#17324d',
-        'editorSuggestWidget.highlightForeground': '#005a9c',
+        'editorSuggestWidget.border': '#9eafbd',
+        'editorSuggestWidget.foreground': '#162b3d',
+        'editorSuggestWidget.selectedBackground': '#c8def1',
+        'editorSuggestWidget.selectedForeground': '#102638',
+        'editorSuggestWidget.highlightForeground': '#00558f',
         'editorHoverWidget.background': '#ffffff',
-        'editorHoverWidget.border': '#b8c5d1',
+        'editorHoverWidget.border': '#9eafbd',
         'focusBorder': '#00000000'
       },
       fallbackHighlightColors: LIGHT_HIGHLIGHT_COLORS
@@ -145,11 +146,11 @@ export class AppThemePaletteService {
       'editor.inactiveSelectionBackground': '#3a3d41'
     },
     light: {
-      'editorLineNumber.foreground': '#7a8793',
-      'editorLineNumber.activeForeground': '#263442',
-      'editorCursor.foreground': '#111827',
-      'editor.selectionBackground': '#add6ff',
-      'editor.inactiveSelectionBackground': '#dbeafe'
+      'editorLineNumber.foreground': '#607386',
+      'editorLineNumber.activeForeground': '#162b3d',
+      'editorCursor.foreground': '#0f2233',
+      'editor.selectionBackground': '#b7d7f2',
+      'editor.inactiveSelectionBackground': '#d3e4f2'
     },
     'dark-gray': {
       'editorLineNumber.foreground': '#8b8b8b',
@@ -177,19 +178,28 @@ export class AppThemePaletteService {
 
   resolveHighlightColors(theme: AppTheme, colors: SqlHighlightColors): SqlHighlightColors {
     const palette = this.getEditorPalette(theme)
+    const minimumContrast = theme === 'light'
+      ? this.lightMinimumContrastRatio
+      : this.minimumContrastRatio
 
     return (Object.keys(colors) as Array<keyof SqlHighlightColors>).reduce((resolved, key) => ({
       ...resolved,
       [key]: this.adjustForContrast(
         colors[key],
         palette.contrastBackground,
-        palette.fallbackHighlightColors[key]
+        palette.fallbackHighlightColors[key],
+        minimumContrast
       )
     }), {} as SqlHighlightColors)
   }
 
-  adjustForContrast(color: string, background: string, fallback: string): string {
-    if (this.hasAcceptableContrast(color, background)) return color
+  adjustForContrast(
+    color: string,
+    background: string,
+    fallback: string,
+    minimumContrast = this.minimumContrastRatio
+  ): string {
+    if (this.hasContrast(color, background, minimumContrast)) return color
 
     const channels = this.toChannels(color)
     const backgroundLuminance = this.getRelativeLuminance(background)
@@ -199,7 +209,7 @@ export class AppThemePaletteService {
 
     for (let step = 1; step <= 24; step += 1) {
       const adjusted = this.shiftChannels(channels, towardsWhite, step * 0.06)
-      if (this.hasAcceptableContrast(adjusted, background)) return adjusted
+      if (this.hasContrast(adjusted, background, minimumContrast)) return adjusted
     }
 
     return fallback
@@ -224,9 +234,7 @@ export class AppThemePaletteService {
   }
 
   hasAcceptableContrast(color: string, background: string): boolean {
-    const contrastRatio = this.getContrastRatio(color, background)
-
-    return contrastRatio !== null && contrastRatio >= this.minimumContrastRatio
+    return this.hasContrast(color, background, this.minimumContrastRatio)
   }
 
   getContrastRatio(color: string, background: string): number | null {
@@ -238,6 +246,11 @@ export class AppThemePaletteService {
     const darker = Math.min(colorLuminance, backgroundLuminance)
 
     return (lighter + 0.05) / (darker + 0.05)
+  }
+
+  private hasContrast(color: string, background: string, minimumContrast: number): boolean {
+    const contrastRatio = this.getContrastRatio(color, background)
+    return contrastRatio !== null && contrastRatio >= minimumContrast
   }
 
   private getRelativeLuminance(color: string): number | null {

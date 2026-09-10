@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common'
-import { Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, ViewChild } from '@angular/core'
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, OnInit, Output, ViewChild } from '@angular/core'
 import { FormsModule } from '@angular/forms'
 
 import { AppLanguageService } from '../../../services/language/app-language.service'
@@ -25,7 +25,7 @@ const COMPOSER_MAX_HEIGHT = 180
   templateUrl: './database-memory-chat.component.html',
   styleUrl: './database-memory-chat.component.scss'
 })
-export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
+export class DatabaseMemoryChatComponent implements OnInit, AfterViewInit, OnDestroy {
   @Input() scope: DatabaseMemoryScope = {}
   @Input() readonlyContext: unknown = undefined
   @Input() contextError: string = ''
@@ -65,6 +65,7 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
 
   @ViewChild('chatScroll') chatScroll?: ElementRef<HTMLDivElement>
   @ViewChild('answerInput') answerInput?: ElementRef<HTMLTextAreaElement>
+  @ViewChild('memoryDialog') memoryDialog?: ElementRef<HTMLDivElement>
 
   private timers: ReturnType<typeof setTimeout>[] = []
 
@@ -88,6 +89,10 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
     } finally {
       this.loading = false
     }
+  }
+
+  ngAfterViewInit(): void {
+    this.memoryDialog?.nativeElement.focus()
   }
 
   ngOnDestroy(): void {
@@ -285,6 +290,25 @@ export class DatabaseMemoryChatComponent implements OnInit, OnDestroy {
 
     this.closing = true
     this.schedule(() => this.closed.emit(), CLOSE_ANIMATION_MS)
+  }
+
+  onKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Escape') return
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (this.editingProposal) {
+      this.cancelEditProposal()
+    } else if (this.instructionPopupOpen) {
+      this.closeInstructionPopup()
+    } else if (this.addPopupOpen) {
+      this.closeAddPopup()
+    } else if (this.notesPopupOpen) {
+      this.closeNotesPopup()
+    } else {
+      this.close()
+    }
   }
 
   async startInterview(): Promise<void> {

@@ -609,6 +609,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'databaseMemory.chatPlaceholder': 'Responda ou conte algo sobre este banco...',
   'databaseMemory.knowledgeHint': 'Ver o conhecimento salvo deste banco',
   'databaseMemory.joint': 'Investigação conjunta',
+  'databaseMemory.introTitle': 'Crie o contexto deste banco',
   'databaseMemory.newInstruction': 'Nova instrução',
   'databaseMemory.newInstructionHint': 'Ensine algo e a IA transforma em anotações.',
   'databaseMemory.instructionPlaceholder': 'Ex.: nos relatórios de faturamento sempre ignoramos documentos cancelados, e a filial vem do cadastro do cliente.',

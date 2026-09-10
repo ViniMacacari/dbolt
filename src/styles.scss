@@ -17,6 +17,8 @@
     --dbolt-sidebar-action-hover: #303030;
     --dbolt-sidebar-control-hover: #292727;
     --dbolt-editor-toolbar-surface: #1b1b1b;
+    --dbolt-editor-canvas-surface: transparent;
+    --dbolt-editor-gutter-surface: transparent;
     --dbolt-000: #000;
     --dbolt-050505: #050505;
     --dbolt-080808: #080808;
@@ -137,95 +139,97 @@
 }
 
 :root[data-app-theme='light'] {
-    --dbolt-query-table-text: #1f2933;
-    --dbolt-query-table-selected-text: #1f2933;
-    --dbolt-menu-hover-text: #1f2933;
-    --dbolt-editor-caret: #111827;
-    --dbolt-grid-separator: #d7dee5;
-    --dbolt-modal-copy: #526170;
-    --dbolt-query-status-bg: rgba(255, 255, 255, .92);
-    --dbolt-db-info-status-bg: rgba(255, 255, 255, .92);
-    --dbolt-workspace-surface: #ffffff;
-    --dbolt-sidebar-surface: #f3f6f8;
+    --dbolt-query-table-text: #162b3d;
+    --dbolt-query-table-selected-text: #102638;
+    --dbolt-menu-hover-text: #102638;
+    --dbolt-editor-caret: #0f2233;
+    --dbolt-grid-separator: #bdc9d4;
+    --dbolt-modal-copy: #405669;
+    --dbolt-query-status-bg: rgba(248, 250, 252, .96);
+    --dbolt-db-info-status-bg: rgba(248, 250, 252, .96);
+    --dbolt-workspace-surface: #f5f8fb;
+    --dbolt-sidebar-surface: #e7edf3;
     --dbolt-sidebar-control-surface: #ffffff;
-    --dbolt-sidebar-action-hover: #f4f7fa;
-    --dbolt-sidebar-control-hover: #f4f7fa;
-    --dbolt-editor-toolbar-surface: #e9eef3;
+    --dbolt-sidebar-action-hover: #dbe4ec;
+    --dbolt-sidebar-control-hover: #dfe7ee;
+    --dbolt-editor-toolbar-surface: #dde6ee;
+    --dbolt-editor-canvas-surface: #f8fafc;
+    --dbolt-editor-gutter-surface: #e9eff4;
     --dbolt-000: #ffffff;
-    --dbolt-050505: #fbfcfd;
-    --dbolt-080808: #f9fbfc;
-    --dbolt-0b0b0b: #ffffff;
+    --dbolt-050505: #f8fafc;
+    --dbolt-080808: #f4f7fa;
+    --dbolt-0b0b0b: #f7f9fb;
     --dbolt-0f0f0f: #ffffff;
-    --dbolt-101010: #f8fafc;
-    --dbolt-111: #f8fafc;
-    --dbolt-121212: #f7f9fb;
-    --dbolt-131313: #f3f6f8;
-    --dbolt-141414: #f5f7f9;
-    --dbolt-151515: #f3f6f8;
-    --dbolt-181818: #edf1f4;
+    --dbolt-101010: #f1f5f8;
+    --dbolt-111: #eef3f7;
+    --dbolt-121212: #ebf1f5;
+    --dbolt-131313: #e7edf3;
+    --dbolt-141414: #e9eef3;
+    --dbolt-151515: #e4ebf1;
+    --dbolt-181818: #dce5ec;
     --dbolt-1b1b1b: #ffffff;
-    --dbolt-1f1f1f: #e8edf2;
-    --dbolt-202020: #dfe5eb;
-    --dbolt-232020: #f7f9fb;
-    --dbolt-232323: #eef2f5;
-    --dbolt-242424: #d7dee5;
-    --dbolt-262626: #edf2f6;
-    --dbolt-292727: #edf1f5;
-    --dbolt-2b2b2b: #d8e0e7;
-    --dbolt-2d2c2c: #e5ebf1;
-    --dbolt-2d2d2d: #d3dbe3;
-    --dbolt-2f2f2f: #e3e9ee;
-    --dbolt-303030: #e2e8ee;
-    --dbolt-302d2d: #e8edf2;
-    --dbolt-343434: #d7dee5;
-    --dbolt-353535: #ccd5de;
-    --dbolt-363535: #c9d3dc;
-    --dbolt-3b3b3b: #bfcbd6;
-    --dbolt-3d3a3a: #dce4eb;
-    --dbolt-444: #b3c0cb;
-    --dbolt-4a4a4a: #a7b4c0;
-    --dbolt-555: #84929f;
-    --dbolt-565656: #8f9eab;
-    --dbolt-575757: #84929f;
-    --dbolt-5a5a5a: #7d8c99;
-    --dbolt-5e5e60: #71808e;
-    --dbolt-5f5f5f: #718096;
-    --dbolt-686868: #697887;
-    --dbolt-6f6f6f: #667585;
-    --dbolt-747474: #647382;
-    --dbolt-777: #687786;
-    --dbolt-8aaed2: #376f9e;
-    --dbolt-8d8d8d: #637282;
-    --dbolt-8d929b: #5e6d7c;
-    --dbolt-8f8f8f: #667482;
-    --dbolt-969696: #607080;
-    --dbolt-9fbede: #275f98;
-    --dbolt-9fc5f0: #245d91;
-    --dbolt-b8b8b9: #526170;
-    --dbolt-c9c9c9: #364554;
-    --dbolt-cfcfcf: #334251;
-    --dbolt-d7d7d7: #2b3947;
-    --dbolt-d8e9fb: #174e78;
-    --dbolt-e8e4a4: #6b5d00;
-    --dbolt-e8e7e6: #1f2933;
-    --dbolt-e8eaed: #1f2933;
-    --dbolt-f1f1f1: #17212b;
-    --dbolt-f1f3f5: #263442;
-    --dbolt-f1f4ff: #174e78;
-    --dbolt-f2f2f2: #17212b;
-    --dbolt-f8f8f2: #20262e;
+    --dbolt-1f1f1f: #d2dce5;
+    --dbolt-202020: #cad5df;
+    --dbolt-232020: #e9eff4;
+    --dbolt-232323: #e0e8ef;
+    --dbolt-242424: #bcc9d4;
+    --dbolt-262626: #dce5ec;
+    --dbolt-292727: #dfe7ee;
+    --dbolt-2b2b2b: #c5d1dc;
+    --dbolt-2d2c2c: #d4dee7;
+    --dbolt-2d2d2d: #b6c4d0;
+    --dbolt-2f2f2f: #cdd8e1;
+    --dbolt-303030: #d2dce5;
+    --dbolt-302d2d: #ced9e2;
+    --dbolt-343434: #c5d1db;
+    --dbolt-353535: #aab9c6;
+    --dbolt-363535: #a4b4c1;
+    --dbolt-3b3b3b: #9cabb9;
+    --dbolt-3d3a3a: #bfccd7;
+    --dbolt-444: #91a3b2;
+    --dbolt-4a4a4a: #8295a5;
+    --dbolt-555: #6b7d8c;
+    --dbolt-565656: #647787;
+    --dbolt-575757: #5e7181;
+    --dbolt-5a5a5a: #586b7b;
+    --dbolt-5e5e60: #526677;
+    --dbolt-5f5f5f: #4e6273;
+    --dbolt-686868: #4a5f70;
+    --dbolt-6f6f6f: #465b6d;
+    --dbolt-747474: #42586a;
+    --dbolt-777: #3e5466;
+    --dbolt-8aaed2: #245f91;
+    --dbolt-8d8d8d: #405668;
+    --dbolt-8d929b: #3d5365;
+    --dbolt-8f8f8f: #405668;
+    --dbolt-969696: #3b5163;
+    --dbolt-9fbede: #1f5f96;
+    --dbolt-9fc5f0: #1a5b91;
+    --dbolt-b8b8b9: #30475a;
+    --dbolt-c9c9c9: #273e51;
+    --dbolt-cfcfcf: #233a4d;
+    --dbolt-d7d7d7: #1c3346;
+    --dbolt-d8e9fb: #124f7e;
+    --dbolt-e8e4a4: #695700;
+    --dbolt-e8e7e6: #172c3e;
+    --dbolt-e8eaed: #162b3d;
+    --dbolt-f1f1f1: #102638;
+    --dbolt-f1f3f5: #1a3042;
+    --dbolt-f1f4ff: #124f7e;
+    --dbolt-f2f2f2: #0d2234;
+    --dbolt-f8f8f2: #14293b;
 
-    --dbolt-151932: #e5edf9;
-    --dbolt-1c2041: #dfeafb;
-    --dbolt-1d162e: #8caed0;
-    --dbolt-1f2775: #c8dcf3;
-    --dbolt-20252d: #e6eef5;
-    --dbolt-283445: #dce8f4;
-    --dbolt-2b3340: #e1edf8;
-    --dbolt-334052: #d1e2f2;
-    --dbolt-34475d: #ccdeee;
-    --dbolt-516986: #52779c;
-    --dbolt-739eca: #2f6fa7;
+    --dbolt-151932: #d7e6f5;
+    --dbolt-1c2041: #d2e4f5;
+    --dbolt-1d162e: #7299bd;
+    --dbolt-1f2775: #bad4ec;
+    --dbolt-20252d: #dce8f2;
+    --dbolt-283445: #c9ddea;
+    --dbolt-2b3340: #cee1f2;
+    --dbolt-334052: #b8d2e8;
+    --dbolt-34475d: #abc7df;
+    --dbolt-516986: #356c99;
+    --dbolt-739eca: #1d659f;
 
     --dbolt-261111: #fff3f3;
     --dbolt-2d2020: #fff0f0;
@@ -245,10 +249,10 @@
     --dbolt-ffcdcd: #922020;
     --dbolt-ffd1d1: #922020;
 
-    --dbolt-345c3e: #d8f3e2;
-    --dbolt-8fbc6a: #3e7222;
-    --dbolt-9be0aa: #287541;
-    --dbolt-9fe6b8: #177245;
+    --dbolt-345c3e: #d4edde;
+    --dbolt-8fbc6a: #32691c;
+    --dbolt-9be0aa: #1f6c39;
+    --dbolt-9fe6b8: #11663b;
     --dbolt-b58cff: #6f3ac8;
 
     /* tab groups */
@@ -773,16 +777,16 @@ input[type='number']::-webkit-outer-spin-button {
 
 .monaco-editor .margin {
     width: 30px !important;
-    background-color: transparent !important;
+    background-color: var(--dbolt-editor-gutter-surface) !important;
 }
 
 .monaco-editor {
-    background-color: transparent !important;
+    background-color: var(--dbolt-editor-canvas-surface) !important;
     border: none !important;
 }
 
 .monaco-editor .margin-view-overlays {
-    background-color: transparent !important;
+    background-color: var(--dbolt-editor-gutter-surface) !important;
     border-right: none !important;
 }
 

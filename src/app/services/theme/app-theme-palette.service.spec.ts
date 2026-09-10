@@ -84,6 +84,32 @@ describe('AppThemePaletteService', () => {
     expect(green).toBeGreaterThan(red)
   })
 
+  it('keeps light editor chrome readable without returning to pure-white surfaces', () => {
+    const palette = service.getEditorPalette('light')
+    const chrome = service.getEditorChromeColors('light')
+
+    expect(palette.surfaceColors['editor.background']).toBe('#f8fafc')
+    expect(palette.surfaceColors['editorGutter.background']).not.toBe(palette.surfaceColors['editor.background'])
+    expect(palette.surfaceColors['editor.lineHighlightBackground']).not.toBe('#00000008')
+    expect(service.getContrastRatio(
+      chrome['editorLineNumber.foreground'],
+      palette.contrastBackground
+    )).toBeGreaterThanOrEqual(4.5)
+    expect(service.getContrastRatio(
+      chrome['editorLineNumber.activeForeground'],
+      palette.contrastBackground
+    )).toBeGreaterThanOrEqual(7)
+
+    const resolved = service.resolveHighlightColors(
+      'light',
+      settings.getSqlHighlightPresetColors('dbolt-dark')
+    )
+    Object.values(resolved).forEach(color => {
+      expect(service.getContrastRatio(color, palette.contrastBackground))
+        .toBeGreaterThanOrEqual(service.lightMinimumContrastRatio)
+    })
+  })
+
   it('lightens a low contrast color on a dark background', () => {
     const adjusted = service.adjustForContrast('#1f2933', '#282a36', '#f8f8f2')
 
