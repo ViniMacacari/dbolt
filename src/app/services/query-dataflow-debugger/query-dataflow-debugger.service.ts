@@ -475,15 +475,19 @@ export class QueryDataflowDebuggerService {
   }
 
   private tableLabel(source: SqlAst): string {
-    const table = this.normalizeIdentifier(source['table'])
-    const alias = this.normalizeIdentifier(source['as'])
-    return alias && alias !== table ? `${table} · ${alias}` : table
+    const table = this.identifierText(source['table'])
+    const alias = this.identifierText(source['as'])
+    return alias && alias.toLowerCase() !== table.toLowerCase() ? `${table} · ${alias}` : table
   }
 
   private normalizeIdentifier(value: unknown): string {
-    if (typeof value === 'string') return value.toLowerCase()
+    return this.identifierText(value).toLowerCase()
+  }
+
+  private identifierText(value: unknown): string {
+    if (typeof value === 'string') return value
     if (this.isRecord(value)) {
-      return this.normalizeIdentifier(value['value'] ?? value['expr'] ?? value['column'])
+      return this.identifierText(value['value'] ?? value['expr'] ?? value['column'])
     }
     return ''
   }
