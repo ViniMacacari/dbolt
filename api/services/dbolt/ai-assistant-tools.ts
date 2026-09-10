@@ -126,7 +126,7 @@ class AiAssistantToolsService {
       return this.formatObjectSearch(await AiAssistantReadonlyDatabase.searchObjects(
         context,
         this.readString(toolCall.arguments, 'search'),
-        this.readLimit(toolCall.arguments, 'limit', 160, 300),
+        this.readLimit(toolCall.arguments, 'limit', 400, 2000),
         this.readObjectTypes(toolCall.arguments)
       ));
     }
@@ -142,7 +142,7 @@ class AiAssistantToolsService {
     if (toolCall.name === 'getSchemaSummary') {
       return this.formatSchemaSummary(await AiAssistantReadonlyDatabase.getSchemaSummary(
         context,
-        this.readLimit(toolCall.arguments, 'limit', 120, 250),
+        this.readLimit(toolCall.arguments, 'limit', 600, 4000),
         this.readOptionalString(toolCall.arguments, 'search')
       ));
     }

@@ -14,6 +14,12 @@
                     [label]="t('aiAssistant.includeCurrentSql')" [title]="t('aiAssistant.includeCurrentSqlHint')">
                 </app-checkbox>
 
+                <app-checkbox class="database-memory-toggle" [checked]="useDatabaseKnowledge"
+                    (checkedChange)="useDatabaseKnowledge = $event" [disabled]="disabled"
+                    [label]="t('aiAssistant.useDatabaseKnowledge')"
+                    [title]="t('aiAssistant.useDatabaseKnowledgeHint')">
+                </app-checkbox>
+
                 <app-checkbox class="auto-apply-sql-toggle" [checked]="autoApplyCurrentSql"
                     (checkedChange)="autoApplyCurrentSql = $event"
                     [disabled]="disabled || !currentSqlAvailable || !includeCurrentSql"

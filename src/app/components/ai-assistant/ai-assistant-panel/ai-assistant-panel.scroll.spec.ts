@@ -127,7 +127,8 @@ describe('AiAssistantPanelComponent conversation scrolling', () => {
       'SELECT * FROM sample_table',
       false,
       jasmine.any(Function),
-      jasmine.any(AbortSignal)
+      jasmine.any(AbortSignal),
+      jasmine.objectContaining({ use: true })
     )
   })
 

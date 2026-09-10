@@ -62,6 +62,7 @@ export interface AiChatInputSubmit {
   allowDatabaseContext: boolean
   includeCurrentSql: boolean
   autoApplyCurrentSql?: boolean
+  useDatabaseKnowledge?: boolean
 }
 
 export interface AiAssistantApiMessage {

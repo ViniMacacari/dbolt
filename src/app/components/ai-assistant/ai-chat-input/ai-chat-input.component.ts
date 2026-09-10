@@ -30,6 +30,7 @@ export class AiChatInputComponent implements OnDestroy {
   allowDatabaseContext: boolean = true
   includeCurrentSql: boolean = false
   autoApplyCurrentSql: boolean = false
+  useDatabaseKnowledge: boolean = true
   advancedOpen: boolean = false
   advancedAnimating: boolean = false
 
@@ -72,7 +73,8 @@ export class AiChatInputComponent implements OnDestroy {
       message,
       allowDatabaseContext: this.databaseContextAvailable && this.allowDatabaseContext,
       includeCurrentSql: this.currentSqlAvailable && this.includeCurrentSql,
-      autoApplyCurrentSql: this.currentSqlAvailable && this.includeCurrentSql && this.autoApplyCurrentSql
+      autoApplyCurrentSql: this.currentSqlAvailable && this.includeCurrentSql && this.autoApplyCurrentSql,
+      useDatabaseKnowledge: this.useDatabaseKnowledge
     })
 
     this.message = ''
