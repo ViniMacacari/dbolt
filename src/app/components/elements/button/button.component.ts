@@ -19,6 +19,7 @@ export class ButtonComponent {
   @Input({ transform: booleanAttribute }) disabled = false
   @Input({ transform: booleanAttribute }) fullWidth = false
   @Input({ transform: booleanAttribute }) compact = false
+  @Input({ transform: booleanAttribute }) iconOnly = false
   @Output() pressed = new EventEmitter<MouseEvent>()
 
   onClick(event: MouseEvent): void {
