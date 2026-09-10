@@ -109,4 +109,22 @@ describe('QueryDataflowDebuggerService', () => {
     expect(plan.countFrom.sql).toContain('FROM "OCRD" AS "PN"')
     expect(plan.countFrom.sql).not.toContain('[OCRD]')
   })
+
+  it('serializes diagnostics with the selected database dialect', async () => {
+    const service = new QueryDataflowDebuggerService(new SqlParserService(), {} as any)
+    const cases = [
+      { sgbd: 'mysql', expected: 'FROM `orders` AS `o`' },
+      { sgbd: 'sqlite', expected: 'FROM "orders" AS "o"' },
+      { sgbd: 'sqlserver', expected: 'FROM [orders] AS [o]' }
+    ]
+
+    for (const item of cases) {
+      const plan = await service.createPlan(
+        'SELECT o.id FROM orders o LEFT JOIN items i ON o.id = i.order_id',
+        { sgbd: item.sgbd }
+      )
+      expect(plan.countFrom.sql).toContain(item.expected)
+      expect(plan.joins[0].countAfter.sql.trim().toUpperCase().startsWith('SELECT ')).toBeTrue()
+    }
+  })
 })
