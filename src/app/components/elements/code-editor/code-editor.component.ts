@@ -46,6 +46,7 @@ interface SqlNavigationLink {
 
 const CHANGE_PEEK_PADDING = 10
 const CHANGE_PEEK_GUTTER_OFFSET = 6
+const CHANGE_PEEK_CLOSE_MS = 170
 
 @Component({
   selector: 'app-code-editor',
@@ -87,6 +88,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private sqlChangeHunks: QueryChangeHunk[] = []
   private changePeekZoneId: string | null = null
   private changePeekLine: number | null = null
+  private changePeekZone: monaco.editor.IViewZone | null = null
+  private changePeekNode: HTMLElement | null = null
+  private changePeekFrame: number | null = null
+  private changePeekClosing: boolean = false
   isVersionMessageOpen: boolean = false
   private sqlChangeDecorationTimer: ReturnType<typeof setTimeout> | null = null
   private sqlNavigationModifierPressed = false
@@ -221,7 +226,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.settingsSubscription?.unsubscribe()
     this.themeSubscription?.unsubscribe()
     this.languageSubscription?.unsubscribe()
-    this.closeChangePeek()
+    this.closeChangePeek(false)
     this.unregisterKeyboardShortcuts()
     this.disposeEditorContextMenuActions()
     this.disposeEditorMouseActions()
@@ -730,7 +735,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     const hunk = this.queryVersionDiff.findHunkForLine(this.sqlChangeHunks, lineNumber)
 
     if (!hunk) {
-      this.closeChangePeek()
+      this.closeChangePeek(false)
       return
     }
 
@@ -739,7 +744,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       return
     }
 
-    this.closeChangePeek()
+    this.closeChangePeek(false)
     this.openChangePeek(hunk)
   }
 
@@ -805,29 +810,84 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     container.appendChild(body)
 
-    editor.changeViewZones((accessor) => {
-      this.changePeekZoneId = accessor.addZone({
-        afterLineNumber: hunk.type === 'deleted'
-          ? Math.max(0, hunk.currentStartLine - 1)
-          : hunk.currentEndLine,
-        heightInPx: totalHeight,
-        domNode: container
-      })
-    })
-
-    this.changePeekLine = hunk.currentStartLine
-  }
-
-  private closeChangePeek(): void {
-    const editor = this.editor
-    const zoneId = this.changePeekZoneId
-
-    if (editor && zoneId) {
-      editor.changeViewZones((accessor) => accessor.removeZone(zoneId))
+    const zone: monaco.editor.IViewZone = {
+      afterLineNumber: hunk.type === 'deleted'
+        ? Math.max(0, hunk.currentStartLine - 1)
+        : hunk.currentEndLine,
+      heightInPx: totalHeight,
+      domNode: container
     }
 
-    this.changePeekZoneId = null
+    editor.changeViewZones((accessor) => {
+      this.changePeekZoneId = accessor.addZone(zone)
+    })
+
+    this.changePeekZone = zone
+    this.changePeekNode = container
+    this.changePeekLine = hunk.currentStartLine
+    this.changePeekClosing = false
+  }
+
+  private closeChangePeek(animate: boolean = true): void {
+    const editor = this.editor
+    const zoneId = this.changePeekZoneId
+    const zone = this.changePeekZone
+    const node = this.changePeekNode
+
+    this.cancelChangePeekFrame()
+
+    if (!editor || !zoneId) {
+      this.resetChangePeekState()
+      return
+    }
+
+    if (!animate || !zone || !node || typeof zone.heightInPx !== 'number') {
+      editor.changeViewZones((accessor) => accessor.removeZone(zoneId))
+      this.resetChangePeekState()
+      return
+    }
+
+    if (this.changePeekClosing) return
+
+    this.changePeekClosing = true
     this.changePeekLine = null
+    node.classList.add('closing')
+
+    const startHeight = zone.heightInPx
+    const startedAt = performance.now()
+
+    const step = (now: number): void => {
+      const progress = Math.min(1, (now - startedAt) / CHANGE_PEEK_CLOSE_MS)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      zone.heightInPx = Math.max(0, Math.round(startHeight * (1 - eased)))
+
+      editor.changeViewZones((accessor) => accessor.layoutZone(zoneId))
+
+      if (progress < 1) {
+        this.changePeekFrame = requestAnimationFrame(step)
+        return
+      }
+
+      editor.changeViewZones((accessor) => accessor.removeZone(zoneId))
+      this.resetChangePeekState()
+    }
+
+    this.changePeekFrame = requestAnimationFrame(step)
+  }
+
+  private cancelChangePeekFrame(): void {
+    if (this.changePeekFrame !== null) {
+      cancelAnimationFrame(this.changePeekFrame)
+      this.changePeekFrame = null
+    }
+  }
+
+  private resetChangePeekState(): void {
+    this.changePeekZoneId = null
+    this.changePeekZone = null
+    this.changePeekNode = null
+    this.changePeekLine = null
+    this.changePeekClosing = false
   }
 
   private updateSqlChangeDecorations(currentSql?: string): void {
@@ -840,7 +900,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     if (!this.canUseVersionMessage) {
       this.sqlChangeDecorationIds = editor.deltaDecorations(this.sqlChangeDecorationIds, [])
       this.sqlChangeHunks = []
-      this.closeChangePeek()
+      this.closeChangePeek(false)
       return
     }
 
@@ -854,7 +914,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     if (normalizedSavedSql === normalizedEditorSql) {
       this.sqlChangeDecorationIds = editor.deltaDecorations(this.sqlChangeDecorationIds, [])
       this.sqlChangeHunks = []
-      this.closeChangePeek()
+      this.closeChangePeek(false)
       return
     }
 
