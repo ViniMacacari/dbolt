@@ -47,6 +47,7 @@ interface SqlNavigationLink {
 const CHANGE_PEEK_PADDING = 10
 const CHANGE_PEEK_GUTTER_OFFSET = 6
 const CHANGE_PEEK_CLOSE_MS = 170
+const CHANGE_PEEK_OPEN_MS = 190
 
 @Component({
   selector: 'app-code-editor',
@@ -761,7 +762,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     const container = document.createElement('div')
     container.className = `dbolt-change-peek dbolt-change-peek-${hunk.type}`
-    container.style.height = `${totalHeight}px`
+    container.style.height = '100%'
 
     const header = document.createElement('div')
     header.className = 'dbolt-change-peek-header'
@@ -814,7 +815,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       afterLineNumber: hunk.type === 'deleted'
         ? Math.max(0, hunk.currentStartLine - 1)
         : hunk.currentEndLine,
-      heightInPx: totalHeight,
+      heightInPx: 0,
       domNode: container
     }
 
@@ -826,6 +827,46 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.changePeekNode = container
     this.changePeekLine = hunk.currentStartLine
     this.changePeekClosing = false
+
+    this.animateChangePeekHeight(0, totalHeight, CHANGE_PEEK_OPEN_MS)
+  }
+
+  private animateChangePeekHeight(
+    from: number,
+    to: number,
+    duration: number,
+    onDone?: () => void
+  ): void {
+    const editor = this.editor
+    const zone = this.changePeekZone
+    const zoneId = this.changePeekZoneId
+
+    this.cancelChangePeekFrame()
+
+    if (!editor || !zone || !zoneId) {
+      onDone?.()
+      return
+    }
+
+    const startedAt = performance.now()
+
+    const step = (now: number): void => {
+      const progress = Math.min(1, (now - startedAt) / duration)
+      const eased = 1 - Math.pow(1 - progress, 3)
+
+      zone.heightInPx = Math.max(0, Math.round(from + ((to - from) * eased)))
+      editor.changeViewZones((accessor) => accessor.layoutZone(zoneId))
+
+      if (progress < 1) {
+        this.changePeekFrame = requestAnimationFrame(step)
+        return
+      }
+
+      this.changePeekFrame = null
+      onDone?.()
+    }
+
+    this.changePeekFrame = requestAnimationFrame(step)
   }
 
   private closeChangePeek(animate: boolean = true): void {
@@ -853,26 +894,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.changePeekLine = null
     node.classList.add('closing')
 
-    const startHeight = zone.heightInPx
-    const startedAt = performance.now()
-
-    const step = (now: number): void => {
-      const progress = Math.min(1, (now - startedAt) / CHANGE_PEEK_CLOSE_MS)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      zone.heightInPx = Math.max(0, Math.round(startHeight * (1 - eased)))
-
-      editor.changeViewZones((accessor) => accessor.layoutZone(zoneId))
-
-      if (progress < 1) {
-        this.changePeekFrame = requestAnimationFrame(step)
-        return
-      }
-
+    this.animateChangePeekHeight(zone.heightInPx, 0, CHANGE_PEEK_CLOSE_MS, () => {
       editor.changeViewZones((accessor) => accessor.removeZone(zoneId))
       this.resetChangePeekState()
-    }
-
-    this.changePeekFrame = requestAnimationFrame(step)
+    })
   }
 
   private cancelChangePeekFrame(): void {

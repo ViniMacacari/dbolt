@@ -240,12 +240,12 @@
 }
 
 @keyframes dbolt-change-peek-in {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: none; }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 :host ::ng-deep .dbolt-change-peek {
-    animation: dbolt-change-peek-in .16s ease-out both;
+    animation: dbolt-change-peek-in .19s ease-out both;
     background: var(--dbolt-1b1b1b);
     border-radius: 8px;
     box-sizing: border-box;
