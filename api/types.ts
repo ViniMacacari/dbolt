@@ -93,6 +93,7 @@ export interface SavedQueryInput {
   dbSchema?: SavedQueryDbSchema;
   folderPath?: string;
   versioningEnabled?: boolean;
+  versionMessage?: string;
 }
 
 export interface SavedQuery extends SavedQueryInput {
@@ -107,6 +108,7 @@ export interface SavedQueryVersion {
   changedAt: string;
   name: string;
   sql: string;
+  message?: string;
   folderPath?: string;
   dbSchema?: SavedQueryDbSchema;
 }
@@ -344,6 +346,7 @@ export function isSavedQueryVersion(value: unknown): value is SavedQueryVersion 
     typeof value['name'] === 'string' &&
     typeof value['sql'] === 'string' &&
     (value['folderPath'] === undefined || typeof value['folderPath'] === 'string') &&
+    (value['message'] === undefined || typeof value['message'] === 'string') &&
     (value['dbSchema'] === undefined || isSavedQueryDbSchema(value['dbSchema']))
   );
 }

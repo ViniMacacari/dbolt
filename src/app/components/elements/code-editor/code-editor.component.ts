@@ -18,7 +18,9 @@ import { AppLanguageService } from '../../../services/language/app-language.serv
 import { AppPlatformService } from '../../../services/platform/app-platform.service'
 import { AppThemeService } from '../../../services/theme/app-theme.service'
 import { AppThemePaletteService } from '../../../services/theme/app-theme-palette.service'
-import { QueryVersionDiffService } from '../../../services/query-version-diff/query-version-diff.service'
+import { QueryVersionDiffService, QueryChangeHunk } from '../../../services/query-version-diff/query-version-diff.service'
+import { SaveVersionMessageComponent } from '../../modal/save-version-message/save-version-message.component'
+import { QueryHistoryComponent } from '../../modal/query-history/query-history.component'
 import { selectSqlStatementAtCursor } from '../../../utils/sql-statement-selection'
 import {
   normalizeTableReferenceForMetadata,
@@ -43,12 +45,16 @@ interface SqlNavigationLink {
   range: monaco.IRange
 }
 
+const CHANGE_PEEK_PADDING = 8
+const CHANGE_PEEK_CLOSE_MS = 170
+const CHANGE_PEEK_OPEN_MS = 190
+
 @Component({
   selector: 'app-code-editor',
   standalone: true,
   templateUrl: './code-editor.component.html',
   styleUrls: ['./code-editor.component.scss'],
-  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveQueryComponent],
+  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveQueryComponent, SaveVersionMessageComponent, QueryHistoryComponent],
 })
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChanges {
   @Input() sqlContent: string = ''
@@ -57,6 +63,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   @Output() savedQuery = new EventEmitter<any>()
   @Output() objectInfoRequested = new EventEmitter<any>()
   @Output() objectSummaryRequested = new EventEmitter<any>()
+  @Output() newFileRequested = new EventEmitter<{ sql: string, name?: string, context?: any }>()
   @Input() widthTable: number = 300
   @Input() tabInfo: any
   @Input() active: boolean = false
@@ -80,6 +87,21 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   private editorMouseDisposables: monaco.IDisposable[] = []
   private sqlNavigationDecorationIds: string[] = []
   private sqlChangeDecorationIds: string[] = []
+  private sqlChangeHunks: QueryChangeHunk[] = []
+  private changePeekZoneId: string | null = null
+  private changePeekLine: number | null = null
+  private changePeekZone: monaco.editor.IViewZone | null = null
+  private changePeekNode: HTMLElement | null = null
+  private changePeekFrame: number | null = null
+  private changePeekClosing: boolean = false
+  isVersionMessageOpen: boolean = false
+  isHistoryOpen = false
+  historySql = ''
+
+  openHistory(): void {
+    this.historySql = this.editor?.getValue() ?? this.sqlContent
+    this.isHistoryOpen = true
+  }
   private sqlChangeDecorationTimer: ReturnType<typeof setTimeout> | null = null
   private sqlNavigationModifierPressed = false
   private sqlSummaryModifierPressed = false
@@ -158,6 +180,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   ) {
     this.settingsSubscription = this.appSettings.settingsChanges$.subscribe((settings) => {
       this.applySqlHighlightTheme(settings.sqlHighlightColors)
+      this.updateSqlChangeDecorations()
     })
     this.languageSubscription = this.language.languageChanges$.subscribe(() => {
       this.registerEditorContextMenuActions()
@@ -213,6 +236,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.settingsSubscription?.unsubscribe()
     this.themeSubscription?.unsubscribe()
     this.languageSubscription?.unsubscribe()
+    this.closeChangePeek(false)
     this.unregisterKeyboardShortcuts()
     this.disposeEditorContextMenuActions()
     this.disposeEditorMouseActions()
@@ -554,6 +578,10 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     const mouseDownDisposable = this.editor?.onMouseDown((event) => {
       void this.handleEditorMouseDown(event)
     })
+    const peekLayoutDisposable = this.editor?.onDidLayoutChange(() => this.layoutChangePeek())
+    const peekScrollDisposable = this.editor?.onDidScrollChange(() => this.layoutChangePeek())
+    if (peekLayoutDisposable) this.editorMouseDisposables.push(peekLayoutDisposable)
+    if (peekScrollDisposable) this.editorMouseDisposables.push(peekScrollDisposable)
     const mouseMoveDisposable = this.editor?.onMouseMove((event) => {
       this.lastMousePosition = event.target.position || null
       this.sqlNavigationModifierPressed = event.event.ctrlKey
@@ -609,6 +637,16 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
   private async handleEditorMouseDown(event: monaco.editor.IEditorMouseEvent): Promise<void> {
     if (!this.active || !this.editor || !event.target.position) return
+
+    if (
+      this.canUseVersionMessage &&
+      event.target.type === monaco.editor.MouseTargetType.GUTTER_LINE_DECORATIONS
+    ) {
+      event.event.preventDefault()
+      this.toggleChangePeek(event.target.position.lineNumber)
+      return
+    }
+
     const summaryRequested = this.sqlSummaryModifierPressed
     const detailRequested = event.event.ctrlKey || event.event.metaKey
     if (!summaryRequested && !detailRequested) return
@@ -685,12 +723,290 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     editor.pushUndoStop()
   }
 
+  get canUseVersionMessage(): boolean {
+    return Boolean(this.tabInfo?.persisted) && Boolean(this.tabInfo?.versioningEnabled)
+  }
+
+  openVersionMessage(): void {
+    if (!this.canUseVersionMessage) {
+      void this.saveQuery()
+      return
+    }
+
+    this.isVersionMessageOpen = true
+  }
+
+  closeVersionMessage(): void {
+    this.isVersionMessageOpen = false
+  }
+
+  async confirmVersionMessage(message: string): Promise<void> {
+    this.isVersionMessageOpen = false
+    await this.saveQuery(message)
+  }
+
+  private toggleChangePeek(lineNumber: number): void {
+    const hunk = this.queryVersionDiff.findHunkForLine(this.sqlChangeHunks, lineNumber)
+
+    if (!hunk) {
+      this.closeChangePeek(false)
+      return
+    }
+
+    if (this.changePeekLine === hunk.currentStartLine) {
+      this.closeChangePeek()
+      return
+    }
+
+    this.closeChangePeek(false)
+    this.openChangePeek(hunk)
+  }
+
+  private openChangePeek(hunk: QueryChangeHunk): void {
+    const editor = this.editor
+    if (!editor) return
+
+    const lineHeight = editor.getOption(monaco.editor.EditorOption.lineHeight)
+    const fontInfo = editor.getOption(monaco.editor.EditorOption.fontInfo)
+    const bodyLineCount = Math.max(1, hunk.originalLines.length + hunk.currentLines.length)
+    const headerHeight = Math.max(30, Math.round(lineHeight * 1.25))
+    const totalHeight = headerHeight + (bodyLineCount * lineHeight) + CHANGE_PEEK_PADDING + 2
+
+    // Monaco overwrites width, height and display on the zone node. Keep our
+    // flex layout inside a separate child that Monaco never mutates.
+    const zoneNode = document.createElement('div')
+    zoneNode.className = 'dbolt-change-peek-zone'
+    const container = document.createElement('div')
+    container.className = `dbolt-change-peek dbolt-change-peek-${hunk.type}`
+    container.style.height = `calc(100% - ${CHANGE_PEEK_PADDING}px)`
+    zoneNode.appendChild(container)
+
+    const header = document.createElement('div')
+    header.className = 'dbolt-change-peek-header'
+    header.style.height = `${headerHeight}px`
+
+    const title = document.createElement('span')
+    title.className = 'dbolt-change-peek-title'
+    title.textContent = this.t(`editor.changePeek.${hunk.type}`)
+    header.appendChild(title)
+
+    const stats = document.createElement('div')
+    stats.className = 'dbolt-change-peek-stats'
+
+    if (hunk.originalLines.length > 0) {
+      const removed = document.createElement('span')
+      removed.className = 'removed'
+      removed.textContent = `−${hunk.originalLines.length}`
+      stats.appendChild(removed)
+    }
+
+    if (hunk.currentLines.length > 0) {
+      const added = document.createElement('span')
+      added.className = 'added'
+      added.textContent = `+${hunk.currentLines.length}`
+      stats.appendChild(added)
+    }
+
+    header.appendChild(stats)
+
+    const close = document.createElement('button')
+    close.type = 'button'
+    close.className = 'dbolt-change-peek-close'
+    close.setAttribute('aria-label', this.t('generic.close'))
+    close.title = this.t('editor.changePeekClose')
+    close.textContent = '×'
+    close.addEventListener('mousedown', (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      this.closeChangePeek()
+    })
+    close.addEventListener('click', (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+
+      if (!this.changePeekClosing) {
+        this.closeChangePeek()
+      }
+    })
+    header.appendChild(close)
+
+    container.appendChild(header)
+
+    const body = document.createElement('div')
+    body.className = 'dbolt-change-peek-body'
+    body.style.fontFamily = fontInfo.fontFamily
+    body.style.fontSize = `${fontInfo.fontSize}px`
+    body.style.height = `${bodyLineCount * lineHeight}px`
+
+    const appendDiffLine = (
+      text: string,
+      type: 'removed' | 'added',
+      oldLineNumber: number | null,
+      newLineNumber: number | null
+    ): void => {
+      const row = document.createElement('div')
+      row.className = `dbolt-change-peek-line dbolt-change-peek-line-${type}`
+      row.style.height = `${lineHeight}px`
+      row.style.lineHeight = `${lineHeight}px`
+
+      const oldNumber = document.createElement('span')
+      oldNumber.className = 'dbolt-change-peek-line-number'
+      oldNumber.textContent = oldLineNumber ? String(oldLineNumber) : ''
+      row.appendChild(oldNumber)
+
+      const newNumber = document.createElement('span')
+      newNumber.className = 'dbolt-change-peek-line-number'
+      newNumber.textContent = newLineNumber ? String(newLineNumber) : ''
+      row.appendChild(newNumber)
+
+      const marker = document.createElement('span')
+      marker.className = 'dbolt-change-peek-line-marker'
+      marker.textContent = type === 'removed' ? '−' : '+'
+      row.appendChild(marker)
+
+      const code = document.createElement('span')
+      code.className = 'dbolt-change-peek-code'
+      code.textContent = text.length > 0 ? text : ' '
+      row.appendChild(code)
+
+      body.appendChild(row)
+    }
+
+    hunk.originalLines.forEach((line, index) => {
+      appendDiffLine(line, 'removed', (hunk.originalStartLine || 1) + index, null)
+    })
+
+    hunk.currentLines.forEach((line, index) => {
+      appendDiffLine(line, 'added', null, hunk.currentStartLine + index)
+    })
+
+    container.appendChild(body)
+
+    const zone: monaco.editor.IViewZone = {
+      afterLineNumber: hunk.type === 'deleted'
+        ? Math.max(0, hunk.currentStartLine - 1)
+        : hunk.currentEndLine,
+      heightInPx: 0,
+      domNode: zoneNode,
+      suppressMouseDown: false
+    }
+
+    editor.changeViewZones((accessor) => {
+      this.changePeekZoneId = accessor.addZone(zone)
+    })
+
+    this.changePeekZone = zone
+    this.changePeekNode = container
+    this.changePeekLine = hunk.currentStartLine
+    this.changePeekClosing = false
+    this.layoutChangePeek()
+
+    this.animateChangePeekHeight(0, totalHeight, CHANGE_PEEK_OPEN_MS)
+  }
+
+  private layoutChangePeek(): void {
+    if (!this.editor || !this.changePeekNode) return
+    const layout = this.editor.getLayoutInfo()
+    this.changePeekNode.style.width = `${Math.max(0, layout.width - layout.contentLeft - layout.verticalScrollbarWidth - 12)}px`
+    this.changePeekNode.style.marginLeft = `${this.editor.getScrollLeft()}px`
+  }
+
+  private animateChangePeekHeight(
+    from: number,
+    to: number,
+    duration: number,
+    onDone?: () => void
+  ): void {
+    const editor = this.editor
+    const zone = this.changePeekZone
+    const zoneId = this.changePeekZoneId
+
+    this.cancelChangePeekFrame()
+
+    if (!editor || !zone || !zoneId) {
+      onDone?.()
+      return
+    }
+
+    const startedAt = performance.now()
+
+    const step = (now: number): void => {
+      const progress = Math.min(1, (now - startedAt) / duration)
+      const eased = 1 - Math.pow(1 - progress, 3)
+
+      zone.heightInPx = Math.max(0, Math.round(from + ((to - from) * eased)))
+      editor.changeViewZones((accessor) => accessor.layoutZone(zoneId))
+
+      if (progress < 1) {
+        this.changePeekFrame = requestAnimationFrame(step)
+        return
+      }
+
+      this.changePeekFrame = null
+      onDone?.()
+    }
+
+    this.changePeekFrame = requestAnimationFrame(step)
+  }
+
+  private closeChangePeek(animate: boolean = true): void {
+    if (animate && this.changePeekClosing) return
+    const editor = this.editor
+    const zoneId = this.changePeekZoneId
+    const zone = this.changePeekZone
+    const node = this.changePeekNode
+
+    this.cancelChangePeekFrame()
+
+    if (!editor || !zoneId) {
+      this.resetChangePeekState()
+      return
+    }
+
+    if (!animate || !zone || !node || typeof zone.heightInPx !== 'number') {
+      editor.changeViewZones((accessor) => accessor.removeZone(zoneId))
+      this.resetChangePeekState()
+      return
+    }
+
+    this.changePeekClosing = true
+    this.changePeekLine = null
+    node.classList.add('closing')
+
+    this.animateChangePeekHeight(zone.heightInPx, 0, CHANGE_PEEK_CLOSE_MS, () => {
+      editor.changeViewZones((accessor) => accessor.removeZone(zoneId))
+      this.resetChangePeekState()
+    })
+  }
+
+  private cancelChangePeekFrame(): void {
+    if (this.changePeekFrame !== null) {
+      cancelAnimationFrame(this.changePeekFrame)
+      this.changePeekFrame = null
+    }
+  }
+
+  private resetChangePeekState(): void {
+    this.changePeekZoneId = null
+    this.changePeekZone = null
+    this.changePeekNode = null
+    this.changePeekLine = null
+    this.changePeekClosing = false
+  }
+
   private updateSqlChangeDecorations(currentSql?: string): void {
     this.clearSqlChangeDecorationTimer()
 
     const editor = this.editor
     const model = editor?.getModel()
     if (!editor || !model) return
+
+    if (!this.canUseVersionMessage || !this.appSettings.shouldShowSqlChangeHighlights()) {
+      this.sqlChangeDecorationIds = editor.deltaDecorations(this.sqlChangeDecorationIds, [])
+      this.sqlChangeHunks = []
+      this.closeChangePeek(false)
+      return
+    }
 
     const savedSql = typeof this.tabInfo?.originalContent === 'string'
       ? this.tabInfo.originalContent
@@ -701,8 +1017,12 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
 
     if (normalizedSavedSql === normalizedEditorSql) {
       this.sqlChangeDecorationIds = editor.deltaDecorations(this.sqlChangeDecorationIds, [])
+      this.sqlChangeHunks = []
+      this.closeChangePeek(false)
       return
     }
+
+    this.sqlChangeHunks = this.queryVersionDiff.buildChangeHunks(normalizedSavedSql, normalizedEditorSql)
 
     const decorations = this.queryVersionDiff
       .buildChangeMarkers(normalizedSavedSql, normalizedEditorSql)
@@ -710,7 +1030,8 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         range: new monaco.Range(marker.lineNumber, 1, marker.lineNumber, 1),
         options: {
           isWholeLine: true,
-          linesDecorationsClassName: `dbolt-sql-change-${marker.type}`
+          linesDecorationsClassName: `dbolt-sql-change-${marker.type}`,
+          className: marker.type === 'deleted' ? undefined : `dbolt-sql-change-line-${marker.type}`
         }
       }))
     this.sqlChangeDecorationIds = editor.deltaDecorations(this.sqlChangeDecorationIds, decorations)
@@ -1134,8 +1455,26 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     return parts.pop() || value
   }
 
+  private registerChangePeekEscape(): void {
+    this.shortcutDisposers.push(
+      this.keyboardShortcuts.register({
+        key: 'Escape',
+        priority: 99,
+        stopPropagation: true,
+        isEnabled: () => this.active && this.changePeekZoneId !== null,
+        isInContext: (event) => this.isEditorShortcutContext(event),
+        handler: () => {
+          this.closeChangePeek()
+          return true
+        }
+      })
+    )
+  }
+
   private registerKeyboardShortcuts(): void {
     this.unregisterKeyboardShortcuts()
+
+    this.registerChangePeekEscape()
 
     this.shortcutDisposers.push(
       this.keyboardShortcuts.register({
@@ -1159,6 +1498,19 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
         isInContext: (event) => this.isEditorShortcutContext(event),
         handler: () => {
           void this.saveQuery()
+          return true
+        }
+      }),
+      this.keyboardShortcuts.register({
+        key: 's',
+        ctrlOrMeta: true,
+        shiftKey: true,
+        priority: 95,
+        stopPropagation: true,
+        isEnabled: () => this.active && !!this.editor,
+        isInContext: (event) => this.isEditorShortcutContext(event),
+        handler: () => {
+          this.openVersionMessage()
           return true
         }
       }),
@@ -1209,7 +1561,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   private isEditorShortcutContext(event: KeyboardEvent): boolean {
-    if (this.isSaveAsOpen) return false
+    if (this.isSaveAsOpen || this.isHistoryOpen) return false
 
     const target = event.target as HTMLElement | null
 
@@ -1399,7 +1751,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.savedQuery.emit(savedQuery)
   }
 
-  async saveQuery(): Promise<void> {
+  async saveQuery(versionMessage?: string): Promise<void> {
     if (!this.tabInfo?.persisted) {
       const recoveredPersistedQuery = await this.recoverLinuxPersistedQueryIdentity()
       if (!recoveredPersistedQuery) {
@@ -1411,7 +1763,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     try {
       const dbSchemas = this.tabInfo?.dbInfo || await this.dbSchemas.getSelectedSchemaDB()
       const sql = this.editor?.getValue() || ''
-      const payload = this.buildSavedQueryPayload(sql, dbSchemas)
+      const payload = this.buildSavedQueryPayload(sql, dbSchemas, versionMessage)
 
       const updatedQuery = await this.querySave.updateQuery(Number(this.tabInfo.id), payload)
 
@@ -1649,14 +2001,15 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     return error?.error || error?.message || this.t('editor.executeError')
   }
 
-  private buildSavedQueryPayload(sql: string, dbSchemas: any): SavedQueryInput {
+  private buildSavedQueryPayload(sql: string, dbSchemas: any, versionMessage?: string): SavedQueryInput {
     return {
       name: this.tabInfo?.name || this.t('editor.untitledQuery'),
       type: 'sql',
       sql,
       dbSchema: this.connectionContext.withoutRuntimeFields(dbSchemas),
       folderPath: this.tabInfo?.folderPath || '',
-      versioningEnabled: Boolean(this.tabInfo?.versioningEnabled)
+      versioningEnabled: Boolean(this.tabInfo?.versioningEnabled),
+      versionMessage: this.canUseVersionMessage ? versionMessage : undefined
     }
   }
 

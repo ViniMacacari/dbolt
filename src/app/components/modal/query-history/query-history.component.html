@@ -1,0 +1,61 @@
+<div class="history-backdrop" [class.closing]="closing" (click)="close()" (keydown)="onKeydown($event)">
+    <section #dialog class="history-modal" role="dialog" aria-modal="true" tabindex="-1"
+        [attr.aria-label]="t('queryHistory.title')" (click)="$event.stopPropagation()">
+        <header>
+            <div class="heading">
+                <img src="icons/history.png" width="18" height="18" alt="">
+                <div><h2>{{ t('queryHistory.title') }}</h2><small>{{ tabInfo?.name }}</small></div>
+            </div>
+            <div class="actions">
+                <button type="button" (click)="openBlank()">{{ t('queryHistory.newFile') }}</button>
+                <button type="button" class="close-button" (click)="close()" [attr.aria-label]="t('generic.close')">
+                    <img src="icons/close.png" width="14" height="14" alt="">
+                </button>
+            </div>
+        </header>
+        <div class="history-content" *ngIf="!loading && !error && versions.length; else status">
+            <nav [attr.aria-label]="t('queryHistory.title')">
+                <small class="list-label">{{ t('loadQuery.versions') }} · {{ versions.length }}</small>
+                <button type="button" class="version" *ngFor="let version of versions" [class.selected]="selected === version"
+                    [attr.aria-pressed]="selected === version" (click)="select(version)">
+                    <strong>{{ t('queryLibrary.version', { version: version.id }) }}</strong>
+                    <small>{{ formatDate(version.changedAt) }}</small>
+                    <span *ngIf="version.message">{{ version.message }}</span>
+                </button>
+            </nav>
+            <main>
+                <div class="diff-heading">
+                    <strong>{{ t('queryHistory.comparison', { version: selected?.id || 0 }) }}</strong>
+                    <small>{{ t('queryHistory.comparisonHint') }}</small>
+                    <div class="counts"><span class="removed">−{{ diff.removed }}</span><span class="added">+{{ diff.added }}</span>
+                        <small *ngIf="!diff.added && !diff.removed">{{ t('queryHistory.identical') }}</small></div>
+                </div>
+                <div class="diff-table" tabindex="0" [attr.aria-label]="t('queryHistory.comparisonHint')">
+                    <div class="diff-line" *ngFor="let line of diff.lines" [class.added]="line.type === 'added'" [class.removed]="line.type === 'removed'">
+                        <span class="line-number">{{ line.oldLine || '' }}</span>
+                        <span class="line-number">{{ line.newLine || '' }}</span>
+                        <span>{{ line.type === 'added' ? '+' : line.type === 'removed' ? '−' : '' }}</span>
+                        <code>{{ line.text || ' ' }}</code>
+                    </div>
+                </div>
+            </main>
+        </div>
+        <ng-template #status>
+            <div class="status" role="status">
+                <p *ngIf="loading">{{ t('queryHistory.loading') }}</p>
+                <ng-container *ngIf="error"><p>{{ t('loadQuery.historyLoadFailed') }}</p>
+                    <button type="button" (click)="load()">{{ t('queryHistory.retry') }}</button></ng-container>
+                <ng-container *ngIf="!loading && !error">
+                    <img src="icons/history.png" width="28" height="28" alt="">
+                    <h3>{{ t('queryHistory.empty') }}</h3>
+                    <p>{{ t(tabInfo?.persisted ? 'queryHistory.emptyHint' : 'queryHistory.unsavedHint') }}</p>
+                </ng-container>
+            </div>
+        </ng-template>
+        <footer><small>{{ t('queryHistory.safeCopy') }}</small>
+            <button type="button" class="btn-page" (click)="openCopy()" [disabled]="loading || error">
+                {{ t(selected ? 'queryHistory.openVersion' : 'queryHistory.openCurrent') }}
+            </button>
+        </footer>
+    </section>
+</div>

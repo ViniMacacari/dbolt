@@ -43,6 +43,7 @@ export interface AppSettings {
   sqlFormatterCommaStyle: SqlFormatterCommaStyle
   sqlFormatterBlankLineBetweenStatements: boolean
   sqlFormatterIndentCreateBody: boolean
+  sqlChangeHighlightsEnabled: boolean
   sqlHighlightMode: SqlHighlightMode
   sqlHighlightColors: SqlHighlightColors
 }
@@ -67,6 +68,7 @@ export class AppSettingsService {
     sqlFormatterCommaStyle: 'trailing',
     sqlFormatterBlankLineBetweenStatements: true,
     sqlFormatterIndentCreateBody: true,
+    sqlChangeHighlightsEnabled: true,
     sqlHighlightMode: 'dbolt-dark',
     sqlHighlightColors: this.getSqlHighlightPresetColors('dbolt-dark')
   }
@@ -243,6 +245,10 @@ export class AppSettingsService {
     return this.getSettings().sqlFormatterIndentCreateBody
   }
 
+  shouldShowSqlChangeHighlights(): boolean {
+    return this.getSettings().sqlChangeHighlightsEnabled
+  }
+
   getSqlHighlightColors(): SqlHighlightColors {
     return this.getSettings().sqlHighlightColors
   }
@@ -385,6 +391,17 @@ export class AppSettingsService {
     return settings
   }
 
+  setSqlChangeHighlightsEnabled(value: boolean): AppSettings {
+    const settings = {
+      ...this.getSettings(),
+      sqlChangeHighlightsEnabled: Boolean(value)
+    }
+
+    this.saveSettings(settings)
+
+    return settings
+  }
+
   setSqlHighlightMode(value: unknown): AppSettings {
     const sqlHighlightMode = this.normalizeSqlHighlightMode(value)
     const currentSettings = this.getSettings()
@@ -514,6 +531,7 @@ export class AppSettingsService {
       sqlFormatterCommaStyle: this.normalizeSqlFormatterCommaStyle(settings?.sqlFormatterCommaStyle),
       sqlFormatterBlankLineBetweenStatements: settings?.sqlFormatterBlankLineBetweenStatements ?? this.fallbackSettings.sqlFormatterBlankLineBetweenStatements,
       sqlFormatterIndentCreateBody: settings?.sqlFormatterIndentCreateBody ?? this.fallbackSettings.sqlFormatterIndentCreateBody,
+      sqlChangeHighlightsEnabled: settings?.sqlChangeHighlightsEnabled ?? this.fallbackSettings.sqlChangeHighlightsEnabled,
       sqlHighlightMode,
       sqlHighlightColors
     }

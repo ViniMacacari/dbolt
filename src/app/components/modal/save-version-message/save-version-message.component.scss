@@ -1,0 +1,157 @@
+@keyframes version-message-backdrop-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes version-message-backdrop-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes version-message-modal-in {
+    from { opacity: 0; transform: translateY(12px) scale(.985); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes version-message-modal-out {
+    from { opacity: 1; transform: none; }
+    to { opacity: 0; transform: translateY(16px) scale(.97); }
+}
+
+.version-message-backdrop {
+    align-items: center;
+    animation: version-message-backdrop-in .16s ease;
+    background: rgba(0, 0, 0, .62);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    padding: 26px;
+    position: fixed;
+    z-index: 12500;
+}
+
+.version-message-backdrop.closing {
+    animation: version-message-backdrop-out .18s ease forwards;
+    pointer-events: none;
+}
+
+.version-message-backdrop.closing .version-message-modal {
+    animation: version-message-modal-out .18s cubic-bezier(.4, 0, .2, 1) forwards;
+}
+
+.version-message-modal {
+    animation: version-message-modal-in .2s cubic-bezier(.2, .8, .2, 1);
+    background: var(--dbolt-1b1b1b);
+    border: 1px solid var(--dbolt-353535);
+    border-radius: 16px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, .52);
+    color: var(--dbolt-f2f2f2);
+    display: flex;
+    flex-direction: column;
+    font-family: 'Nunito';
+    max-width: 460px;
+    width: 100%;
+}
+
+.version-message-header {
+    align-items: flex-start;
+    border-bottom: 1px solid var(--dbolt-302d2d);
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    padding: 15px 17px 12px;
+
+    p {
+        color: var(--dbolt-8f8f8f);
+        font-size: .66em;
+        font-weight: 800;
+        letter-spacing: .06em;
+        margin: 0;
+        text-transform: uppercase;
+    }
+
+    h2 {
+        font-size: 1.02em;
+        font-weight: 800;
+        margin: 3px 0 0;
+    }
+
+    small {
+        color: var(--dbolt-d8e9fb);
+        display: block;
+        font-size: .72em;
+        font-weight: 700;
+        margin-top: 2px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.version-message-close {
+    background: transparent;
+    border: 1px solid var(--dbolt-3b3b3b);
+    border-radius: 9px;
+    cursor: pointer;
+    flex: 0 0 auto;
+    line-height: 1;
+    padding: 5px;
+
+    &:hover {
+        background: var(--dbolt-292727);
+    }
+}
+
+.version-message-body {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 15px 17px;
+
+    label {
+        font-size: .8em;
+        font-weight: 700;
+    }
+
+    textarea {
+        font-family: 'Nunito';
+        font-size: .84em;
+        resize: none;
+        width: 100%;
+    }
+}
+
+.version-message-hint {
+    color: var(--dbolt-8f8f8f);
+    font-size: .72em;
+    line-height: 1.4;
+}
+
+.version-message-footer {
+    border-top: 1px solid var(--dbolt-302d2d);
+    display: flex;
+    gap: 9px;
+    justify-content: flex-end;
+    padding: 12px 17px 14px;
+
+    button {
+        cursor: pointer;
+        font-family: 'Nunito';
+        font-size: .8em;
+        font-weight: 800;
+        min-height: 30px;
+        padding: 0 14px;
+    }
+
+    button:disabled {
+        cursor: default;
+        opacity: .45;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .version-message-backdrop,
+    .version-message-modal {
+        animation: none;
+    }
+}

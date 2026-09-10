@@ -49,11 +49,13 @@ describe('SettingsComponent', () => {
       'getSqlFormatterCommaStyle',
       'shouldAddBlankLineBetweenSqlStatements',
       'shouldIndentSqlCreateBody',
+      'shouldShowSqlChangeHighlights',
       'getSqlHighlightMode',
       'getSqlHighlightColors',
       'getAppLanguage',
       'setDefaultQueryRows',
-      'setTableAutocompleteEnabled'
+      'setTableAutocompleteEnabled',
+      'setSqlChangeHighlightsEnabled'
     ])
     appSettings.getDefaultQueryRows.and.returnValue(50)
     appSettings.getConnectionExpirationMinutes.and.returnValue(30)
@@ -67,11 +69,13 @@ describe('SettingsComponent', () => {
     appSettings.getSqlFormatterCommaStyle.and.returnValue('trailing')
     appSettings.shouldAddBlankLineBetweenSqlStatements.and.returnValue(true)
     appSettings.shouldIndentSqlCreateBody.and.returnValue(false)
+    appSettings.shouldShowSqlChangeHighlights.and.returnValue(true)
     appSettings.getSqlHighlightMode.and.returnValue('dbolt-dark')
     appSettings.getSqlHighlightColors.and.returnValue({})
     appSettings.getAppLanguage.and.returnValue('pt-br')
     appSettings.setDefaultQueryRows.and.callFake((value: number) => ({ defaultQueryRows: value }))
     appSettings.setTableAutocompleteEnabled.and.callFake((value: boolean) => ({ tableAutocompleteEnabled: value }))
+    appSettings.setSqlChangeHighlightsEnabled.and.callFake((value: boolean) => ({ sqlChangeHighlightsEnabled: value }))
     const language = {
       languageOptions: [],
       translate: (key: string) => key
@@ -156,6 +160,14 @@ describe('SettingsComponent', () => {
     expect(appSettings.setTableAutocompleteEnabled).toHaveBeenCalledOnceWith(false)
     expect(component.tableAutocompleteEnabled).toBeFalse()
     expect(component.tableAutocompleteSavedMessage).toBe('generic.saved')
+  })
+
+  it('automatically saves the SQL change highlight preference', () => {
+    component.onSqlChangeHighlightsChange({ target: { checked: false } } as any)
+
+    expect(appSettings.setSqlChangeHighlightsEnabled).toHaveBeenCalledOnceWith(false)
+    expect(component.sqlChangeHighlightsEnabled).toBeFalse()
+    expect(component.sqlChangeHighlightsSavedMessage).toBe('generic.saved')
   })
 
   it('automatically persists AI changes through the backend after debouncing', async () => {

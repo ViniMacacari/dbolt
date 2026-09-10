@@ -163,4 +163,33 @@ describe('CodeEditorComponent', () => {
       .filter((decoration: any) => decoration.options.linesDecorationsClassName?.startsWith('dbolt-sql-change-'));
     expect(savedDecorations).toEqual([]);
   });
+
+  it('renders a unified change diff and closes it on mouse down', () => {
+    (component as any).openChangePeek({
+      type: 'modified',
+      originalStartLine: 2,
+      currentStartLine: 2,
+      currentEndLine: 2,
+      originalLines: ['  old_column'],
+      currentLines: ['  new_column']
+    });
+
+    const peek = (component as any).changePeekNode as HTMLElement;
+    const rows = peek.querySelectorAll('.dbolt-change-peek-line');
+    const closeButton = peek.querySelector('.dbolt-change-peek-close') as HTMLButtonElement;
+
+    expect(rows.length).toBe(2);
+    expect(rows[0].classList).toContain('dbolt-change-peek-line-removed');
+    expect(rows[0].textContent).toContain('−');
+    expect(rows[0].textContent).toContain('old_column');
+    expect(rows[1].classList).toContain('dbolt-change-peek-line-added');
+    expect(rows[1].textContent).toContain('+');
+    expect(rows[1].textContent).toContain('new_column');
+
+    const mouseDown = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    closeButton.dispatchEvent(mouseDown);
+
+    expect(mouseDown.defaultPrevented).toBeTrue();
+    expect((component as any).changePeekClosing).toBeTrue();
+  });
 });

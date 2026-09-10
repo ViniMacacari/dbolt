@@ -1,0 +1,31 @@
+<div class="version-message-backdrop" [class.closing]="closing" (click)="close()">
+    <div class="version-message-modal" role="dialog" aria-modal="true"
+        [attr.aria-label]="t('editor.versionMessageTitle')" (click)="$event.stopPropagation()">
+
+        <div class="version-message-header">
+            <div>
+                <p>{{ t('editor.versionMessageKicker') }}</p>
+                <h2>{{ t('editor.versionMessageTitle') }}</h2>
+                <small *ngIf="queryName">{{ queryName }}</small>
+            </div>
+            <button type="button" class="version-message-close" (click)="close()" [title]="t('generic.close')">
+                <img src="icons/close.png" height="14px" width="14px" [alt]="t('generic.close')">
+            </button>
+        </div>
+
+        <div class="version-message-body">
+            <label for="version-message-input">{{ t('editor.versionMessageLabel') }}</label>
+            <textarea id="version-message-input" class="input-page" [(ngModel)]="message" rows="3" maxlength="300"
+                [placeholder]="t('editor.versionMessagePlaceholder')" (keydown)="onKeydown($event)"
+                autofocus></textarea>
+            <small class="version-message-hint">{{ t('editor.versionMessageHint') }}</small>
+        </div>
+
+        <div class="version-message-footer">
+            <button type="button" class="btn-cancel" (click)="close()">{{ t('editor.versionMessageCancel') }}</button>
+            <button type="button" class="btn-page" [disabled]="!canConfirm" (click)="confirm()">
+                {{ t('editor.versionMessageConfirm') }}
+            </button>
+        </div>
+    </div>
+</div>

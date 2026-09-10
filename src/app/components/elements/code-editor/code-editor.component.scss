@@ -211,6 +211,14 @@
     width: 0;
 }
 
+:host ::ng-deep .monaco-editor .dbolt-sql-change-line-added {
+    background: rgba(46, 160, 67, .1);
+}
+
+:host ::ng-deep .monaco-editor .dbolt-sql-change-line-modified {
+    background: rgba(55, 148, 255, .09);
+}
+
 .monaco-editor .margin-view-overlays {
     background-color: transparent !important;
     border-right: none !important;
@@ -227,4 +235,219 @@
 
 .overflow-guard {
     width: 100% !important;
+}
+
+.editor-toolbar .btn.btn-inactive img {
+    opacity: .38;
+}
+
+:host ::ng-deep .monaco-editor .dbolt-sql-change-added,
+:host ::ng-deep .monaco-editor .dbolt-sql-change-modified,
+:host ::ng-deep .monaco-editor .dbolt-sql-change-deleted {
+    cursor: pointer;
+}
+
+@keyframes dbolt-change-peek-in {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+:host ::ng-deep .dbolt-change-peek-zone {
+    overflow: hidden;
+    z-index: 8;
+}
+
+:host ::ng-deep .dbolt-change-peek {
+    animation: dbolt-change-peek-in .19s ease-out both;
+    background: var(--dbolt-0b0b0b);
+    border: 1px solid var(--dbolt-2d2d2d);
+    border-radius: 10px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    margin: 4px 12px 4px 0;
+    overflow: hidden;
+    pointer-events: auto;
+    position: relative;
+    z-index: 8;
+}
+
+:host ::ng-deep .dbolt-change-peek-modified {
+    border-left: 3px solid #3794ff;
+}
+
+:host ::ng-deep .dbolt-change-peek-added {
+    border-left: 3px solid #2ea043;
+}
+
+:host ::ng-deep .dbolt-change-peek-deleted {
+    border-left: 3px solid #f14c4c;
+}
+
+:host ::ng-deep .dbolt-change-peek-header {
+    align-items: center;
+    background: var(--dbolt-131313);
+    border-bottom: 1px solid var(--dbolt-202020);
+    box-sizing: border-box;
+    display: flex;
+    flex: 0 0 auto;
+    gap: 10px;
+    padding: 0 7px 0 12px;
+}
+
+:host ::ng-deep .dbolt-change-peek-title {
+    color: var(--dbolt-e8eaed);
+    font-family: 'Nunito';
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 16px;
+    letter-spacing: .06em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+:host ::ng-deep .dbolt-change-peek-stats {
+    align-items: center;
+    display: flex;
+    gap: 5px;
+}
+
+:host ::ng-deep .dbolt-change-peek-stats span {
+    border-radius: 999px;
+    font-family: 'Nunito';
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 18px;
+    min-width: 24px;
+    padding: 0 6px;
+    text-align: center;
+}
+
+:host ::ng-deep .dbolt-change-peek-stats .removed {
+    background: rgba(241, 76, 76, .13);
+    color: var(--dbolt-f0a0a0);
+}
+
+:host ::ng-deep .dbolt-change-peek-stats .added {
+    background: rgba(46, 160, 67, .14);
+    color: var(--dbolt-9fe6b8);
+}
+
+:host ::ng-deep .dbolt-change-peek-close {
+    align-items: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    color: var(--dbolt-969696);
+    cursor: pointer;
+    display: flex;
+    flex: 0 0 auto;
+    font-family: 'Nunito';
+    font-size: 17px;
+    height: 24px;
+    justify-content: center;
+    line-height: 1;
+    margin-left: auto;
+    padding: 0;
+    position: relative;
+    width: 26px;
+    z-index: 10;
+}
+
+:host ::ng-deep .dbolt-change-peek-close:hover {
+    background: var(--dbolt-292727);
+    color: var(--dbolt-f2f2f2);
+}
+
+:host ::ng-deep .dbolt-change-peek-close:focus-visible {
+    border-color: var(--dbolt-739eca);
+    outline: none;
+}
+
+:host ::ng-deep .dbolt-change-peek-body {
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    width: 100%;
+}
+
+:host ::ng-deep .dbolt-change-peek-line {
+    display: grid;
+    grid-template-columns: 34px 34px 22px minmax(max-content, 1fr);
+    min-width: 0;
+    width: 100%;
+}
+
+:host ::ng-deep .dbolt-change-peek-line-removed {
+    background: rgba(160, 54, 54, .18);
+}
+
+:host ::ng-deep .dbolt-change-peek-line-added {
+    background: rgba(42, 130, 82, .18);
+}
+
+:host ::ng-deep .dbolt-change-peek-line + .dbolt-change-peek-line {
+    border-top: 1px solid rgba(255, 255, 255, .025);
+}
+
+:host ::ng-deep .dbolt-change-peek-line-number,
+:host ::ng-deep .dbolt-change-peek-line-marker {
+    color: var(--dbolt-777);
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 11px;
+    padding: 0 6px;
+    text-align: right;
+}
+
+:host ::ng-deep .dbolt-change-peek-line-number {
+    background: rgba(0, 0, 0, .09);
+    border-right: 1px solid rgba(255, 255, 255, .035);
+}
+
+:host ::ng-deep .dbolt-change-peek-line-marker {
+    font-size: 13px;
+    font-weight: 900;
+    padding: 0;
+    text-align: center;
+}
+
+:host ::ng-deep .dbolt-change-peek-line-removed .dbolt-change-peek-line-marker {
+    color: var(--dbolt-f0a0a0);
+}
+
+:host ::ng-deep .dbolt-change-peek-line-added .dbolt-change-peek-line-marker {
+    color: var(--dbolt-9fe6b8);
+}
+
+:host ::ng-deep .dbolt-change-peek-code {
+    color: var(--dbolt-e8eaed);
+    overflow: visible;
+    padding: 0 10px 0 4px;
+    user-select: text;
+    white-space: pre;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :host ::ng-deep .dbolt-change-peek {
+        animation: none;
+    }
+}
+
+@keyframes dbolt-change-peek-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+:host ::ng-deep .dbolt-change-peek.closing {
+    animation: dbolt-change-peek-out .17s ease-in forwards;
+    pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :host ::ng-deep .dbolt-change-peek.closing {
+        animation: none;
+    }
 }

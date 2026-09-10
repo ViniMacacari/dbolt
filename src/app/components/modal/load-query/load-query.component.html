@@ -101,6 +101,8 @@
                             <span>
                                 <strong>{{ versionLabel(version.id) }}</strong>
                                 <small>{{ formatDate(version.changedAt) }}</small>
+                                <small class="version-message" *ngIf="version.message"
+                                    [title]="version.message">{{ version.message }}</small>
                             </span>
                             <span class="version-actions">
                                 <button type="button" (click)="openVersionCopy(query, version, $event)">
