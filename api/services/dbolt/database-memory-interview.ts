@@ -20,6 +20,8 @@ const MAX_TABLES_PER_TURN = 8;
 const MAX_QUERIES_PER_TURN = 4;
 const MAX_PROPOSED_NOTES = 8;
 const MAX_QUESTIONS = 5;
+const MAX_FOUNDATION_NOTES = 2;
+const TURN_STATE_SEPARATOR = String.fromCharCode(10) + String.fromCharCode(10);
 const MAX_CONTEXT_MESSAGES = 8;
 const MAX_MESSAGE_CHARS = 2000;
 const MAX_INVESTIGATION_CHARS = 45000;
@@ -65,8 +67,7 @@ class DatabaseMemoryInterviewService {
       ? 'Brazilian Portuguese (pt-BR)'
       : 'English (en)';
     const savedNotes = await DatabaseMemory.get(scope).catch(() => null);
-    const firstTurn = (savedNotes?.notes.length || 0) === 0
-      && !(request.messages || []).some((message) => message?.role === 'user' && String(message.content || '').trim());
+    let foundationComplete = false;
     const investigation: string[] = [];
     const inspectedTables: string[] = [];
     const executedQueries: string[] = [];
@@ -75,14 +76,15 @@ class DatabaseMemoryInterviewService {
       investigation.push(await this.readSchemaSummary(request.readonlyContext));
     }
 
+    let correction = '';
     let lastModel = settings.model;
     let result: DatabaseMemoryInterviewResult | null = null;
 
     for (let call = 0; call < MAX_MODEL_CALLS_PER_TURN; call++) {
-      const canInvestigateAgain = Boolean(request.readonlyContext)
-        && !firstTurn
+      const investigationPossible = Boolean(request.readonlyContext)
         && call + 1 < MAX_MODEL_CALLS_PER_TURN
         && (inspectedTables.length < MAX_TABLES_PER_TURN || executedQueries.length < MAX_QUERIES_PER_TURN);
+      const canInvestigateAgain = investigationPossible && foundationComplete;
       const completion = await AiAssistantModelClient.complete(
         settings,
         this.buildPrompt(
@@ -94,12 +96,19 @@ class DatabaseMemoryInterviewService {
           MAX_TABLES_PER_TURN - inspectedTables.length,
           MAX_QUERIES_PER_TURN - executedQueries.length,
           mode,
-          firstTurn
+          foundationComplete,
+          correction
         ),
         messages
       );
       lastModel = completion.model;
       const parsed = this.parseCompletion(completion.content);
+      const verdict = this.readFoundationVerdict(parsed);
+
+      if (verdict !== null) {
+        foundationComplete = verdict;
+      }
+
       const requested = canInvestigateAgain
         ? this.readInvestigationRequest(parsed, inspectedTables, executedQueries)
         : { tables: [], queries: [] };
@@ -120,7 +129,23 @@ class DatabaseMemoryInterviewService {
 
       const message = this.normalizeText(parsed['message'], 4000);
       const questions = this.normalizeQuestions(parsed);
-      const proposedNotes = this.normalizeProposedNotes(parsed['notes']);
+      const proposedNotes = this.limitNotesForTurn(
+        this.normalizeProposedNotes(parsed['notes']),
+        foundationComplete
+      );
+      const unusable = questions.length === 0 && proposedNotes.length === 0 && !message;
+      const missingQuestions = !foundationComplete && questions.length === 0;
+      const missingVerdict = verdict === null;
+
+      if ((unusable || missingQuestions || missingVerdict) && call + 1 < MAX_MODEL_CALLS_PER_TURN) {
+        correction = this.buildCorrection(foundationComplete, missingVerdict);
+        continue;
+      }
+
+      if (foundationComplete && investigationPossible && inspectedTables.length === 0 && executedQueries.length === 0) {
+        correction = this.buildInvestigationNudge();
+        continue;
+      }
 
       result = {
         message: message || (questions.length || proposedNotes.length
@@ -218,7 +243,8 @@ ${result.content}`;
     remainingTables: number,
     remainingQueries: number,
     mode: DatabaseMemoryInterviewMode,
-    firstTurn: boolean
+    foundationComplete: boolean,
+    correction: string
   ): AiModelSystemPrompt {
     const fixedRules = [
       'You are the DBOLT database knowledge interviewer. Your job is to build a small, durable set of notes about how this specific database is used, so the DBOLT AI assistant answers better in future conversations.',
@@ -231,18 +257,26 @@ ${result.content}`;
       ] : [
         'This turn you are exploring on your own. Investigate first, propose every structural fact you verified, and ask about the business meaning you could not verify.'
       ]),
-      ...(firstTurn ? [
-        'This is the first turn and nothing is saved yet, so start from the top. Before any table detail, establish WHAT THIS DATABASE IS: which product or system owns it, what the company does with it, and which parts of it are actually used.',
-        'Look at the naming pattern of the objects you just listed and say whether it matches a product you already know, naming it explicitly. Schemas from known ERPs and off-the-shelf systems follow documented conventions, and if the user confirms which product this is, you can rely on everything you already know about that schema instead of rediscovering it table by table.',
-        'Propose the product identification as a note so the user can confirm or correct it, and make your first questions the broad ones: which system this is, which modules or processes the company really uses, whether there are customisations or custom tables, and which handful of tables the team touches every day.',
-        'Reading tables and running queries is DISABLED this turn on purpose. You have the object list and nothing else, and you must answer with the message, questions and notes JSON object. Trying to investigate now is not possible, so do not attempt it.'
-      ] : []),
+      ...([
+        'BEFORE ANYTHING ELSE, read the saved notes above and judge whether the FOUNDATION of this database is already established. The foundation is complete only when all of these are known: which product or system this database belongs to; what the company does with it; which modules or processes are really used; which tables hold the main entities the team works with; and whether there are customisations and what they are for.',
+        'A handful of notes about columns of one table is NOT a foundation. If any item of that list is missing, the foundation is incomplete, and saying otherwise is a policy violation.',
+        'Every reply you send must carry the verdict, in this exact shape, alongside the other fields: "foundation":{"complete":false,"missing":["what is missing"]}',
+        'DBOLT reads that verdict and it controls what you are allowed to do. While complete is false, reading tables and running queries stays DISABLED, and your job is only to ASK the broad questions that establish the foundation. Once you declare it true, investigation unlocks on your next reply in this same turn.',
+        'While the foundation is incomplete: your output is mostly QUESTIONS, at most two notes are accepted, and describing the object list back to the user is not allowed. Naming the families of tables and views you can see teaches nothing and wastes the turn.',
+        ...(foundationComplete ? [] : [
+          'The foundation is NOT established yet. Do not ask to investigate: the request will be ignored. Ask the broad questions now.',
+          'Look at the naming pattern of the objects you listed and say whether it matches a product you already know, naming it explicitly. Schemas from known ERPs and off-the-shelf systems follow documented conventions, and once the user confirms which product this is, you can rely on everything you already know about that schema instead of rediscovering it table by table.',
+          'Propose the product identification as a note so the user can confirm or correct it, and make your questions the broad ones: which system this is, which modules or processes the company really uses, whether there are customisations, and which handful of tables the team touches every day.'
+        ])
+      ] as string[]),
       'Your subject is the DATABASE AS A WHOLE, not one table. In every turn cover several tables and how they connect, unless the user explicitly pointed you at one. Exhaustively documenting a single table is a failure, even if that table is important.',
       'What you are trying to learn, in this order: which tables hold the main business entities; how those tables join to each other; which table is the source of truth when more than one could be; what the values of type, status and code columns mean; what custom or user-defined fields are for; and which tables are dead or unused.',
       'Investigate before you ask. Do not ask the user anything the database can answer: read the columns of the tables that matter, and run read-only SELECTs to see which type, status and code values actually exist.',
       'Two kinds of fact exist, and you treat them differently. A STRUCTURAL fact is verifiable from what the database just returned: which table holds an entity, how two tables join and through which columns, and which distinct code values exist in a column. Propose those as notes directly, saying in the message what proves it, so the user only has to confirm.',
       'A BUSINESS fact is what the tables, codes and custom fields mean in this company process. Never assert it from a name. Ask about it.',
-      'A note about a data type, a length, or whether a column accepts null is WORTHLESS and must never be proposed. DBOLT returns that metadata on every request, so writing it down teaches nothing. Only propose a structural note when it captures a relationship, a source of truth, or the inventory of code values in a column.',
+      'A note about a data type, a length, or whether a column accepts null is WORTHLESS and must never be proposed. DBOLT returns that metadata on every request, so writing it down teaches nothing.',
+      'An INVENTORY note is equally worthless and equally banned: never propose a note whose content is that the schema contains certain tables or views, how many objects exist, or that a family of names exists. DBOLT lists the objects on every request. Listing what exists is not knowledge; knowledge is what those objects MEAN, which one the process trusts, and how they connect.',
+      'Only propose a structural note when it captures a relationship, a source of truth, or the inventory of code VALUES inside a column.',
       'Never ask the user how they want results presented. Sort order, which date to display, whether to use gross or net values, how cancelled rows should appear in a report, column order and formatting are report specifications, not database knowledge, and they are forbidden as questions. Asking about the MEANING of a status or of a date column is allowed; asking which one a report should use is not.',
       'What must never become a note: row values that change, credentials, generated SQL, data types and nullability, report or formatting preferences, anything you are guessing, and anything the user has not confirmed.',
       `Each note must be one atomic fact, at most ${MAX_NOTE_TEXT_CHARS} characters, written so it is still understandable months from now without this conversation. The topic is a short label of at most ${MAX_NOTE_TOPIC_CHARS} characters.`,
@@ -252,10 +286,11 @@ ${result.content}`;
       `Ask between 2 and ${MAX_QUESTIONS} pertinent questions per turn, ordered from most to least useful. Each question must be answerable on its own, so the user can reply to whichever they want. Only ask what the database cannot answer: never ask something you could have discovered by reading a column or running a SELECT.`,
       'Good questions sound like: what is this table for, what does this code value mean, which of these two tables is the one your process trusts, how do these two tables relate when the metadata does not show it, and what is this custom field used for. Spread your questions across different tables instead of asking several about the same one.',
       'Reply with a single JSON object and nothing else, in this exact shape:',
-      '{"message":"what you concluded and what proves it","questions":["first question","second question"],"notes":[{"topic":"short label","text":"one atomic fact"}]}',
+      '{"foundation":{"complete":false,"missing":["what is missing"]},"message":"what you concluded and what proves it","questions":["first question","second question"],"notes":[{"topic":"short label","text":"one atomic fact"}]}',
       ...(canInvestigateAgain ? [
         'Before answering you may investigate the database. To do that, reply instead with only this JSON object:',
-        '{"investigate":{"tables":["TABLE_A","TABLE_B"],"queries":["SELECT DISTINCT ..."]}}',
+        '{"foundation":{"complete":true,"missing":[]},"investigate":{"tables":["TABLE_A","TABLE_B"],"queries":["SELECT DISTINCT ..."]}}',
+        'The foundation verdict travels in every reply, including the investigate one, so DBOLT always knows whether investigation is allowed.',
         `This turn you may still read ${remainingTables} table(s) and run ${remainingQueries} read-only query(ies). Queries must be a single SELECT or WITH; anything else is rejected.`,
         'Spend that budget before you talk. Ask for several DIFFERENT tables at once instead of drilling one, and use the queries to look at the distinct values of the type, status and code columns you just found. A turn where you investigated nothing, or where you only looked at one table, is a wasted turn.'
       ] : [])
@@ -269,9 +304,12 @@ ${result.content}`;
           ? `DBOLT read-only investigation for this interview:\n${AiAssistantToolBudget.limitText(investigation.join('\n\n'), MAX_INVESTIGATION_CHARS)}`
           : 'No read-only database context was authorized for this interview, so rely on what the user tells you.'
       ].join('\n\n'),
-      turnState: canInvestigateAgain
-        ? ''
-        : 'You cannot investigate any further this turn. Answer with the message, question and notes JSON object now.'
+      turnState: [
+        canInvestigateAgain
+          ? ''
+          : 'You cannot investigate any further this turn. Answer with the message, questions and notes JSON object now.',
+        correction
+      ].filter((part) => part.length > 0).join(TURN_STATE_SEPARATOR)
     };
   }
 
@@ -492,6 +530,42 @@ ${result.content}`;
     }
 
     return notes;
+  }
+
+  private readFoundationVerdict(parsed: Record<string, unknown>): boolean | null {
+    const raw = parsed['foundation'];
+
+    if (!raw || typeof raw !== 'object') {
+      return null;
+    }
+
+    const complete = (raw as Record<string, unknown>)['complete'];
+    return typeof complete === 'boolean' ? complete : null;
+  }
+
+  private buildInvestigationNudge(): string {
+    return [
+      'You declared the foundation complete, so investigation is now unlocked and you must use it before answering.',
+      'Reply with the investigate JSON object and read the tables that matter for the questions you are about to ask.'
+    ].join(' ');
+  }
+
+  private buildCorrection(foundationComplete: boolean, missingVerdict: boolean = false): string {
+    return [
+      missingVerdict
+        ? 'Your previous reply could not be used because it did not carry the foundation verdict, which is mandatory in every reply.'
+        : 'Your previous reply could not be used because it carried no question and no note.',
+      !foundationComplete
+        ? 'Reading tables and running queries is disabled on this first turn, so stop asking for it. Reply now with the message, questions and notes JSON object, and make the questions the broad ones about what this database is and how the company uses it.'
+        : 'Reply now with the message, questions and notes JSON object.'
+    ].join(' ');
+  }
+
+  private limitNotesForTurn(
+    notes: DatabaseMemoryProposedNote[],
+    foundationComplete: boolean
+  ): DatabaseMemoryProposedNote[] {
+    return foundationComplete ? notes : notes.slice(0, MAX_FOUNDATION_NOTES);
   }
 
   private buildEmptyTurnMessage(responseLanguage: string): string {
