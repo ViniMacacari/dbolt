@@ -44,6 +44,8 @@ interface SqlNavigationLink {
   range: monaco.IRange
 }
 
+const CHANGE_PEEK_PADDING = 10
+
 @Component({
   selector: 'app-code-editor',
   standalone: true,
@@ -1287,8 +1289,26 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     return parts.pop() || value
   }
 
+  private registerChangePeekEscape(): void {
+    this.shortcutDisposers.push(
+      this.keyboardShortcuts.register({
+        key: 'Escape',
+        priority: 99,
+        stopPropagation: true,
+        isEnabled: () => this.active && this.changePeekZoneId !== null,
+        isInContext: (event) => this.isEditorShortcutContext(event),
+        handler: () => {
+          this.closeChangePeek()
+          return true
+        }
+      })
+    )
+  }
+
   private registerKeyboardShortcuts(): void {
     this.unregisterKeyboardShortcuts()
+
+    this.registerChangePeekEscape()
 
     this.shortcutDisposers.push(
       this.keyboardShortcuts.register({
