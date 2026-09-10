@@ -97,8 +97,8 @@ export class RunQueryService {
       maxRows
     }
     const response: any = signal
-      ? await this.IAPI.postWithSignal('/api/dbolt/ai-assistant/readonly/query', request, signal)
-      : await this.IAPI.post('/api/dbolt/ai-assistant/readonly/query', request)
+      ? await this.IAPI.postWithSignal('/api/ai-assistant/readonly/query', request, signal)
+      : await this.IAPI.post('/api/ai-assistant/readonly/query', request)
 
     if (!response?.success || !Array.isArray(response?.data?.rows)) {
       throw new Error(response?.error || response?.message || 'Invalid read-only query response.')
