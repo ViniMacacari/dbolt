@@ -21,6 +21,7 @@ import { AppThemePaletteService } from '../../../services/theme/app-theme-palett
 import { QueryVersionDiffService, QueryChangeHunk } from '../../../services/query-version-diff/query-version-diff.service'
 import { SaveVersionMessageComponent } from '../../modal/save-version-message/save-version-message.component'
 import { QueryHistoryComponent } from '../../modal/query-history/query-history.component'
+import { QueryDataflowDebuggerComponent } from '../../query-dataflow-debugger/query-dataflow-debugger.component'
 import { selectSqlStatementAtCursor } from '../../../utils/sql-statement-selection'
 import {
   normalizeTableReferenceForMetadata,
@@ -54,7 +55,7 @@ const CHANGE_PEEK_OPEN_MS = 190
   standalone: true,
   templateUrl: './code-editor.component.html',
   styleUrls: ['./code-editor.component.scss'],
-  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveQueryComponent, SaveVersionMessageComponent, QueryHistoryComponent],
+  imports: [TableQueryComponent, CommonModule, ToastComponent, SaveQueryComponent, SaveVersionMessageComponent, QueryHistoryComponent, QueryDataflowDebuggerComponent],
 })
 export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChanges {
   @Input() sqlContent: string = ''
@@ -97,10 +98,18 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   isVersionMessageOpen: boolean = false
   isHistoryOpen = false
   historySql = ''
+  isDataflowOpen = false
+  dataflowSql = ''
 
   openHistory(): void {
     this.historySql = this.editor?.getValue() ?? this.sqlContent
     this.isHistoryOpen = true
+  }
+
+  openDataflow(): void {
+    if (this.isLoadingQuery) return
+    this.dataflowSql = this.getSelectedOrCurrentSql()
+    this.isDataflowOpen = true
   }
   private sqlChangeDecorationTimer: ReturnType<typeof setTimeout> | null = null
   private sqlNavigationModifierPressed = false
@@ -1595,32 +1604,29 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   runSelected(): void {
+    const sql = this.getSelectedOrCurrentSql()
+    if (sql) this.runSql(sql)
+  }
+
+  private getSelectedOrCurrentSql(): string {
     const model = this.editor?.getModel()
     const selection = this.editor?.getSelection()
+    if (!model || !selection) return ''
 
-    if (model && selection) {
-      const selectedText = model.getValueInRange(selection).trim()
+    const selectedText = model.getValueInRange(selection).trim()
+    if (selectedText) return selectedText
 
-      if (selectedText) {
-        this.runSql(selectedText)
-        return
-      }
+    const content = model.getValue()
+    const cursorLine = selection.positionLineNumber || selection.startLineNumber
+    const cursorColumn = selection.positionColumn || selection.startColumn
+    const currentStatement = selectSqlStatementAtCursor(content, cursorLine, cursorColumn)
+    if (currentStatement) return currentStatement
 
-      const content = model.getValue()
-      const cursorLine = selection.positionLineNumber || selection.startLineNumber
-      const cursorColumn = selection.positionColumn || selection.startColumn
-      const currentStatement = selectSqlStatementAtCursor(content, cursorLine, cursorColumn)
-
-      if (currentStatement) {
-        this.runSql(currentStatement)
-        return
-      }
-
-      if (selection.startLineNumber === selection.endLineNumber && content.trim()) {
-        const currentLineContent = model.getLineContent(cursorLine).trim()
-        this.runSql(currentLineContent)
-      }
+    if (selection.startLineNumber === selection.endLineNumber && content.trim()) {
+      return model.getLineContent(cursorLine).trim()
     }
+
+    return ''
   }
 
   runAll(): void {
