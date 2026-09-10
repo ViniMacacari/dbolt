@@ -188,6 +188,7 @@
                     [hidden]="!isActiveSqlTab(tab)" [active]="isActiveSqlTab(tab)" [sqlContent]="tab.info?.sql || ''"
                     [widthTable]="widthTable" [tabInfo]="tab" (sqlContentChange)="onSqlContentChange($event, tab)"
                     (savedName)="onSavedQuery($event, tab)" (savedQuery)="onExistingSavedQuery($event)"
+                    (newFileRequested)="onHistoryFileRequested($event)"
                     (objectInfoRequested)="onSqlObjectInfoRequested($event)"
                     (objectSummaryRequested)="onSqlObjectSummaryRequested($event)">
                 </app-code-editor>

@@ -560,6 +560,13 @@ export class DatabaseManagerComponent implements OnDestroy {
     }, event?.name || this.t('workspace.builtSelect'))
   }
 
+  onHistoryFileRequested(event: { sql: string, name?: string, context?: any }): void {
+    this.tabsComponent.newTab('sql', {
+      sql: event.sql,
+      context: event.context || this.tabInfo?.dbInfo || this.selectedSchemaDB
+    }, event.name || this.t('tabs.newQuery'))
+  }
+
   get openTabs(): any[] {
     return (this.tabsComponent?.tabs || []).filter((tab: any) => tab?.type === 'sql')
   }
