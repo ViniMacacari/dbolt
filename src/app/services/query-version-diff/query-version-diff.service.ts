@@ -25,6 +25,7 @@ export interface QueryChangeMarker {
 
 export interface QueryChangeHunk {
   type: QueryChangeMarkerType
+  originalStartLine: number | null
   currentStartLine: number
   currentEndLine: number
   originalLines: string[]
@@ -91,6 +92,7 @@ export class QueryVersionDiffService {
 
       hunks.push({
         type,
+        originalStartLine: removedLines[0]?.oldLine || null,
         currentStartLine: this.clampLine(startLine, currentLineCount),
         currentEndLine: this.clampLine(endLine, currentLineCount),
         originalLines: removedLines.map((removed) => removed.text),
