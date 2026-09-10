@@ -217,6 +217,8 @@ export const enTranslations: TranslationCatalog = {
   'settings.highlight.theme.description': 'Choose a built-in SQL palette or switch to Custom to edit each token color.',
   'settings.highlight.theme.field': 'Theme',
   'settings.highlight.theme.placeholder': 'Select theme',
+  'settings.highlight.changes.title': 'Changes since the last version',
+  'settings.highlight.changes.description': 'Shows editor markers and the comparison between the saved version and the current content.',
   'settings.highlight.option.dboltDark': 'DBOLT Dark',
   'settings.highlight.option.dboltHighContrast': 'DBOLT High Contrast',
   'settings.highlight.option.classicSql': 'Classic SQL',

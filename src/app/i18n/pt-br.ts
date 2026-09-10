@@ -217,6 +217,8 @@ export const ptBrTranslations: TranslationCatalog = {
   'settings.highlight.theme.description': 'Escolha uma paleta SQL pronta ou alterne para Personalizado para editar a cor de cada token.',
   'settings.highlight.theme.field': 'Tema',
   'settings.highlight.theme.placeholder': 'Selecione o tema',
+  'settings.highlight.changes.title': 'Alterações desde a última versão',
+  'settings.highlight.changes.description': 'Mostra no editor os marcadores e o comparativo entre a versão salva e o conteúdo atual.',
   'settings.highlight.option.dboltDark': 'DBOLT escuro',
   'settings.highlight.option.dboltHighContrast': 'DBOLT alto contraste',
   'settings.highlight.option.classicSql': 'SQL clássico',
