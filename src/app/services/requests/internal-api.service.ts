@@ -47,17 +47,21 @@ export class InternalApiService {
       })
 
       if (!response.ok) {
-        throw new Error(await this.readFetchError(response))
+        throw await this.buildFetchFailure(response)
       }
 
       return await response.json() as T
     } catch (error: unknown) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
+      if (this.isAbortError(error)) {
         throw error
       }
 
       throw this.handleError(error)
     }
+  }
+
+  isAbortError(error: unknown): boolean {
+    return error instanceof DOMException && error.name === 'AbortError'
   }
 
   async postStream<T>(
@@ -172,15 +176,41 @@ export class InternalApiService {
   }
 
   private async readFetchError(response: Response): Promise<string> {
+    const failure = await this.buildFetchFailure(response)
+    return failure.message
+  }
+
+  /**
+   * Keeps the failure shape the internal API already returns, so callers can
+   * still read `code` and `sqlState` and tell a lost connection apart from a
+   * rejected statement.
+   */
+  private async buildFetchFailure(response: Response): Promise<{
+    success: false
+    message: string
+    error: string
+    code: unknown
+    sqlState: unknown
+  }> {
+    let payload: Record<string, unknown> | null = null
+
     try {
-      const payload = await response.json() as Record<string, unknown>
-      const detail = payload['error'] || payload['message']
-      if (typeof detail === 'string' && detail.trim()) return detail
+      payload = await response.json() as Record<string, unknown>
     } catch (_error: unknown) {
-      // Ignore invalid error bodies and use the HTTP status below.
+      payload = null
     }
 
-    return `Internal API request failed (${response.status}).`
+    const detail = [payload?.['error'], payload?.['message']]
+      .find((value) => typeof value === 'string' && value.trim()) as string | undefined
+    const message = detail || `Internal API request failed (${response.status}).`
+
+    return {
+      success: false,
+      message,
+      error: message,
+      code: payload?.['code'] ?? null,
+      sqlState: payload?.['sqlState'] ?? null
+    }
   }
 
   private handleError(error: any): any {
@@ -188,18 +218,37 @@ export class InternalApiService {
       if (error.error && typeof error.error === 'object') {
         return error.error
       }
-  
+
       return {
         success: false,
-        message: 'Unknown error from API',
-        error: error.message || 'No error detail available'
+        message: this.describeTransportError(error),
+        error: this.describeTransportError(error)
       }
     }
-  
+
+    if (error && typeof error === 'object' && 'success' in error) {
+      return error
+    }
+
+    const message = error?.message || String(error ?? 'Unexpected error')
+
     return {
       success: false,
-      message: 'Unexpected error',
-      error: error.message || error.toString()
+      message,
+      error: message
     }
-  }  
+  }
+
+  /**
+   * A request that never reaches the internal API arrives with status 0 and an
+   * empty body. Reporting it as a connection failure lets the callers retry the
+   * database connection instead of showing an empty error to the user.
+   */
+  private describeTransportError(error: HttpErrorResponse): string {
+    if (error.status === 0) {
+      return 'Connection lost: the internal API did not answer the request.'
+    }
+
+    return error.message || 'No error detail available'
+  }
 }
