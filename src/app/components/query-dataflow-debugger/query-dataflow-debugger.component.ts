@@ -4,6 +4,7 @@ import { ButtonComponent } from '../elements/button/button.component'
 import { AppLanguageService } from '../../services/language/app-language.service'
 import {
   QueryDataflowAnalysis,
+  QueryDataflowBlock,
   QueryDataflowFinding,
   QueryDataflowProgress,
   QueryDataflowStage,
@@ -31,6 +32,7 @@ export class QueryDataflowDebuggerComponent implements OnInit, AfterViewInit, On
   errorMessage = ''
   closing = false
   expandedStages = new Set<string>()
+  expandedBlocks = new Set<string>()
 
   private abortController?: AbortController
   private closeTimer?: ReturnType<typeof setTimeout>
@@ -68,6 +70,7 @@ export class QueryDataflowDebuggerComponent implements OnInit, AfterViewInit, On
     this.errorMessage = ''
     this.progress = null
     this.expandedStages.clear()
+    this.expandedBlocks.clear()
 
     try {
       const analysis = await this.debuggerService.analyze(
@@ -81,6 +84,7 @@ export class QueryDataflowDebuggerComponent implements OnInit, AfterViewInit, On
       if (requestId !== this.requestId || this.destroyed) return
 
       this.analysis = analysis
+      this.expandedBlocks.add(analysis.root.id)
       const firstRelevantJoin = analysis.stages.find((stage) =>
         stage.kind === 'join' && stage.findings.length > 0
       )
@@ -119,6 +123,50 @@ export class QueryDataflowDebuggerComponent implements OnInit, AfterViewInit, On
     return this.expandedStages.has(stage.id)
   }
 
+  toggleBlock(block: QueryDataflowBlock): void {
+    if (this.expandedBlocks.has(block.id)) {
+      this.expandedBlocks.delete(block.id)
+      return
+    }
+    this.expandedBlocks.add(block.id)
+  }
+
+  isBlockExpanded(block: QueryDataflowBlock): boolean {
+    return this.expandedBlocks.has(block.id)
+  }
+
+  blockKind(block: QueryDataflowBlock): string {
+    if (block.kind === 'main') return this.t('queryDataflow.mainQuery')
+    if (block.kind === 'cte') return 'CTE'
+    if (block.kind === 'branch') return this.t('queryDataflow.branch')
+    return block.correlation
+      ? this.t('queryDataflow.correlatedSubquery')
+      : this.t('queryDataflow.subquery')
+  }
+
+  blockLabel(block: QueryDataflowBlock): string {
+    if (block.kind === 'main') return this.t('queryDataflow.mainQuery')
+    if (block.kind === 'branch') {
+      const index = block.label.split(' ').at(-1) || ''
+      return `${this.t('queryDataflow.branch')} ${index}`.trim()
+    }
+    return block.label
+  }
+
+  consumerList(consumers: string[]): string {
+    return consumers
+      .map((consumer) => consumer === 'MAIN QUERY' ? this.t('queryDataflow.mainQuery') : consumer)
+      .join(', ')
+  }
+
+  unionLabel(operator: 'union' | 'union-all'): string {
+    return operator === 'union-all' ? 'UNION ALL' : 'UNION'
+  }
+
+  unsupportedLabel(reason: string | undefined): string {
+    return this.t(`queryDataflow.unsupported.${reason || 'unknown'}`)
+  }
+
   stageTitle(stage: QueryDataflowStage): string {
     if (stage.kind === 'join') {
       return this.t(stage.joinType === 'left' ? 'queryDataflow.leftJoin' : 'queryDataflow.innerJoin')
@@ -132,7 +180,9 @@ export class QueryDataflowDebuggerComponent implements OnInit, AfterViewInit, On
 
   removedRows(stage: QueryDataflowStage): number {
     if (stage.kind === 'join' && stage.joinType === 'inner') return stage.unmatched || 0
-    if (stage.kind === 'where') return Math.max(0, (stage.rowsBefore || 0) - stage.rowsAfter)
+    if (stage.kind === 'where' || stage.kind === 'group' || stage.kind === 'distinct') {
+      return Math.max(0, (stage.rowsBefore || 0) - stage.rowsAfter)
+    }
     return 0
   }
 
