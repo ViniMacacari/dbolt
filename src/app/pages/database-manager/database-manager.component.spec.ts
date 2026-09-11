@@ -1,4 +1,6 @@
 import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 
 import { DatabaseManagerComponent } from './database-manager.component';
 
@@ -8,7 +10,8 @@ describe('DatabaseManagerComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [DatabaseManagerComponent]
+      imports: [DatabaseManagerComponent],
+      providers: [provideHttpClient(), provideRouter([])]
     })
     .compileComponents();
 
