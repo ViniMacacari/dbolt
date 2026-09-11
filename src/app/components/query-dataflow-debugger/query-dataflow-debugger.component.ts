@@ -141,10 +141,11 @@ export class QueryDataflowDebuggerComponent implements OnInit, AfterViewInit, On
   }
 
   formatFanOut(value: number | undefined): string {
+    if (value === undefined) return '—'
     return `${new Intl.NumberFormat(this.language.getCurrentLanguage(), {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    }).format(value || 0)}x`
+    }).format(value)}x`
   }
 
   formatDuration(durationMs: number): string {
