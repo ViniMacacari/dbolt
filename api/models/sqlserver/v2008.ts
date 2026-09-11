@@ -5,6 +5,12 @@ import sql, {
 } from 'mssql';
 
 import { makeUniqueColumnNames } from '../../utils/query-columns.js';
+import {
+  DB_CANCEL_TIMEOUT_MS,
+  DB_CONNECT_TIMEOUT_MS,
+  DB_REQUEST_TIMEOUT_MS,
+  watchConnectionFailures
+} from '../../utils/database-runtime.js';
 
 import type {
   ConnectionStatus,
@@ -20,7 +26,7 @@ class SQLServerV1 {
   private readonly defaultConnectionKey = 'default';
   private static readonly connections = new Map<string, { pool: ConnectionPool; config: SqlConfig }>();
 
-  async connect(config: SqlServerConnectionInput, connectionKey?: string): Promise<ConnectionPool | undefined> {
+  async connect(config: SqlServerConnectionInput, connectionKey?: string): Promise<ConnectionPool> {
     const key = this.getConnectionKey(connectionKey);
     if (SQLServerV1.connections.has(key)) {
       await this.disconnect(key);
@@ -49,32 +55,37 @@ class SQLServerV1 {
       ...baseConfig,
       server: normalizedHost,
       port: normalizedTopLevelPort,
+      connectionTimeout: DB_CONNECT_TIMEOUT_MS,
+      requestTimeout: DB_REQUEST_TIMEOUT_MS,
       options: {
         ...restOptions,
         port: normalizedOptionPort,
         encrypt: options?.encrypt ?? false,
-        trustServerCertificate: options?.trustServerCertificate ?? true
+        trustServerCertificate: options?.trustServerCertificate ?? true,
+        cancelTimeout: DB_CANCEL_TIMEOUT_MS
       }
     };
 
     try {
-      const pool = await new sql.ConnectionPool(normalizedConfig).connect();
+      const connectionPool = new sql.ConnectionPool(normalizedConfig);
+
+      watchConnectionFailures(connectionPool, 'SQL Server', () => {
+        this.dropLostConnection(key, connectionPool);
+      });
+
+      const pool = await connectionPool.connect();
       SQLServerV1.connections.set(key, { pool, config: normalizedConfig });
       console.log('Connected to SQL Server successfully');
       return pool;
     } catch (error: unknown) {
-      const code =
-        typeof error === 'object' && error !== null && 'code' in error
-          ? error.code
-          : undefined;
-
-      if (code === 'ETIMEOUT' || code === 'ELOGIN') {
-        console.warn('SQL Server is inactive or unreachable');
-        return undefined;
-      }
-
       console.error('Error connecting to SQL Server:', error);
       throw error;
+    }
+  }
+
+  private dropLostConnection(connectionKey: string, pool: ConnectionPool): void {
+    if (SQLServerV1.connections.get(connectionKey)?.pool === pool) {
+      SQLServerV1.connections.delete(connectionKey);
     }
   }
 

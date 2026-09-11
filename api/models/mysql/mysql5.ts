@@ -13,6 +13,11 @@ import type {
   QueryRowsWithColumns
 } from '../../types.js';
 import { normalizeColumnNames } from '../../utils/query-columns.js';
+import {
+  DB_CONNECT_TIMEOUT_MS,
+  DB_KEEP_ALIVE_DELAY_MS,
+  watchConnectionFailures
+} from '../../utils/database-runtime.js';
 
 type MySqlConnectionInput = DatabaseConnectionConfig | MySqlConnectionOptions;
 
@@ -40,17 +45,31 @@ class MySQLV1 {
           ? config.port
           : config.port !== undefined
             ? Number.parseInt(String(config.port), 10)
-            : undefined
+            : undefined,
+      connectTimeout: DB_CONNECT_TIMEOUT_MS,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: DB_KEEP_ALIVE_DELAY_MS
     };
 
     try {
       const connection = await mysql.createConnection(normalizedConfig);
+
+      watchConnectionFailures(connection, 'MySQL', () => {
+        this.dropLostConnection(key, connection);
+      });
+
       MySQLV1.connections.set(key, { connection, config: normalizedConfig });
       console.log('Connected to MySQL successfully');
       return connection;
     } catch (error: unknown) {
       console.error('Error connecting to MySQL:', error);
       throw error;
+    }
+  }
+
+  private dropLostConnection(connectionKey: string, connection: MySqlConnection): void {
+    if (MySQLV1.connections.get(connectionKey)?.connection === connection) {
+      MySQLV1.connections.delete(connectionKey);
     }
   }
 
