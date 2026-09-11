@@ -7,6 +7,10 @@
         <button class="btn">
             <img (click)="runAll()" src="icons/execute-all.png" [title]="t('editor.runAll')" height="15px">
         </button>
+        <button type="button" class="btn" [class.btn-inactive]="isLoadingQuery" [disabled]="isLoadingQuery"
+            (click)="openDataflow()" [title]="t('queryDataflow.title')" [attr.aria-label]="t('queryDataflow.title')">
+            <img src="icons/diagram.png" height="15" width="15" alt="">
+        </button>
         <button class="btn" (click)="formatCode()">
             <img src="icons/star.png" [title]="t('editor.indentCode')" height="15px">
         </button>
@@ -51,6 +55,8 @@
 <app-toast></app-toast>
 <app-query-history *ngIf="isHistoryOpen && active" [tabInfo]="tabInfo" [currentSql]="historySql"
     (closed)="isHistoryOpen = false" (newFile)="newFileRequested.emit($event)"></app-query-history>
+<app-query-dataflow-debugger *ngIf="isDataflowOpen && active" [sql]="dataflowSql" [dbContext]="tabInfo?.dbInfo"
+    [queryName]="tabInfo?.name || ''" (closed)="isDataflowOpen = false"></app-query-dataflow-debugger>
 <app-save-query [data]="dataSave" *ngIf="isSaveAsOpen" (saved)="savedSaveAs($event)" (close)="closeSaveAs()"></app-save-query>
 
 <app-save-version-message *ngIf="isVersionMessageOpen" [queryName]="tabInfo?.name || ''"

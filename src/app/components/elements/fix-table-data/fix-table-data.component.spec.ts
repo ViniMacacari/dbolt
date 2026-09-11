@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
 
 import { FixTableDataComponent } from './fix-table-data.component';
 
@@ -8,7 +9,8 @@ describe('FixTableDataComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [FixTableDataComponent]
+      imports: [FixTableDataComponent],
+      providers: [provideHttpClient()]
     })
     .compileComponents();
 

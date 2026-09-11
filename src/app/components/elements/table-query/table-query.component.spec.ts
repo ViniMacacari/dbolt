@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
 
 import { TableQueryComponent } from './table-query.component';
 
@@ -8,7 +9,8 @@ describe('TableQueryComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TableQueryComponent]
+      imports: [TableQueryComponent],
+      providers: [provideHttpClient()]
     })
     .compileComponents();
 

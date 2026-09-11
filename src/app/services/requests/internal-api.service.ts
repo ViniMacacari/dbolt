@@ -31,6 +31,35 @@ export class InternalApiService {
     }
   }
 
+  async postWithSignal<T>(url: string, body: unknown, signal: AbortSignal): Promise<T> {
+    try {
+      const session = await this.sessionToken.getSession()
+      const response = await fetch(session.baseUrl + url, {
+        method: 'POST',
+        cache: 'no-store',
+        credentials: 'omit',
+        headers: {
+          'Content-Type': 'application/json',
+          [session.tokenHeader]: session.token
+        },
+        body: JSON.stringify(body),
+        signal
+      })
+
+      if (!response.ok) {
+        throw new Error(await this.readFetchError(response))
+      }
+
+      return await response.json() as T
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error
+      }
+
+      throw this.handleError(error)
+    }
+  }
+
   async postStream<T>(
     url: string,
     body: unknown,

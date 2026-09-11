@@ -79,7 +79,7 @@ export class DbInfoComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    this.syncGridHeight()
+    this.queueGridResize()
   }
 
   ngOnDestroy(): void {
