@@ -37,6 +37,7 @@ interface PlannerState {
   ctes: Map<string, CteDefinition>
   blockCount: number
   nextBlockId: number
+  optionalProbeCount: number
 }
 
 interface BlockOptions {
@@ -58,6 +59,7 @@ const MANY_UNMATCHED_RATIO = .2
 const MAX_BLOCKS = 30
 const MAX_FLOW_DEPTH = 8
 const MAX_DIAGNOSTIC_QUERIES = 80
+const MAX_OPTIONAL_JOIN_DETAIL_PROBES = 16
 const COUNT_ALIAS = 'DBOLT_ROWS'
 const MATCHED_ALIAS = 'DBOLT_MATCHED'
 const UNMATCHED_ALIAS = 'DBOLT_UNMATCHED'
@@ -65,6 +67,7 @@ const MULTIPLE_KEYS_ALIAS = 'DBOLT_MULTIPLE_KEYS'
 const KEY_ALIAS = 'DBOLT_KEY'
 const MATCH_COUNT_ALIAS = 'DBOLT_MATCH_COUNT'
 const IN_VALUE_ALIAS = 'DBOLT_IN_VALUE'
+const SAFE_SCALAR_FILTER_FUNCTIONS = new Set(['COALESCE', 'IFNULL', 'NVL'])
 
 @Injectable({ providedIn: 'root' })
 export class QueryDataflowDebuggerService {
@@ -82,7 +85,8 @@ export class QueryDataflowDebuggerService {
       context,
       ctes: new Map<string, CteDefinition>(),
       blockCount: 0,
-      nextBlockId: 0
+      nextBlockId: 0,
+      optionalProbeCount: 0
     }
     const cteEntries = Array.isArray(ast['with']) ? ast['with'] as SqlAst[] : []
 
@@ -93,6 +97,15 @@ export class QueryDataflowDebuggerService {
       if (!name || !cteAst) throw new QueryDataflowUnsupportedError('invalidSql')
       state.ctes.set(this.normalizeIdentifier(name), { name, ast: cteAst })
     }
+
+    const mainAst = this.clone(ast)
+    mainAst['with'] = null
+    const root = await this.createBlockPlan(mainAst, state, {
+      kind: 'main',
+      label: 'MAIN QUERY',
+      outerAliases: new Set<string>(),
+      depth: 0
+    })
 
     const ctes: QueryDataflowNestedPlan[] = []
     for (const entry of cteEntries) {
@@ -106,15 +119,6 @@ export class QueryDataflowDebuggerService {
         depth: 0
       }))
     }
-
-    const mainAst = this.clone(ast)
-    mainAst['with'] = null
-    const root = await this.createBlockPlan(mainAst, state, {
-      kind: 'main',
-      label: 'MAIN QUERY',
-      outerAliases: new Set<string>(),
-      depth: 0
-    })
 
     this.assignCteConsumers(ctes, root)
     const probeCount = ctes.reduce((total, cte) => total + this.countPlanProbes(cte), 0) +
@@ -298,6 +302,11 @@ export class QueryDataflowDebuggerService {
       )
       const conditionSql = await this.sqlParser.expressionToSql(on, state.context, true)
       const rightKey = this.findSingleRightJoinKey(on, joinSource)
+      const multipleKeyQueries = rightKey &&
+        state.optionalProbeCount + 2 <= MAX_OPTIONAL_JOIN_DETAIL_PROBES
+        ? await this.buildMultipleKeyQueries(rightKey, beforeFromSql, rightFromSql, conditionSql, state.context)
+        : undefined
+      if (multipleKeyQueries) state.optionalProbeCount += 2
       const inputBlock = await this.planSourceSubquery(
         joinSource,
         'join',
@@ -314,9 +323,7 @@ export class QueryDataflowDebuggerService {
         countAfter: this.diagnostic(`SELECT COUNT(*) AS ${COUNT_ALIAS} ${afterFromSql}`, 1),
         matchState: this.diagnostic(this.buildMatchStateQuery(beforeFromSql, rightFromSql, conditionSql), 1),
         inputBlock,
-        ...(rightKey
-          ? await this.buildMultipleKeyQueries(rightKey, beforeFromSql, rightFromSql, conditionSql, state.context)
-          : {})
+        ...multipleKeyQueries
       })
     }
 
@@ -695,8 +702,9 @@ export class QueryDataflowDebuggerService {
     if (!comparisons.length || comparisons.some((comparison) =>
       comparison?.['type'] !== 'binary_expr' ||
       comparison?.['operator'] !== '=' ||
-      comparison?.['left']?.['type'] !== 'column_ref' ||
-      comparison?.['right']?.['type'] !== 'column_ref'
+      !this.containsImmediateNodeType(comparison, 'column_ref') ||
+      !this.isSimpleWhereOperand(comparison?.['left']) ||
+      !this.isSimpleWhereOperand(comparison?.['right'])
     )) throw new QueryDataflowUnsupportedError('joinCondition')
   }
 
@@ -708,6 +716,10 @@ export class QueryDataflowDebuggerService {
     if (!this.isRecord(expression)) return false
     if (expression['type'] === 'binary_expr' && String(expression['operator']).toUpperCase() === 'AND') {
       return this.isSimpleWhereExpression(expression['left']) && this.isSimpleWhereExpression(expression['right'])
+    }
+    if (expression['type'] === 'function' && this.functionName(expression['name']) === 'NOT') {
+      const values = this.expressionListValues(expression['args'])
+      return values.length === 1 && this.isSimpleWhereExpression(values[0])
     }
     if (this.isExistsExpression(expression)) return true
     if (expression['type'] !== 'binary_expr') return false
@@ -731,8 +743,17 @@ export class QueryDataflowDebuggerService {
     if (type === 'expr_list' && Array.isArray(operand['value'])) {
       return operand['value'].every((value: unknown) => this.isSimpleWhereOperand(value))
     }
+    if (type === 'function' && SAFE_SCALAR_FILTER_FUNCTIONS.has(this.functionName(operand['name']))) {
+      const values = this.expressionListValues(operand['args'])
+      return values.length > 0 && values.every((value) => this.isSimpleWhereOperand(value))
+    }
     if (type === 'unary_expr') return this.isSimpleWhereOperand(operand['expr'])
     return false
+  }
+
+  private expressionListValues(value: unknown): unknown[] {
+    if (!this.isRecord(value) || value['type'] !== 'expr_list' || !Array.isArray(value['value'])) return []
+    return value['value']
   }
 
   private isExistsExpression(expression: SqlAst): boolean {

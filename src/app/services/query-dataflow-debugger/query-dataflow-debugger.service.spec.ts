@@ -385,6 +385,49 @@ describe('QueryDataflowDebuggerService', () => {
     }
   })
 
+  it('supports HANA JOIN filters, scalar fallbacks and negated filter groups', async () => {
+    const service = new QueryDataflowDebuggerService(new SqlParserService(), {} as any)
+    const plan = await service.createPlan(`
+      WITH "Info" AS (
+        SELECT MAX(D."Code") AS "Code", J."Id"
+        FROM "Documents" D
+        INNER JOIN "Journal" J
+          ON J."SourceId" = D."Id" AND J."SourceType" = 13
+        GROUP BY J."Id"
+      )
+      SELECT J."Id"
+      FROM "Journal" J
+      LEFT JOIN "Lines" L ON J."Id" = L."Id"
+      LEFT JOIN "Users" U ON U."Code" = IFNULL(L."UserCode", J."UserCode")
+      LEFT JOIN "Info" I ON I."Id" = J."Id"
+      WHERE J."Type" IN (13, 14)
+        AND NOT (
+          COALESCE(L."Usage", J."Usage") IN (33, 53)
+          AND J."TaxDate" >= '2026-01-01'
+          AND COALESCE(L."Account", J."Account") = '4.6.1.03.05.01'
+        )
+    `, { sgbd: 'hana' })
+
+    expect(plan.ctes[0].unsupportedReason).toBeUndefined()
+    expect(plan.ctes[0].linear?.joins[0].condition).toContain('"J"."SourceType" = 13')
+    expect(plan.root.unsupportedReason).toBeUndefined()
+    expect(plan.root.linear?.joins[1].condition).toContain('IFNULL')
+    expect(plan.root.linear?.where).toBeDefined()
+  })
+
+  it('keeps large JOIN flows analyzable by bounding optional key-detail probes', async () => {
+    const service = new QueryDataflowDebuggerService(new SqlParserService(), {} as any)
+    const joins = Array.from({ length: 20 }, (_, index) => `
+      LEFT JOIN "Detail${index}" D${index} ON B."Id" = D${index}."BaseId"
+    `).join('')
+    const plan = await service.createPlan(`SELECT B."Id" FROM "Base" B ${joins}`, { sgbd: 'hana' })
+
+    expect(plan.root.unsupportedReason).toBeUndefined()
+    expect(plan.root.linear?.joins.length).toBe(20)
+    expect(plan.root.linear?.joins.filter((join) => join.multipleKeyCount).length).toBe(8)
+    expect(plan.root.linear?.joins.slice(8).every((join) => !join.multipleKeyCount)).toBeTrue()
+  })
+
   it('keeps HANA identifiers double quoted in generated diagnostics', async () => {
     const service = new QueryDataflowDebuggerService(new SqlParserService(), {} as any)
     const plan = await service.createPlan(
