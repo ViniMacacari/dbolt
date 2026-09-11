@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
 
 import { CodeEditorComponent } from './code-editor.component';
 
@@ -8,7 +9,8 @@ describe('CodeEditorComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [CodeEditorComponent]
+      imports: [CodeEditorComponent],
+      providers: [provideHttpClient()]
     })
     .compileComponents();
 
@@ -126,6 +128,8 @@ describe('CodeEditorComponent', () => {
 
   it('marks added and modified lines relative to the last saved SQL', () => {
     component.tabInfo = {
+      persisted: true,
+      versioningEnabled: true,
       originalContent: 'SELECT\n  column_a\nFROM table_a'
     };
     const editor = (component as any).editor;
@@ -142,6 +146,8 @@ describe('CodeEditorComponent', () => {
 
   it('marks deleted lines and clears all markers after saving', () => {
     component.tabInfo = {
+      persisted: true,
+      versioningEnabled: true,
       originalContent: 'SELECT\n  column_a,\n  column_b\nFROM table_a'
     };
     const editor = (component as any).editor;
