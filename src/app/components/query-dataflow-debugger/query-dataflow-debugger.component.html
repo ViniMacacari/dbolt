@@ -26,7 +26,7 @@
                 <h3>{{ t('queryDataflow.analyzing') }}</h3>
                 <p>{{ progress?.stage || t('queryDataflow.preparing') }}</p>
                 <div class="progress-track" aria-hidden="true">
-                    <span [style.width.%]="progress ? progress.completed / progress.total * 100 : 4"></span>
+                    <span [style.width.%]="progress?.total ? progress!.completed / progress!.total * 100 : 4"></span>
                 </div>
                 <small *ngIf="progress">{{ progress.completed }} / {{ progress.total }}</small>
             </div>
@@ -38,80 +38,168 @@
                 <app-button compact (pressed)="runAnalysis()">{{ t('queryDataflow.tryAgain') }}</app-button>
             </div>
 
-            <div class="flow" *ngIf="!loading && analysis">
-                <ng-container *ngFor="let stage of analysis.stages; let first = first">
-                    <div class="flow-connector" *ngIf="!first"><span>↓</span></div>
-                    <article class="stage" [class.has-findings]="stage.findings.length"
-                        [class.expanded]="isExpanded(stage)">
-                        <button *ngIf="stage.kind === 'join'; else staticStage" type="button" class="stage-summary"
-                            [attr.aria-expanded]="isExpanded(stage)" (click)="toggleStage(stage)">
-                            <ng-container *ngTemplateOutlet="stageSummary"></ng-container>
-                            <span class="expand-icon" aria-hidden="true">⌄</span>
-                        </button>
-                        <ng-template #staticStage>
-                            <div class="stage-summary"><ng-container *ngTemplateOutlet="stageSummary"></ng-container></div>
-                        </ng-template>
-                        <ng-template #stageSummary>
-                            <span class="stage-kind">{{ stageTitle(stage) }}</span>
-                            <span class="stage-source" *ngIf="stage.source">{{ stage.source }}</span>
-                            <span class="stage-condition" *ngIf="stage.kind === 'where'">{{ stage.condition }}</span>
-                            <span class="stage-total">
-                                <strong>{{ formatNumber(stage.rowsAfter) }}</strong>
-                                <small>{{ t('queryDataflow.rows') }}</small>
-                            </span>
-                            <span class="stage-signals">
-                                <span class="signal increase" *ngIf="rowDelta(stage) > 0">
-                                    +{{ formatNumber(rowDelta(stage)) }} {{ t('queryDataflow.rows') }}
-                                </span>
-                                <span class="signal removed" *ngIf="removedRows(stage) > 0">
-                                    −{{ formatNumber(removedRows(stage)) }} {{ t('queryDataflow.removed') }}
-                                </span>
-                                <span class="signal unmatched" *ngIf="stage.joinType === 'left' && stage.unmatched">
-                                    {{ formatNumber(stage.unmatched) }} {{ t('queryDataflow.unmatched') }}
-                                </span>
-                                <span class="signal stable" *ngIf="stage.rowsBefore !== undefined && rowDelta(stage) === 0 && !removedRows(stage)">
-                                    {{ t('queryDataflow.cardinalityStable') }}
-                                </span>
-                            </span>
-                        </ng-template>
+            <div class="dataflow-document" *ngIf="!loading && analysis">
+                <section class="cte-section" *ngIf="analysis.ctes.length">
+                    <div class="section-label">{{ t('queryDataflow.ctes') }}</div>
+                    <ng-container *ngFor="let cte of analysis.ctes">
+                        <ng-container *ngTemplateOutlet="blockTemplate; context: { $implicit: cte, nested: false }"></ng-container>
+                        <div class="consumption-link" *ngIf="cte.consumedBy.length">
+                            <span>↓</span>
+                            {{ t('queryDataflow.usedBy') }} {{ consumerList(cte.consumedBy) }}
+                        </div>
+                    </ng-container>
+                </section>
 
-                        <div class="stage-details" *ngIf="stage.kind === 'join' && isExpanded(stage)">
-                            <div class="condition-block">
-                                <small>{{ t('queryDataflow.joinCondition') }}</small>
-                                <code>{{ stage.condition }}</code>
+                <div class="main-divider" *ngIf="analysis.ctes.length">
+                    <span>{{ t('queryDataflow.mainQuery') }}</span>
+                </div>
+                <ng-container *ngTemplateOutlet="blockTemplate; context: { $implicit: analysis.root, nested: false }"></ng-container>
+            </div>
+
+            <ng-template #blockTemplate let-block let-nested="nested">
+                <article class="flow-block" [class.nested-block]="nested" [class.correlated]="block.correlation">
+                    <button type="button" class="block-summary" [attr.aria-expanded]="isBlockExpanded(block)"
+                        (click)="toggleBlock(block)">
+                        <span class="block-kind">{{ blockKind(block) }}</span>
+                        <strong>{{ blockLabel(block) }}</strong>
+                        <span class="block-dependencies" *ngIf="block.dependencies.length">
+                            {{ t('queryDataflow.uses') }} {{ block.dependencies.join(', ') }}
+                        </span>
+                        <span class="block-output" *ngIf="block.outputRows !== undefined">
+                            <strong>{{ formatNumber(block.outputRows) }}</strong>
+                            <small>{{ t('queryDataflow.rows') }}</small>
+                        </span>
+                        <span class="block-expand" aria-hidden="true">⌄</span>
+                    </button>
+
+                    <div class="block-body" *ngIf="isBlockExpanded(block)">
+                        <div class="unsupported-block" *ngIf="block.unsupportedReason">
+                            <strong>{{ t('queryDataflow.notAnalyzed') }}</strong>
+                            <span>{{ unsupportedLabel(block.unsupportedReason) }}</span>
+                        </div>
+
+                        <div class="correlation-block" *ngIf="block.correlation">
+                            <span class="correlation-kicker">{{ t('queryDataflow.correlatedSubquery') }}</span>
+                            <strong>{{ t('queryDataflow.logicalPerOuterRow') }}</strong>
+                            <div *ngIf="block.correlation.outerRows !== undefined">
+                                <small>{{ t('queryDataflow.outerRows') }}</small>
+                                <b>{{ formatNumber(block.correlation.outerRows) }}</b>
                             </div>
-                            <div class="metrics">
-                                <div><small>{{ t('queryDataflow.before') }}</small><strong>{{ formatNumber(stage.rowsBefore) }}</strong></div>
-                                <div><small>{{ t('queryDataflow.after') }}</small><strong>{{ formatNumber(stage.rowsAfter) }}</strong></div>
-                                <div><small>{{ t('queryDataflow.matched') }}</small><strong>{{ formatNumber(stage.matched) }}</strong></div>
-                                <div><small>{{ t('queryDataflow.unmatched') }}</small><strong>{{ formatNumber(stage.unmatched) }}</strong></div>
-                                <div class="fanout" [title]="t('queryDataflow.fanOutHelp')"><small>{{ t('queryDataflow.fanOut') }}</small><strong>{{ formatFanOut(stage.fanOut) }}</strong></div>
+                            <small>{{ t('queryDataflow.correlation') }}</small>
+                            <code *ngFor="let condition of block.correlation.conditions">{{ condition }}</code>
+                            <p>{{ t('queryDataflow.correlationUnavailable') }}</p>
+                        </div>
+
+                        <ng-container *ngIf="block.branches?.length">
+                            <div class="union-branches">
+                                <ng-container *ngFor="let branch of block.branches">
+                                    <ng-container *ngTemplateOutlet="blockTemplate; context: { $implicit: branch, nested: true }"></ng-container>
+                                </ng-container>
                             </div>
-                            <div class="findings" *ngIf="stage.findings.length">
-                                <span *ngFor="let finding of stage.findings" [class]="'finding ' + finding">
-                                    {{ findingLabel(finding) }}
-                                </span>
-                            </div>
-                            <div class="multiple-keys" *ngIf="stage.multipleKeyCount !== undefined">
-                                <p *ngIf="stage.multipleKeyCount; else noMultipleKeys">
-                                    <strong>{{ formatNumber(stage.multipleKeyCount) }}</strong>
-                                    {{ t('queryDataflow.keysWithMultipleMatches') }}
-                                </p>
-                                <ng-template #noMultipleKeys><p>{{ t('queryDataflow.noMultipleKeys') }}</p></ng-template>
-                                <div class="examples" *ngIf="stage.multipleKeyExamples?.length">
-                                    <small>{{ t('queryDataflow.examples') }}</small>
-                                    <div *ngFor="let example of stage.multipleKeyExamples">
-                                        <code>{{ example.key }}</code><span>→</span><strong>{{ formatNumber(example.matches) }}</strong>
-                                    </div>
+                            <div class="union-operation" *ngFor="let operation of block.unionSteps">
+                                <span class="union-rails" aria-hidden="true">╲ │ ╱</span>
+                                <strong>{{ unionLabel(operation.operator) }}</strong>
+                                <div class="union-metrics">
+                                    <span>{{ t('queryDataflow.leftInput') }} <b>{{ formatNumber(operation.leftRows) }}</b></span>
+                                    <span>{{ t('queryDataflow.rightInput') }} <b>{{ formatNumber(operation.rightRows) }}</b></span>
+                                    <span>{{ t('queryDataflow.combined') }} <b>{{ formatNumber(operation.rowsBeforeDistinct) }}</b></span>
+                                    <span class="union-output">{{ t('queryDataflow.output') }} <b>{{ formatNumber(operation.rowsAfter) }}</b></span>
+                                    <span class="duplicates" *ngIf="operation.operator === 'union'">
+                                        {{ t('queryDataflow.duplicatesRemoved') }} <b>{{ formatNumber(operation.duplicatesRemoved) }}</b>
+                                    </span>
                                 </div>
                             </div>
-                            <p class="compound-hint" *ngIf="stage.multipleKeyCount === undefined">
-                                {{ t('queryDataflow.compoundJoinHint') }}
-                            </p>
+                        </ng-container>
+
+                        <div class="flow" *ngIf="block.stages.length">
+                            <ng-container *ngFor="let stage of block.stages; let first = first">
+                                <div class="flow-connector" *ngIf="!first"><span>↓</span></div>
+                                <article class="stage" [class.has-findings]="stage.findings.length"
+                                    [class.expanded]="isExpanded(stage)">
+                                    <button *ngIf="stage.kind === 'join'; else staticStage" type="button" class="stage-summary"
+                                        [attr.aria-expanded]="isExpanded(stage)" (click)="toggleStage(stage)">
+                                        <ng-container *ngTemplateOutlet="stageSummary"></ng-container>
+                                        <span class="expand-icon" aria-hidden="true">⌄</span>
+                                    </button>
+                                    <ng-template #staticStage>
+                                        <div class="stage-summary"><ng-container *ngTemplateOutlet="stageSummary"></ng-container></div>
+                                    </ng-template>
+                                    <ng-template #stageSummary>
+                                        <span class="stage-kind">{{ stageTitle(stage) }}</span>
+                                        <span class="stage-source" *ngIf="stage.source">{{ stage.source }}</span>
+                                        <span class="stage-condition" *ngIf="stage.condition && stage.kind !== 'join'">{{ stage.condition }}</span>
+                                        <span class="stage-total">
+                                            <strong>{{ formatNumber(stage.rowsAfter) }}</strong>
+                                            <small>{{ t('queryDataflow.rows') }}</small>
+                                        </span>
+                                        <span class="stage-signals">
+                                            <span class="signal increase" *ngIf="rowDelta(stage) > 0">
+                                                +{{ formatNumber(rowDelta(stage)) }} {{ t('queryDataflow.rows') }}
+                                            </span>
+                                            <span class="signal removed" *ngIf="removedRows(stage) > 0">
+                                                −{{ formatNumber(removedRows(stage)) }} {{ t('queryDataflow.removed') }}
+                                            </span>
+                                            <span class="signal unmatched" *ngIf="stage.joinType === 'left' && stage.unmatched">
+                                                {{ formatNumber(stage.unmatched) }} {{ t('queryDataflow.unmatched') }}
+                                            </span>
+                                            <span class="signal stable" *ngIf="stage.rowsBefore !== undefined && rowDelta(stage) === 0 && !removedRows(stage)">
+                                                {{ t('queryDataflow.cardinalityStable') }}
+                                            </span>
+                                        </span>
+                                    </ng-template>
+
+                                    <div class="filter-match-summary" *ngIf="stage.kind === 'where' && stage.matched !== undefined">
+                                        <span>{{ t('queryDataflow.matched') }} <b>{{ formatNumber(stage.matched) }}</b></span>
+                                        <span>{{ t('queryDataflow.unmatched') }} <b>{{ formatNumber(stage.unmatched) }}</b></span>
+                                    </div>
+
+                                    <div class="stage-inputs" *ngIf="stage.inputs?.length">
+                                        <small>{{ t('queryDataflow.inputFlows') }}</small>
+                                        <ng-container *ngFor="let input of stage.inputs">
+                                            <ng-container *ngTemplateOutlet="blockTemplate; context: { $implicit: input, nested: true }"></ng-container>
+                                        </ng-container>
+                                    </div>
+
+                                    <div class="stage-details" *ngIf="stage.kind === 'join' && isExpanded(stage)">
+                                        <div class="condition-block">
+                                            <small>{{ t('queryDataflow.joinCondition') }}</small>
+                                            <code>{{ stage.condition }}</code>
+                                        </div>
+                                        <div class="metrics">
+                                            <div><small>{{ t('queryDataflow.before') }}</small><strong>{{ formatNumber(stage.rowsBefore) }}</strong></div>
+                                            <div><small>{{ t('queryDataflow.after') }}</small><strong>{{ formatNumber(stage.rowsAfter) }}</strong></div>
+                                            <div><small>{{ t('queryDataflow.matched') }}</small><strong>{{ formatNumber(stage.matched) }}</strong></div>
+                                            <div><small>{{ t('queryDataflow.unmatched') }}</small><strong>{{ formatNumber(stage.unmatched) }}</strong></div>
+                                            <div class="fanout" [title]="t('queryDataflow.fanOutHelp')"><small>{{ t('queryDataflow.fanOut') }}</small><strong>{{ formatFanOut(stage.fanOut) }}</strong></div>
+                                        </div>
+                                        <div class="findings" *ngIf="stage.findings.length">
+                                            <span *ngFor="let finding of stage.findings" [class]="'finding ' + finding">
+                                                {{ findingLabel(finding) }}
+                                            </span>
+                                        </div>
+                                        <div class="multiple-keys" *ngIf="stage.multipleKeyCount !== undefined">
+                                            <p *ngIf="stage.multipleKeyCount; else noMultipleKeys">
+                                                <strong>{{ formatNumber(stage.multipleKeyCount) }}</strong>
+                                                {{ t('queryDataflow.keysWithMultipleMatches') }}
+                                            </p>
+                                            <ng-template #noMultipleKeys><p>{{ t('queryDataflow.noMultipleKeys') }}</p></ng-template>
+                                            <div class="examples" *ngIf="stage.multipleKeyExamples?.length">
+                                                <small>{{ t('queryDataflow.examples') }}</small>
+                                                <div *ngFor="let example of stage.multipleKeyExamples">
+                                                    <code>{{ example.key }}</code><span>→</span><strong>{{ formatNumber(example.matches) }}</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p class="compound-hint" *ngIf="stage.multipleKeyCount === undefined">
+                                            {{ t('queryDataflow.compoundJoinHint') }}
+                                        </p>
+                                    </div>
+                                </article>
+                            </ng-container>
                         </div>
-                    </article>
-                </ng-container>
-            </div>
+                    </div>
+                </article>
+            </ng-template>
         </div>
 
         <footer class="dataflow-footer">
