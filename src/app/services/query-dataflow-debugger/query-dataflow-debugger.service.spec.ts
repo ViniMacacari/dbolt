@@ -68,7 +68,7 @@ describe('QueryDataflowDebuggerService', () => {
     expect(join.rowsAfter).toBe(120)
     expect(join.matched).toBe(90)
     expect(join.unmatched).toBe(10)
-    expect(join.fanOut).toBe(1.2)
+    expect(join.fanOut).toBeCloseTo(110 / 90, 8)
     expect(join.multipleKeyCount).toBe(2)
     expect(join.multipleKeyExamples?.[0]).toEqual({ key: 'C019283', matches: 14 })
     expect(join.findings).toContain('cardinality-increase')
@@ -79,11 +79,61 @@ describe('QueryDataflowDebuggerService', () => {
     expect(runQuery.runReadOnlySQL).toHaveBeenCalledTimes(6)
   })
 
+  it('does not classify unmatched LEFT JOIN rows as one-to-many without fan-out', async () => {
+    const responses: Array<Array<Record<string, unknown>>> = [
+      [{ DBOLT_ROWS: 100 }],
+      [{ DBOLT_ROWS: 100 }],
+      [{ DBOLT_MATCHED: 75, DBOLT_UNMATCHED: 25 }],
+      [{ DBOLT_MULTIPLE_KEYS: 0 }],
+      []
+    ]
+    const runQuery = {
+      runReadOnlySQL: jasmine.createSpy('runReadOnlySQL').and.callFake(async () => responses.shift() || [])
+    }
+    const service = new QueryDataflowDebuggerService(new SqlParserService(), runQuery as any)
+    const result = await service.analyze(`
+      SELECT PN."CardCode"
+      FROM "OCRD" PN
+      LEFT JOIN "OSLP" V ON PN."SlpCode" = V."SlpCode"
+    `, context)
+
+    const join = result.stages[1]
+    expect(join.fanOut).toBe(1)
+    expect(join.findings).toContain('many-unmatched')
+    expect(join.findings).not.toContain('possible-one-to-many')
+  })
+
+  it('calculates INNER JOIN fan-out from matched input rows rather than retention', async () => {
+    const responses: Array<Array<Record<string, unknown>>> = [
+      [{ DBOLT_ROWS: 367_720 }],
+      [{ DBOLT_ROWS: 103_724 }],
+      [{ DBOLT_MATCHED: 103_724, DBOLT_UNMATCHED: 263_996 }],
+      [{ DBOLT_MULTIPLE_KEYS: 0 }],
+      []
+    ]
+    const runQuery = {
+      runReadOnlySQL: jasmine.createSpy('runReadOnlySQL').and.callFake(async () => responses.shift() || [])
+    }
+    const service = new QueryDataflowDebuggerService(new SqlParserService(), runQuery as any)
+    const result = await service.analyze(`
+      SELECT PN."CardCode"
+      FROM "OCRD" PN
+      INNER JOIN "OSLP" V ON PN."SlpCode" = V."SlpCode"
+    `, context)
+
+    const join = result.stages[1]
+    expect(join.rowsAfter / (join.rowsBefore || 1)).toBeCloseTo(.28, 2)
+    expect(join.fanOut).toBe(1)
+    expect(join.findings).toContain('rows-removed')
+    expect(join.findings).not.toContain('possible-one-to-many')
+  })
+
   it('rejects unsupported SQL explicitly instead of approximating it', async () => {
     const service = new QueryDataflowDebuggerService(new SqlParserService(), {} as any)
     const cases = [
       { sql: 'WITH base AS (SELECT * FROM OCRD) SELECT * FROM base', reason: 'cte' },
       { sql: 'SELECT CardType, COUNT(*) FROM OCRD GROUP BY CardType', reason: 'groupBy' },
+      { sql: 'SELECT (SELECT i.id FROM items i) AS item_id FROM orders o', reason: 'subquery' },
       { sql: `SELECT * FROM OCRD WHERE CardType = 'C' OR validFor = 'Y'`, reason: 'where' },
       { sql: 'UPDATE OCRD SET validFor = 0', reason: 'selectOnly' }
     ]
