@@ -96,14 +96,25 @@ describe('QueryDataflowDebuggerComponent', () => {
   })
 
   it('expands a CTE block to reveal its internal linear flow', () => {
-    const cteButton = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
+    const host = fixture.nativeElement as HTMLElement
+    const cteButton = host.querySelector<HTMLButtonElement>(
       '.cte-section .block-summary'
     )!
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('OCRD')
+    const cteBody = host.querySelector<HTMLElement>('.cte-section .block-body-collapse')!
+    expect(cteBody.classList).not.toContain('expanded')
+    expect(cteBody.getAttribute('aria-hidden')).toBe('true')
 
     cteButton.click()
     fixture.detectChanges()
 
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('OCRD')
+    expect(cteBody.classList).toContain('expanded')
+    expect(cteBody.getAttribute('aria-hidden')).toBe('false')
+    expect(host.textContent).toContain('OCRD')
+
+    cteButton.click()
+    fixture.detectChanges()
+
+    expect(cteBody.classList).not.toContain('expanded')
+    expect(cteBody.getAttribute('aria-hidden')).toBe('true')
   })
 })
