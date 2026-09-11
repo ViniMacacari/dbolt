@@ -8,9 +8,17 @@ import {
   INTERNAL_API_TOKEN_HEADER,
   getInternalApiSessionToken
 } from './api/services/security/internal-session-token.js';
+import { installProcessSafetyGuards } from './api/utils/process-guards.js';
 import { registerAppUpdateIpc } from './electron/services/app-update.js';
 
 const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron') as typeof import('electron');
+
+// An unhandled error in the main process makes Electron kill the app and show
+// the native "A JavaScript error occurred" dialog. Database drivers raise these
+// asynchronously whenever a link drops, so they are logged and swallowed here
+// to keep the window alive and let the UI report the failure on its own.
+installProcessSafetyGuards();
+
 const appRoot = path.resolve(__dirname, '..');
 const angularIndexPath = path.join(
   appRoot,
@@ -32,7 +40,10 @@ const ORIGINAL_REPOSITORY_URL = 'https://github.com/ViniMacacari/dbolt';
 const OPENAI_OAUTH_CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann';
 const OPENAI_OAUTH_REDIRECT_URI = 'http://localhost:1455/auth/callback';
 
+const RENDERER_RECOVERY_INTERVAL_MS = 10_000;
+
 let win: InstanceType<typeof BrowserWindow> | null = null;
+let lastRendererRecoveryAt = 0;
 let allowWindowClose = false;
 let closeRequestPending = false;
 let quitAfterClose = false;
@@ -344,6 +355,41 @@ function createWindow(): void {
     if (!isTrustedRendererUrl(url)) {
       event.preventDefault();
     }
+  });
+
+  win.webContents.on('render-process-gone', (_event, details) => {
+    console.error('The application window stopped responding:', details);
+
+    if (details.reason === 'clean-exit' || !win || win.isDestroyed()) {
+      return;
+    }
+
+    // Reload once per interval so a page that crashes while loading does not
+    // turn the recovery into a reload loop.
+    const now = Date.now();
+    if (now - lastRendererRecoveryAt < RENDERER_RECOVERY_INTERVAL_MS) {
+      console.error('Skipping the window reload because it just crashed again.');
+      return;
+    }
+
+    lastRendererRecoveryAt = now;
+    win.webContents.reloadIgnoringCache();
+  });
+
+  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedUrl, isMainFrame) => {
+    if (!isMainFrame || errorCode === -3) {
+      return;
+    }
+
+    console.error(`Failed to load ${validatedUrl}: ${errorDescription} (${errorCode})`);
+  });
+
+  win.on('unresponsive', () => {
+    console.warn('The application window is busy and stopped painting.');
+  });
+
+  win.on('responsive', () => {
+    console.log('The application window is responsive again.');
   });
 
   win.on('closed', () => {
