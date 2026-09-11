@@ -33,6 +33,7 @@ export const enTranslations: TranslationCatalog = {
   'queryDataflow.before': 'Before',
   'queryDataflow.after': 'After',
   'queryDataflow.fanOut': 'Fan-out',
+  'queryDataflow.fanOutHelp': 'Average output rows produced by each matched left-side row.',
   'queryDataflow.leftJoin': 'LEFT JOIN',
   'queryDataflow.innerJoin': 'INNER JOIN',
   'queryDataflow.joinCondition': 'JOIN condition',

@@ -33,6 +33,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'queryDataflow.before': 'Antes',
   'queryDataflow.after': 'Depois',
   'queryDataflow.fanOut': 'Fan-out',
+  'queryDataflow.fanOutHelp': 'Média de linhas geradas por registro do lado esquerdo que encontrou correspondência.',
   'queryDataflow.leftJoin': 'LEFT JOIN',
   'queryDataflow.innerJoin': 'INNER JOIN',
   'queryDataflow.joinCondition': 'Condição do JOIN',
