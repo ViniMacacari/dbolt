@@ -71,8 +71,12 @@
                         </span>
                     </button>
 
-                    <div class="block-body" *ngIf="isBlockExpanded(block)">
-                        <div class="unsupported-block" *ngIf="block.unsupportedReason">
+                    <div class="block-body-collapse" [class.expanded]="isBlockExpanded(block)"
+                        [attr.aria-hidden]="!isBlockExpanded(block)"
+                        [attr.inert]="!isBlockExpanded(block) ? '' : null">
+                        <div class="block-body-clip">
+                            <div class="block-body">
+                                <div class="unsupported-block" *ngIf="block.unsupportedReason">
                             <strong>{{ t('queryDataflow.notAnalyzed') }}</strong>
                             <span>{{ unsupportedLabel(block.unsupportedReason) }}</span>
                         </div>
@@ -158,8 +162,13 @@
                                         </ng-container>
                                     </div>
 
-                                    <div class="stage-details" *ngIf="stage.kind === 'join' && isExpanded(stage)">
-                                        <div class="condition-block">
+                                    <div class="stage-details-collapse" *ngIf="stage.kind === 'join'"
+                                        [class.expanded]="isExpanded(stage)"
+                                        [attr.aria-hidden]="!isExpanded(stage)"
+                                        [attr.inert]="!isExpanded(stage) ? '' : null">
+                                        <div class="stage-details-clip">
+                                            <div class="stage-details">
+                                                <div class="condition-block">
                                             <small>{{ t('queryDataflow.joinCondition') }}</small>
                                             <code>{{ stage.condition }}</code>
                                         </div>
@@ -188,14 +197,18 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <p class="compound-hint" *ngIf="stage.multipleKeyCount === undefined">
-                                            {{ t('queryDataflow.compoundJoinHint') }}
-                                        </p>
-                                    </div>
-                                </article>
-                            </ng-container>
+                                                <p class="compound-hint" *ngIf="stage.multipleKeyCount === undefined">
+                                                    {{ t('queryDataflow.compoundJoinHint') }}
+                                                </p>
+                            </div>
                         </div>
                     </div>
+                </article>
+                            </ng-container>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 </article>
             </ng-template>
         </div>
