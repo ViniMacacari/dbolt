@@ -82,7 +82,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'queryDataflow.unsupported.implicitJoin': 'JOIN implícito por vírgula ainda não é suportado.',
   'queryDataflow.unsupported.subquery': 'Subqueries no FROM ainda não são suportadas.',
   'queryDataflow.unsupported.joinType': 'O MVP aceita apenas INNER JOIN e LEFT JOIN.',
-  'queryDataflow.unsupported.joinCondition': 'Por enquanto, o ON deve conter igualdade entre colunas, combinada opcionalmente com AND.',
+  'queryDataflow.unsupported.joinCondition': 'Por enquanto, o ON deve usar igualdades simples, combinadas opcionalmente com AND.',
   'queryDataflow.unsupported.where': 'Por enquanto, o WHERE aceita comparações simples combinadas apenas com AND.',
   'queryDataflow.unsupported.recursiveCte': 'WITH RECURSIVE não é suportado para evitar métricas incorretas.',
   'queryDataflow.unsupported.nestedCte': 'WITH aninhado dentro deste bloco ainda não é suportado.',

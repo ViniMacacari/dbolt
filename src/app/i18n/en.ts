@@ -82,7 +82,7 @@ export const enTranslations: TranslationCatalog = {
   'queryDataflow.unsupported.implicitJoin': 'Implicit comma JOINs are not supported yet.',
   'queryDataflow.unsupported.subquery': 'Subqueries in FROM are not supported yet.',
   'queryDataflow.unsupported.joinType': 'The MVP accepts INNER JOIN and LEFT JOIN only.',
-  'queryDataflow.unsupported.joinCondition': 'For now, ON must contain column equality, optionally combined with AND.',
+  'queryDataflow.unsupported.joinCondition': 'For now, ON must use simple equalities, optionally combined with AND.',
   'queryDataflow.unsupported.where': 'For now, WHERE accepts simple comparisons combined with AND only.',
   'queryDataflow.unsupported.recursiveCte': 'WITH RECURSIVE is not supported to avoid incorrect metrics.',
   'queryDataflow.unsupported.nestedCte': 'A nested WITH inside this block is not supported yet.',
