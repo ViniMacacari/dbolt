@@ -295,6 +295,23 @@ app-table-query.result-content-entering {
         pointer-events: none;
     }
 
+    .query-cancel {
+        background: var(--dbolt-292727);
+        border: 1px solid var(--dbolt-3b3b3b);
+        border-radius: 8px;
+        color: var(--dbolt-e8eaed);
+        cursor: pointer;
+        font-family: 'Nunito';
+        font-size: .82em;
+        font-weight: 800;
+        padding: 5px 12px;
+        user-select: none;
+
+        &:hover {
+            background: var(--dbolt-343232);
+        }
+    }
+
     &.error {
         align-items: flex-start;
         background: var(--dbolt-1b1b1b);
