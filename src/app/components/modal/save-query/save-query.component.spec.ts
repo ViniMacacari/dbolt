@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
 
 import { SaveQueryComponent } from './save-query.component';
 
@@ -8,7 +9,8 @@ describe('SaveConnectionComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SaveQueryComponent]
+      imports: [SaveQueryComponent],
+      providers: [provideHttpClient()]
     })
     .compileComponents();
 
