@@ -152,6 +152,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   queryColumns: string[] = []
   queryResultOpen: boolean = false
   isLoadingQuery: boolean = false
+  private runningQueryAbort: AbortController | null = null
   queryError: string = ''
   queryLines: number = 50
   queryFetchSize: number = 50
@@ -231,6 +232,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
   }
 
   ngOnDestroy(): void {
+    this.cancelRunningQuery()
     this.clearResultAnimations()
     this.clearSqlChangeDecorationTimer()
 
@@ -1681,6 +1683,9 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
     this.persistQueryState()
     this.layoutEditor()
 
+    const abortController = new AbortController()
+    this.runningQueryAbort = abortController
+
     try {
       this.queryFetchSize = this.normalizeQueryLimit(this.queryFetchSize)
       this.queryLines = this.queryFetchSize
@@ -1688,7 +1693,7 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       this.queryResultIsSelect = this.isReadOnlySelectSql(sql)
 
       const queryStart = performance.now()
-      const result: any = await this.runQuery.runSQL(sql, this.queryLines, this.tabInfo?.dbInfo)
+      const result: any = await this.runQuery.runSQL(sql, this.queryLines, this.tabInfo?.dbInfo, abortController.signal)
       this.queryExecutionTimeMs = performance.now() - queryStart
       this.queryReponse = result
       this.queryColumns = this.runQuery.getQueryColumns()
@@ -1697,8 +1702,11 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       this.persistQueryState()
       this.layoutEditor()
     } catch (error: any) {
-      console.error(error)
-      this.queryError = this.getQueryErrorMessage(error)
+      if (!abortController.signal.aborted) console.error(error)
+
+      this.queryError = abortController.signal.aborted
+        ? this.t('editor.queryCanceled')
+        : this.getQueryErrorMessage(error)
       this.queryReponse = []
       this.queryColumns = []
       this.maxResultLines = null
@@ -1706,10 +1714,20 @@ export class CodeEditorComponent implements AfterViewChecked, OnDestroy, OnChang
       this.persistQueryState()
       this.layoutEditor()
     } finally {
+      if (this.runningQueryAbort === abortController) this.runningQueryAbort = null
+
       this.isLoadingQuery = false
       this.startResultContentAnimation()
       this.persistQueryState()
     }
+  }
+
+  /**
+   * Stops waiting for a query that is taking too long or that hangs because the
+   * connection dropped, so the editor never stays stuck on the loading state.
+   */
+  cancelRunningQuery(): void {
+    this.runningQueryAbort?.abort()
   }
 
   async newValues(): Promise<void> {

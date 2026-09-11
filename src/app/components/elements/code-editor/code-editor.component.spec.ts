@@ -198,4 +198,25 @@ describe('CodeEditorComponent', () => {
     expect(mouseDown.defaultPrevented).toBeTrue();
     expect((component as any).changePeekClosing).toBeTrue();
   });
+
+  it('stops waiting for a query that was cancelled instead of staying on the loading state', async () => {
+    let rejectQuery: (reason: unknown) => void = () => undefined;
+    const runQuery = (component as any).runQuery;
+    spyOn(runQuery, 'runSQL').and.callFake((_sql: string, _lines: number, _context: unknown, signal: AbortSignal) => {
+      return new Promise((_resolve, reject) => {
+        rejectQuery = reject;
+        signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+      });
+    });
+
+    const running = component.runSql('SELECT 1');
+    expect(component.isLoadingQuery).toBeTrue();
+
+    component.cancelRunningQuery();
+    await running;
+
+    expect(rejectQuery).toBeDefined();
+    expect(component.isLoadingQuery).toBeFalse();
+    expect(component.queryError).toBe(component.t('editor.queryCanceled'));
+  });
 });
