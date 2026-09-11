@@ -4,6 +4,12 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/spec",
+    "baseUrl": ".",
+    "paths": {
+      "monaco-editor": [
+        "src/testing/monaco-editor.stub.ts"
+      ]
+    },
     "types": [
       "jasmine"
     ]
