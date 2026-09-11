@@ -186,7 +186,7 @@ export class QueryDataflowDebuggerService {
         rowsAfter: afterRows,
         matched,
         unmatched,
-        fanOut: previousRows > 0 ? afterRows / previousRows : 0,
+        fanOut: this.calculateFanOut(join.joinType, afterRows, matched, unmatched),
         multipleKeyCount,
         multipleKeyExamples,
         findings
@@ -230,6 +230,9 @@ export class QueryDataflowDebuggerService {
       throw new QueryDataflowUnsupportedError('limit')
     }
     if (this.hasMeaningfulInto(ast['into'])) throw new QueryDataflowUnsupportedError('selectInto')
+    if (this.containsNodeType(ast['columns'], 'select')) {
+      throw new QueryDataflowUnsupportedError('subquery')
+    }
     if (this.containsNodeType(ast['columns'], 'aggr_func') || this.hasValue(ast['window'])) {
       throw new QueryDataflowUnsupportedError('aggregate')
     }
@@ -415,8 +418,28 @@ export class QueryDataflowDebuggerService {
     if (join.joinType === 'left' && before > 0 && unmatched / before >= MANY_UNMATCHED_RATIO) {
       findings.push('many-unmatched')
     }
-    if ((multipleKeyCount || 0) > 0 || after > matched) findings.push('possible-one-to-many')
+    const outputExceedsMatchedInput = join.joinType === 'inner' && after > matched
+    const leftJoinIncreasedCardinality = join.joinType === 'left' && after > before
+    if ((multipleKeyCount || 0) > 0 || outputExceedsMatchedInput || leftJoinIncreasedCardinality) {
+      findings.push('possible-one-to-many')
+    }
     return findings
+  }
+
+  private calculateFanOut(
+    joinType: QueryDataflowJoinType,
+    after: number,
+    matched: number,
+    unmatched: number
+  ): number | undefined {
+    if (matched <= 0) return undefined
+
+    // A LEFT JOIN keeps every unmatched input row once. Those preserved rows are
+    // not products of a match and therefore must not participate in fan-out.
+    const rowsProducedByMatches = joinType === 'left'
+      ? Math.max(0, after - unmatched)
+      : after
+    return rowsProducedByMatches / matched
   }
 
   private async executeWithTimeout(
