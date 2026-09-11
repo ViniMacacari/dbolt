@@ -69,7 +69,6 @@
                             <strong>{{ formatNumber(block.outputRows) }}</strong>
                             <small>{{ t('queryDataflow.rows') }}</small>
                         </span>
-                        <span class="block-expand" aria-hidden="true">⌄</span>
                     </button>
 
                     <div class="block-body" *ngIf="isBlockExpanded(block)">
@@ -119,7 +118,6 @@
                                     <button *ngIf="stage.kind === 'join'; else staticStage" type="button" class="stage-summary"
                                         [attr.aria-expanded]="isExpanded(stage)" (click)="toggleStage(stage)">
                                         <ng-container *ngTemplateOutlet="stageSummary"></ng-container>
-                                        <span class="expand-icon" aria-hidden="true">⌄</span>
                                     </button>
                                     <ng-template #staticStage>
                                         <div class="stage-summary"><ng-container *ngTemplateOutlet="stageSummary"></ng-container></div>
