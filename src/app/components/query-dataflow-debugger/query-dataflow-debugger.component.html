@@ -85,7 +85,7 @@
                                 <div><small>{{ t('queryDataflow.after') }}</small><strong>{{ formatNumber(stage.rowsAfter) }}</strong></div>
                                 <div><small>{{ t('queryDataflow.matched') }}</small><strong>{{ formatNumber(stage.matched) }}</strong></div>
                                 <div><small>{{ t('queryDataflow.unmatched') }}</small><strong>{{ formatNumber(stage.unmatched) }}</strong></div>
-                                <div class="fanout"><small>{{ t('queryDataflow.fanOut') }}</small><strong>{{ formatFanOut(stage.fanOut) }}</strong></div>
+                                <div class="fanout" [title]="t('queryDataflow.fanOutHelp')"><small>{{ t('queryDataflow.fanOut') }}</small><strong>{{ formatFanOut(stage.fanOut) }}</strong></div>
                             </div>
                             <div class="findings" *ngIf="stage.findings.length">
                                 <span *ngFor="let finding of stage.findings" [class]="'finding ' + finding">
