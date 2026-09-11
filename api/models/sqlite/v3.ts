@@ -8,6 +8,7 @@ import type {
   QueryRowsWithColumns
 } from '../../types.js';
 import { columnNamesFromRows, normalizeColumnNames } from '../../utils/query-columns.js';
+import { watchConnectionFailures } from '../../utils/database-runtime.js';
 
 type SqliteConnectionConfig = Partial<DatabaseConnectionConfig> & {
   filename?: string;
@@ -135,7 +136,19 @@ class SQLiteV3 {
 
         resolve(connection);
       });
+
+      watchConnectionFailures(connection, 'SQLite', () => {
+        this.dropLostConnection(connection);
+      });
     });
+  }
+
+  private dropLostConnection(connection: sqlite3.Database): void {
+    for (const [key, state] of SQLiteV3.connections) {
+      if (state.connection === connection) {
+        SQLiteV3.connections.delete(key);
+      }
+    }
   }
 
   private closeDatabase(connection: sqlite3.Database): Promise<void> {

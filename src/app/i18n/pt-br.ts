@@ -476,6 +476,7 @@ export const ptBrTranslations: TranslationCatalog = {
 
   'editor.runSelected': 'Executar código selecionado',
   'editor.runAll': 'Executar todo o código',
+  'editor.cancelQuery': 'Parar a consulta em execução',
   'editor.indentCode': 'Indentar código',
   'editor.saveCode': 'Salvar código',
   'editor.changePeek.modified': 'Linha modificada',
@@ -495,6 +496,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'editor.savedSuccessfully': 'Salvo com sucesso',
   'editor.saveError': 'Não foi possível salvar a query',
   'editor.executeError': 'Não foi possível executar a query.',
+  'editor.queryCanceled': 'Consulta interrompida antes de terminar.',
   'editor.untitledQuery': 'Query sem título',
   'editor.copySuffix': ' cópia',
   'editor.tableDoesNotExist': 'A tabela ou view "{table}" não existe no banco/schema atual.',
@@ -525,6 +527,7 @@ export const ptBrTranslations: TranslationCatalog = {
   'results.applyingChanges': 'Aplicando alterações...',
   'results.loadingRows': 'Carregando linhas...',
   'results.executingQuery': 'Executando query...',
+  'results.cancelQuery': 'Parar',
   'results.queryError': 'Erro na query',
   'results.noRowsReturned': 'Nenhuma linha retornada.',
   'results.rowsLoadedOf': '{loaded} de {total} linhas',

@@ -17,20 +17,25 @@ export class RunQueryService {
   queryLines: number | null = null
   queryColumns: string[] = []
 
-  async runSQL(sql: string, lines: number | null = null, dbContext: any = null): Promise<any> {
+  async runSQL(
+    sql: string,
+    lines: number | null = null,
+    dbContext: any = null,
+    signal?: AbortSignal
+  ): Promise<any> {
     const selectedContext = dbContext || this.dbSchemas.getSelectedSchemaDB()
     const db = await this.connectionContext.ensureContext(selectedContext)
 
     try {
-      return await this.executeSQL(db, sql, lines)
+      return await this.executeSQL(db, sql, lines, signal)
     } catch (error: any) {
-      if (!this.connectionContext.isConnectionError(error)) {
+      if (signal?.aborted || !this.connectionContext.isConnectionError(error)) {
         throw error
       }
 
       this.connectionContext.forgetContext(db.connectionKey)
       const reconnectedDb = await this.connectionContext.ensureContext(db, true)
-      return await this.executeSQL(reconnectedDb, sql, lines)
+      return await this.executeSQL(reconnectedDb, sql, lines, signal)
     }
   }
 
@@ -56,12 +61,21 @@ export class RunQueryService {
     }
   }
 
-  private async executeSQL(db: any, sql: string, lines: number | null): Promise<any> {
-    const response: any = await this.IAPI.post(`/api/${db.sgbd}/${db.version}/query`, {
+  private async executeSQL(
+    db: any,
+    sql: string,
+    lines: number | null,
+    signal?: AbortSignal
+  ): Promise<any> {
+    const url = `/api/${db.sgbd}/${db.version}/query`
+    const body = {
       sql,
       maxLines: lines,
       connectionKey: db.connectionKey
-    })
+    }
+    const response: any = signal
+      ? await this.IAPI.postWithSignal(url, body, signal)
+      : await this.IAPI.post(url, body)
 
     this.queryLines = response.totalRows
     this.queryColumns = response.columns || []

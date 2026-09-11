@@ -1,7 +1,13 @@
 import cors from 'cors';
-import express, { type Application } from 'express';
+import express, {
+  type Application,
+  type NextFunction,
+  type Request,
+  type Response
+} from 'express';
 import type { Server } from 'node:http';
 
+import { installProcessSafetyGuards } from './utils/process-guards.js';
 import { requireInternalSessionToken } from './middleware/internal-session-auth.js';
 import appInfo from './router/dbolt/app-info.js';
 import aiAssistant from './router/dbolt/ai-assistant.js';
@@ -20,6 +26,8 @@ import {
   INTERNAL_API_TOKEN_HEADER,
   getInternalApiSessionToken
 } from './services/security/internal-session-token.js';
+
+installProcessSafetyGuards();
 
 const BROWSER_DEV_MODE = process.env['DBOLT_BROWSER_DEV'] === '1';
 const PORT = BROWSER_DEV_MODE ? 47953 : 0;
@@ -64,11 +72,55 @@ class InternalServer {
     this.app.use('/api/SqlServer/2008', sqlserver2008);
     this.app.use('/api/SQLite/v3', sqliteV3);
 
+    this.app.use(this.handleRequestFailure);
+
     const server = this.app.listen(PORT, INTERNAL_API_HOST, () => {
       console.log(`App listening on ${getInternalApiBaseUrl(server)}`);
     });
 
+    // A query can legitimately run for minutes, so the HTTP layer must not be
+    // the component that gives up on it. Connection loss is detected by the
+    // database drivers instead (see utils/database-runtime.ts).
+    server.requestTimeout = 0;
+    server.headersTimeout = 0;
+    server.timeout = 0;
+    server.keepAliveTimeout = 0;
+
+    server.on('error', (error: unknown) => {
+      console.error('Internal API server error:', error);
+    });
+
+    server.on('clientError', (error: unknown, socket: { destroy: () => void }) => {
+      console.warn('Internal API client error:', error);
+      socket.destroy();
+    });
+
     return server;
+  }
+
+  /**
+   * Last line of defence for the request pipeline: a failure that escapes a
+   * route handler is answered as JSON instead of bubbling up and taking the
+   * Electron main process down with it.
+   */
+  private handleRequestFailure(
+    error: unknown,
+    _req: Request,
+    res: Response,
+    next: NextFunction
+  ): void {
+    console.error('Unhandled internal API request error:', error);
+
+    if (res.headersSent) {
+      next(error);
+      return;
+    }
+
+    const message = error instanceof Error && error.message
+      ? error.message
+      : 'The internal API could not complete this request.';
+
+    res.status(500).json({ success: false, message, error: message });
   }
 
   private loadBrowserDevSessionRoute(): void {

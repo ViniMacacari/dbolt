@@ -135,6 +135,10 @@
         <div class="query-status loading" *ngIf="isLoading || isLoadingMore || isApplyingEdits">
             <span class="query-spinner"></span>
             <span>{{ getLoadingStatus() }}</span>
+            <button type="button" class="query-cancel" *ngIf="canCancelQuery && isLoading"
+                (click)="cancelQuery.emit()" [title]="t('results.cancelQuery')">
+                {{ t('results.cancelQuery') }}
+            </button>
         </div>
 
         <div class="query-status error" *ngIf="errorMessage">

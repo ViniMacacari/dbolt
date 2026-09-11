@@ -107,7 +107,14 @@ export class ConnectionContextService {
       'client has encountered a connection error',
       'protocol_connection_lost',
       'econnreset',
-      'econnrefused'
+      'econnrefused',
+      'econnaborted',
+      'etimedout',
+      'ehostunreach',
+      'enetunreach',
+      'enotfound',
+      'epipe',
+      'socket hang up'
     ].some((connectionError) => errorText.includes(connectionError))
   }
 

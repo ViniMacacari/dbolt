@@ -140,13 +140,25 @@ export class DatabaseManagerComponent implements OnDestroy {
 
   async ngAfterViewInit(): Promise<void> {
     LoadingComponent.show()
-    await this.firstConnectionConfig()
-    await this.pageConnectionConfig()
-    await this.restoreWorkspaceSession()
-    this.registerWorkspaceSession()
-    this.registerWorkspaceShortcuts()
-    LoadingComponent.hide()
+
+    try {
+      await this.firstConnectionConfig()
+      await this.pageConnectionConfig()
+      await this.restoreWorkspaceSession()
+      this.registerWorkspaceSession()
+      this.registerWorkspaceShortcuts()
+    } catch (error: any) {
+      console.error(error)
+      this.toast.showToast(this.getErrorMessage(error, this.t('workspace.connectError')), 'red')
+    } finally {
+      LoadingComponent.hide()
+    }
+
     void this.loadRecentQueries()
+  }
+
+  private getErrorMessage(error: any, fallback: string): string {
+    return error?.error || error?.message || fallback
   }
 
   getPageId() {
@@ -234,13 +246,21 @@ export class DatabaseManagerComponent implements OnDestroy {
       }
     } catch (error: any) {
       console.error('Erro ao configurar conexão e carregar schemas:', error)
-      this.toast.showToast(error.error, 'red')
+      this.toast.showToast(this.getErrorMessage(error, this.t('workspace.connectError')), 'red')
     }
   }
 
   async loadInitSelectedSchemaAndDB(): Promise<void> {
     LoadingComponent.show()
 
+    try {
+      await this.applyInitSelectedSchemaAndDB()
+    } finally {
+      LoadingComponent.hide()
+    }
+  }
+
+  private async applyInitSelectedSchemaAndDB(): Promise<void> {
     const activeConnection = this.activeConnection[0]
     const database = activeConnection.database
     const version = this.databasesSchemasActiveConnections.data[0].version
@@ -277,8 +297,6 @@ export class DatabaseManagerComponent implements OnDestroy {
     }
 
     this.dbSchemaService.setSelectedSchemaDB(this.selectedSchemaDB)
-
-    LoadingComponent.hide()
   }
 
   private resolveConnectionDefaultTarget(connection: any): any | null {

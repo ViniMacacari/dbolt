@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 
 import { DatabaseManagerComponent } from './database-manager.component';
+import { LoadingComponent } from '../../components/modal/loading/loading.component';
 
 describe('DatabaseManagerComponent', () => {
   let component: DatabaseManagerComponent;
@@ -160,5 +161,25 @@ describe('DatabaseManagerComponent', () => {
     component.onSqlContentChange('  SELECT column_a FROM table_a', targetTab);
 
     expect(targetTab.icon).toBe('CHANGE');
+  });
+
+  it('releases the loading overlay when the workspace fails to start', async () => {
+    const hide = spyOn(LoadingComponent, 'hide');
+    spyOn(component, 'firstConnectionConfig').and.rejectWith(new Error('Connection lost'));
+    component.toast = { showToast: jasmine.createSpy('showToast') } as any;
+
+    await component.ngAfterViewInit();
+
+    expect(hide).toHaveBeenCalled();
+    expect(component.toast.showToast).toHaveBeenCalledWith('Connection lost', 'red');
+  });
+
+  it('releases the loading overlay when the initial schema cannot be read', async () => {
+    const hide = spyOn(LoadingComponent, 'hide');
+    spyOn<any>(component, 'applyInitSelectedSchemaAndDB').and.rejectWith(new Error('Connection terminated'));
+
+    await expectAsync(component.loadInitSelectedSchemaAndDB()).toBeRejected();
+
+    expect(hide).toHaveBeenCalled();
   });
 });

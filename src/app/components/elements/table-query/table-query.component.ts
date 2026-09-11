@@ -88,6 +88,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   @Input() showResultResize: boolean = true
   @Input() showResultExpand: boolean = true
   @Input() showResultClose: boolean = true
+  @Input() canCancelQuery: boolean = false
   @Input() emitFilterModelChanges: boolean = false
   @Input() filterOnApplyOnly: boolean = false
   @Input() directRowActions: boolean = false
@@ -111,6 +112,7 @@ export class TableQueryComponent implements AfterViewInit, OnDestroy {
   @Output() resultHeightChange = new EventEmitter<number>()
   @Output() toggleExpanded = new EventEmitter<void>()
   @Output() filterModelChange = new EventEmitter<any>()
+  @Output() cancelQuery = new EventEmitter<void>()
 
   @ViewChild('tableWrapper') tableWrapper!: ElementRef<HTMLDivElement>
   @ViewChild('agGrid') agGrid!: AgGridAngular

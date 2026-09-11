@@ -476,6 +476,7 @@ export const enTranslations: TranslationCatalog = {
 
   'editor.runSelected': 'Run selected code',
   'editor.runAll': 'Run all code',
+  'editor.cancelQuery': 'Stop the running query',
   'editor.indentCode': 'Indent code',
   'editor.saveCode': 'Save code',
   'editor.changePeek.modified': 'Modified line',
@@ -495,6 +496,7 @@ export const enTranslations: TranslationCatalog = {
   'editor.savedSuccessfully': 'Saved successfully',
   'editor.saveError': 'Could not save query',
   'editor.executeError': 'Could not execute query.',
+  'editor.queryCanceled': 'Query stopped before it finished.',
   'editor.untitledQuery': 'Untitled query',
   'editor.copySuffix': ' copy',
   'editor.tableDoesNotExist': 'Table or view "{table}" does not exist in the current database/schema.',
@@ -525,6 +527,7 @@ export const enTranslations: TranslationCatalog = {
   'results.applyingChanges': 'Applying changes...',
   'results.loadingRows': 'Loading rows...',
   'results.executingQuery': 'Executing query...',
+  'results.cancelQuery': 'Stop',
   'results.queryError': 'Query error',
   'results.noRowsReturned': 'No rows returned.',
   'results.rowsLoadedOf': '{loaded} of {total} rows',

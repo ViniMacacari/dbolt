@@ -7,6 +7,12 @@ import type {
   QueryRowsWithColumns
 } from '../../types.js';
 import { normalizeColumnNames } from '../../utils/query-columns.js';
+import {
+  DB_CONNECT_TIMEOUT_MS,
+  DB_KEEP_ALIVE_DELAY_MS,
+  DB_STATEMENT_TIMEOUT_MS,
+  watchConnectionFailures
+} from '../../utils/database-runtime.js';
 
 type PgConnectionInput = DatabaseConnectionConfig | ClientConfig;
 
@@ -28,9 +34,19 @@ class PgV1 {
           : config.port !== undefined
             ? Number.parseInt(String(config.port), 10)
             : undefined,
-      database: config.database ?? 'postgres'
+      database: config.database ?? 'postgres',
+      keepAlive: true,
+      keepAliveInitialDelayMillis: DB_KEEP_ALIVE_DELAY_MS,
+      connectionTimeoutMillis: DB_CONNECT_TIMEOUT_MS,
+      ...(DB_STATEMENT_TIMEOUT_MS > 0
+        ? { statement_timeout: DB_STATEMENT_TIMEOUT_MS, query_timeout: DB_STATEMENT_TIMEOUT_MS }
+        : {})
     };
     const connection = new Client(normalizedConfig);
+
+    watchConnectionFailures(connection, 'PostgreSQL', () => {
+      this.dropLostConnection(key, connection);
+    });
 
     try {
       await connection.connect();
@@ -40,6 +56,12 @@ class PgV1 {
     } catch (error: unknown) {
       console.error('Error connecting to PostgreSQL:', error);
       throw error;
+    }
+  }
+
+  private dropLostConnection(connectionKey: string, connection: Client): void {
+    if (PgV1.connections.get(connectionKey)?.connection === connection) {
+      PgV1.connections.delete(connectionKey);
     }
   }
 

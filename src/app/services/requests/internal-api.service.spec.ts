@@ -51,4 +51,34 @@ describe('InternalApiService', () => {
       { type: 'result', data: { message: 'Done', model: 'test' } }
     ]);
   });
+
+  it('keeps the API failure details so callers can recognise a lost connection', async () => {
+    spyOn(window, 'fetch').and.resolveTo(new Response(
+      JSON.stringify({
+        success: false,
+        message: 'Connection terminated unexpectedly',
+        code: 'ECONNRESET',
+        sqlState: null
+      }),
+      { status: 500 }
+    ));
+
+    await expectAsync(
+      service.postWithSignal('/api/Postgres/v9/query', {}, new AbortController().signal)
+    ).toBeRejectedWith(jasmine.objectContaining({
+      success: false,
+      message: 'Connection terminated unexpectedly',
+      error: 'Connection terminated unexpectedly',
+      code: 'ECONNRESET'
+    }));
+  });
+
+  it('rethrows an aborted request untouched so it is not reported as a query failure', async () => {
+    const abortController = new AbortController();
+    spyOn(window, 'fetch').and.rejectWith(new DOMException('Aborted', 'AbortError'));
+
+    await expectAsync(
+      service.postWithSignal('/api/Postgres/v9/query', {}, abortController.signal)
+    ).toBeRejectedWith(jasmine.any(DOMException));
+  });
 });
